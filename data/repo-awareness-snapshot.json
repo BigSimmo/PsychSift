@@ -4627,6 +4627,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-25-audit-database-fixes.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/agents/wiring-and-bundle-budget.md",
         "section": "agents",
         "catalogued": true

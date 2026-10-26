@@ -6255,6 +6255,10 @@ export type Database = {
         Args: { p_retention_days?: number };
         Returns: number;
       };
+      purge_stale_teaching_epa_magic_links: {
+        Args: { p_retention_days?: number };
+        Returns: number;
+      };
       refresh_import_batch_status: {
         Args: { p_batch_id: string };
         Returns: Json;

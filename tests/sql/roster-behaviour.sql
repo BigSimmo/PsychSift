@@ -572,6 +572,29 @@ begin
   if (select count(*) from public.roster_open_post_keys where service_id = svc) <> 2 then
     raise exception 'post once: expected one kept key per saved post';
   end if;
+  -- A late retry after the gap was claimed and approved replays the first post: it never posts
+  -- the filled gap again (audit #1, 20261025150000).
+  again := pg_temp.cmd('lee', 'open.claim', jsonb_build_object('openShiftId', first ->> 'openShiftId'));
+  if again ->> 'status' = 'claimed' then
+    again := pg_temp.cmd('mgr', 'open.approve', jsonb_build_object('openShiftId', first ->> 'openShiftId'));
+  end if;
+  if (select status from public.roster_open_shifts where id = (first ->> 'openShiftId')::uuid) is distinct from 'approved' then
+    raise exception 'post once: setup did not approve the first gap, got %', again;
+  end if;
+  again := public.roster_open_post_once(pg_temp.id('mgr'), svc, k1, gap);
+  if again ->> 'openShiftId' is distinct from first ->> 'openShiftId' or again ->> 'status' is distinct from 'approved'
+     or (again ->> 'replayed')::boolean is not true then
+    raise exception 'post once: a retry after approval did not replay the first post, got %', again;
+  end if;
+  if (select count(*) from public.roster_open_shifts where service_id = svc and shift_code = 'DX') <> 2 then
+    raise exception 'post once: a retry after approval posted the filled gap again';
+  end if;
+  -- A cancelled shift frees its key, so the same key posts a fresh opening.
+  update public.roster_open_shifts set status = 'cancelled' where id = (second ->> 'openShiftId')::uuid;
+  again := public.roster_open_post_once(pg_temp.id('mgr'), svc, k2, gap);
+  if again ? 'replayed' or again ->> 'openShiftId' is not distinct from second ->> 'openShiftId' then
+    raise exception 'post once: a cancelled shift did not free its key, got %', again;
+  end if;
 end $open_post_once$;
 
 -- A swap that would approve itself but breaks a team rule waits for the manager instead
