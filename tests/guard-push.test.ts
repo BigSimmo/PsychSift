@@ -44,12 +44,59 @@ import {
   pushedBranchNames,
   pushedTipMatchesHead,
   staticGuard,
+  staticGuardAfterCi,
   cleanupFormatCheckout,
   unlinkDependencyLink,
 } from "../scripts/guard-push.mjs";
 
 const ZERO = "0".repeat(40);
 const created: string[] = [];
+
+describe("push static scheduling", () => {
+  const files = ["src/fixture.ts"];
+  const options = { ranges: [{ localSha: "a".repeat(40) }] };
+
+  it("defers without calling static validation while CI blocks", () => {
+    const result = staticGuardAfterCi(files, options, { name: "in-flight-ci", ok: false }, () => {
+      throw new Error("static validation must not launch while waiting");
+    });
+    expect(result).toMatchObject({ name: "static", ok: false, deferred: true });
+    expect(result.message).toContain("NOT run");
+  });
+
+  it.each([{}, { skipped: "existing scoped override" }, { note: "CI settled" }])(
+    "runs static once with unchanged inputs when CI permits: %j",
+    (detail) => {
+      let calls = 0;
+      const verdict = { name: "static", ok: false, message: "synthetic lint failure" };
+      expect(
+        staticGuardAfterCi(
+          files,
+          options,
+          { name: "in-flight-ci", ok: true, ...detail },
+          (actualFiles, actualOptions) => {
+            calls++;
+            expect(actualFiles).toBe(files);
+            expect(actualOptions).toBe(options);
+            return verdict;
+          },
+        ),
+      ).toBe(verdict);
+      expect(calls).toBe(1);
+    },
+  );
+
+  it("does not remember a deferral after the CI blocker clears", () => {
+    let calls = 0;
+    const check = () => {
+      calls++;
+      return { name: "static", ok: true };
+    };
+    staticGuardAfterCi(files, options, { name: "in-flight-ci", ok: false }, check);
+    expect(staticGuardAfterCi(files, options, { name: "in-flight-ci", ok: true }, check).ok).toBe(true);
+    expect(calls).toBe(1);
+  });
+});
 
 afterEach(() => {
   for (const root of created.splice(0)) rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });

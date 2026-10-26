@@ -48,6 +48,8 @@
  *      config, so a stale .next/dev/types validator cannot make it red for a
  *      defect that is not in the push. Both are incremental (seconds when warm).
  *      Skips loudly when node_modules is absent. Override: SKIP_STATIC_GUARD=1.
+ *      Deferred while the in-flight CI guard blocks; the next admitted push
+ *      still runs the same static checks.
  *
  *   6. Ledger write discipline
  *      The historical Markdown ledgers are serial-only. Feature PRs add immutable
@@ -1354,6 +1356,20 @@ function ledgerWriteGuard(ranges) {
 // ---------------------------------------------------------------------------
 // Orchestration
 // ---------------------------------------------------------------------------
+export function staticGuardAfterCi(changedFiles, options, ciResult, check = staticGuard) {
+  if (!ciResult.ok) {
+    return {
+      name: "static",
+      ok: false,
+      deferred: true,
+      message:
+        "Lint/typecheck NOT run: required CI is still in flight, so this push is already blocked. " +
+        "Retry after CI settles; the same static checks will run then.",
+    };
+  }
+  return check(changedFiles, options);
+}
+
 function report(results) {
   const blocked = results.filter((r) => !r.ok);
   for (const r of results) {
@@ -1377,13 +1393,17 @@ function main() {
   const pushedBranches = pushedBranchNames(ranges, branch);
   const forcePushBranches = forcePushedBranchNames(ranges);
   const changedFiles = collectChangedFiles(ranges);
-  // formatGuard reads the pushed blobs; drift/static only need the paths.
-  const results = [
+  const admission = [
     autoMergeGuard(pushedBranches, forcePushBranches, changedFiles),
     inFlightCiGuard(pushedBranches, ranges),
+  ];
+  // formatGuard reads the pushed blobs; drift/static only need the paths.
+  // Keep every other guard, but don't occupy a static slot while CI blocks.
+  const results = [
+    ...admission,
     formatGuard(collectChangedBlobs(ranges)),
     driftGuard(changedFiles),
-    staticGuard(changedFiles, { ranges }),
+    staticGuardAfterCi(changedFiles, { ranges }, admission[1]),
     ledgerWriteGuard(ranges),
   ];
   process.exit(report(results));
