@@ -4652,6 +4652,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/skipped-tests-inventory.md",
+        "section": "root",
+        "catalogued": false
+      },
+      {
         "path": "docs/wiring-conventions.md",
         "section": "root",
         "catalogued": true
