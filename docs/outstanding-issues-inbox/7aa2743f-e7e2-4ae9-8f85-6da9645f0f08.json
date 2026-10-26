@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "7aa2743f-e7e2-4ae9-8f85-6da9645f0f08",
+  "createdOn": "2026-10-26",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "task",
+    "summary": "Teaching Assessments magic links: retire the old PUT registration route and process-memory store, and purge completed or expired links",
+    "detail": "Follow-up carried from #MAAXAX (closed 26 Oct 2026). src/app/api/teaching/assessments/respond/[token]/route.ts still has the PUT registration path and the in-memory store fallback. Retire them once nothing uses them, and consider a retention purge for completed or expired rows in public.teaching_epa_magic_links. A purge is a database change, so it needs Josh's own yes.",
+    "source": "S9 check-main verification, 26 Oct 2026",
+    "issueUlid": "01M5VKV9BQDPGBMBGNM9MSPSBM"
+  }
+}

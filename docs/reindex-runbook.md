@@ -159,7 +159,8 @@ commit of that document. The script needs the `rollback_document_index_generatio
   any no-go decision. Migration `20261025170000_rollback_legacy_pages_summary_and_guards.sql`
   (audit E2E-01) fixes the older case once it is live: the planner also lists generations that
   have chunks but no stamped pages, and the database rollback then switches the document back to
-  its unstamped pages. It merges only after the owner's own yes. Until then the refusal stands.
+  its unstamped pages. It merged on 26 Oct 2026 in PR #3790, and the post-merge live-drift run
+  (40276000072) passed, so the planner now lists those older generations.
 - **Do not re-index a pilot document twice before the go/no-go check.** Each commit keeps only
   the new generation and the one it replaced. If a document's current index is already a pilot
   generation, queuing it again would replace its pre-pilot generation, and rollback could then
@@ -175,8 +176,8 @@ commit of that document. The script needs the `rollback_document_index_generatio
   summary, clinical specifics and generated topic labels are not part of the generation
   snapshot, so after a rollback they still describe the newer version. The script prints a note
   for every document it rolled back. Rebuild that document's enrichment afterwards (a small paid
-  run that needs spending approval) before relying on its summary. Once migration
-  `20261025170000` is live, the snapshot keeps the outgoing summary and generated labels and the
+  run that needs spending approval) before relying on its summary. Since migration
+  `20261025170000` went live (26 Oct 2026, PR #3790), the snapshot keeps the outgoing summary and generated labels and the
   rollback restores them (its result says `summary_restored` and `labels_restored`); the note
   still applies to generations that left before it went live.
 - **`--committed-after` and `--chunker-version` start from the documents table (audit DB-N3).**
