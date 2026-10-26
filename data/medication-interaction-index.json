@@ -1,11 +1,11 @@
 {
   "version": 1,
   "generatedFrom": "data/medications-snapshot.json",
-  "sourceRowCount": 531,
+  "sourceRowCount": 537,
   "stats": {
-    "resolvedRows": 400,
+    "resolvedRows": 406,
     "unresolvedRows": 131,
-    "rowsWithCatalogueTarget": 449,
+    "rowsWithCatalogueTarget": 455,
     "medicationsWithUnresolvedRows": 116
   },
   "names": {
@@ -807,6 +807,42 @@
           "termIds": ["antiretrovirals", "cns-depressants", "cyp-inducers", "st-johns-wort"],
           "resolved": false,
           "note": "HIGH — CYP inducers such as rifampicin, phenytoin, carbamazepine, St John's Wort, and some antiretrovirals can lower methadone exposure and precipitate withdrawal. CNS depressants increase sedation/respiratory depression; QT-prolongers and electrolyte-lowering medicines increase torsade risk."
+        },
+        {
+          "rowKey": "Pharmacodynamic",
+          "rowIndex": 1,
+          "severity": "high",
+          "counterparties": ["citalopram"],
+          "termIds": [],
+          "resolved": true,
+          "note": "HIGH — Citalopram. Both medicines can prolong the QT interval, and combined use may add to the risk of QT prolongation and torsades de pointes. Monitor closely (e.g. ECG and electrolytes); seek specialist or source guidance."
+        },
+        {
+          "rowKey": "Pharmacodynamic",
+          "rowIndex": 2,
+          "severity": "high",
+          "counterparties": ["escitalopram"],
+          "termIds": [],
+          "resolved": true,
+          "note": "HIGH — Escitalopram. Both medicines can prolong the QT interval, and combined use may add to the risk of QT prolongation and torsades de pointes. Monitor closely (e.g. ECG and electrolytes); seek specialist or source guidance."
+        },
+        {
+          "rowKey": "Pharmacodynamic",
+          "rowIndex": 3,
+          "severity": "high",
+          "counterparties": ["quetiapine"],
+          "termIds": [],
+          "resolved": true,
+          "note": "HIGH — Quetiapine. Both medicines are associated with QT prolongation, and combined use may add to the risk of torsades de pointes. Monitor closely (e.g. ECG and electrolytes); seek specialist or source guidance."
+        },
+        {
+          "rowKey": "Pharmacokinetic",
+          "rowIndex": 4,
+          "severity": "high",
+          "counterparties": ["fluconazole"],
+          "termIds": [],
+          "resolved": true,
+          "note": "HIGH — Fluconazole. May raise methadone concentrations by inhibiting its metabolism, which can increase methadone-related adverse effects and the risk of QT prolongation. Monitor closely; seek specialist or source guidance."
         }
       ],
       "unresolvedRowCount": 1
@@ -1632,6 +1668,15 @@
           "termIds": ["cyp-inhibitors", "opioids", "snris"],
           "resolved": false,
           "note": "HIGH — CYP2D6 inhibitors (Fluoxetine, Paroxetine) block conversion to the active M1 opioid metabolite, robbing the patient of opioid pain relief while increasing the SNRI seizure/serotonin risks."
+        },
+        {
+          "rowKey": "Pharmacodynamic",
+          "rowIndex": 2,
+          "severity": "critical",
+          "counterparties": ["moclobemide", "phenelzine", "tranylcypromine"],
+          "termIds": ["maois"],
+          "resolved": true,
+          "note": "CRITICAL — MAOIs, including moclobemide. Combined use can cause serotonin syndrome or other serious toxicity, and the cited product label lists use with an MAOI, or within 14 days of stopping one, as a contraindication. Monitor closely; seek specialist or source guidance."
         }
       ],
       "unresolvedRowCount": 1
@@ -8541,6 +8586,15 @@
           "termIds": ["cyp-inhibitors"],
           "resolved": false,
           "note": "HIGH — Ciprofloxacin and Fluvoxamine (potent CYP1A2 inhibitors) spike clozapine levels."
+        },
+        {
+          "rowKey": "Pharmacokinetic",
+          "rowIndex": 2,
+          "severity": "high",
+          "counterparties": ["erythromycin"],
+          "termIds": [],
+          "resolved": true,
+          "note": "HIGH — Erythromycin. Inhibition of clozapine metabolism can raise clozapine levels and lead to adverse reactions; erythromycin can also prolong the QT interval. Monitor closely (e.g. clozapine levels and adverse effects); seek specialist or source guidance."
         }
       ],
       "unresolvedRowCount": 1
