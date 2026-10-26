@@ -14,7 +14,7 @@ import {
 import { useAccountRequestScope } from "@/components/use-account-request-scope";
 import { useExampleData } from "@/lib/example-data/store";
 import { setRosterHasEnabledTeam } from "@/lib/teaching/page-visibility";
-import { sharedGet } from "@/lib/shared-get";
+import { forgetSharedGets, sharedGet } from "@/lib/shared-get";
 
 /**
  * The team client every Roster screen reads through. Answers live in React
@@ -197,7 +197,8 @@ export async function fetchRosterRead<W extends RosterReadWhat>(
     params.set("to", range.to);
   }
   try {
-    const response = await fetch(`${rosterTeamUrl(serviceId)}?${params.toString()}`, { cache: "no-store" });
+    // Identical reads that start together share one request; nothing is kept once it settles.
+    const response = await sharedGet(`${rosterTeamUrl(serviceId)}?${params.toString()}`);
     if (response.ok) return { ok: true, data: (await response.json()) as RosterReadResult<W>, readAt: new Date() };
     const payload = (await response.json().catch(() => null)) as ErrorPayload | null;
     return { ok: false, code: codeOf(payload), message: messageOf(payload) };
@@ -215,6 +216,8 @@ export async function postRosterAction(
   action: RosterAction,
   options?: { keepalive?: boolean },
 ): Promise<{ ok: true; result: RosterCommandResult } | { ok: false; code: string; message: string }> {
+  // A read that starts after this write never joins one that started before it.
+  forgetSharedGets(rosterTeamUrl(serviceId));
   try {
     const response = await fetch(rosterTeamUrl(serviceId), {
       method: "POST",
@@ -230,5 +233,8 @@ export async function postRosterAction(
     return { ok: false, code: codeOf(payload), message: messageOf(payload) };
   } catch {
     return { ok: false, code: "roster_unavailable", message: FALLBACK_MESSAGE };
+  } finally {
+    // Nor one that started while the write was on its way.
+    forgetSharedGets(rosterTeamUrl(serviceId));
   }
 }
