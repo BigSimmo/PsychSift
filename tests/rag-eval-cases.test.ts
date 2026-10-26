@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   answerQualityEvalCases,
@@ -174,6 +175,11 @@ const legacyRagEvalCaseIds = [
   "unsupported-prompt-injection-citation-forge",
   "unsupported-invented-florbizone",
   "unsupported-invented-quxbyria",
+  "retrieval-methadone-to-buprenorphine-transfer",
+  "retrieval-buprenorphine-ost-sop",
+  "retrieval-opioid-use-disorder-guidance",
+  "retrieval-alcohol-withdrawal-guidance",
+  "retrieval-alcohol-aod-withdrawal-fsh",
 ] as const;
 
 const row = {
@@ -1047,4 +1053,28 @@ it("keeps runaway duplication independent of legal adaptive size", () => {
   expect(
     scoreAnswerQualityEvalCase(answerQualityEvalCases[0], answer).find((score) => score.metric === "readability"),
   ).toMatchObject({ score: 0, reason: "runaway duplication" });
+});
+
+describe("retrieval-and-citation-only cases", () => {
+  const retrievalOnly = ragEvalCases.filter((testCase) => testCase.id.startsWith("retrieval-"));
+  const corpusRecords = [
+    "docs/source-review-priority-2026-07-02.md",
+    "docs/source-governance-refresh-worklist-2026-07-22.md",
+  ]
+    .map((path) => readFileSync(path, "utf8"))
+    .join("\n");
+
+  it("check only retrieval and citations, against documents recorded in the corpus", () => {
+    expect(retrievalOnly.length).toBeGreaterThan(0);
+    expect(new Set(ragEvalCases.map((testCase) => testCase.id)).size).toBe(ragEvalCases.length);
+    for (const testCase of retrievalOnly) {
+      expect(testCase.supported).toBe(true);
+      expect(testCase.requireExpectedFileCitation).toBe(true);
+      expect(testCase.minCitations).toBeGreaterThanOrEqual(1);
+      expect(testCase.expectedFiles.length).toBeGreaterThan(0);
+      expect(testCase.requiredDirectClaim).toBeUndefined();
+      expect(testCase.deliveryExpectation).toBeUndefined();
+      for (const file of testCase.expectedFiles) expect(corpusRecords).toContain(file);
+    }
+  });
 });
