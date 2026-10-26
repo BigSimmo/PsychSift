@@ -190,6 +190,26 @@ export function compareRetrievalEval(baseline: EvalSummary, candidate: EvalSumma
   return { rows, missingRequired };
 }
 
+const PINNED_RECALL_METRICS = new Set(["document_recall_at_5", "content_recall_at_5"]);
+
+/**
+ * Recall rows that fail the canary-pair protocol: doc and content recall are pinned at 1.0, so a
+ * candidate below 1.0, or below its baseline, is a regression even when every per-case rank holds.
+ */
+export function recallFailures(rows: readonly ComparisonRow[]): string[] {
+  const failures: string[] = [];
+  for (const row of rows) {
+    if (!PINNED_RECALL_METRICS.has(row.name) || !row.candidate.present) continue;
+    const candidate = row.candidate.value;
+    if (candidate < 1) failures.push(`${row.name} is ${candidate.toFixed(row.digits)}, below the pinned 1.0`);
+    else if (row.baseline.present && candidate < row.baseline.value)
+      failures.push(
+        `${row.name} fell from ${row.baseline.value.toFixed(row.digits)} to ${candidate.toFixed(row.digits)}`,
+      );
+  }
+  return failures;
+}
+
 function formatCell(row: ComparisonRow): string {
   if (!row.baseline.present || !row.candidate.present) {
     const candidate = row.candidate.present ? row.candidate.value.toFixed(row.digits) : "n/a";
@@ -222,6 +242,12 @@ function main() {
   console.log("Retrieval eval comparison: candidate (delta from baseline)");
   for (const row of rows) {
     console.log(`  ${row.name}: ${formatCell(row)}`);
+  }
+
+  const recallDrops = recallFailures(rows);
+  if (failOnRegression && recallDrops.length > 0) {
+    console.error(`\nRecall gate failed: ${recallDrops.join("; ")}.`);
+    process.exitCode = 1;
   }
 
   if (missingRequired.length > 0) {

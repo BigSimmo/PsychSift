@@ -73,7 +73,7 @@ select jsonb_pretty(jsonb_build_object(
         'embedding', null
       )
       order by r.logical_id
-    ),
+    ) filter (where r.release_id is not null),
     '[]'::jsonb
   )
 )) as population_export

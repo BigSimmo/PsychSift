@@ -74,25 +74,45 @@ function registryKinds(kind: EmbedKind): RegistryRecordKind[] {
   return [];
 }
 
+/**
+ * Every row a query matches. One PostgREST response stops at the project's row cap (1000 by
+ * default), so an unpaged read silently skips records once a table outgrows it.
+ */
+async function readAllPages<Row>(
+  page: (from: number, to: number) => PromiseLike<{ data: unknown[] | null; error: { message: string } | null }>,
+  what: string,
+): Promise<Row[]> {
+  const pageSize = 1000;
+  const rows: Row[] = [];
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await page(from, from + pageSize - 1);
+    if (error) throw new Error(`Could not load ${what}: ${error.message}`);
+    rows.push(...((data ?? []) as Row[]));
+    if ((data ?? []).length < pageSize) return rows;
+  }
+}
+
 /** Load registry rows. */
 async function loadRegistryRows(supabase: Awaited<ReturnType<typeof loadAdminClient>>, args: Args, ownerId: string) {
   const kinds = registryKinds(args.kind);
   if (kinds.length === 0) return [] as RegistryRecordRow[];
-  let query = supabase.from("clinical_registry_records").select("*").eq("owner_id", ownerId).in("kind", kinds);
-  if (args.slug) query = query.eq("slug", args.slug);
-  const { data, error } = await query.order("kind").order("title");
-  if (error) throw new Error(`Could not load registry records: ${error.message}`);
-  return (data ?? []) as RegistryRecordRow[];
+  const page = (from: number, to: number) => {
+    let query = supabase.from("clinical_registry_records").select("*").eq("owner_id", ownerId).in("kind", kinds);
+    if (args.slug) query = query.eq("slug", args.slug);
+    return query.order("kind").order("title").order("id").range(from, to);
+  };
+  return readAllPages<RegistryRecordRow>(page, "registry records");
 }
 
 /** Load medication rows. */
 async function loadMedicationRows(supabase: Awaited<ReturnType<typeof loadAdminClient>>, args: Args, ownerId: string) {
   if (args.kind !== "all" && args.kind !== "medication") return [] as MedicationRecordRow[];
-  let query = supabase.from("medication_records").select("*").eq("owner_id", ownerId);
-  if (args.slug) query = query.eq("slug", args.slug);
-  const { data, error } = await query.order("name");
-  if (error) throw new Error(`Could not load medication records: ${error.message}`);
-  return (data ?? []) as MedicationRecordRow[];
+  const page = (from: number, to: number) => {
+    let query = supabase.from("medication_records").select("*").eq("owner_id", ownerId);
+    if (args.slug) query = query.eq("slug", args.slug);
+    return query.order("name").order("id").range(from, to);
+  };
+  return readAllPages<MedicationRecordRow>(page, "medication records");
 }
 
 /** Load differential rows. */
@@ -102,11 +122,12 @@ async function loadDifferentialRows(
   ownerId: string,
 ) {
   if (args.kind !== "all" && args.kind !== "differential") return [] as DifferentialRecordRow[];
-  let query = supabase.from("differential_records").select("*").eq("owner_id", ownerId);
-  if (args.slug) query = query.eq("slug", args.slug);
-  const { data, error } = await query.order("kind").order("title");
-  if (error) throw new Error(`Could not load differential records: ${error.message}`);
-  return (data ?? []) as DifferentialRecordRow[];
+  const page = (from: number, to: number) => {
+    let query = supabase.from("differential_records").select("*").eq("owner_id", ownerId);
+    if (args.slug) query = query.eq("slug", args.slug);
+    return query.order("kind").order("title").order("id").range(from, to);
+  };
+  return readAllPages<DifferentialRecordRow>(page, "differential records");
 }
 
 type OwnerCounts = {
