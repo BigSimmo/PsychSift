@@ -118,6 +118,28 @@ export const SCANNED_LIB_MODULES = [
   "src/lib/roster/rotations/repository.ts",
   "src/lib/roster/alerts/outbox.ts",
   "src/lib/roster/alerts/recipients.ts",
+  // Added 2026-10-26 (privacy audit DB-01): personal-data modules that read or write tables directly
+  // outside src/app/api, so neither phase saw them. Each holds or reaches someone's own data (answer
+  // logs, audit rows, phone alerts, calendar feeds, CME drafts and goals, teaching opt-ins, hospital
+  // rosters and role grants, synced work data, favourites, search scope, reindex queueing). Listing
+  // them makes their scope a checked fact or a declared exemption with its proof.
+  "src/lib/answer-telemetry.ts",
+  "src/lib/audit.ts",
+  "src/lib/alerts/timed-sender.ts",
+  "src/lib/calendar/feed-repository.ts",
+  "src/lib/cme/drafts-repository.ts",
+  "src/lib/cme/missed-sessions-repository.ts",
+  "src/lib/cme/plan-goals-repository.ts",
+  "src/lib/teaching/repository.ts",
+  "src/lib/work-roles/hospital-short-staffed.ts",
+  "src/lib/work-roles/hospital-sick.ts",
+  "src/lib/work-roles/hospital-starters.ts",
+  "src/lib/work-roles/people.ts",
+  "src/lib/work-roles/server.ts",
+  "src/lib/work-sync/account-work-sync.ts",
+  "src/lib/favourites-reference.ts",
+  "src/lib/search-scope.ts",
+  "src/lib/ingestion-enqueue.ts",
 ];
 
 export const API_DIR_SEGMENTS = ["src", "app", "api"];
@@ -1188,6 +1210,16 @@ const ROSTER_ALERT_PARTY_REASON =
   "Notification routing, never a response: dispatchRosterAlerts runs after the route's own roster_read/roster_write RPC has checked the session actor's team access, and offerRecipients runs from the outbox for an event the RPC recorded. Each query filters both the team (service_id) and the row id, so it cannot name someone from another team, and its result only chooses which active members (activeRecipientIds) get a push; nothing it reads is returned to the caller. Declared 2026-10-21 (safety foundations, section 1).";
 const ON_CALL_SERVICE_NAME_REASON =
   "Team names only (id, name, verified_at, is_demo), looked up for ids the caller already holds: readMyTeams takes ids from the session user's own on_call_service_members rows; serviceNames is called with team ids from the caller's own memberships, their manager or workforce role grants (canManageRotations), or round rows already filtered to those teams. Declared 2026-10-21 (safety foundations, section 1).";
+const ANSWER_TELEMETRY_INSERT_REASON =
+  "An insert, not a read: the row is built by buildRagQueryLogRow / buildAnswerLogRow in the same module, both of which set `owner_id: args.ownerId ?? null`, so the scanner cannot see the key on the chain. Its only caller, persistAnswerDiagnostics, is reached from /api/answer and /api/answer/stream with `access.ownerId` from publicAccessContext and from /api/documents/[id]/summarize with the authenticated `user.id`, so each row records the asker's own question under the asker. Nothing is returned. Declared 2026-10-26 (privacy audit DB-01).";
+const INGESTION_ENQUEUE_REASON =
+  'Machine path, no user caller: the only caller is /api/webhooks/supabase/document-change, which first checks the webhook secret (verifyWebhookSecret), declines a record with no owner, and re-reads the document with `.eq("owner_id", ownerId)` before handing it here. The `documents` updates carry the owner predicate through the in-file applyOwnerFilter helper (`.eq("owner_id", document.owner_id)`, or `.is("owner_id", null)` for an ownerless row) rather than on the literal chain. The `ingestion_jobs` insert and competing-job read use the same `document.id`, after the owner-filtered update returned a row (a missing row returns document_deleted first); the read selects only `id,status`. Declared 2026-10-26 (privacy audit DB-01).';
+const SEARCH_SCOPE_REASON =
+  'Owner predicate applied by reassignment, not on the literal chain. resolveSearchScope returns an empty scope before any query when the access scope has neither an owner nor public access, then sets exactly one of `.or(owner_id.eq.<owner>,owner_id.is.null)`, `.eq("owner_id", owner)` or `.is("owner_id", null)` on documentQuery, together with `.eq("status", "indexed")` (the documents_ownerless_requires_publication_marker constraint makes an indexed ownerless row a published public-corpus row). loadScopeLabels is called only with ids from that read. Callers pass resolveRetrievalAccessScope(session owner) from /api/search, /api/answer and /api/answer/stream. Declared 2026-10-26 (privacy audit DB-01).';
+const WORK_HOSPITAL_VIEW_REASON =
+  'Hospital-wide Medical Workforce view. The function refuses first unless can(context, capability, { kind: "hospital", hospitalId }) passes, where context comes from loadWorkRoleContext for the authenticated user in its /api/work/hospital/* route; for starters.view, sick.inbox and staffing.overview at hospital scope only the site administrator (re-read from Auth) or a Medical Workforce grant for that same hospital passes. Every query is then limited by service_id to the teams work_hospital_teams links to that hospital. Short-staffed returns counts and team names only; starters returns names and New job progress only for members who chose to share it; sick calls return names, shift times and cover status, never a reason. Declared 2026-10-26 (privacy audit DB-01).';
+const WORK_PEOPLE_REASON =
+  "People and roles for one hospital. readPeople lists only hospitals that canManagePeople allows (roles.grant or assessments.administer at hospital scope: site administrator, or a Medical Workforce or DCT grant for that hospital), refuses a requested hospital outside that list, and filters every team query by service_id to the teams linked to the chosen hospital (or, for team names, to service ids on that hospital's own grants). readUnlinkedTeams runs only for the site administrator and returns team ids and names. The context comes from loadWorkRoleContext for the authenticated user in /api/work/people. Declared 2026-10-26 (privacy audit DB-01).";
 const SETUP_STATUS_REASON =
   "Local-origin-gated setup/health existence probe. It returns status booleans and counts only, never owner rows, so a fresh deployment can diagnose missing setup before any corpus exists (tenancy review §3 / TEN-N1).";
 
@@ -1492,6 +1524,115 @@ export const SCOPE_EXEMPTIONS = [
     reason:
       "Factory that returns an UNEXECUTED PostgREST builder. Its only consumer, loadVisibleDocumentSourceReferences, wraps it in withOwnerReadScope(query, viewerId) before awaiting it, so no caller can execute the unscoped builder. The indirection is a dependency-injection seam for tests; if a second consumer ever executes the builder directly this entry must be revisited.",
   },
+  {
+    file: "src/lib/alerts/timed-sender.ts",
+    table: "web_push_subscriptions",
+    fn: "sendMorningBriefs",
+    queries: 1,
+    proof: PROOF_KINDS.REVIEWED_INDIRECT,
+    reason:
+      'Deliberately cross-owner background sender with no request caller: startTimedAlertSender is started once from src/instrumentation.ts and runs this once a minute. It selects `owner_id` only, to find accounts with a linked phone; the follow-up preference and shift reads filter `.in("user_id" / "owner_id", ...)` on those ids, alert_claim_morning_brief claims each owner\'s brief once per day, and pushCodeToOwners sends the fixed code `brief` only to each owner\'s own subscriptions. Nothing read here is returned or logged. Declared 2026-10-26 (privacy audit DB-01).',
+  },
+  {
+    file: "src/lib/answer-telemetry.ts",
+    table: "rag_queries",
+    fn: "logAnswerDiagnostics",
+    queries: 1,
+    proof: PROOF_KINDS.REVIEWED_INDIRECT,
+    reason: ANSWER_TELEMETRY_INSERT_REASON,
+  },
+  {
+    file: "src/lib/answer-telemetry.ts",
+    table: "rag_retrieval_logs",
+    fn: "logAnswerDiagnostics",
+    queries: 1,
+    proof: PROOF_KINDS.REVIEWED_INDIRECT,
+    reason: ANSWER_TELEMETRY_INSERT_REASON,
+  },
+  {
+    file: "src/lib/answer-telemetry.ts",
+    table: "rag_retrieval_logs",
+    fn: "pruneExpiredRetrievalLogs",
+    queries: 1,
+    proof: PROOF_KINDS.REVIEWED_INDIRECT,
+    reason:
+      "Deliberately cross-tenant retention purge: deletes rows older than the retention window by `created_at` alone, because retention applies to every owner equally. It returns only a deleted-row count, never rows. It has no caller in src/, worker/, scripts/ or supabase/ as of 2026-10-26; if one is added it must be operator- or schedule-only, never request-driven. Declared 2026-10-26 (privacy audit DB-01).",
+  },
+  {
+    file: "src/lib/ingestion-enqueue.ts",
+    table: "documents",
+    fn: "enqueueDocumentReindexJob",
+    queries: 2,
+    proof: PROOF_KINDS.REVIEWED_INDIRECT,
+    reason: INGESTION_ENQUEUE_REASON,
+  },
+  {
+    file: "src/lib/search-scope.ts",
+    table: "documents",
+    fn: "resolveSearchScope",
+    queries: 1,
+    proof: PROOF_KINDS.REVIEWED_INDIRECT,
+    reason: SEARCH_SCOPE_REASON,
+  },
+  {
+    file: "src/lib/search-scope.ts",
+    table: "document_labels",
+    fn: "loadScopeLabels",
+    queries: 1,
+    proof: PROOF_KINDS.REVIEWED_INDIRECT,
+    reason: SEARCH_SCOPE_REASON,
+  },
+  {
+    file: "src/lib/teaching/repository.ts",
+    table: "on_call_service_members",
+    fn: "verifyActiveOrganiser",
+    queries: 1,
+    proof: PROOF_KINDS.REVIEWED_INDIRECT,
+    reason:
+      'The actor\'s own membership row: the chain filters `.eq("service_id", serviceId).eq("user_id", actorId).is("revoked_at", null)`, but it starts from a `dynamicClient.from(...)` variable, so the scanner cannot tie the predicate to the table. actorId is the authenticated user id that withTeachingApi passes to teachingServiceMutation (its only caller, /api/teaching/services/[serviceId]). It selects `joined_at` only and serves as a permission check before display.revoke; nothing is returned. Declared 2026-10-26 (privacy audit DB-01).',
+  },
+  {
+    file: "src/lib/work-roles/hospital-short-staffed.ts",
+    table: "roster_assignments",
+    fn: "readHospitalShortStaffed",
+    queries: 1,
+    proof: PROOF_KINDS.REVIEWED_INDIRECT,
+    reason: WORK_HOSPITAL_VIEW_REASON,
+  },
+  {
+    file: "src/lib/work-roles/hospital-starters.ts",
+    table: "on_call_service_members",
+    fn: "readHospitalStarters",
+    queries: 1,
+    proof: PROOF_KINDS.REVIEWED_INDIRECT,
+    reason: WORK_HOSPITAL_VIEW_REASON,
+  },
+  {
+    file: "src/lib/work-roles/hospital-starters.ts",
+    table: "user_preferences",
+    fn: "readHospitalStarters",
+    queries: 1,
+    proof: PROOF_KINDS.REVIEWED_INDIRECT,
+    reason:
+      "Filtered `.in(\"user_id\", batch)` to active members of the hospital's linked teams, but through an `as unknown as ChoiceQuery` cast the scanner cannot follow. It reads one JSON path only (`preferences->starterSharing->>workforce`), the member's own choice to share New job progress, never the rest of the row. Gated as the other hospital views: " +
+      WORK_HOSPITAL_VIEW_REASON,
+  },
+  {
+    file: "src/lib/work-roles/people.ts",
+    table: "on_call_service_members",
+    fn: "readPeople",
+    queries: 1,
+    proof: PROOF_KINDS.REVIEWED_INDIRECT,
+    reason: WORK_PEOPLE_REASON,
+  },
+  {
+    file: "src/lib/work-roles/people.ts",
+    table: "roster_member_roles",
+    fn: "readPeople",
+    queries: 1,
+    proof: PROOF_KINDS.REVIEWED_INDIRECT,
+    reason: WORK_PEOPLE_REASON,
+  },
 ];
 
 /**
@@ -1727,6 +1868,14 @@ export const DERIVED_QUERY_INVENTORY = [
     identifier: "id",
     reason: "Image read for the same owner-resolved document id; 404 is thrown before any child query.",
   },
+  {
+    file: "src/lib/ingestion-enqueue.ts",
+    table: "ingestion_jobs",
+    fn: "enqueueDocumentReindexJob",
+    queries: 2,
+    proof: PROOF_KINDS.REVIEWED_INDIRECT,
+    reason: INGESTION_ENQUEUE_REASON,
+  },
 ];
 
 /**
@@ -1811,6 +1960,79 @@ export const UNTIERED_TABLE_DECLARATIONS = [
     proof: PROOF_KINDS.UNTIERED_TABLE,
     reason:
       "Team-scoped by service_id, which the query filters on. requireActiveMember runs first and calls roster_read (overview) for the session actor, which raises unless the actor is an active, unrevoked member of a verified or demo team, exactly as for every other team read. The projection is weekday, date, kind, grade, site id and count only: no row id, user id or name (tenancy review §6).",
+  },
+  {
+    file: "src/lib/teaching/repository.ts",
+    table: "teaching_calendar_optins",
+    fn: "readWeek",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason:
+      'Not really untiered: the table carries `user_id`, but database.types.ts declares its Row on one line, which tableTiersFromDatabaseTypes does not parse, so it lands in no tier. The query is user-scoped on its own chain (`.eq("user_id", actorId)`) and further limited to the team ids the teaching_command week.read RPC returned for that actor; actorId is the authenticated user id from withTeachingApi. Declared 2026-10-26 (privacy audit DB-01); remove this entry once the tier parser reads one-line Row types.',
+  },
+  {
+    file: "src/lib/work-roles/hospital-short-staffed.ts",
+    table: "on_call_services",
+    fn: "readHospitalShortStaffed",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_HOSPITAL_VIEW_REASON,
+  },
+  {
+    file: "src/lib/work-roles/hospital-short-staffed.ts",
+    table: "roster_staffing_needs",
+    fn: "readHospitalShortStaffed",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_HOSPITAL_VIEW_REASON,
+  },
+  {
+    file: "src/lib/work-roles/hospital-short-staffed.ts",
+    table: "roster_publications",
+    fn: "readHospitalShortStaffed",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_HOSPITAL_VIEW_REASON,
+  },
+  {
+    file: "src/lib/work-roles/hospital-sick.ts",
+    table: "on_call_services",
+    fn: "readHospitalSickCalls",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_HOSPITAL_VIEW_REASON,
+  },
+  {
+    file: "src/lib/work-roles/hospital-sick.ts",
+    table: "roster_open_shifts",
+    fn: "readHospitalSickCalls",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_HOSPITAL_VIEW_REASON,
+  },
+  {
+    file: "src/lib/work-roles/hospital-starters.ts",
+    table: "on_call_services",
+    fn: "readHospitalStarters",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_HOSPITAL_VIEW_REASON,
+  },
+  {
+    file: "src/lib/work-roles/people.ts",
+    table: "on_call_services",
+    fn: "readPeople",
+    queries: 2,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_PEOPLE_REASON,
+  },
+  {
+    file: "src/lib/work-roles/people.ts",
+    table: "on_call_services",
+    fn: "readUnlinkedTeams",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_PEOPLE_REASON,
   },
 ];
 
