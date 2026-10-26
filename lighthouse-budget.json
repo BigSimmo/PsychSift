@@ -3,7 +3,7 @@
   "enforce": true,
   "$lighthouseVersion": "Pinned exactly, not `lighthouse@12`: a patch published between a baseline run and its follow-up would silently change the measurement. Kept in step with LIGHTHOUSE_VERSION in .github/workflows/live-web-vitals.yml by tests/check-lighthouse-budget.test.ts so the two Lighthouse entry points cannot drift apart.",
   "lighthouseVersion": "12.8.2",
-  "routes": ["/", "/documents/search"],
+  "routes": ["/", "/documents/search", "/my-day", "/on-call", "/psychiatry/mha-clock"],
   "strategies": ["mobile", "desktop"],
   "tolerance": {
     "lcpMs": {
@@ -20,34 +20,76 @@
   },
   "baseline": {
     "desktop-documents-search": {
-      "lcpMs": 963.8214999999998,
+      "lcpMs": 924.9300999999999,
       "cls": 0,
-      "tbtMs": 35.999999999999886,
-      "fcpMs": 418.627,
+      "tbtMs": 43.00000000000023,
+      "fcpMs": 414.9767,
+      "chromeVersion": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
+    },
+    "desktop-my-day": {
+      "lcpMs": 2882.9228999999978,
+      "cls": 0.0007887886349706682,
+      "tbtMs": 246.99999999999886,
+      "fcpMs": 462.2591,
+      "chromeVersion": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
+    },
+    "desktop-on-call": {
+      "lcpMs": 1027.0644000000004,
+      "cls": 0.1555290233072871,
+      "tbtMs": 190.8508499999997,
+      "fcpMs": 474.7661,
+      "chromeVersion": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
+    },
+    "desktop-psychiatry-mha-clock": {
+      "lcpMs": 916.3644999999996,
+      "cls": 0,
+      "tbtMs": 56.99999999999966,
+      "fcpMs": 414.5458,
       "chromeVersion": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
     },
     "desktop-root": {
-      "lcpMs": 954.6389999999996,
+      "lcpMs": 887.0973,
       "cls": 0,
-      "tbtMs": 63.99999999999977,
-      "fcpMs": 416.377,
+      "tbtMs": 117.69910000000027,
+      "fcpMs": 427.6991,
       "chromeVersion": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
     },
     "mobile-documents-search": {
-      "lcpMs": 2000.411,
+      "lcpMs": 2000.568,
       "cls": 0,
-      "tbtMs": 679.2929999999992,
-      "fcpMs": 2000.411,
+      "tbtMs": 804.7619999999988,
+      "fcpMs": 2000.568,
+      "chromeVersion": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
+    },
+    "mobile-my-day": {
+      "lcpMs": 16974.137,
+      "cls": 0.001199985818080663,
+      "tbtMs": 2685.428000000006,
+      "fcpMs": 2013.766,
+      "chromeVersion": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
+    },
+    "mobile-on-call": {
+      "lcpMs": 1995.269,
+      "cls": 0.004082263116114557,
+      "tbtMs": 2387.808999999939,
+      "fcpMs": 1995.269,
+      "chromeVersion": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
+    },
+    "mobile-psychiatry-mha-clock": {
+      "lcpMs": 2055.433,
+      "cls": 0,
+      "tbtMs": 1135.6949999999983,
+      "fcpMs": 2055.433,
       "chromeVersion": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
     },
     "mobile-root": {
-      "lcpMs": 1958.359,
+      "lcpMs": 2011.445,
       "cls": 0.0002899582744253567,
-      "tbtMs": 918.5019999999413,
-      "fcpMs": 1958.359,
+      "tbtMs": 1121.4790000000016,
+      "fcpMs": 2011.445,
       "chromeVersion": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
     }
   },
-  "updatedAt": "2026-10-21T08:36:48.021Z",
-  "$routes": "Only surfaces that still render. `/therapy-compass`, `/dsm` and `/forms` were removed when home consolidation turned them into redirect stubs: Lighthouse followed the 307 and graded `/?mode=<id>` against a baseline captured on the retired detailed home, which the checker reports as \"measured a different page than requested\". All three now render the same shared home as `/`, so removing them costs duplication rather than coverage. Restoring per-mode coverage means measuring the `<mode>/search` results routes, and those need baseline rows the dispatch-only refresh job records — do that rather than hand-writing numbers."
+  "updatedAt": "2026-10-26T09:35:12.336Z",
+  "$routes": "Only surfaces that still render. `/therapy-compass`, `/dsm` and `/forms` were removed when home consolidation turned them into redirect stubs: Lighthouse followed the 307 and graded `/?mode=<id>` against a baseline captured on the retired detailed home, which the checker reports as \"measured a different page than requested\". All three now render the same shared home as `/`, so removing them costs duplication rather than coverage. Restoring per-mode coverage means measuring the `<mode>/search` results routes, and those need baseline rows the dispatch-only refresh job records — do that rather than hand-writing numbers. `/my-day`, `/on-call` and `/psychiatry/mha-clock` joined on 2026-10-26 (performance audit M3): they were unguarded, which is how slow My Day loads and the On Call layout shift went unnoticed. Their own on-load API handlers are not carved into perfInitialLoadApiPatterns, so a change to one of those handlers alone does not trigger this job."
 }

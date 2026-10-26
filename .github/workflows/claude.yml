@@ -27,7 +27,7 @@ jobs:
     # Only run when a human (not a bot) with owner, member or collaborator
     # association mentions @claude on a pull request, so ordinary comments —
     # Claude's own replies, and accounts outside the maintainer's trust
-    # boundary — never spin up a runner that holds write and id-token scopes.
+    # boundary — never spin up a runner that holds the id-token scope.
     if: >
       (github.event_name == 'issue_comment' &&
         github.event.issue.pull_request != null &&
@@ -43,11 +43,21 @@ jobs:
         contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.review.author_association) &&
         github.event.review.body != null &&
         contains(github.event.review.body, '@claude'))
+    # Every run waits for a required reviewer on the `claude-approval`
+    # environment before the runner starts or the OAuth token secret is
+    # exposed. The environment and its required reviewers are a repository
+    # setting (Settings > Environments); if it does not exist, GitHub creates
+    # it on first use with NO protection rules and the job runs unapproved.
+    environment: claude-approval
+    # GITHUB_TOKEN stays read-only. The action authenticates its pushes,
+    # PR updates and comments with the short-lived Claude GitHub App token
+    # it mints over OIDC (id-token: write), matching the action's own
+    # example workflow, so this token never needs write scopes.
     permissions:
-      contents: write # push the scoped fix to the PR branch
-      pull-requests: write # comment back and update the PR
-      issues: write # comment on the PR conversation thread
-      id-token: write # OIDC used by the action
+      contents: read # checkout
+      pull-requests: read # read PR context
+      issues: read # read the PR conversation thread
+      id-token: write # OIDC exchange for the Claude GitHub App token
       actions: read # read CI results for context
     concurrency:
       group: claude-${{ github.event.issue.number || github.event.pull_request.number }}

@@ -83,6 +83,26 @@ older probes that omit these fields remain compatible. These signals alone never
 recovery, including with `--apply`. If separate recoverable queue work also exists, bounded
 recovery may run, but the integrity alert remains until a subsequent probe confirms resolution.
 
+### Abandoned jobs
+
+A `pending` job whose `attempt_count` has reached `max_attempts` is never claimed again: the claim
+RPC skips it, and recovery leaves every pending job alone because it treats one as the document's
+live queue owner. Resuming the worker does not clear it. `reindex:health` counts these separately
+(`jobs_pending_exhausted`, the `_unindexed` subset whose document is not searchable, and the
+`_overdue` share already inside `jobs_pending_overdue`), and the autopilot does not count them as
+uploads waiting for the worker (audit 26 Oct 2026 LS-07, four September enrichment-backfill jobs).
+
+- On a document that is already searchable, the autopilot prints a note and does not alert. No
+  upload waits on the job; it is leftover enrichment work.
+- On a document that is not searchable, it is an upload that will never finish by itself, so it is
+  an integrity alert like `jobs_stranded_final_attempt`.
+
+Closing an abandoned job is a write to the live database, so it needs the owner's own yes for that
+change (`AGENTS.md`, Supabase project safety). Neither `recover:ingestion` nor the admin Retry
+button can do it today, because `recover_ingestion_job` accepts only `failed` and `processing`
+jobs. Re-queueing the enrichment instead (a document reindex) is the other route, and also needs
+the worker healthy first.
+
 `reindex:health` also reports how well documents were read: the `quality_extraction_good`,
 `_partial`, `_poor` and `_unknown` counts and an `extractionQuality` verdict (audit EM-N6). It
 warns when at least a fifth of five or more assessed documents read poorly. Before a re-index,
@@ -159,7 +179,8 @@ commit of that document. The script needs the `rollback_document_index_generatio
   any no-go decision. Migration `20261025170000_rollback_legacy_pages_summary_and_guards.sql`
   (audit E2E-01) fixes the older case once it is live: the planner also lists generations that
   have chunks but no stamped pages, and the database rollback then switches the document back to
-  its unstamped pages. It merges only after the owner's own yes. Until then the refusal stands.
+  its unstamped pages. It merged on 26 Oct 2026 in PR #3790, and the post-merge live-drift run
+  (40276000072) passed, so the planner now lists those older generations.
 - **Do not re-index a pilot document twice before the go/no-go check.** Each commit keeps only
   the new generation and the one it replaced. If a document's current index is already a pilot
   generation, queuing it again would replace its pre-pilot generation, and rollback could then
@@ -175,8 +196,8 @@ commit of that document. The script needs the `rollback_document_index_generatio
   summary, clinical specifics and generated topic labels are not part of the generation
   snapshot, so after a rollback they still describe the newer version. The script prints a note
   for every document it rolled back. Rebuild that document's enrichment afterwards (a small paid
-  run that needs spending approval) before relying on its summary. Once migration
-  `20261025170000` is live, the snapshot keeps the outgoing summary and generated labels and the
+  run that needs spending approval) before relying on its summary. Since migration
+  `20261025170000` went live (26 Oct 2026, PR #3790), the snapshot keeps the outgoing summary and generated labels and the
   rollback restores them (its result says `summary_restored` and `labels_restored`); the note
   still applies to generations that left before it went live.
 - **`--committed-after` and `--chunker-version` start from the documents table (audit DB-N3).**

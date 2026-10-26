@@ -17,8 +17,6 @@ export type RosterAlertEvent = {
   readonly actorId: string;
   readonly action: RosterAction | { readonly action: "publish" } | { readonly action: "remind" };
   readonly result: unknown;
-  /** `open.decline` clears the claimer in SQL, so the route reads it first. */
-  readonly before?: { readonly claimedBy: string | null };
 };
 
 function resultOf(value: unknown): {
@@ -28,6 +26,8 @@ function resultOf(value: unknown): {
   replayed?: boolean;
   recipientIds?: string[];
   changedUserIds?: string[];
+  /** `open.decline` answers with the claimer it cleared, read under the decline's own lock. */
+  declinedClaimedBy?: string | null;
   swapsCancelled?: { requesterId?: string; counterpartyId?: string }[];
 } {
   return value && typeof value === "object" ? (value as ReturnType<typeof resultOf>) : {};
@@ -97,7 +97,7 @@ async function runRosterAlertDispatch(
       recipients = [open.claimed_by, await previousOpenHolder(client, event.serviceId, result.openShiftId)];
     } else if (action === "open.decline") {
       type = "request";
-      recipients = [event.before?.claimedBy];
+      recipients = [result.declinedClaimedBy];
     }
   } else if (action === "remind") {
     type = "changed";

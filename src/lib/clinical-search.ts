@@ -908,7 +908,9 @@ export function analyzeClinicalQuery(query: string): ClinicalQueryAnalysis {
       ...aliasTerms,
       ...titleTerms,
       ...aliasesForQuery(`${normalizedQuery} ${correctedQuery}`, medicationAliasGroups),
-      ...synonymGroups.filter((group) => group.some((term) => normalizedQuery.includes(term.toLowerCase()))).flat(),
+      // Whole-term match (audit finding #6): substring .includes let "im" hit "impairment",
+      // "route" hit "routine" and "oral" hit "behavioral", pulling in the dose/route group.
+      ...synonymGroups.filter((group) => group.some((term) => termMatchesQuery(normalizedQuery, term))).flat(),
     ],
     48,
   );
@@ -1585,7 +1587,7 @@ export function expandClinicalQuery(query: string) {
   const additions = new Set<string>();
 
   for (const group of synonymGroups) {
-    if (group.some((term) => lowered.includes(term))) {
+    if (group.some((term) => termMatchesQuery(lowered, term))) {
       group.forEach((term) => additions.add(term));
     }
   }

@@ -1,7 +1,7 @@
 {
   "note": "sha256 of every migration this repository has shipped, with newlines normalised. An entry whose hash changes means an applied migration was edited, which cannot reach the live database. See scripts/check-migration-immutability.mjs.",
   "generator": "scripts/check-migration-immutability.mjs",
-  "sealed_at": "2026-10-26T09:22:08.406Z",
+  "sealed_at": "2026-10-26T15:20:29.698Z",
   "versions": {
     "20260527000000_bulk_ingestion.sql": "813e8e314064a6dcbaaa55e2765a8ce901d5783b304b4a7af7bb7417a07daf7c",
     "20260527001000_documents_policy_cleanup.sql": "559c26f3172bf75e545a41adef75538b2bf648ea7d53c8eb3d3ea7c244c65a48",
@@ -346,6 +346,7 @@
     "20261025160000_document_admission_insert_guard.sql": "88fdc39ae9af72b6bd6a48de4f44f3e1c07d3c5fe6b7f0704e2cd6fd34effce8",
     "20261025170000_rollback_legacy_pages_summary_and_guards.sql": "8d6c5f6b638a2b651dbc631cf5d66a5692e9a1da0113fac21e313a7a3d7fcdb6",
     "20261025171000_label_cache_revision_licence_withdrawal.sql": "52add1c789cb67fb2c00d2be9a55ddc821dddf77e3a7b38fc7d0f7544ecb4f85",
+    "20261026070000_roster_open_decline_returns_claimer.sql": "0abc19ea1410af34125684305884a76b05e7b3c9f06585f7bcf574b53991ee38",
     "20261026081000_privacy_cpd_files_and_calendar_links.sql": "a90e508e0395962cf7008e8b7efafe5670e6ea541e47cde1446e5e80f15cd304",
     "20261026081500_delete_question_logs_with_account.sql": "4d4c0606d2b0595b384b4ea6ae0c3da00b858a5250a03355589541bb415c13d3",
     "20261026092000_drop_calendar_link_plain_url.sql": "8fc7ebc22c7221845b8fe4a337c47c81711410914883af369fc58af9c69d1b72"

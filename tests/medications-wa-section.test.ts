@@ -35,6 +35,18 @@ import type { MedicationRecord, MedicationSectionRow } from "@/lib/medications";
 
 const repoRoot = path.resolve(process.cwd());
 
+/** WA Monitored Medicines Prescribing Code sections each Status row names; all were read in full (register note). */
+const WA_CODE_SECTIONS: Record<string, string> = {
+  dexamfetamine: "§3.4–3.5.4",
+  lisdexamfetamine: "§3.4–3.5.4",
+  methylphenidate: "§3.4–3.5.4",
+  alprazolam: "Part 6 (§6.2, §6.5–6.5.2.1)",
+  gabapentin: "Part 8 / §8.5",
+  pregabalin: "Part 8 / §8.5",
+  "buprenorphine-naloxone": "§7.4–7.4.3.1",
+  "buprenorphine-sl-depot": "§7.4–7.4.3.1",
+};
+
 // The records this task adds a `wa` section to, plus how many rows each should
 // carry (pinned so a future accidental row deletion/duplication is caught, not
 // just "at least one row"). Each count includes the leading "Status" row
@@ -172,7 +184,13 @@ describe("WA prescribing rules — medications catalogue (task t6a)", () => {
         expect(status!.tags).toEqual([]);
         const titles = [...new Set(rows.map((row) => citationOf(row).title))];
         const joined = titles.length === 1 ? titles[0] : `${titles.slice(0, -1).join(", ")} and ${titles.at(-1)}`;
-        expect(status!.val).toBe(`Drafted from ${joined}; awaiting clinical review.`);
+        // The Code may name the edition and the sections read (owner-approved 26 Oct 2026),
+        // e.g. "Monitored Medicines Prescribing Code (Dec 2024) §3.4–3.5.4".
+        const located = joined.replace(
+          "Monitored Medicines Prescribing Code",
+          `Monitored Medicines Prescribing Code${WA_CODE_SECTIONS[slug] ? ` (Dec 2024) ${WA_CODE_SECTIONS[slug]}` : ""}`,
+        );
+        expect(status!.val).toBe(`Drafted from ${located}; awaiting clinical review.`);
       });
 
       it("every 'wa' row cites a source id that was actually captured", () => {

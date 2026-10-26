@@ -1,5 +1,10 @@
 "use client";
 
+import {
+  searchTextPatientDetailRefusal,
+  usePreloadSearchPatientCheck,
+} from "@/components/clinical-dashboard/search-patient-detail-guard";
+import { useOptionalToast } from "@/components/ui/toast";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ClipboardList, Info, Pin, PinOff, Search, ShieldCheck, Waves, type LucideIcon } from "lucide-react";
@@ -349,6 +354,7 @@ export function ToolsSearchResultsPage({
     () => false,
   );
   const router = useRouter();
+  const pushToast = useOptionalToast()?.push;
   const { pinnedToolIds, togglePinnedTool } = useToolPins();
   // A draft typed into this page's own search box wins over everything else. Below
   // that: the route's submitted query so hard loads server-render the exact result
@@ -356,6 +362,7 @@ export function ToolsSearchResultsPage({
   // cleared value, until the next submitted navigation.
   const [localQuery, setLocalQuery] = useState<string | null>(null);
   const query = localQuery ?? (hydrated ? (searchCommand?.query ?? initialQuery) : initialQuery);
+  usePreloadSearchPatientCheck(query);
   const searching = query.trim().length > 0;
   // The sheet keeps its last tool after closing so the close animation has content.
   const aboutTitleId = useId();
@@ -403,7 +410,14 @@ export function ToolsSearchResultsPage({
   // shareable and survives reload. An empty box has nothing to submit.
   function submitLocalSearch() {
     const submittedQuery = query.trim();
-    if (submittedQuery) router.push(`/tools?q=${encodeURIComponent(submittedQuery)}&run=1`);
+    if (!submittedQuery) return;
+    // Text that looks like it holds a patient detail stays in the box, not the address (privacy audit CA-03).
+    const refusal = searchTextPatientDetailRefusal(submittedQuery);
+    if (refusal) {
+      pushToast?.({ tone: "warning", title: refusal });
+      return;
+    }
+    router.push(`/tools?q=${encodeURIComponent(submittedQuery)}&run=1`);
   }
 
   return (
