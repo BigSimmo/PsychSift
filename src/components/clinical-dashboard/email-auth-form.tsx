@@ -48,6 +48,10 @@ export function AccountTabSwitch({
   );
 }
 
+/** Matches the hint shown under the new-password field. */
+const MIN_NEW_PASSWORD_LENGTH = 12;
+const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 const textLink =
   "inline-flex min-h-tap items-center font-semibold text-[color:var(--clinical-accent)] underline decoration-transparent underline-offset-4 transition hover:decoration-current focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] disabled:cursor-not-allowed disabled:text-[color:var(--disabled)] motion-reduce:transition-none";
 
@@ -97,8 +101,16 @@ export function EmailAuthForm({
       setLocalError("Enter your email address.");
       return;
     }
+    if (!EMAIL_SHAPE.test(address)) {
+      setLocalError("Enter a full email address, like name@example.com.");
+      return;
+    }
     if (mode !== "link" && !password) {
       setLocalError(mode === "signup" ? "Create a password." : "Enter your password.");
+      return;
+    }
+    if (mode === "signup" && password.length < MIN_NEW_PASSWORD_LENGTH) {
+      setLocalError(`Use at least ${MIN_NEW_PASSWORD_LENGTH} characters for your password.`);
       return;
     }
     if (mode === "signup" && password !== confirmation) {
@@ -185,7 +197,7 @@ export function EmailAuthForm({
             required
             disabled={busy}
             autoComplete={mode === "signup" ? "new-password" : "current-password"}
-            minLength={mode === "signup" ? 12 : undefined}
+            minLength={mode === "signup" ? MIN_NEW_PASSWORD_LENGTH : undefined}
             hint={mode === "signup" ? "At least 12 characters. A unique passphrase works well." : undefined}
           />
           <div className="flex flex-wrap items-center justify-between gap-x-4">
@@ -217,7 +229,7 @@ export function EmailAuthForm({
           required
           disabled={busy}
           autoComplete="new-password"
-          minLength={12}
+          minLength={MIN_NEW_PASSWORD_LENGTH}
         />
       )}
       <AsyncButton

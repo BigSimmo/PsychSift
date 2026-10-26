@@ -99,6 +99,31 @@ describe("email authentication form", () => {
     expect(auth.signInWithPassword).not.toHaveBeenCalled();
   });
 
+  it("rejects an incomplete email address before contacting the provider", async () => {
+    const user = userEvent.setup();
+    render(<EmailAuthForm />);
+    await user.type(screen.getByLabelText(/Email address/), "person@example");
+    await user.type(screen.getByLabelText(/^Password/), "existing-passphrase");
+    await user.click(screen.getByRole("button", { name: "Sign in" }));
+    expect(screen.getByText("Enter a full email address, like name@example.com.")).toBeVisible();
+    expect(auth.signInWithPassword).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Email me a sign-in link instead" }));
+    await user.click(screen.getByRole("button", { name: "Send sign-in link" }));
+    expect(auth.signInWithEmail).not.toHaveBeenCalled();
+  });
+
+  it("requires a 12 character password before creating an account", async () => {
+    const user = userEvent.setup();
+    render(<EmailAuthForm />);
+    await user.click(screen.getByRole("radio", { name: "Create account" }));
+    await user.type(screen.getByLabelText(/Email address/), "person@example.com");
+    await user.type(screen.getByLabelText(/^Create a password/), "short-pass");
+    await user.type(screen.getByLabelText(/Confirm password/), "short-pass");
+    await user.click(screen.getByRole("button", { name: "Create account" }));
+    expect(screen.getByText("Use at least 12 characters for your password.")).toBeVisible();
+    expect(auth.signUpWithPassword).not.toHaveBeenCalled();
+  });
+
   it("shows and hides the password on request", async () => {
     const user = userEvent.setup();
     render(<EmailAuthForm />);

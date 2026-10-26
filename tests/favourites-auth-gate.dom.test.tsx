@@ -300,6 +300,23 @@ describe("favourites auth gate DOM", () => {
     expect(screen.getByRole("radio", { name: "Create account" })).toBeChecked();
   });
 
+  it("starts each reopening on the tab its intent asks for, while staying mounted", async () => {
+    const user = userEvent.setup();
+    const close = () => undefined;
+    const { rerender } = render(<AccountSetupDialog open onClose={close} />);
+    expect(screen.getByRole("radio", { name: "Sign in" })).toBeChecked();
+    rerender(<AccountSetupDialog open={false} onClose={close} />);
+    rerender(<AccountSetupDialog open onClose={close} intent="favourites" />);
+    expect(screen.getByRole("radio", { name: "Create account" })).toBeChecked();
+    await user.click(screen.getByRole("radio", { name: "Sign in" }));
+    rerender(<AccountSetupDialog open={false} onClose={close} intent="favourites" />);
+    rerender(<AccountSetupDialog open onClose={close} intent="favourites" />);
+    expect(screen.getByRole("radio", { name: "Create account" })).toBeChecked();
+    rerender(<AccountSetupDialog open={false} onClose={close} />);
+    rerender(<AccountSetupDialog open onClose={close} />);
+    expect(screen.getByRole("radio", { name: "Sign in" })).toBeChecked();
+  });
+
   it("leads with and wires Apple, Google, and Microsoft OAuth", async () => {
     const user = userEvent.setup();
     render(<AccountSetupDialog open onClose={() => undefined} />);

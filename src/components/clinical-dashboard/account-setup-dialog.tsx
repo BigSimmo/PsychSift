@@ -62,7 +62,16 @@ export function AccountSetupDialog({
 }) {
   const auth = useAuthSession();
   const [pendingProvider, setPendingProvider] = useState<SsoProvider | null>(null);
-  const [mode, setMode] = useState<EmailMode>(intent === "favourites" ? "signup" : "signin");
+  const openingMode: EmailMode = intent === "favourites" ? "signup" : "signin";
+  const [mode, setMode] = useState<EmailMode>(openingMode);
+  // The sidebar keeps this dialog mounted after its first opening, so each new
+  // opening (or a change of intent while open) starts on the tab its intent asks for.
+  const openingKey = open ? intent : null;
+  const [seenOpeningKey, setSeenOpeningKey] = useState(openingKey);
+  if (seenOpeningKey !== openingKey) {
+    setSeenOpeningKey(openingKey);
+    if (openingKey !== null) setMode(openingMode);
+  }
   const tab = accountTabFor(mode);
   const busy = auth.status === "loading";
   const actionBusy = busy || pendingProvider !== null;
