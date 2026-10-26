@@ -482,8 +482,11 @@ describe("tenancy table tiers", () => {
     // `roster_unavailability` is read only by Delete-my-data cleanup, with `.eq("user_id", …)` on the chain.
     // `on_call_service_members` and `roster_member_roles` are read team-wide by the site-administrator
     // Roster view and the rotation team list, each a declared scope exemption (added 2026-10-21).
+    // `roster_assignments` is read for the linked teams of one hospital by the Medical Workforce
+    // short-staffed view, a declared scope exemption (privacy audit DB-01, added 2026-10-26).
     expect(userKeyed).toEqual([
       "on_call_service_members",
+      "roster_assignments",
       "roster_member_roles",
       "roster_unavailability",
       "user_favourite_sets",
