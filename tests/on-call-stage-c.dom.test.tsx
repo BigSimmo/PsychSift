@@ -197,7 +197,9 @@ describe("Stage C editor controls", () => {
     const props = { selectedSiteId: DEMO_SITE_ID, canEdit: true, onEdit: vi.fn(), onAdd: vi.fn(), onAction: vi.fn() };
     const card = () => screen.getByTestId(`service-entry-${entry.id}`);
     const view = render(<ServiceHandbook {...props} detail={{ ...demoServiceDetail, entries: [entry] }} />);
-    expect(within(card()).getByRole("link", { name: new RegExp(`^Call ${entry.content.title}`) })).toBeInTheDocument();
+    expect(
+      within(card()).getByRole("link", { name: new RegExp(`^Call .*, ${entry.content.title}$`) }),
+    ).toBeInTheDocument();
     expect(within(card()).getByRole("button", { name: "Flag incorrect entry" })).toBeInTheDocument();
 
     const draft = { ...entry, status: "draft" as const, publishedRevision: null, publishedContent: null };

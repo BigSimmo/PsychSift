@@ -305,7 +305,7 @@ export function OnCallFindPage() {
           </span>
           <span className={cn(modeSecondaryText, "min-w-0 flex-1 break-words py-1.5")}>
             Parking, food and access are in Admin
-          </span>
+          </span>{" "}
           <span className="shrink-0 px-1 text-sm font-semibold text-[color:var(--mode-identity)]">Go</span>
         </Link>
       </div>

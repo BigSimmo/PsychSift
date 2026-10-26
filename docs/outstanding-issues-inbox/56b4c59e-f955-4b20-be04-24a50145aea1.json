@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "56b4c59e-f955-4b20-be04-24a50145aea1",
+  "createdOn": "2026-10-23",
+  "action": "done",
+  "payload": {
+    "id": "#K06J63",
+    "outcome": "Revalidated 23 October 2026 at df1e07db04. Archive the old unidentifiable PR-required failure as historical, cause unresolved. Current-head PR required is green, but this does not prove a root-cause fix. Reopen on a fresh named failed child job, excluding superseded/cancelled runs. Evidence: docs/outstanding-issues.md.",
+    "baseRowFingerprint": "6552ccc3a00f6110440357852c4f08ba92d3d3b12ff23bc9310e695456ab739b",
+    "targetUlid": "01M1XP1FE7K06J63XSYVBS40HA"
+  }
+}

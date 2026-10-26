@@ -138,19 +138,19 @@ describe("Roster Month tab", () => {
     ];
     rerender(<RosterMonthPage now={NOW} />);
     expect(screen.queryByTestId(`roster-month-source-${id}`)).toBeNull();
-    expect(screen.getByRole("button", { name: /Fri 9 Oct:.*Recovered rotation/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Fri 9\b.*Recovered rotation/ })).toBeInTheDocument();
   });
 
   it("draws the month with a spoken shift code on every day and marks today", () => {
     render(<RosterMonthPage now={NOW} />);
     const grid = screen.getByRole("grid", { name: "Your shifts, October 2026" });
-    expect(within(grid).getByRole("button", { name: "Thu 8 Oct: Day" })).toBeInTheDocument();
-    expect(within(grid).getByRole("button", { name: "Sun 11 Oct: Off" })).toBeInTheDocument();
-    const today = within(grid).getByRole("button", { name: /Tue 6 Oct: On call, today/ });
+    expect(within(grid).getByRole("button", { name: "Thu 8 D: Day" })).toBeInTheDocument();
+    expect(within(grid).getByRole("button", { name: "Sun 11: Off" })).toBeInTheDocument();
+    const today = within(grid).getByRole("button", { name: /Tue 6 OC: On call, today/ });
     expect(today).toHaveAttribute("aria-current", "date");
     // One Tab stop for the month: today.
     expect(today).toHaveAttribute("tabindex", "0");
-    expect(within(grid).getByRole("button", { name: "Thu 8 Oct: Day" })).toHaveAttribute("tabindex", "-1");
+    expect(within(grid).getByRole("button", { name: "Thu 8 D: Day" })).toHaveAttribute("tabindex", "-1");
   });
 
   it("leads with the next shift and lists only the next three shifts", () => {
@@ -300,7 +300,7 @@ describe("Roster Month tab", () => {
   it("opens a team shift's day sheet with the swap, give-away and can't-make hand-offs", async () => {
     const user = userEvent.setup();
     render(<RosterMonthPage now={NOW} />);
-    const day = screen.getByRole("button", { name: "Thu 8 Oct: Day" });
+    const day = screen.getByRole("button", { name: "Thu 8 D: Day" });
     await user.click(day);
     expect(day).toHaveAttribute("aria-pressed", "true");
     const sheet = await screen.findByTestId("roster-day-sheet");
@@ -322,7 +322,7 @@ describe("Roster Month tab", () => {
   it("offers a day off the dates and leave hand-offs for that date", async () => {
     const user = userEvent.setup();
     render(<RosterMonthPage now={NOW} />);
-    await user.click(screen.getByRole("button", { name: "Sun 11 Oct: Off" }));
+    await user.click(screen.getByRole("button", { name: "Sun 11: Off" }));
     const sheet = await screen.findByTestId("roster-day-sheet");
     expect(within(sheet).getByText("Nothing rostered")).toBeInTheDocument();
     expect(within(sheet).getByRole("link", { name: "Can't work" })).toHaveAttribute(
@@ -365,7 +365,7 @@ describe("Roster Month tab", () => {
       ],
     };
     render(<RosterMonthPage now={NOW} />);
-    fireEvent.click(screen.getByRole("button", { name: "Thu 8 Oct: Day" }));
+    fireEvent.click(screen.getByRole("button", { name: "Thu 8 D: Day" }));
     const sheet = await screen.findByTestId("roster-day-sheet");
     expect(within(sheet).getByText("Dr Sam Example")).toBeInTheDocument();
     expect(within(sheet).getByText("Day · until 17:00")).toBeInTheDocument();
@@ -376,12 +376,12 @@ describe("Roster Month tab", () => {
   it("moves between days with the arrow keys and between months with the arrows", async () => {
     const user = userEvent.setup();
     render(<RosterMonthPage now={NOW} />);
-    const today = screen.getByRole("button", { name: /Tue 6 Oct/ });
+    const today = screen.getByRole("button", { name: /^Tue 6 / });
     today.focus();
     await user.keyboard("{ArrowRight}");
-    expect(screen.getByRole("button", { name: "Wed 7 Oct: Off" })).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Wed 7: Off" })).toHaveFocus();
     await user.keyboard("{ArrowDown}");
-    expect(screen.getByRole("button", { name: "Wed 14 Oct: Off" })).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Wed 14: Off" })).toHaveFocus();
     await user.click(screen.getByRole("button", { name: "Next month" }));
     expect(screen.getByRole("grid", { name: "Your shifts, November 2026" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Back to this month" }));
@@ -393,7 +393,7 @@ describe("Roster Month tab", () => {
     render(<RosterMonthPage now={NOW} />);
     await user.click(screen.getByRole("button", { name: "Next month" }));
     await user.click(screen.getByRole("button", { name: "Next month" }));
-    expect(screen.getByRole("button", { name: "Fri 25 Dec: Day, WA public holiday" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Fri 25 D PH: Day, WA public holiday" })).toBeInTheDocument();
     expect(screen.getByTestId("roster-month-holidays")).toHaveTextContent("1");
   });
 
@@ -402,8 +402,8 @@ describe("Roster Month tab", () => {
     render(<RosterMonthPage now={NOW} />);
     const back = screen.getByRole("button", { name: "Previous month" });
     await user.click(back);
-    expect(screen.getByRole("button", { name: "Mon 14 Sep: not loaded" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Tue 15 Sep: Off" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Mon 14: not loaded" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Tue 15: Off" })).toBeInTheDocument();
     expect(screen.getByTestId("roster-month-totals")).toHaveTextContent("Counted from Tue 15 Sep");
     expect(back).toHaveAttribute("aria-disabled", "true");
     await user.click(back);
@@ -450,8 +450,8 @@ describe("Roster Month tab", () => {
     expect(card).toHaveTextContent("Your Thu 8 day for their Sun 11");
     expect(card).toHaveTextContent("Answer by 17:00 today");
     expect(within(card).getByRole("link", { name: "Answer" })).toHaveAttribute("href", "/roster/swaps");
-    expect(screen.getByRole("button", { name: "Thu 8 Oct: Day, swap asked" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Sun 11 Oct: Off, a swap would give you/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Thu 8 D: Day, swap asked" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Sun 11 \w+: Off, a swap would give you/ })).toBeInTheDocument();
   });
 
   it("says a failed load changed nothing and checked nothing, and retries", () => {

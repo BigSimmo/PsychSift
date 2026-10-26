@@ -195,7 +195,7 @@ describe("the summary's catch-up line", () => {
     // 1 Oct, 1 Nov, 1 Dec × 2 h.
     expect(within(summary).getByTestId("cme-catch-up-routine-hours")).toHaveTextContent("6 h");
     expect(within(summary).getByTestId("cme-close-gap")).toHaveAccessibleName(
-      "Your routines will likely add 6 h. See how they would close the gap",
+      "Routines likely 6 h. See how your routines would close the gap",
     );
     // 39 h over 103 days (14.7 weeks).
     // work-mode redesign, owner request 6 Oct 2026: the mock-up's "to go · a week" line, read as two sentences.

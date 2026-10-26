@@ -582,6 +582,13 @@ describe("medication source-freshness badges", () => {
     const flagged: string[] = [];
 
     for (const record of records) {
+      // Records first source-checked after the fixed reference date (e.g. the
+      // 2026-10-26 linezolid interaction-only record) cannot be judged as of that day.
+      const checkedAt = deriveMedicationSourceGovernance(
+        record.sections,
+        new Date("2100-01-01T00:00:00.000Z"),
+      ).sourceCheckedAt;
+      if (checkedAt && checkedAt > refDate.toISOString().slice(0, 10)) continue;
       const derived = deriveMedicationSourceGovernance(record.sections, refDate);
       const badge = sourceBadgeOf(record, {
         sourceStatus: derived.sourceStatus,

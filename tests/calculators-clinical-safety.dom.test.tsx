@@ -241,15 +241,16 @@ describe("calculator mode copy", () => {
     expect(withoutCaution.length, "most released instruments carry no per-instrument caution").toBeGreaterThan(0);
 
     for (const calculator of withoutCaution) {
-      const { container, unmount } = render(
+      const { unmount } = render(
         <CalculatorSheet calc={calculator} answers={{}} onAnswersChange={() => {}} onClose={() => {}} />,
       );
 
       const line = screen.getByText(SCOPE);
       expect(line, `${calculator.abbrev} renders a score with no scope line`).toBeInTheDocument();
 
-      // The decisive assertion: it must not live inside the scrolling region.
-      const scrollRegion = container.querySelector(".overflow-y-auto");
+      // The decisive assertion: it must not live inside the scrolling region. The sheet
+      // portals into the modal layer, so look inside the dialog rather than the container.
+      const scrollRegion = screen.getByRole("dialog").querySelector(".overflow-y-auto");
       expect(scrollRegion, "the sheet should still have a scrolling body").not.toBeNull();
       expect(
         scrollRegion?.contains(line),

@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "f603572b-ab35-45d4-b650-78b75fb6f432",
+  "createdOn": "2026-10-23",
+  "action": "done",
+  "payload": {
+    "id": "#RA0QAH",
+    "outcome": "Revalidated 23 October 2026 at df1e07db04. Archive the expired, unidentified September CI observations as historical monitoring, not as fixed bugs. No named reproducible spec remains; reopen only with a new exact run, commit and failing test. Do not quarantine tests. Evidence: docs/outstanding-issues.md.",
+    "baseRowFingerprint": "b2268465114a5f86d5dc34d80e873f8fbbc581b0651bd3fd88d7045788307e8e",
+    "targetUlid": "01M1GRWG0ERA0QAHVGFJNA2E5K"
+  }
+}

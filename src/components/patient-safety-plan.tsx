@@ -14,10 +14,11 @@ import {
   PhoneCall,
   Plus,
   Printer,
-  RotateCcw,
   ShieldCheck,
   Sparkles,
   Stethoscope,
+  Trash2,
+  Undo2,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -135,6 +136,9 @@ const WA_REGIONAL_CRISIS_CONTACTS = [MHERL_METRO_CONTACT, MHERL_PEEL_CONTACT, RU
 
 const focusRing =
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]";
+
+/** How long Undo stays after Clear the plan (design audit D26-24). */
+export const SAFETY_PLAN_UNDO_MS = 10_000;
 
 const softButton = cn(
   "inline-flex min-h-tap items-center justify-center gap-2 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)] px-3 text-sm-minus font-bold text-[color:var(--text-muted)] shadow-[var(--shadow-inset)] transition hover:border-[color:var(--border-strong)] hover:text-[color:var(--text)]",
@@ -370,6 +374,11 @@ function AddRow({
         }}
         placeholder={primaryPlaceholder}
         aria-label={kind === "contact" ? `${label}: ${primaryPlaceholder}` : `${label}: new entry`}
+        // Kept from autofill, spelling and grammar extensions, like the other note fields (privacy audit CA-08).
+        autoComplete="off"
+        spellCheck={false}
+        data-gramm="false"
+        data-enable-grammarly="false"
         className={cn(fieldControlPlain, "min-h-tap")}
       />
       {kind === "contact" ? (
@@ -390,6 +399,10 @@ function AddRow({
           }}
           placeholder={secondaryPlaceholder}
           aria-label={`${label}: ${secondaryPlaceholder}`}
+          autoComplete="off"
+          spellCheck={false}
+          data-gramm="false"
+          data-enable-grammarly="false"
           className={cn(fieldControlPlain, "min-h-tap")}
         />
       ) : null}
@@ -624,6 +637,14 @@ export function PatientSafetyPlan() {
   const [mobileTab, setMobileTab] = useState<"build" | "preview">("build");
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "failed">("idle");
   const [finalised, setFinalised] = useState(false);
+  // The plan as it was before Clear the plan, held in memory for Undo only (D26-24). Like the plan
+  // itself it is never stored, and it goes when the Undo window closes or the page unmounts.
+  const [clearedPlan, setClearedPlan] = useState<{
+    entries: Record<StepKey, Entry[]>;
+    reasons: Entry[];
+    planDate: string;
+    finalised: boolean;
+  } | null>(null);
   const finaliseUnavailableId = useId();
   const [draftDirtyByRow, setDraftDirtyByRow] = useState<Record<string, boolean>>({});
   // Per-instance id counter — avoids a module-level mutable that would persist
@@ -907,17 +928,47 @@ export function PatientSafetyPlan() {
     setFinalised(false);
   };
 
+  useEffect(() => {
+    if (!clearedPlan) return;
+    const timer = window.setTimeout(() => setClearedPlan(null), SAFETY_PLAN_UNDO_MS);
+    return () => window.clearTimeout(timer);
+  }, [clearedPlan]);
+
+  // Undo puts back the plan that was cleared, so once new work starts on the empty plan the
+  // snapshot goes. Otherwise Undo would quietly replace that new work with the old plan.
+  // Adjusted during render rather than in an effect, so Undo is gone before the new work paints.
+  if (
+    clearedPlan &&
+    (Object.values(entries).some((rows) => rows.length > 0) || reasons.length > 0 || planDate.trim() !== "")
+  ) {
+    setClearedPlan(null);
+  }
+
   const clearAll = () => {
-    // Nothing to lose when the plan is empty or is the untouched example. Anything
-    // else is a clinician's work with a patient that is never stored, so ask first.
+    // Nothing to lose when the plan is empty or is the untouched example. Anything else is a
+    // clinician's work with a patient that is never stored, so it clears at once with Undo for
+    // ten seconds, rather than a browser "are you sure" box that is easy to tap through (D26-24).
     const untouchedExample = entries === SEED && reasons === SEED_REASONS && planDate.trim() === "";
     const hasContent =
       Object.values(entries).some((rows) => rows.length > 0) || reasons.length > 0 || planDate.trim() !== "";
-    if (hasContent && !untouchedExample && !window.confirm("Clear the whole plan? This can’t be undone.")) return;
+    if (hasContent && !untouchedExample) {
+      setClearedPlan({ entries, reasons, planDate, finalised });
+      announce("Plan cleared. Undo is available for 10 seconds.");
+    }
     setEntries(EMPTY_ENTRIES);
     setReasons([]);
     setPlanDate("");
     setFinalised(false);
+  };
+
+  const undoClear = () => {
+    if (!clearedPlan) return;
+    setEntries(clearedPlan.entries);
+    setReasons(clearedPlan.reasons);
+    setPlanDate(clearedPlan.planDate);
+    setFinalised(clearedPlan.finalised);
+    setClearedPlan(null);
+    announce("Plan restored.");
   };
 
   return (
@@ -1097,10 +1148,6 @@ export function PatientSafetyPlan() {
                 <Sparkles className="size-icon-sm" aria-hidden="true" />
                 Load example
               </button>
-              <button type="button" onClick={clearAll} className={softButton}>
-                <RotateCcw className="size-icon-sm" aria-hidden="true" />
-                Clear all
-              </button>
             </div>
           </div>
 
@@ -1132,6 +1179,7 @@ export function PatientSafetyPlan() {
                   setFinalised(false);
                 }}
                 placeholder="e.g. 12 Aug 2026"
+                autoComplete="off"
                 className={fieldControlPlain}
               />
             </div>
@@ -1208,6 +1256,34 @@ export function PatientSafetyPlan() {
               }}
             />
           </section>
+
+          {/* Clear sits at the foot of the builder, away from Load example (D26-24). */}
+          <div className="grid justify-items-end gap-2" data-testid="safety-plan-clear-row">
+            {clearedPlan ? (
+              <div
+                role="status"
+                data-testid="safety-plan-undo"
+                className="flex w-full flex-wrap items-center justify-between gap-2 rounded-lg border border-[color:var(--border-strong)] bg-[color:var(--surface-raised)] px-3 py-1 text-sm-minus font-semibold"
+              >
+                Plan cleared
+                <button type="button" onClick={undoClear} className={softButton}>
+                  <Undo2 className="size-icon-sm" aria-hidden="true" />
+                  Undo
+                </button>
+              </div>
+            ) : null}
+            <button
+              type="button"
+              onClick={clearAll}
+              className={cn(
+                softButton,
+                "border-[color:var(--danger-border)] text-[color:var(--danger-text)] hover:text-[color:var(--danger-text)]",
+              )}
+            >
+              <Trash2 className="size-icon-sm" aria-hidden="true" />
+              Clear the plan
+            </button>
+          </div>
         </div>
 
         {/* ---------- Preview ---------- */}

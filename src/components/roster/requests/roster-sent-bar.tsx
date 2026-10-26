@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { ROSTER_UNDO_MS } from "@/components/roster/roster-format";
 import { rosterOutlineButton } from "@/components/roster/roster-list";
 import { cn } from "@/components/ui-primitives";
+import { useHoldWhileEngaged } from "@/components/use-hold-while-engaged";
 
 export type SentReceipt = { message: string; undo?: () => Promise<void> };
 
@@ -19,15 +20,17 @@ export function RosterSentBar({ receipt, clear }: { receipt: SentReceipt | null;
     setError(null);
     setBusy(false);
   }
+  const { held, holdProps } = useHoldWhileEngaged(receipt !== null);
   useEffect(() => {
-    if (!receipt || busy || error) return;
+    if (!receipt || busy || error || held) return;
     const timer = window.setTimeout(clear, ROSTER_UNDO_MS);
     return () => window.clearTimeout(timer);
-  }, [receipt, clear, busy, error]);
+  }, [receipt, clear, busy, error, held]);
   if (!receipt) return null;
   return (
     <div
       role="status"
+      {...holdProps}
       className={cn(
         "flex min-w-0 items-center gap-2.5 rounded-lg py-1.5 pl-3.5 pr-1.5 text-sm text-[color:var(--text)] forced-colors:border",
         error

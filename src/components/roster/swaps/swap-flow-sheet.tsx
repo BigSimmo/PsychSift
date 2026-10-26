@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { GIVE_AWAY_WORDS, isUrgentGiveAway } from "@/components/roster/requests/request-ui";
 import { RosterSwapTicket } from "@/components/roster/requests/roster-swap-ticket";
@@ -10,6 +10,7 @@ import { ROSTER_ONLY_NOTE } from "@/components/roster/swaps/swap-options-loader"
 import { Button } from "@/components/ui/button";
 import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 import { Sheet } from "@/components/ui/sheet";
+import { useHoldWhileEngaged } from "@/components/use-hold-while-engaged";
 import { openShiftCandidates, swapNeedsManager } from "@/lib/roster/team/eligibility";
 import type { RosterAssignment } from "@/lib/roster/team/model";
 import { approvalWords, swapOptions, swapPreview } from "@/lib/roster/team/swap-options";
@@ -77,7 +78,10 @@ function FlowSession({
   const now = useRosterNow();
   const { zone } = useWorkTimeZone();
   const { fresh, loadError, reread } = useFreshRead(serviceId, give.startsAt);
-  const { pending, sending, canSend, schedule, undo } = useDelayedRosterAction();
+  const { pending, sending, canSend, schedule, undo, hold } = useDelayedRosterAction();
+  // The send waits while someone is on the Undo panel (WCAG 2.2.1).
+  const { held: undoHeld, holdProps: undoHoldProps } = useHoldWhileEngaged(Boolean(pending));
+  useEffect(() => hold(undoHeld), [hold, undoHeld]);
   // A colleague chosen before the sheet opened starts at "take"; if they cannot take it, `shown` falls back to "who".
   const [step, setStep] = useState<Step>(initialColleagueId ? "take" : "who");
   const [colleagueId, setColleagueId] = useState(initialColleagueId ?? "");
@@ -210,7 +214,7 @@ function FlowSession({
       Sending…
     </p>
   ) : pending ? (
-    <div role="status" className={`${PANEL} grid gap-2`}>
+    <div role="status" className={`${PANEL} grid gap-2`} {...undoHoldProps}>
       <p className="font-medium">Sending in 10 seconds</p>
       <p className="text-sm">{pending}. Closing this window cancels it.</p>
       <Button variant="secondary" onClick={cancelSend}>

@@ -22,6 +22,7 @@ import {
   resultFilterGroup,
   type ResultFilterOption,
 } from "@/components/clinical-dashboard/result-filter-control";
+import { writeCheckedSearchText } from "@/components/clinical-dashboard/search-patient-detail-guard";
 import { SearchResultsHeaderBand } from "@/components/clinical-dashboard/search-results-header-band";
 import { UniversalSearchAlsoMatches } from "@/components/clinical-dashboard/universal-search-also-matches";
 import { DesktopComposerPortalSlot } from "@/components/desktop-composer-portal-slot";
@@ -37,6 +38,7 @@ import {
 } from "@/components/information-page-shell";
 import { PageHeader } from "@/components/ui/page-header";
 import { SegmentedControl } from "@/components/ui/segmented-control";
+import { useOptionalToast } from "@/components/ui/toast";
 import { cn, searchShell, searchShellInput } from "@/components/ui-primitives";
 import {
   allDictionaryEntries,
@@ -915,6 +917,7 @@ export function DictionaryTopicDetailPage({ topicSlug }: { topicSlug: string }) 
   const router = useRouter();
   const sectionNav = useInPageSectionNav(topicDetailSections);
   const { searchParams, replace, setOne, toggleMany } = useDictionaryUrl();
+  const pushToast = useOptionalToast()?.push;
   const serializedParams = searchParams.toString();
   const query = (searchParams.get("q") ?? "").trim().toLocaleLowerCase();
   const deferredQuery = useDeferredValue(query);
@@ -1023,7 +1026,13 @@ export function DictionaryTopicDetailPage({ topicSlug }: { topicSlug: string }) 
                 <span className="sr-only">Search this topic</span>
                 <input
                   defaultValue={searchParams.get("q") ?? ""}
-                  onChange={(event) => setOne("q", event.target.value)}
+                  onChange={(event) =>
+                    writeCheckedSearchText(
+                      event.target.value,
+                      (value) => setOne("q", value),
+                      (message) => pushToast?.({ tone: "warning", title: message }),
+                    )
+                  }
                   placeholder="Search this topic"
                   className={cn(searchShellInput, "text-base sm:text-sm")}
                 />

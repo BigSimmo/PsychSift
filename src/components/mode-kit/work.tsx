@@ -232,10 +232,10 @@ export function WorkHero({ eyebrow, title, sub, ring, footer, href, testId, ...r
     <>
       <div className="work-hero__layout">
         <div className="work-hero__text">
-          {eyebrow ? <span className="work-hero__eyebrow">{eyebrow}</span> : null}
-          <span className="work-hero__title">{title}</span>
-          {sub ? <span className="work-hero__sub">{sub}</span> : null}
-        </div>
+          {/* The spaces keep words apart in a name read from this content (WCAG 2.5.3). */}
+          {eyebrow ? <span className="work-hero__eyebrow">{eyebrow}</span> : null}{" "}
+          <span className="work-hero__title">{title}</span> {sub ? <span className="work-hero__sub">{sub}</span> : null}
+        </div>{" "}
         {ring}
       </div>
       {footer ? <div className="work-hero__foot">{footer}</div> : null}

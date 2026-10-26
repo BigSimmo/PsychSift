@@ -216,12 +216,13 @@ function HeroLegend({
             type="button"
             data-testid="cme-close-gap"
             onClick={onOpenGap}
-            aria-label={`Your routines will likely add ${formatCmeHours(routines)} h. See how they would close the gap`}
             className="-my-3 flex min-h-12 w-full min-w-0 items-center gap-1.75 text-left text-inherit focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--mode-identity-contrast)]"
           >
             <i aria-hidden="true" data-cat="routines" />
-            <span className="min-w-0 truncate">Routines likely</span>
+            {/* Named by what it shows, so voice control can say it (WCAG 2.5.3, A11Y-02). */}
+            <span className="min-w-0 truncate">Routines likely</span>{" "}
             <b data-testid="cme-catch-up-routine-hours">{`${formatCmeHours(routines)} h`}</b>
+            <span className="sr-only">. See how your routines would close the gap</span>
           </button>
         </li>
       ) : null}

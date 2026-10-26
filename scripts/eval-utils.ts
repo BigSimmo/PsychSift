@@ -224,6 +224,20 @@ export function validateRagAnswer(testCase: RagEvalCase, answer: RagAnswer) {
   );
   const route = answer.routingMode ?? "unsupported";
   const visualEvidence = answer.visualEvidence ?? [];
+  const routingReasons = (answer.routingReason ?? "").split(";").map((reason) => reason.trim().toLowerCase());
+  const acceptedReviewFallback =
+    testCase.acceptedReviewFallbackReason !== undefined &&
+    !answer.grounded &&
+    routingReasons.includes("source_backed_review_fallback") &&
+    routingReasons.includes(`extractive_quality_gate:${testCase.acceptedReviewFallbackReason}`);
+
+  if (acceptedReviewFallback) {
+    if (!testCase.allowedRoutes.includes(route)) failures.push(`unexpected route ${route}`);
+    if (testCase.expectedQueryClass && answer.queryClass !== testCase.expectedQueryClass) {
+      failures.push(`expected query class ${testCase.expectedQueryClass}, got ${answer.queryClass ?? "none"}`);
+    }
+    return { expectedHit, expectedCoverage, failures };
+  }
 
   // acceptSourceOnly cases (diffuse questions with no single authoritative source) may
   // legitimately return a source-only answer (grounded=false); the retrieval regression

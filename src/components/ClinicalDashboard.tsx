@@ -3,7 +3,9 @@
 import { isPdfDocument } from "@/lib/pdf-documents";
 import { useSubmittedModeSearch } from "@/components/clinical-dashboard/use-submitted-mode-search";
 import { useSettingsState } from "./clinical-dashboard/SettingsStateProvider";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
+import { useAnswerSearchParams, usePrivateAnswerRouter } from "@/components/clinical-dashboard/use-private-answer-url";
+import { resolveAnswerHandoffParams } from "@/lib/answer-question-handoff";
 import { Clock3, ExternalLink, FolderOpen, Activity } from "lucide-react";
 import {
   type CSSProperties,
@@ -96,6 +98,7 @@ import { DashboardSearchErrorState } from "@/components/clinical-dashboard/dashb
 import { useDashboardShellActions } from "@/components/clinical-dashboard/use-dashboard-shell-actions";
 import { useDashboardSearchExecution } from "@/components/clinical-dashboard/use-dashboard-search-execution";
 import {
+  checkSearchTextPatientDetail,
   searchTextPatientDetailRefusal,
   usePreloadSearchPatientCheck,
 } from "@/components/clinical-dashboard/search-patient-detail-guard";
@@ -104,7 +107,7 @@ import { useAskTermsGate } from "@/components/front-door/use-ask-terms-gate";
 import { Button } from "@/components/ui/button";
 import { ClinicalSignInNotice } from "@/components/mode-kit/clinical-sign-in-notice";
 import { ClinicalCatalogueGate } from "@/components/mode-kit/clinical-catalogue-gate";
-import { useClinicalToolAccess } from "@/components/mode-kit/use-clinical-tool-access";
+import { clinicalToolLocked, useClinicalToolAccess } from "@/components/mode-kit/use-clinical-tool-access";
 import { ASK_TERMS_DECLINED_NOTICE, ASK_TERMS_REVIEW_LABEL, CLINICAL_SIGN_IN_COPY } from "@/lib/front-door-content";
 import { focusComposerInput as scheduleComposerFocus } from "@/components/clinical-dashboard/focus-composer-input";
 import {
@@ -234,8 +237,8 @@ function ClinicalDashboardContent({
   autoRunSearch = false,
   clinicalAskAvailableModeIds = [],
 }: ClinicalDashboardProps = {}) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const router = usePrivateAnswerRouter();
+  const searchParams = useAnswerSearchParams();
   const pathname = usePathname();
   const [lastAppMode, setLastAppMode] = useLastAppMode();
   const [initialSearchNavigationContext] = useState(() => readSearchNavigationContext(searchParams));
@@ -446,6 +449,7 @@ function ClinicalDashboardContent({
   // while `error` is truthy, and set alongside every `setError(<message>)` so a
   // stale value can never leak into a later, unrelated error.
   const [errorKind, setErrorKind] = useState<AnswerErrorKind | null>(null);
+  const [errorDetail, setErrorDetail] = useState<{ message: string; detail: string } | null>(null);
   const [lastFailedQuery, setLastFailedQuery] = useState<string | null>(null);
   const [setupWarning, setSetupWarning] = useState<string | null>(null);
   const [setupChecks, setSetupChecks] = useState<SetupCheck[]>(fallbackSetupChecks);
@@ -951,6 +955,7 @@ function ClinicalDashboardContent({
     setRestoredAnswerSavedAt,
     setError,
     setErrorKind,
+    setErrorDetail,
     setLastFailedQuery,
     setDemoMode,
     setActionNotice,
@@ -1017,7 +1022,7 @@ function ClinicalDashboardContent({
 
   useEffect(() => {
     if (urlSearchBootstrappedRef.current) return;
-    const params = new URLSearchParams(window.location.search);
+    const params = resolveAnswerHandoffParams(new URLSearchParams(window.location.search));
     const mode = params.get("mode");
     const searchText = params.get("q")?.trim();
     const shouldFocusComposer = params.get("focus") === "1";
@@ -1046,7 +1051,7 @@ function ClinicalDashboardContent({
   useEffect(() => {
     if (urlDocumentSearchBootstrappedRef.current) return;
     if (authStatus === "loading") return;
-    const params = new URLSearchParams(window.location.search);
+    const params = resolveAnswerHandoffParams(new URLSearchParams(window.location.search));
     const mode = params.get("mode");
     const searchText = params.get("q")?.trim();
     if (!searchText || !isAppModeId(mode) || !isAppModeVisible(mode)) return;
@@ -1099,6 +1104,21 @@ function ClinicalDashboardContent({
   useLayoutEffect(() => {
     askRef.current = ask;
   });
+
+  // Sign in and send (D26-05): a question an expired sign-in held back goes once the person is
+  // signed in again. Any newer search or cleared error drops the pending send.
+  const pendingSignInResendRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!error) pendingSignInResendRef.current = null;
+  }, [error]);
+  useEffect(() => {
+    if (authStatus !== "authenticated") return;
+    const held = pendingSignInResendRef.current;
+    if (!held) return;
+    pendingSignInResendRef.current = null;
+    setError(null);
+    void askRef.current(held);
+  }, [authStatus]);
 
   useEffect(() => {
     const trimmedQuery = query.trim();
@@ -1202,6 +1222,20 @@ function ClinicalDashboardContent({
         if (submittedSeq !== searchRequestSeqRef.current) return;
         if ("notice" in checked) {
           setActionNotice({ tone: "warning", message: checked.notice });
+          return;
+        }
+        latestNavigateCrossModeSearch(mode, crossQuery);
+      });
+      return;
+    }
+    // Every other mode writes the text into the address bar, history and recent searches too,
+    // so a patient detail is held back here as well (privacy audit CA-01, 2026-10-26).
+    if (crossQuery.trim()) {
+      const submittedSeq = searchRequestSeqRef.current;
+      void checkSearchTextPatientDetail(crossQuery).then((refusal) => {
+        if (submittedSeq !== searchRequestSeqRef.current) return;
+        if (refusal) {
+          setActionNotice({ tone: "warning", message: refusal });
           return;
         }
         latestNavigateCrossModeSearch(mode, crossQuery);
@@ -2156,6 +2190,7 @@ function ClinicalDashboardContent({
                     errorKind={errorKind}
                     activeModeResultKind={activeModeResultKind}
                     documentsResultsOwnError={documentsResultsOwnError}
+                    errorDetail={errorDetail?.message === error ? errorDetail.detail : null}
                     lastFailedQuery={lastFailedQuery}
                     query={query}
                     onRephrase={() => focusComposerInput()}
@@ -2165,6 +2200,12 @@ function ClinicalDashboardContent({
                       void ask(retryQuery);
                     }}
                     onSearchDocuments={() => crossModeSearch("documents", (lastFailedQuery ?? query).trim())}
+                    onSignInAndSend={() => {
+                      const held = lastFailedQuery ?? query;
+                      pendingSignInResendRef.current = held;
+                      setQuery(held);
+                      openSettings();
+                    }}
                   />
                 )}
 
@@ -2196,13 +2237,15 @@ function ClinicalDashboardContent({
                         question={loading ? (answerLifecycle.query ?? latestAnswerQuery) : null}
                       />
                     ) : null
-                  ) : loading && answerProgress ? (
+                  ) : loading && answerProgress && activeModeResultKind !== "documents" ? (
+                    // Document searches skip this line: their results area shows its own
+                    // "Finding matching documents" placeholder, and this line vanishing
+                    // as results landed moved them up by its height (performance audit M2).
                     <SearchProgressBanner message={answerProgress} onStop={stopSearch} />
                   ) : null)}
 
                 {showUniversalAlsoMatches &&
                 (activeModeResultKind === "tools" ||
-                  activeModeResultKind === "documents" ||
                   activeModeResultKind === "services" ||
                   activeModeResultKind === "forms") ? (
                   <UniversalSearchAlsoMatches modeId={searchMode} query={universalAlsoMatchesQuery} />
@@ -2323,7 +2366,7 @@ function ClinicalDashboardContent({
                     </ClinicalCatalogueGate>
                   ) : (
                     <>
-                      {searchMode === "documents" && clinicalToolAccess === "sign-in-required" ? (
+                      {searchMode === "documents" && clinicalToolLocked(clinicalToolAccess) ? (
                         askTermsGate.signInQuery && askTermsGate.signInQuery === query.trim() ? null : (
                           <ClinicalSignInNotice copy={CLINICAL_SIGN_IN_COPY.library} testId="library-sign-in" />
                         )
@@ -2450,7 +2493,14 @@ function ClinicalDashboardContent({
                     near-identical panels under one answer is what the owner
                     photographed on 2026-08-26. The mode-level view is still
                     reachable from mode navigation and still renders on the
-                    tools, documents, services and forms result kinds above. */}
+                    tools, documents, services and forms result kinds. */}
+
+                {/* Documents draw it under the results, not above: the strip arrives after the
+                    results and, above them, pushed every result down by its height on a phone
+                    (performance audit M2, CLS 0.129 on document results). */}
+                {showUniversalAlsoMatches && activeModeResultKind === "documents" ? (
+                  <UniversalSearchAlsoMatches modeId={searchMode} query={universalAlsoMatchesQuery} />
+                ) : null}
               </section>
 
               {showSystemNotice && answer ? (

@@ -209,7 +209,8 @@ export function OnCallPageMenu({
         onClick={() => setOpen(true)}
         aria-haspopup="dialog"
         aria-expanded={open}
-        aria-label={`Open ${title} actions`}
+        // Opens with the word it shows (WCAG 2.5.3, A11Y-02).
+        aria-label={`Options for ${title}`}
         data-testid="on-call-page-menu-trigger"
         className={cn(
           "inline-flex min-h-12 items-center gap-1.5 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-3 text-sm font-semibold text-[color:var(--text-muted)] transition",

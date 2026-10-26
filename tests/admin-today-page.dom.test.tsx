@@ -366,11 +366,11 @@ describe("AdminTodayPage redesign (Admin proposal)", () => {
     render(<AdminTodayPage now={NOW} />);
     const glance = screen.getByTestId("admin-today-at-a-glance");
     const counts = renewalsShowCounts(selectAdminOwnEntries(state as never), NOW);
-    const passed = within(glance).getByRole("link", { name: `Date passed: ${counts["date-passed"]}` });
+    const passed = within(glance).getByRole("link", { name: `${counts["date-passed"]} passed. Date passed` });
     expect(passed.getAttribute("href")).toBe("/admin/renewals?show=date-passed");
-    const due = within(glance).getByRole("link", { name: `Due in 90 days: ${counts["due-90"]}` });
+    const due = within(glance).getByRole("link", { name: `${counts["due-90"]} in 90 days. Due in 90 days` });
     expect(due.getAttribute("href")).toBe("/admin/renewals?show=due-90");
-    const missing = within(glance).getByRole("link", { name: `Not recorded: ${counts["not-recorded"]}` });
+    const missing = within(glance).getByRole("link", { name: `${counts["not-recorded"]} not recorded. Not recorded` });
     expect(missing.getAttribute("href")).toBe("/admin/renewals?show=not-recorded");
     expect(counts["due-90"]).toBe(1);
     // No status colour on a numeral: every number is neutral heading or muted text.
@@ -380,7 +380,7 @@ describe("AdminTodayPage redesign (Admin proposal)", () => {
   it("still shows a zero count, quietly", () => {
     state.entries = [indemnity];
     render(<AdminTodayPage now={NOW} />);
-    const zero = screen.getByRole("link", { name: "Date passed: 0" });
+    const zero = screen.getByRole("link", { name: "0 passed. Date passed" });
     expect(zero.hasAttribute("data-zero")).toBe(true);
   });
 

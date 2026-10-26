@@ -808,7 +808,7 @@ function DayStrip({ days, today }: { days: ReturnType<typeof stripDays>; today: 
                 )}
               >
                 {day.weekday}
-              </small>
+              </small>{" "}
               <b
                 className={cn(
                   "nums grid size-8 place-items-center rounded-full border-[1.5px] border-transparent text-sm-minus font-bold",

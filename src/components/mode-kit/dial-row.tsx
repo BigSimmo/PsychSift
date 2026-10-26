@@ -117,7 +117,8 @@ export function ModeDialRow({
           <button
             type="button"
             aria-haspopup="dialog"
-            aria-label={`${label}, ${spokenModeNumber(number.display)}. Show dialling options`}
+            // The number as shown, so a voice-control user can say it, then digit by digit (A11Y-02).
+            aria-label={`${label}, ${number.display} (${spokenModeNumber(number.display)}). Show dialling options`}
             onClick={() => setSheetOpen(true)}
             className={cn(
               focusRing,
