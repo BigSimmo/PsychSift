@@ -9,6 +9,7 @@ import {
 import { GET as rosterGet, POST as rosterPost } from "@/app/api/roster/shifts/route";
 import { isDemoMode } from "@/lib/env";
 import { jsonError, publicErrorResponse } from "@/lib/http";
+import { logger } from "@/lib/logger";
 import { deleteOwnerShifts } from "@/lib/roster/shifts/repository";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError, requireAuthenticatedUser, unauthorizedResponse } from "@/lib/supabase/auth";
@@ -31,10 +32,21 @@ const noStore = { "Cache-Control": "no-store" };
 export async function GET(request: Request) {
   const response = await rosterGet(request);
   if (!response.ok) return response;
-  const body: unknown = await response
-    .clone()
-    .json()
-    .catch(() => null);
+  let body: unknown;
+  try {
+    body = await response.clone().json();
+  } catch (error) {
+    // Fail closed: an unreadable body cannot be shown to be free of the example
+    // roster, so it must not be passed through as the reader's own shifts.
+    logger.error("On Call shifts: roster response could not be parsed", {
+      status: response.status,
+      errorName: error instanceof Error ? error.name : typeof error,
+    });
+    return NextResponse.json(
+      { error: "Shifts are temporarily unavailable.", code: "roster_unavailable" },
+      { status: 502, headers: noStore },
+    );
+  }
   if (isRecord(body) && body.sample === true) {
     return NextResponse.json({ shifts: [], latestImport: null }, { headers: noStore });
   }
