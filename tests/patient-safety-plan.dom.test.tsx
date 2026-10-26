@@ -355,6 +355,21 @@ describe("PatientSafetyPlan — Clear all and Copy feedback", () => {
     confirm.mockRestore();
   });
 
+  it("drops Undo once new work starts on the cleared plan", () => {
+    render(<PatientSafetyPlan />);
+    const supportStep = screen.getByRole("region", { name: "Step 4: People I can ask for help" });
+    const field = () => within(supportStep).getByPlaceholderText("Name & relationship") as HTMLInputElement;
+    fireEvent.change(field(), { target: { value: "Sam — a friend" } });
+    fireEvent.click(within(supportStep).getByRole("button", { name: /^Add to / }));
+    fireEvent.click(screen.getByRole("button", { name: /Clear the plan/ }));
+    expect(screen.getByTestId("safety-plan-undo")).toBeTruthy();
+
+    fireEvent.change(field(), { target: { value: "Alex — a brother" } });
+    fireEvent.click(within(supportStep).getByRole("button", { name: /^Add to / }));
+    expect(screen.queryByTestId("safety-plan-undo")).toBeNull();
+    expect(within(supportStep).getAllByText("Alex — a brother").length).toBeGreaterThan(0);
+  });
+
   it("lets the Undo offer lapse after ten seconds", () => {
     vi.useFakeTimers();
     try {

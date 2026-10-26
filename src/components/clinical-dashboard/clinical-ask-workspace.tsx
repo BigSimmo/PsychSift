@@ -22,7 +22,11 @@ function useClinicalAskStall(waiting: boolean) {
   const [round, setRound] = useState(0);
   useEffect(() => {
     if (!waiting) return;
-    const timer = window.setTimeout(() => setStalled(true), CLINICAL_ASK_STALL_PROMPT_MS);
+    const timer = window.setTimeout(() => {
+      setStalled(true);
+      // A status node inserted already filled is not read out reliably, so say it through the announcer.
+      announce("This is taking longer than usual. You can keep waiting or stop.");
+    }, CLINICAL_ASK_STALL_PROMPT_MS);
     return () => {
       window.clearTimeout(timer);
       setStalled(false);

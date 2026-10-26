@@ -215,7 +215,7 @@ function medicationRecordErrorMessage(error: unknown): string {
   const code = `Code ${error.status}.`;
   if (error.status === 401) return `Your sign-in has ended. Sign in again to view this medicine. ${code}`;
   if (error.status === 429) return `Too many requests in a short time. Wait a moment, then try again. ${code}`;
-  if (error.status === 404) return `This medicine wasn’t found. ${code}`;
+  if (error.status === 404 && error.code === "medication_not_found") return `This medicine wasn’t found. ${code}`;
   if (error.status >= 500) return `The medicines service is busy or unavailable. Try again in a minute. ${code}`;
   return `This medicine couldn’t be loaded. ${code}`;
 }

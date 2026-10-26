@@ -925,6 +925,16 @@ export function PatientSafetyPlan() {
     return () => window.clearTimeout(timer);
   }, [clearedPlan]);
 
+  // Undo puts back the plan that was cleared, so once new work starts on the empty plan the
+  // snapshot goes. Otherwise Undo would quietly replace that new work with the old plan.
+  // Adjusted during render rather than in an effect, so Undo is gone before the new work paints.
+  if (
+    clearedPlan &&
+    (Object.values(entries).some((rows) => rows.length > 0) || reasons.length > 0 || planDate.trim() !== "")
+  ) {
+    setClearedPlan(null);
+  }
+
   const clearAll = () => {
     // Nothing to lose when the plan is empty or is the untouched example. Anything else is a
     // clinician's work with a patient that is never stored, so it clears at once with Undo for

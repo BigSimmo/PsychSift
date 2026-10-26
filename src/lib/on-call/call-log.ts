@@ -243,10 +243,17 @@ export function deleteOnCallCallLogEntryForUndo(
   const stamp = readShiftStamp();
   removeOnCallCallLogEntry(entry.id, now);
   // A stamp from before generations existed cannot tell one shift from the next, so it gets no Undo.
-  return stamp?.generation ? { entry, shiftGeneration: stamp.generation } : null;
+  return stamp?.generation ? { entry, shiftGeneration: stamp.generation, clearCount } : null;
 }
 
-export type OnCallCallLogUndo = { readonly entry: OnCallCallLogEntry; readonly shiftGeneration: string };
+export type OnCallCallLogUndo = {
+  readonly entry: OnCallCallLogEntry;
+  readonly shiftGeneration: string;
+  readonly clearCount: number;
+};
+
+// Bumped by clearOnCallCallLog so an Undo taken before a deliberate clear cannot bring a note back.
+let clearCount = 0;
 
 /**
  * Put back a note deleted moments ago (the Undo on the delete toast). Refused unless the shift it
@@ -259,6 +266,7 @@ export function restoreOnCallCallLogEntry(undo: OnCallCallLogUndo, now: Date = n
   if (typeof window === "undefined") return false;
   const stamp = readShiftStamp();
   if (!stamp || stamp.generation !== undo.shiftGeneration || now.getTime() >= stamp.expiresAt) return false;
+  if (undo.clearCount !== clearCount) return false;
   const current = live(readStored(now), now);
   if (current.some((existing) => existing.id === undo.entry.id)) return true;
   if (current.length >= ON_CALL_CALL_LOG_LIMIT || live([undo.entry], now).length === 0) return false;
@@ -268,6 +276,7 @@ export function restoreOnCallCallLogEntry(undo: OnCallCallLogUndo, now: Date = n
 /** Clear every note on this device. */
 export function clearOnCallCallLog(): void {
   if (typeof window === "undefined") return;
+  clearCount += 1;
   write([], new Date());
 }
 

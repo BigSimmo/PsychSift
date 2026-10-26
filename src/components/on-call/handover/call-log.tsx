@@ -44,7 +44,7 @@ import {
   startPatientLabelRetention,
 } from "@/lib/patient-label-storage";
 import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
-import { formatZonedDay, zonedDateOf } from "@/lib/work-time/format";
+import { formatZonedDay, formatZonedTime, zonedDateOf } from "@/lib/work-time/format";
 
 /*
  * The quick call log (`OnCallCallLogCard`), shown in Now's "Log a call" sheet.
@@ -162,7 +162,7 @@ function NoteArea({
 function clockLabel(epochMs: number, zone: string): string {
   const at = new Date(epochMs);
   const day = formatZonedDay(zonedDateOf(at, zone)).slice(0, 3);
-  return `${day} ${onCallCallLogTime(at.toISOString())}`;
+  return `${day} ${formatZonedTime(at, zone)}`;
 }
 
 /** The roles most calls come from, as one-tap chips; "Other" opens a short field. */

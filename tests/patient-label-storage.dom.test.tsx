@@ -73,6 +73,7 @@ import {
   readPatientLabels,
   readShiftLabelsClearedAt,
   removePatientLabels,
+  startPatientLabelRetention,
   subscribePatientLabelsCleared,
   watchPatientLabelExpiry,
   writePatientLabels,
@@ -326,6 +327,12 @@ describe("the wipe removes patient labels and nothing else", () => {
 
     window.localStorage.setItem(SHIFT_LABELS_CLEARED_AT_STORAGE_KEY, String(T0));
     dismissShiftLabelsClearedNotice();
+    expect(readShiftLabelsClearedAt()).toBeNull();
+  });
+
+  it("records no cleared time when the ended shift held only its expiry stamp", () => {
+    startPatientLabelRetention({ now: T0, shiftEndsAt: T0 + 8 * HOUR });
+    clearExpiredPatientLabels(T0 + 9 * HOUR);
     expect(readShiftLabelsClearedAt()).toBeNull();
   });
 

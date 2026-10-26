@@ -98,6 +98,20 @@ function labelKeysIn(storage: Storage): string[] {
   return keys;
 }
 
+/** True when a real label is stored, not just the shift's expiry stamp. */
+function hasLabelDataKeys(): boolean {
+  for (const area of ["local", "session"] as const) {
+    const storage = storageFor(area);
+    if (!storage) continue;
+    try {
+      if (labelKeysIn(storage).some((key) => key !== PATIENT_LABEL_EXPIRY_STORAGE_KEY)) return true;
+    } catch {
+      // Storage that refuses access holds nothing to lose.
+    }
+  }
+  return false;
+}
+
 function hasAnyLabelKeys(): boolean {
   for (const area of ["local", "session"] as const) {
     const storage = storageFor(area);
@@ -189,16 +203,7 @@ export function clearPatientLabels(reason: PatientLabelClearReason = "manual"): 
 export function patientLabelsOnDevice(now: number = Date.now()): boolean {
   if (typeof window === "undefined") return false;
   clearExpiredPatientLabels(now);
-  for (const area of ["local", "session"] as const) {
-    const storage = storageFor(area);
-    if (!storage) continue;
-    try {
-      if (labelKeysIn(storage).some((key) => key !== PATIENT_LABEL_EXPIRY_STORAGE_KEY)) return true;
-    } catch {
-      // Storage that refuses access holds nothing to lose.
-    }
-  }
-  return false;
+  return hasLabelDataKeys();
 }
 
 /**
@@ -299,7 +304,8 @@ export function clearExpiredPatientLabels(now: number = Date.now()): boolean {
     return true;
   }
   if (now >= stamp.expiresAt) {
-    setShiftLabelsClearedAt(stamp.expiresAt);
+    // An expiry stamp with nothing under it cleared nothing, so there is nothing to tell anyone.
+    if (hasLabelDataKeys()) setShiftLabelsClearedAt(stamp.expiresAt);
     clearPatientLabels("shift-ended");
     return true;
   }

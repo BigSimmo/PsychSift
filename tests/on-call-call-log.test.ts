@@ -175,6 +175,16 @@ describe("the call log store", () => {
     expect(readOnCallCallLog(halfThree).map((entry) => entry.id)).toEqual([next.entry.id]);
   });
 
+  it("does not bring a note back after the log was deliberately cleared", () => {
+    const first = addOnCallCallLogEntry(draft(), twoAm);
+    if (!first.ok) throw new Error("setup failed");
+    const undo = deleteOnCallCallLogEntryForUndo(first.entry, halfThree);
+    if (!undo) throw new Error("no undo");
+    clearOnCallCallLog();
+    expect(restoreOnCallCallLogEntry(undo, halfThree)).toBe(false);
+    expect(readOnCallCallLog(halfThree)).toEqual([]);
+  });
+
   it("is kept only through the patient-label store, behind its expiry stamp", () => {
     expect(onCallCallLogStorageKey.startsWith(PATIENT_LABEL_KEY_PREFIX)).toBe(true);
     addOnCallCallLogEntry(draft(), twoAm);
