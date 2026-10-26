@@ -1,7 +1,7 @@
 {
   "version": "repo-awareness-snapshot-v3",
   "captured_revision": {
-    "committed_at": "2026-10-26"
+    "committed_at": "2026-10-27"
   },
   "routes": {
     "modes": [
@@ -4559,6 +4559,11 @@
       {
         "path": "docs/superpowers/rag-upgrade/execution-receipts/rag-answer-quality-and-repository-coverage-v1/README.md",
         "section": "superpowers",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-27-sol61-answer-candidate.md",
+        "section": "decisions",
         "catalogued": true
       },
       {

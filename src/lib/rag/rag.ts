@@ -3149,6 +3149,7 @@ ${buildContextSourceBlock(contextResults, { query: answerFocusQuery, queryClass 
   let routingReason = route.reason;
   let retriedWithStrong = false;
   let openAIUsage: OpenAITokenUsage = {};
+  const openAIUsageAttempts: NonNullable<RagAnswer["openAIUsageAttempts"]> = [];
   const openAIRequestIds: string[] = [];
   let answerRetryCount = 0;
   const answerRetryReasons: string[] = [];
@@ -3239,13 +3240,17 @@ ${buildContextSourceBlock(contextResults, { query: answerFocusQuery, queryClass 
   let pilotGenerationAttempt = 0;
   const generateWithModel: typeof generateWithModelWithoutPilotDiagnostic = async (model, contextResults, options) => {
     const attemptOrdinal = ++pilotGenerationAttempt;
-    return runAnswerPilotGeneration(
+    const attempt: NonNullable<RagAnswer["openAIUsageAttempts"]>[number] = { model };
+    openAIUsageAttempts.push(attempt);
+    const result = await runAnswerPilotGeneration(
       contextResults,
       model,
       attemptOrdinal,
       answerContract.adaptive ? adaptiveAnswerJsonOutputSchemaForResults : answerJsonOutputSchemaForResults,
       () => generateWithModelWithoutPilotDiagnostic(model, contextResults, options),
     );
+    attempt.usage = result.usage;
+    return result;
   };
   // Preserve the existing single bounded truncation self-heal cap.
   const strongRetryMaxOutputTokens = Math.max(env.OPENAI_MAX_OUTPUT_TOKENS * 2, 24000);
@@ -3331,6 +3336,7 @@ ${buildContextSourceBlock(contextResults, { query: answerFocusQuery, queryClass 
       modelUsed: null,
       openAIRequestIds,
       openAIUsage: hasOpenAIUsage(openAIUsage) ? openAIUsage : undefined,
+      openAIUsageAttempts,
       routingMode: "unsupported",
       routingReason: `${route.reason}; generation_fallback:${sanitizedReason}`,
       fallbackReasonCode: generationFallbackReasonCode(classifyProviderFailure(error), sanitizedReason),
@@ -3742,6 +3748,7 @@ ${buildContextSourceBlock(contextResults, { query: answerFocusQuery, queryClass 
     answer.queryAnalysis = queryAnalysis;
     answer.openAIRequestIds = openAIRequestIds;
     answer.openAIUsage = hasOpenAIUsage(openAIUsage) ? openAIUsage : undefined;
+    answer.openAIUsageAttempts = openAIUsageAttempts;
     answer.latencyTimings = answerTimings;
     answer.memoryCardsUsed = responseContextArtifacts.memoryCardsUsed;
     answer.indexingVersion = ragDeepMemoryVersion;
@@ -3991,6 +3998,7 @@ ${buildContextSourceBlock(contextResults, { query: answerFocusQuery, queryClass 
         }),
         openAIRequestIds,
         openAIUsage: hasOpenAIUsage(openAIUsage) ? openAIUsage : undefined,
+        openAIUsageAttempts,
         queryAnalysis,
         memoryCardsUsed: candidateArtifacts.memoryCardsUsed,
         indexingVersion: ragDeepMemoryVersion,
@@ -4096,6 +4104,7 @@ ${buildContextSourceBlock(contextResults, { query: answerFocusQuery, queryClass 
           },
           openAIRequestIds,
           openAIUsage: hasOpenAIUsage(openAIUsage) ? openAIUsage : undefined,
+          openAIUsageAttempts,
           queryAnalysis,
           memoryCardsUsed: generationFallbackArtifacts.memoryCardsUsed,
           indexingVersion: ragDeepMemoryVersion,
@@ -4326,6 +4335,7 @@ ${buildRagSourceBlock(results)}`;
   answer.modelUsed = env.OPENAI_SUMMARY_MODEL;
   answer.openAIRequestIds = generated.requestId ? [generated.requestId] : [];
   answer.openAIUsage = generated.usage;
+  answer.openAIUsageAttempts = [{ model: generated.model, usage: generated.usage }];
   answer.latencyTimings = { generation_latency_ms: generated.latencyMs, total_latency_ms: generated.latencyMs };
   const verifiedAnswer = sanitizeUnsupportedSummaryAnswer(
     applyNumericVerification(assessAndEnforceClaimSupport(answer), results),

@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   answerTargetingThresholdFailure,
@@ -370,6 +370,47 @@ describe("answer dump records", () => {
     });
     expect(Object.keys(record)).not.toContain("openAIRequestIds");
     expect(JSON.stringify(record)).not.toContain("request-private");
+  });
+
+  it("prices every attributed generation attempt and labels cache-write bounds", () => {
+    vi.stubEnv(
+      "RAG_EVAL_MODEL_PRICES_JSON",
+      JSON.stringify({
+        fast: { input: 2, output: 10 },
+        strong: { input: 4, output: 20, cacheWrite: 5 },
+      }),
+    );
+    try {
+      const record = buildRagDiagnosticDumpRecord("cost-case", "Synthetic question", {
+        ...answer,
+        modelUsed: "strong",
+        openAIUsageAttempts: [
+          { model: "fast", usage: { input_tokens: 1_000, output_tokens: 100 } },
+          { model: "strong", usage: { input_tokens: 1_000, output_tokens: 100 } },
+        ],
+      });
+      expect(record.estimated_cost_usd).toBeCloseTo(0.01);
+      expect(record.cost_estimate_basis).toBe("cache_write_upper_bound");
+      const failed = buildRagDiagnosticDumpRecord("failed-cost-case", "Synthetic question", {
+        ...answer,
+        openAIUsageAttempts: [{ model: "fast" }],
+      });
+      expect(failed.provider_attempted).toBe(true);
+      expect(failed.estimated_cost_usd).toBeNull();
+      const retried = buildRagDiagnosticDumpRecord(
+        "retry-case",
+        "Synthetic question",
+        {
+          ...answer,
+          openAIUsageAttempts: [{ model: "fast", usage: { input_tokens: 1_000, output_tokens: 100 } }],
+        },
+        1,
+      );
+      expect(retried.estimated_cost_usd).toBeNull();
+      expect(retried.unpriced_outer_attempts).toBe(1);
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it("dumps cited sources as the subset of retrieved sources the answer actually cites", () => {

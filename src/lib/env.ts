@@ -144,11 +144,13 @@ const envSchema = z
     // Must match the vector(N) dimension in supabase/schema.sql. Changing the embedding
     // model without updating this (and the schema) silently corrupts ingestion (IDX-C2).
     EMBEDDING_DIMENSIONS: z.coerce.number().int().positive().default(1536),
+    // Preserve control defaults until the bounded comparison is accepted. Sol 6.1
+    // activation uses explicit answer-model overrides, not a merge-time switch.
     OPENAI_ANSWER_MODEL: z.string().default("gpt-5.6-terra"),
     OPENAI_FAST_ANSWER_MODEL: z.string().default("gpt-5.6-terra"),
     OPENAI_STRONG_ANSWER_MODEL: z.string().default("gpt-5.6-sol"),
-    // Workload-specific overrides keep rollout experiments isolated. When omitted,
-    // the resolved values below preserve the existing answer-tier behaviour.
+    // Non-answer workloads stay pinned when answer models change. Explicit
+    // deployment overrides below continue to win over these legacy fallbacks.
     OPENAI_QUERY_CLASSIFIER_MODEL: z.string().optional(),
     OPENAI_SUMMARY_MODEL: z.string().optional(),
     OPENAI_INDEXING_MODEL: z.string().optional(),
@@ -477,11 +479,9 @@ export const env = {
   OPENAI_ANSWER_MODEL: runtimeAnswerModel(parsedEnv.OPENAI_ANSWER_MODEL),
   OPENAI_FAST_ANSWER_MODEL: runtimeAnswerModel(parsedEnv.OPENAI_FAST_ANSWER_MODEL),
   OPENAI_STRONG_ANSWER_MODEL: runtimeAnswerModel(parsedEnv.OPENAI_STRONG_ANSWER_MODEL),
-  OPENAI_QUERY_CLASSIFIER_MODEL: runtimeAnswerModel(
-    parsedEnv.OPENAI_QUERY_CLASSIFIER_MODEL ?? parsedEnv.OPENAI_FAST_ANSWER_MODEL,
-  ),
-  OPENAI_SUMMARY_MODEL: runtimeAnswerModel(parsedEnv.OPENAI_SUMMARY_MODEL ?? parsedEnv.OPENAI_ANSWER_MODEL),
-  OPENAI_INDEXING_MODEL: runtimeAnswerModel(parsedEnv.OPENAI_INDEXING_MODEL ?? parsedEnv.OPENAI_STRONG_ANSWER_MODEL),
+  OPENAI_QUERY_CLASSIFIER_MODEL: runtimeAnswerModel(parsedEnv.OPENAI_QUERY_CLASSIFIER_MODEL ?? "gpt-5.6-terra"),
+  OPENAI_SUMMARY_MODEL: runtimeAnswerModel(parsedEnv.OPENAI_SUMMARY_MODEL ?? "gpt-5.6-terra"),
+  OPENAI_INDEXING_MODEL: runtimeAnswerModel(parsedEnv.OPENAI_INDEXING_MODEL ?? "gpt-5.6-sol"),
   OPENAI_RERANK_MODEL: runtimeAnswerModel(parsedEnv.OPENAI_RERANK_MODEL),
 } satisfies typeof parsedEnv;
 

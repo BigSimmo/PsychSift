@@ -11,7 +11,7 @@ import {
   type GoldenRetrievalResult,
 } from "./eval-retrieval";
 import {
-  estimateCostUsd,
+  estimateAnswerCost,
   loadAdminClient,
   percentile,
   resolveEvalOwnerId,
@@ -123,6 +123,7 @@ export type RagQualityResult = {
   routeCeilingExceeded?: boolean;
   executionType: "cached" | "api" | "rule-based";
   estimatedCostUsd: number | null;
+  costEstimateBasis?: ReturnType<typeof estimateAnswerCost>["pricingBasis"];
   openAIRequestIds?: string[];
   openAIUsage?: {
     inputTokens: number;
@@ -1384,16 +1385,24 @@ async function runRagQualityCases(args: {
   const diagnosticCases: Array<ReturnType<typeof buildRagDiagnosticDumpRecord>> = args.sink?.diagnosticCases ?? [];
 
   for (const testCase of cases) {
-    const answer = (await withProviderBackoff(`quality-rag:${testCase.id}`, () =>
-      answerQuestionWithScope({
-        query: testCase.question,
-        ownerId: args.ownerId,
-        logQuery: false,
-        skipCache: true,
-      }),
+    let unpricedAttempts = 0;
+    const answer = (await withProviderBackoff(
+      `quality-rag:${testCase.id}`,
+      () =>
+        answerQuestionWithScope({
+          query: testCase.question,
+          ownerId: args.ownerId,
+          logQuery: false,
+          skipCache: true,
+        }),
+      {
+        onFailedAttempt: () => {
+          unpricedAttempts += 1;
+        },
+      },
     )) as RagAnswer;
     if (args.captureDiagnostics) {
-      diagnosticCases.push(buildRagDiagnosticDumpRecord(testCase.id, testCase.question, answer));
+      diagnosticCases.push(buildRagDiagnosticDumpRecord(testCase.id, testCase.question, answer, unpricedAttempts));
     }
     const validation = validateRagAnswer(testCase, answer);
     const failures = [...validation.failures];
@@ -1421,6 +1430,18 @@ async function runRagQualityCases(args: {
     const hasOpenAIUsage = openAIUsage.inputTokens + openAIUsage.cachedInputTokens + openAIUsage.outputTokens > 0;
     const openAIRequestIds = answer.openAIRequestIds?.filter(Boolean) ?? [];
     const generationLatencyMs = answer.latencyTimings?.generation_latency_ms ?? 0;
+    const costEstimate = estimateAnswerCost(
+      answer,
+      Boolean(
+        hasOpenAIUsage ||
+        openAIRequestIds.length > 0 ||
+        answer.modelUsed ||
+        generationLatencyMs > 0 ||
+        answer.openAIUsageAttempts?.length ||
+        /(?:^|;\s*)generation_fallback:provider_/i.test(answer.routingReason ?? ""),
+      ),
+      unpricedAttempts,
+    );
 
     results.push({
       id: testCase.id,
@@ -1486,11 +1507,8 @@ async function runRagQualityCases(args: {
       // A case that never touched the provider costs exactly $0.
       // null stays reserved for "cannot estimate" — either
       // rates unconfigured, or a provider call was attempted without usage metadata.
-      estimatedCostUsd: hasOpenAIUsage
-        ? estimateCostUsd(openAIUsage)
-        : openAIRequestIds.length > 0 || answer.modelUsed || generationLatencyMs > 0
-          ? null
-          : 0,
+      estimatedCostUsd: costEstimate.estimatedCostUsd,
+      costEstimateBasis: costEstimate.pricingBasis,
       openAIRequestIds: openAIRequestIds.length > 0 ? openAIRequestIds : undefined,
       openAIUsage: hasOpenAIUsage ? openAIUsage : undefined,
     });

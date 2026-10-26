@@ -273,6 +273,7 @@
     "tests/formulation-*",
     "tests/formulation.test.ts",
     "tests/governance-catalogue-audit.test.ts",
+    "tests/lithium-increment-message.test.ts",
     "tests/medication-interaction-lexicon-coverage.test.ts",
     "tests/medication-interactions.test.ts",
     "tests/medication-lexicon-report-signoff.test.ts",

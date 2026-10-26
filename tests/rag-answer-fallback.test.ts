@@ -1322,6 +1322,8 @@ describe("RAG structured-output fallback", () => {
     expect(answer.routingReason).toContain("generation_fallback");
     expect(answer.routingReason).toContain("comparison_source_safe_fallback");
     expect(answer.routingReason).not.toContain("source_backed_extractive_fallback");
+    expect(answer.openAIUsageAttempts?.length).toBeGreaterThan(0);
+    expect(answer.openAIUsageAttempts?.every((attempt) => !attempt.usage)).toBe(true);
   });
 
   it.each([
@@ -4275,6 +4277,11 @@ describe("RAG structured-output fallback", () => {
     expect(answer.routingMode).toBe("strong");
     expect(answer.routingReason).toContain("strong_quality_retry");
     expect(answer.openAIRequestIds ?? []).toEqual(["req_fast_template", "req_strong_natural"]);
+    expect(answer.openAIUsageAttempts).toEqual([
+      { model: expect.any(String), usage: { input_tokens: 120, output_tokens: 80, total_tokens: 200 } },
+      { model: expect.any(String), usage: { input_tokens: 160, output_tokens: 100, total_tokens: 260 } },
+    ]);
+    expect(answer.openAIUsage?.input_tokens).toBe(280);
     expect(answer.grounded).toBe(true);
     expect(answer.confidence).toBe("medium");
     expect(answer.responseMode).toBe("clinical_pathway");
