@@ -46,6 +46,12 @@ vi.mock("@/lib/supabase/auth", async (importOriginal) => {
 import { POST as createEntry } from "@/app/api/on-call/entries/route";
 import { PATCH as updateEntry } from "@/app/api/on-call/entries/[id]/route";
 import { POST as verifyEntry } from "@/app/api/on-call/entries/[id]/verify/route";
+import { GET as demoContentStatus, POST as loadDemoContent } from "@/app/api/on-call/demo-content/route";
+import {
+  SHARED_ON_CALL_PUBLISHER_TTL_MS,
+  resetSharedOnCallPublisherCacheForTests,
+  sharedOnCallPublisherIds,
+} from "@/lib/on-call/shared-entry-publisher";
 
 function storedRow(isPersonal: boolean) {
   return {
@@ -252,5 +258,123 @@ describe("verifying an On Call entry", () => {
     );
     expect(response.status).toBe(200);
     expect(mocks.writes[0]!.filters).toContainEqual(["in", "is_personal", [true, false]]);
+  });
+});
+
+/** A table that answers every read with no rows and records what was written. */
+function demoContentTable() {
+  const result = Promise.resolve({ data: [] as unknown[], error: null });
+  const chain: Record<string, unknown> = {};
+  for (const method of ["select", "eq", "neq", "in", "limit"]) chain[method] = vi.fn(() => chain);
+  chain.then = result.then.bind(result);
+  chain.upsert = vi.fn((values: unknown[]) => {
+    mocks.writes.push({ kind: "upsert", values, filters: [] });
+    return { select: async () => ({ data: values.map((_, index) => ({ id: String(index) })), error: null }) };
+  });
+  return chain;
+}
+
+describe("loading the example On Call content", () => {
+  // Most of the example corpus is shared, so loading it publishes to every signed-in reader
+  // (privacy audit PP-01). Only an administrator may (owner decision, 26 Oct 2026).
+  beforeEach(() => {
+    mocks.from.mockImplementation(() => demoContentTable());
+  });
+
+  it("refuses an account that is not an administrator, before writing", async () => {
+    const response = await loadDemoContent(
+      new Request("http://localhost/api/on-call/demo-content", { method: "POST" }),
+    );
+    expect(response.status).toBe(403);
+    expect(((await response.json()) as { code?: string }).code).toBe("on_call_shared_entry_administrator_required");
+    expect(mocks.writes).toEqual([]);
+  });
+
+  it("refuses an account whose session claims the role when the live check does not confirm it", async () => {
+    signIn("administrator");
+    mocks.liveAdministrator = false;
+    const response = await loadDemoContent(
+      new Request("http://localhost/api/on-call/demo-content", { method: "POST" }),
+    );
+    expect(response.status).toBe(403);
+    expect(mocks.writes).toEqual([]);
+  });
+
+  it("lets an administrator load it", async () => {
+    signIn("administrator");
+    const response = await loadDemoContent(
+      new Request("http://localhost/api/on-call/demo-content", { method: "POST" }),
+    );
+    expect(response.status).toBe(201);
+    expect(mocks.writes.map((write) => write.kind)).toEqual(["upsert"]);
+  });
+
+  it("tells the control whether this account may load it", async () => {
+    const ordinary = await demoContentStatus(new Request("http://localhost/api/on-call/demo-content"));
+    expect(await ordinary.json()).toMatchObject({ loaded: 0, mayLoad: false });
+
+    signIn("administrator");
+    const administrator = await demoContentStatus(new Request("http://localhost/api/on-call/demo-content"));
+    expect(await administrator.json()).toMatchObject({ loaded: 0, mayLoad: true });
+  });
+});
+
+describe("whose shared On Call entries other readers see", () => {
+  const ADMIN = "00000000-0000-4000-8000-0000000000aa";
+  const ORDINARY = "00000000-0000-4000-8000-0000000000bb";
+
+  function authClient(listUsers: ReturnType<typeof vi.fn>) {
+    return { auth: { admin: { listUsers } } } as never;
+  }
+
+  function usersPage(users: Array<{ id: string; app_metadata: Record<string, unknown> }>) {
+    return { data: { users }, error: null };
+  }
+
+  beforeEach(() => {
+    resetSharedOnCallPublisherCacheForTests();
+  });
+
+  it("is only site administrators, read from Auth", async () => {
+    const listUsers = vi.fn(async () =>
+      usersPage([
+        { id: ADMIN, app_metadata: { site_role: "administrator" } },
+        { id: ORDINARY, app_metadata: {} },
+      ]),
+    );
+    expect(await sharedOnCallPublisherIds(authClient(listUsers), 0)).toEqual([ADMIN]);
+  });
+
+  it("asks Auth again only after the cache expires", async () => {
+    const listUsers = vi.fn(async () => usersPage([{ id: ADMIN, app_metadata: { site_role: "administrator" } }]));
+    await sharedOnCallPublisherIds(authClient(listUsers), 0);
+    await sharedOnCallPublisherIds(authClient(listUsers), SHARED_ON_CALL_PUBLISHER_TTL_MS - 1);
+    expect(listUsers).toHaveBeenCalledTimes(1);
+
+    listUsers.mockResolvedValueOnce(usersPage([]));
+    expect(await sharedOnCallPublisherIds(authClient(listUsers), SHARED_ON_CALL_PUBLISHER_TTL_MS)).toEqual([]);
+    expect(listUsers).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps the last list when Auth fails, and throws rather than guess when it has none", async () => {
+    const failing = vi.fn(async () => ({ data: { users: [] }, error: new Error("Auth unavailable") }));
+    await expect(sharedOnCallPublisherIds(authClient(failing), 0)).rejects.toThrow(/Auth unavailable/);
+
+    const working = vi.fn(async () => usersPage([{ id: ADMIN, app_metadata: { site_role: "administrator" } }]));
+    await sharedOnCallPublisherIds(authClient(working), 0);
+    expect(await sharedOnCallPublisherIds(authClient(failing), SHARED_ON_CALL_PUBLISHER_TTL_MS)).toEqual([ADMIN]);
+  });
+
+  it("reads every page of accounts", async () => {
+    const fullPage = Array.from({ length: 1000 }, (_, index) => ({
+      id: `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`,
+      app_metadata: {},
+    }));
+    const listUsers = vi
+      .fn()
+      .mockResolvedValueOnce(usersPage(fullPage))
+      .mockResolvedValueOnce(usersPage([{ id: ADMIN, app_metadata: { site_role: "administrator" } }]));
+    expect(await sharedOnCallPublisherIds(authClient(listUsers), 0)).toEqual([ADMIN]);
+    expect(listUsers).toHaveBeenCalledTimes(2);
   });
 });

@@ -15,6 +15,7 @@ import {
 } from "@/lib/on-call/demo-content-identity";
 import { DEMO_ON_CALL_ENTRIES } from "@/lib/on-call/demo-entries";
 import { onCallEntryToRow } from "@/lib/on-call/repository";
+import { mayPublishSharedOnCallEntry, sharedOnCallEntryRefusedResponse } from "@/lib/on-call/shared-entry-publisher";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError, requireAuthenticatedUser, unauthorizedResponse } from "@/lib/supabase/auth";
 
@@ -67,6 +68,11 @@ export const runtime = "nodejs";
  * longer be the design. The honest handling is to say so at the control that
  * triggers it, which `OnCallDemoContentControl` does, and to make removal one
  * request.
+ *
+ * Because most of the corpus is shared, loading it is publishing, so only a site
+ * administrator may load it (owner decision, 26 Oct 2026, extending the 25 Oct
+ * rule in `shared-entry-publisher.ts`). Anyone may still remove the copy in
+ * their own account.
  */
 
 /**
@@ -123,8 +129,10 @@ export async function GET(request: Request) {
     if (error) throw new Error(error.message);
 
     const loaded = (data ?? []).filter((row) => DEMO_SLUGS_BY_SECTION.get(row.section)?.has(row.slug)).length;
+    // Whether POST would accept this caller, so the control offers Load only to someone it works for.
+    const mayLoad = await mayPublishSharedOnCallEntry(request, supabase, user);
 
-    return NextResponse.json({ loaded, total: ON_CALL_DEMO_ENTRY_COUNT });
+    return NextResponse.json({ loaded, total: ON_CALL_DEMO_ENTRY_COUNT, mayLoad });
   } catch (error) {
     if (error instanceof AuthenticationError) return unauthorizedResponse();
     return jsonError(error);
@@ -145,6 +153,9 @@ export async function POST(request: Request) {
     if (rateLimit.limited) {
       return rateLimitJsonResponse("On Call requests are rate limited. Try again shortly.", rateLimit);
     }
+
+    // Most of the corpus is shared, so loading it publishes to every signed-in reader.
+    if (!(await mayPublishSharedOnCallEntry(request, supabase, user))) return sharedOnCallEntryRefusedResponse();
 
     // Refuse if another account already holds the corpus.
     //

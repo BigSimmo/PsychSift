@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PublicApiError } from "@/lib/http";
 import { ON_CALL_SECTIONS, onCallDetailsSchemaFor } from "@/lib/on-call/entry-model";
 import {
@@ -12,6 +12,20 @@ import {
   rowMayBeComplianceRequirement,
   rowToOnCallEntry,
 } from "@/lib/on-call/repository";
+
+/**
+ * Whose shared rows other readers may see is decided from Auth (`sharedOnCallPublisherIds`, tested
+ * in on-call-shared-entry-publisher.test.ts). Here it is one administrator, so every case below
+ * reads the table the way it did before that check existed.
+ */
+const PUBLISHER_ID = "99999999-9999-4999-8999-999999999999";
+const publishers = vi.hoisted(() => ({ ids: [] as string[] }));
+vi.mock("@/lib/on-call/shared-entry-publisher", () => ({
+  sharedOnCallPublisherIds: vi.fn(async () => publishers.ids),
+}));
+beforeEach(() => {
+  publishers.ids = [PUBLISHER_ID];
+});
 
 function fakeClient(rows: unknown[]) {
   const chain = {
@@ -87,6 +101,21 @@ describe("fetchSharedOnCallEntries", () => {
     const client = fakeClient([]);
     await fetchSharedOnCallEntries(client as never);
     expect(client.chain.eq).not.toHaveBeenCalledWith("owner_id", expect.anything());
+  });
+
+  it("reads only shared rows whose owner is a site administrator", async () => {
+    // Owner decision 26 Oct 2026: a shared row an ordinary account posted before the 25 Oct
+    // publishing rule stays with its owner instead of reaching every signed-in reader.
+    const client = fakeClient([]);
+    await fetchSharedOnCallEntries(client as never);
+    expect(client.chain.in).toHaveBeenCalledWith("owner_id", [PUBLISHER_ID]);
+  });
+
+  it("returns nothing, without querying, when no account may publish", async () => {
+    publishers.ids = [];
+    const client = fakeClient([SHARED_ROW]);
+    expect(await fetchSharedOnCallEntries(client as never)).toEqual([]);
+    expect(client.from).not.toHaveBeenCalled();
   });
 
   it("still applies a section filter alongside the personal-entry exclusion", async () => {
