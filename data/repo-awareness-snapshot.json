@@ -4652,6 +4652,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/skipped-tests-inventory.md",
+        "section": "root",
+        "catalogued": false
+      },
+      {
         "path": "docs/wiring-conventions.md",
         "section": "root",
         "catalogued": true
@@ -4688,6 +4693,11 @@
       },
       {
         "path": "docs/decisions/2026-10-16-teaching-admins-export-named-attendance.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-26-answer-safety-reaudit-fixes.md",
         "section": "decisions",
         "catalogued": true
       },
