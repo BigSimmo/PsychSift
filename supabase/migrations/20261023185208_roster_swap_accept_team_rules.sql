@@ -47,10 +47,10 @@ returns boolean language sql security invoker set search_path = public, pg_catal
            a.starts_at, a.ends_at, a.kind
     from before_rows a cross join sides s
   ), dates as (
-    select distinct phase, user_id, 'maxDaysInRow' rule, (starts_at at time zone 'Australia/Perth')::date day
+    select distinct phase, user_id, 'maxDaysInRow' rule, (starts_at at time zone 'Australia/Perth')::date as day
     from states
     union
-    select distinct phase, user_id, 'maxNightsInRow' rule, (starts_at at time zone 'Australia/Perth')::date day
+    select distinct phase, user_id, 'maxNightsInRow' rule, (starts_at at time zone 'Australia/Perth')::date as day
     from states where kind = 'night'
   ), islands as (
     select *, day - (row_number() over (partition by phase, user_id, rule order by day))::integer island
