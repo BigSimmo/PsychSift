@@ -35,11 +35,15 @@ export function preloadSearchPatientCheck(): Promise<void> {
   return pendingPatientCheck;
 }
 
-/** Loads the full check once there is search text, so a later submit or mode switch can use it. */
+/**
+ * Loads the full check when a search box mounts, and again once there is text if that first
+ * download failed, so a quick submit or mode switch finds it ready. The guard fails closed until
+ * it has loaded (CA-04), so loading it early keeps a fast Enter from being held back as unchecked.
+ */
 export function usePreloadSearchPatientCheck(text: string) {
   const hasText = Boolean(text.trim());
   useEffect(() => {
-    if (hasText) void preloadSearchPatientCheck();
+    void preloadSearchPatientCheck();
   }, [hasText]);
 }
 
