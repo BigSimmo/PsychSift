@@ -36,7 +36,12 @@ const DEVICE_PREFERENCE_KEYS: ReadonlySet<string> = new Set([
 
 /** Clinical drafts outside the `psychsift:` namespace that carry patient free text. */
 const CLINICAL_DRAFT_KEYS: readonly string[] = ["psychsift_formulation_draft"];
-const CLINICAL_DRAFT_PREFIXES: readonly string[] = ["psychsift_dsm_draft_", "clinical.private-search-scope."];
+const CLINICAL_DRAFT_PREFIXES: readonly string[] = [
+  "psychsift_dsm_draft_",
+  "clinical.private-search-scope.",
+  // Answered questions kept out of the address bar (FE-01).
+  "clinical.answer-question.",
+];
 
 const SERVICE_WORKER_CACHE_PREFIX = "clinical-kb-pwa-";
 
