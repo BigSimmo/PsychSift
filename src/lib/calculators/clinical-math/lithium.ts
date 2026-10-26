@@ -107,7 +107,11 @@ export function evaluateLithiumLevel(input: LithiumLevelInput): LithiumLevelEval
   };
 }
 
-const VALID_DOSE_INCREMENTS = new Set([50, 125, 225, 250, 450]);
+const VALID_DOSE_INCREMENT_LIST = [50, 125, 225, 250, 450] as const;
+const VALID_DOSE_INCREMENTS = new Set<number>(VALID_DOSE_INCREMENT_LIST);
+
+/** "50, 125, 225, 250, or 450 mg", built from the accepted list so the message cannot drift from the check. */
+const LITHIUM_DOSE_INCREMENT_ERROR = `Dose increment must be a supported tablet strength fraction (${VALID_DOSE_INCREMENT_LIST.slice(0, -1).join(", ")}, or ${VALID_DOSE_INCREMENT_LIST[VALID_DOSE_INCREMENT_LIST.length - 1]} mg)`;
 
 /**
  * Validates inputs for proportional lithium dose adjustment.
@@ -132,7 +136,7 @@ export function validateLithiumDoseInput(input: LithiumDoseAdjustmentInput): str
     errors.push("Target lithium level must be below the toxic threshold (<1.2 mmol/L)");
   }
   if (!VALID_DOSE_INCREMENTS.has(incrementMg)) {
-    errors.push("Dose increment must be a supported tablet strength fraction (50, 125, 225, or 250 mg)");
+    errors.push(LITHIUM_DOSE_INCREMENT_ERROR);
   }
 
   return errors;

@@ -48,6 +48,7 @@ describe("governed source URL query policy", () => {
       "https://meteor.aihw.gov.au/content/807042",
     );
     expect(GOVERNED_SOURCE_HOSTS).toContain("meteor.aihw.gov.au");
-    expect(GOVERNED_SOURCE_HOSTS.length).toBe(60);
+    // 26 Oct 2026: PANDA and WNHS joined; the PANDA and WANDAS service records now cite their own pages.
+    expect(GOVERNED_SOURCE_HOSTS.length).toBe(62);
   });
 });

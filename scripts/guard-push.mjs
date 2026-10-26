@@ -621,12 +621,28 @@ function isPrettierPolicyFile(file, sha) {
 function checkPushedCommit(prettierBin, sha, files) {
   tryGit(["worktree", "prune"]); // clear any worktree a crashed run left behind
   const dir = mkdtempSync(path.join(tmpdir(), "guard-push-format-"));
-  rmSync(dir, { recursive: true, force: true }); // `git worktree add` wants a fresh path
+  // Export the commit's tree with `git archive` instead of `git worktree add`:
+  // the scratch copy is byte-for-byte the committed tree, but no worktree is
+  // registered, so an interrupted push can never leave a registration behind.
+  const onSignal = (signal) => {
+    cleanupFormatCheckout(dir);
+    process.exit(signal === "SIGINT" ? 130 : 143);
+  };
+  process.once("SIGINT", onSignal);
+  process.once("SIGTERM", onSignal);
+  const detachSignals = () => {
+    process.off("SIGINT", onSignal);
+    process.off("SIGTERM", onSignal);
+  };
   try {
-    execFileSync("git", ["worktree", "add", "--detach", "--quiet", dir, sha], {
-      stdio: ["ignore", "ignore", "pipe"],
+    const archive = execFileSync("git", ["archive", "--format=tar", sha], {
+      stdio: ["ignore", "pipe", "pipe"],
+      maxBuffer: 1024 * 1024 * 1024,
     });
+    execFileSync("tar", ["-xf", "-", "-C", dir], { input: archive, stdio: ["pipe", "ignore", "pipe"] });
   } catch (error) {
+    detachSignals();
+    cleanupFormatCheckout(dir);
     // Fail CLOSED. Being unable to check is not evidence that the push is clean,
     // and SKIP_FORMAT_GUARD=1 is the escape hatch when this is genuinely stuck.
     const detail = (error?.stderr ? error.stderr.toString() : "").trim();
@@ -668,6 +684,7 @@ function checkPushedCommit(prettierBin, sha, files) {
     }
     return { verdict: "formatted" };
   } finally {
+    detachSignals();
     cleanupFormatCheckout(dir);
   }
 }
@@ -749,7 +766,9 @@ export function cleanupFormatCheckout(
   dir,
   {
     unlink = unlinkDependencyLink,
-    removeWorktree = (target) => tryGit(["worktree", "remove", "--force", target]),
+    // Scratch copies are plain directories now (git archive), so there is no
+    // registration to remove; kept injectable for the ordering tests.
+    removeWorktree = () => {},
     removeDir = (target) => rmSync(target, { recursive: true, force: true }),
     log = console.error,
   } = {},

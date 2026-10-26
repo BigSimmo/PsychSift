@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 import { env, isDemoMode, isLocalNoAuthMode } from "@/lib/env";
 import { allowDeepHealthProbe } from "@/lib/deep-probe-auth";
 import { PublicApiError } from "@/lib/http";
@@ -469,7 +470,12 @@ async function readSetupStatusPayload() {
   // is not served, so a long-idle process still waits for current state.
   if (setupStatusState.cache && now - setupStatusState.cache.expiresAt <= SETUP_STATUS_MAX_STALE_MS) {
     const stalePayload = setupStatusState.cache.payload;
-    void refreshSetupStatusPayload().catch(() => undefined);
+    void refreshSetupStatusPayload().catch((error: unknown) => {
+      logger.warn("Background setup-status refresh failed", {
+        errorName: error instanceof Error ? error.name : typeof error,
+      });
+      return undefined;
+    });
     return stalePayload;
   }
 

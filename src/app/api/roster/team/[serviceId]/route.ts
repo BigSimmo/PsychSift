@@ -81,20 +81,9 @@ export async function POST(request: Request, context: Context) {
     async (client, actorId) => {
       const serviceId = await serviceIdFrom(context);
       const action = await parseJsonBody(request, rosterActionSchema, "Check the request and try again.");
-      let before: RosterAlertEvent["before"];
-      if (action.action === "open.decline") {
-        // The SQL clears the claimer on decline, so read it first for the alert. A failed read
-        // never stops the decline itself.
-        try {
-          const manage = await rosterRead(client, actorId, serviceId, "manage");
-          const open = manage.openShifts.find((item) => item.id === action.openShiftId);
-          if (open) before = { claimedBy: open.claimedBy };
-        } catch {
-          before = undefined;
-        }
-      }
+      // A decline answers with the claimer it cleared (declinedClaimedBy), so the alert never reads a stale claim.
       const result = await rosterCommand(client, actorId, serviceId, action);
-      const event: RosterAlertEvent = { serviceId, actorId, action, result, ...(before ? { before } : {}) };
+      const event: RosterAlertEvent = { serviceId, actorId, action, result };
       runAfterResponse(() => dispatchRosterAlerts(client, event));
       return { result };
     },

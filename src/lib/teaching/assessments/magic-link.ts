@@ -337,7 +337,8 @@ export function buildMagicLinkRecord(tokenHash: string, input: CreateEpaMagicLin
   const expiresAt = new Date(now.getTime() + ttlDays * DAY_MS).toISOString();
 
   return {
-    id: `epa-link-${tokenHash.slice(0, 12)}`,
+    // A random ID, never derived from the token hash, so a shown or logged ID reveals nothing about the link.
+    id: `epa-link-${globalThis.crypto.randomUUID()}`,
     tokenHash,
     epaNumber,
     epaCode: `EPA ${epaNumber}`,

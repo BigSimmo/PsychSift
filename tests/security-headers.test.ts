@@ -84,6 +84,8 @@ describe("security headers", () => {
       it("keeps the baseline hardening headers", () => {
         expect(byKey.get("X-Content-Type-Options")).toBe("nosniff");
         expect(byKey.get("X-Frame-Options")).toBe("DENY");
+        // Origin only, even within the site, so ?q= search text never rides in a Referer (privacy audit CA-06).
+        expect(byKey.get("Referrer-Policy")).toBe("strict-origin");
         expect(byKey.get("Cross-Origin-Opener-Policy")).toBe("same-origin");
       });
 

@@ -273,7 +273,6 @@
     "tests/formulation-*",
     "tests/formulation.test.ts",
     "tests/governance-catalogue-audit.test.ts",
-    "tests/hostile-document-ingestion-matrix.test.ts",
     "tests/medication-interaction-lexicon-coverage.test.ts",
     "tests/medication-interactions.test.ts",
     "tests/medication-lexicon-report-signoff.test.ts",

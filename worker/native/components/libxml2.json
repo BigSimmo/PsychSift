@@ -37,11 +37,22 @@
       "upstream_url": "https://github.com/GNOME/libxml2/commit/046931e64e9e081e82c341f6455d070716fb8cf2.patch",
       "upstream_patch_sha256": "c9b84532c80a5d316bf8c40fb62a43c950b78a560c8920a3c371ea19afde50aa",
       "adaptations": ["Rebase the exact upstream reference-count deletion to the 2.9.14 function context."]
+    },
+    {
+      "file": "patches/libxml2/CVE-2026-6653.patch",
+      "sha256": "6c2b8a7b6fa470efcb1854e5c73bd7e1ae1663d8b111e27ce9232bbc1fe44f54",
+      "upstream_commit": "463bbeeca1805b5c4828f50d0fefc4eebaf620df",
+      "upstream_url": "https://gitlab.gnome.org/GNOME/libxml2/-/commit/463bbeeca1805b5c4828f50d0fefc4eebaf620df",
+      "vendor_source": "https://launchpad.net/ubuntu/+archive/primary/+files/libxml2_2.9.14+dfsg-1.3ubuntu3.8.debian.tar.xz",
+      "vendor_source_sha256": "f0f8de7efd6370a8fe39a5c88e9a2ee9350ee2882ccc8aaf8ae8f30fbde34ff4",
+      "adaptations": [
+        "Byte-identical Ubuntu noble-security debian/patches/CVE-2026-6653.patch (2.9.14 backport of the upstream commit, kept through ubuntu3.10); applies to the deb13u3 source after the six patches above with --fuzz=0 (line offsets only). Appends fields to the end of struct _xmlEntity and struct _xmlParserInput; no exported symbol, signature or SONAME change."
+      ]
     }
   ],
   "runtime_packages": ["libxml2"],
   "extra_build_packages": [],
   "test_commands": [["sh", "/tmp/worker-native/libxml2-regressions.sh"]],
-  "change_summary": "Backport CVE-2026-86138, CVE-2026-86140, CVE-2026-86142, CVE-2026-86143 and CVE-2026-86144 to the actual Debian 2.9.14 implementation while preserving libxml2.so.2 and normal package features/tests. CVE-2026-86139 already has its equivalent guard; Also backport CVE-2026-74860 Python SAX list reference ownership. CVE-2026-6653 remains unresolved; its larger vendor candidate is excluded from this PR pending compatibility evidence.",
+  "change_summary": "Backport CVE-2026-86138, CVE-2026-86140, CVE-2026-86142, CVE-2026-86143 and CVE-2026-86144 to the actual Debian 2.9.14 implementation while preserving libxml2.so.2 and normal package features/tests. CVE-2026-86139 already has its equivalent guard; Also backport CVE-2026-74860 Python SAX list reference ownership. Also backport CVE-2026-6653 (entity amplification rework, upstream 463bbeec) using the Ubuntu 2.9.14 security patch; it appends library-allocated struct fields only.",
   "source_date_epoch": 1792454400
 }

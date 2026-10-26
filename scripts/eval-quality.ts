@@ -291,7 +291,12 @@ export const qualityThresholds = {
   // no runtime behaviour and stops the file asserting a waiver that does not exist; the
   // accompanying test in tests/eval-quality.test.ts fails if an id is ever added that names no
   // case. Re-accepting a degradation now requires naming a real case id, with evidence.
-  ragSourceBackedReviewFallbackAllowance: [] as ReadonlyArray<{ id: string; reason: string }>,
+  //
+  // 2026-10-26: the owner accepted one held-back answer (docs/decisions/2026-10-26-accept-agitation-dose-review.md),
+  // measured by canary run 40298163623 after #3799 added the A2R-01 dose gate.
+  ragSourceBackedReviewFallbackAllowance: [
+    { id: "agitation-arousal-typo-dosing", reason: "dose_without_named_medication" },
+  ] as ReadonlyArray<{ id: string; reason: string }>,
   numericGroundingFailureRate: 0,
   staleTopResultRate: 0.25,
   reviewRequiredTopResultRate: 0.25,

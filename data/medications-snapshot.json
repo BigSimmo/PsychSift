@@ -598,7 +598,7 @@
         "rows": [
           {
             "key": "Source Review",
-            "val": "Source Check - Subutex Australian PI (rev. 5 Sep 2025) for SL induction and paediatric exposure; Buvidal Australian PI (rev. 13 Oct 2025); Sublocade Australian PI (rev. 14 Jan 2026) for injection sites and initiation; WA CPOP Clinical Policies and Procedures (3rd ed., 2014); WA Monitored Medicines Prescribing Code (Dec 2024) s7.4.3.3 and s7.6.3; also Buvidal ARTG/PI, Sublocade Australian PI, and PBS buprenorphine modified-release injection search. Originally checked 2026-05-10 for this entry. Checked against source 20 Oct 2026 (audit); awaiting clinical sign-off."
+            "val": "Source Check - Subutex Australian PI (rev. 5 Sep 2025) for SL induction and paediatric exposure; Buvidal Australian PI (rev. 13 Oct 2025); Sublocade Australian PI (rev. 14 Jan 2026) for injection sites and initiation; WA CPOP Clinical Policies and Procedures (3rd ed., 2014); WA Monitored Medicines Prescribing Code (Dec 2024) s7.4–7.4.3.1; also Buvidal ARTG/PI, Sublocade Australian PI, and PBS buprenorphine modified-release injection search. Originally checked 2026-05-10 for this entry. Checked against source 20 Oct 2026 (audit); awaiting clinical sign-off."
           }
         ]
       },
@@ -608,7 +608,7 @@
         "rows": [
           {
             "key": "Status",
-            "val": "Drafted from Monitored Medicines Prescribing Code; awaiting clinical review.",
+            "val": "Drafted from Monitored Medicines Prescribing Code (Dec 2024) §7.4–7.4.3.1; awaiting clinical review.",
             "tags": []
           },
           {
@@ -927,6 +927,11 @@
             "key": "The Ceiling Effect",
             "val": "Buprenorphine has a ceiling effect for respiratory depression compared with full agonists, but serious or fatal respiratory depression can still occur, especially with CNS depressants or non-tolerant exposure.",
             "tags": []
+          },
+          {
+            "key": "Paediatric Exposure",
+            "val": "Buprenorphine-naloxone can cause severe, possibly fatal, respiratory depression in children who are accidentally exposed. Store it out of reach of children and dispose of unused film safely; the ceiling effect does not make a child's exposure safe. (Suboxone PI s4.4)",
+            "tags": []
           }
         ]
       },
@@ -962,7 +967,7 @@
         "rows": [
           {
             "key": "Source Review",
-            "val": "Source Check - Suboxone Film Australian PI (rev. 9 Sep 2025) for induction timing and dosing; WA CPOP Clinical Policies and Procedures (3rd ed., 2014); WA Monitored Medicines Prescribing Code (Dec 2024) s7.4.3.3 and s7.6.3; also SUBOXONE ARTG 211117, Suboxone Film Australian PI, and PBS Suboxone search. Originally checked 2026-05-10 for this entry. Checked against source 20 Oct 2026 (audit); awaiting clinical sign-off."
+            "val": "Source Check - Suboxone Film Australian PI (rev. 9 Sep 2025) for induction timing and dosing; WA CPOP Clinical Policies and Procedures (3rd ed., 2014); WA Monitored Medicines Prescribing Code (Dec 2024) s7.4–7.4.3.1; also SUBOXONE ARTG 211117, Suboxone Film Australian PI, and PBS Suboxone search. Originally checked 2026-05-10 for this entry. Checked against source 20 Oct 2026 (audit); awaiting clinical sign-off."
           }
         ]
       },
@@ -972,7 +977,7 @@
         "rows": [
           {
             "key": "Status",
-            "val": "Drafted from Monitored Medicines Prescribing Code; awaiting clinical review.",
+            "val": "Drafted from Monitored Medicines Prescribing Code (Dec 2024) §7.4–7.4.3.1; awaiting clinical review.",
             "tags": []
           },
           {
@@ -1959,6 +1964,11 @@
           {
             "key": "The Analgesic Disconnect",
             "val": "Methadone prevents withdrawal for about 24 hours, but its analgesic effect is much shorter than its half-life. For pain, the Physeptone PI starts at 5-10 mg 6-8 hourly, warns that dosing more often than 6-8 hourly causes accumulation with increasing sedation and respiratory depression, and says that in chronic use methadone should not be given more than twice daily.",
+            "tags": []
+          },
+          {
+            "key": "Paediatric Exposure",
+            "val": "Accidental ingestion of methadone, especially by children, can cause fatal respiratory depression (apnoea). Takeaway doses must be stored out of reach of children in a child-resistant container. (Biodone Forte PI s4.4)",
             "tags": []
           }
         ]
@@ -13636,7 +13646,7 @@
           },
           {
             "key": "Elderly / Renal Impairment",
-            "val": "MANDATORY — Max 62.5 mcg **OD** or alternate days if **eGFR** is poor.",
+            "val": "MANDATORY — Local practice: 62.5 mcg **OD** or alternate days if **eGFR** is poor (not a PI maximum; the Lanoxin PI says older patients need smaller doses because renal impairment is common, so dose by renal function and levels).",
             "tags": []
           }
         ]
@@ -13737,7 +13747,7 @@
         "rows": [
           {
             "key": "Laboratory",
-            "val": "MANDATORY — Strict **U&E** monitoring. Maintain K+ > 4.0 mmol/L. Measure **TDM** (Digoxin levels) at least 6 hours post-dose (target 0.5-0.9 ng/mL [0.6-1.2 nmol/L] for HF, up to 1.2 for AF).",
+            "val": "MANDATORY — Strict **U&E** monitoring. Maintain K+ > 4.0 mmol/L. Measure **TDM** (Digoxin levels) at least 6 hours post-dose (target 0.5-0.9 ng/mL [0.6-1.2 nmol/L] for HF). The Lanoxin PI gives no separate AF target: it says the optimal trough may be 0.5-1.0 ng/mL [0.6-1.3 nmol/L] and toxicity is more common above 2 ng/mL [2.6 nmol/L].",
             "tags": []
           },
           {
@@ -13795,7 +13805,7 @@
         "rows": [
           {
             "key": "Elderly / Frail",
-            "val": "MANDATORY — The elderly are exquisitely sensitive to Digoxin toxicity. Renal clearance declines with age; lean body mass (the primary distribution volume) also decreases. Both effects dramatically reduce the 'safe' dose. Use 62.5 mcg **OD** or alternate-day dosing. Target serum Digoxin 0.5-0.9 ng/mL (0.6-1.2 nmol/L) (lower than the old 'therapeutic range').",
+            "val": "MANDATORY — The elderly are exquisitely sensitive to Digoxin toxicity. Renal clearance declines with age; lean body mass (the primary distribution volume) also decreases. Both effects dramatically reduce the 'safe' dose. Local practice: 62.5 mcg **OD** or alternate-day dosing (the Lanoxin PI says smaller doses, without a fixed number). Target serum Digoxin 0.5-0.9 ng/mL (0.6-1.2 nmol/L) (lower than the old 'therapeutic range').",
             "tags": [],
             "patient": {
               "factors": ["elderly"],
@@ -13864,7 +13874,7 @@
       },
       {
         "label": "Key Indication Doses",
-        "value": "AF Rate Control (Loading): **PO**: 750-1500 mcg total, as a single dose or 3-4 divided doses 4-6 hours apart (elderly 500-750 mcg). **IV** (no cardiac glycoside in the previous 2 weeks): 500-1000 mcg total, given slowly over at least 5 minutes in divided doses of 250-500 mcg, 4-6 hours apart (elderly 250-500 mcg).  Maintenance: **PO** 125-250 mcg **OD**.  Elderly / Renal Impairment: Max 62.5 mcg **OD** or alternate days if **eGFR** is poor."
+        "value": "AF Rate Control (Loading): **PO**: 750-1500 mcg total, as a single dose or 3-4 divided doses 4-6 hours apart (elderly 500-750 mcg). **IV** (no cardiac glycoside in the previous 2 weeks): 500-1000 mcg total, given slowly over at least 5 minutes in divided doses of 250-500 mcg, 4-6 hours apart (elderly 250-500 mcg).  Maintenance: **PO** 125-250 mcg **OD**.  Elderly / Renal Impairment: Local practice: 62.5 mcg **OD** or alternate days if **eGFR** is poor (not a PI maximum; the Lanoxin PI says older patients need smaller doses because renal impairment is common, so dose by renal function and levels)."
       },
       {
         "label": "Best Uses",
@@ -13884,7 +13894,7 @@
       },
       {
         "label": "Monitoring",
-        "value": "Strict **U&E** monitoring. Maintain K+ > 4.0 mmol/L. Measure **TDM** (Digoxin levels) at least 6 hours post-dose (target 0.5-0.9 ng/mL [0.6-1.2 nmol/L] for HF, up to 1.2 for AF).  Baseline **ECG**."
+        "value": "Strict **U&E** monitoring. Maintain K+ > 4.0 mmol/L. Measure **TDM** (Digoxin levels) at least 6 hours post-dose (target 0.5-0.9 ng/mL [0.6-1.2 nmol/L] for HF). The Lanoxin PI gives no separate AF target: it says the optimal trough may be 0.5-1.0 ng/mL [0.6-1.3 nmol/L] and toxicity is more common above 2 ng/mL [2.6 nmol/L].  Baseline **ECG**."
       },
       {
         "label": "Clinical Pearl",
@@ -14195,7 +14205,7 @@
     "stats": [
       {
         "label": "Max Dose",
-        "value": "320 mg/day",
+        "value": "320 mg/day (PI 640 specialist)",
         "cls": "hi",
         "flag": "hi"
       },
@@ -14293,7 +14303,7 @@
           },
           {
             "key": "Renal Impairment",
-            "val": "MANDATORY — **eGFR** 30-60: Give dose **OD**. **eGFR** 10-30: Give dose every 48 hours. **eGFR** <10: CONTRAINDICATED.",
+            "val": "MANDATORY — Local dosing scheme (the Sotacor PI says to adjust the dose for creatinine clearance and contraindicates CrCl < 10 mL/min, but gives no interval table): **eGFR** 30-60: Give dose **OD**. **eGFR** 10-30: Give dose every 48 hours. CrCl < 10 mL/min: CONTRAINDICATED (PI).",
             "tags": []
           }
         ]
@@ -14398,7 +14408,7 @@
         "rows": [
           {
             "key": "Cardiac",
-            "val": "MANDATORY — Baseline and ongoing **ECG**. Cease immediately if **QTc** > 500 ms. Do not start until baseline QTc is confirmed normal.",
+            "val": "MANDATORY — Baseline and ongoing **ECG**. If **QTc** exceeds 500 ms, reduce the dose or stop (Sotacor PI). Do not start until baseline QTc is confirmed normal.",
             "tags": [],
             "patient": {
               "factors": ["qtc"],
@@ -14487,7 +14497,7 @@
       },
       {
         "label": "Key Indication Doses",
-        "value": "AF Rhythm Control: Start **PO** 80 mg **BD**. Titrate slowly under ECG guidance to Max 160 mg **BD** (320 mg/day).  Ventricular Arrhythmias: **PO** 80-160 mg **BD**.  Renal Impairment: **eGFR** 30-60: Give dose **OD**. **eGFR** 10-30: Give dose every 48 hours. **eGFR** <10: CONTRAINDICATED."
+        "value": "AF Rhythm Control: Start **PO** 80 mg **BD**. Titrate slowly under ECG guidance to Max 160 mg **BD** (320 mg/day).  Ventricular Arrhythmias: **PO** 80-160 mg **BD**.  Renal Impairment: Local dosing scheme (the Sotacor PI says to adjust the dose for creatinine clearance and contraindicates CrCl < 10 mL/min, but gives no interval table): **eGFR** 30-60: Give dose **OD**. **eGFR** 10-30: Give dose every 48 hours. CrCl < 10 mL/min: CONTRAINDICATED (PI)."
       },
       {
         "label": "Best Uses",
@@ -14507,7 +14517,7 @@
       },
       {
         "label": "Monitoring",
-        "value": "Baseline and ongoing **ECG**. Cease immediately if **QTc** > 500 ms. Do not start until baseline QTc is confirmed normal.  Strict baseline and regular **U&E** (K+ and Mg2+ MUST be kept in the high-normal range) and **eGFR**."
+        "value": "Baseline and ongoing **ECG**. If **QTc** exceeds 500 ms, reduce the dose or stop (Sotacor PI). Do not start until baseline QTc is confirmed normal.  Strict baseline and regular **U&E** (K+ and Mg2+ MUST be kept in the high-normal range) and **eGFR**."
       },
       {
         "label": "Clinical Pearl",
@@ -16026,7 +16036,7 @@
           },
           {
             "key": "Bottom Line",
-            "val": "Nifedipine XR is a potent antihypertensive safe in pregnancy (gestational hypertension), but short-acting/sublingual nifedipine must never be used due to risk of stroke and MI.",
+            "val": "Nifedipine XR is a potent antihypertensive, widely used off-label in pregnancy hypertension under specialist care although the PI lists pregnancy as a contraindication, but short-acting/sublingual nifedipine must never be used due to risk of stroke and MI.",
             "tags": []
           }
         ]
@@ -16126,7 +16136,7 @@
           },
           {
             "key": "Pregnancy",
-            "val": "CAUTION — **Pregnancy** Category C; modified-release nifedipine is widely used in specialist maternal medicine when benefits outweigh risks.",
+            "val": "CAUTION — **Pregnancy** Category C. The Addos XR PI lists pregnancy as a contraindication. Modified-release nifedipine is nevertheless widely used off-label in specialist maternal medicine when benefits outweigh risks.",
             "tags": [],
             "patient": {
               "factors": ["pregnancy"],
@@ -16241,11 +16251,11 @@
       },
       {
         "label": "Best Uses",
-        "value": "Nifedipine XR is a potent antihypertensive safe in pregnancy (gestational hypertension), but short-acting/sublingual nifedipine must never be used due to risk of stroke and MI."
+        "value": "Nifedipine XR is a potent antihypertensive, widely used off-label in pregnancy hypertension under specialist care although the PI lists pregnancy as a contraindication, but short-acting/sublingual nifedipine must never be used due to risk of stroke and MI."
       },
       {
         "label": "Avoid / Cautions",
-        "value": "Acute STEMI (within 8 days), cardiogenic shock, severe aortic stenosis. **Pregnancy** Category C, but XR widely used as standard of care in maternal medicine."
+        "value": "Acute STEMI (within 8 days), cardiogenic shock, severe aortic stenosis. **Pregnancy** Category C. The Addos XR PI contraindicates use throughout pregnancy; specialist maternal medicine still uses XR off-label."
       },
       {
         "label": "Key Risks",
@@ -35574,8 +35584,13 @@
         "rows": [
           {
             "key": "Primary",
-            "val": "PONV, motion sickness, palliative care nausea, inner ear pathology.",
-            "tags": ["PBS", "TGA"]
+            "val": "Prevention of post-operative nausea and vomiting (Valoid injection PI).",
+            "tags": ["TGA"]
+          },
+          {
+            "key": "Off-Label",
+            "val": "Palliative care nausea and inner ear causes are outside the Valoid PI indication. Motion sickness is on the label of some oral pharmacy products; check the product used. Cyclizine is not on the general PBS (RPBS palliative care listing only).",
+            "tags": ["OFF"]
           },
           {
             "key": "Clinical Place",
@@ -36266,6 +36281,17 @@
               },
               "note": "Hyoscine hydrobromide has high central anticholinergic toxicity risk in older adults."
             }
+          },
+          {
+            "key": "Pregnancy",
+            "val": "CAUTION — **Pregnancy** Category B2 (TGA prescribing medicines in pregnancy database (CSV dated 21 Oct 2026)).",
+            "tags": [],
+            "patient": {
+              "factors": ["pregnancy"],
+              "action": "caution",
+              "severity": "caution",
+              "note": "Hyoscine hydrobromide: TGA pregnancy Category B2; benefit-risk caution, not an automatic contraindication."
+            }
           }
         ]
       },
@@ -36367,7 +36393,7 @@
       },
       {
         "label": "Avoid / Cautions",
-        "value": "Narrow-angle glaucoma (will precipitate acute blindness), severe BPH with urinary retention."
+        "value": "Narrow-angle glaucoma (will precipitate acute blindness), severe BPH with urinary retention. **Pregnancy** Category B2."
       },
       {
         "label": "Key Risks",
@@ -36871,18 +36897,23 @@
         "rows": [
           {
             "key": "Absolute",
-            "val": "CRITICAL — Co-administration with Apomorphine. Congenital Long QT syndrome.",
+            "val": "CRITICAL — Co-administration with Apomorphine (the only Zofran PI contraindication besides hypersensitivity).",
+            "tags": []
+          },
+          {
+            "key": "QT Prolongation",
+            "val": "CAUTION — Avoid in congenital long QT syndrome (Zofran PI 4.4). Use with caution where QTc is prolonged, with electrolyte disturbance, or with other QT-prolonging medicines.",
             "tags": [],
             "patient": {
               "factors": ["qtc"],
-              "action": "contraindication",
-              "severity": "danger",
+              "action": "caution",
+              "severity": "caution",
               "match": {
                 "qtc": {
                   "gte": 450
                 }
               },
-              "note": "Inferred from existing decision-section wording; review before clinical use."
+              "note": "Zofran PI 4.4: avoid in congenital long QT syndrome; QT prolongation is a precaution, not a contraindication."
             }
           },
           {
@@ -37017,7 +37048,7 @@
       },
       {
         "label": "Avoid / Cautions",
-        "value": "Co-administration with Apomorphine. Congenital Long QT syndrome. **Pregnancy** Category B1. Small absolute risk of oral clefts if used in 1st trimester; generally safe later."
+        "value": "Co-administration with Apomorphine (contraindicated). Avoid in congenital long QT syndrome (PI precaution). **Pregnancy** Category B1. Small absolute risk of oral clefts if used in 1st trimester; generally safe later."
       },
       {
         "label": "Key Risks",
@@ -37049,7 +37080,7 @@
     "stats": [
       {
         "label": "Max Dose",
-        "value": "20 mg/day",
+        "value": "40 mg/day",
         "cls": "hi",
         "flag": "hi"
       },
@@ -37084,7 +37115,7 @@
           },
           {
             "key": "Maximum Dose",
-            "val": "Max **20 mg/day**.",
+            "val": "Max **40 mg/day** (5-10 mg three or four times daily, Stemetil PI).",
             "tags": []
           },
           {
@@ -37126,7 +37157,7 @@
         "rows": [
           {
             "key": "Nausea / Vertigo",
-            "val": "**PO** 5-10 mg **TDS** or **QID** (Max 20 mg/day).",
+            "val": "**PO** 5-10 mg **TDS** or **QID** (Max 40 mg/day).",
             "tags": []
           },
           {
@@ -37307,11 +37338,11 @@
       },
       {
         "label": "Usual Dose & Max",
-        "value": "**PO** 5-10 mg **TDS** or **QID** (Max 20 mg/day)."
+        "value": "**PO** 5-10 mg **TDS** or **QID** (Max 40 mg/day)."
       },
       {
         "label": "Key Indication Doses",
-        "value": "Nausea / Vertigo: **PO** 5-10 mg **TDS** or **QID** (Max 20 mg/day).  Severe Acute Vertigo: **IM** 12.5 mg STAT (Deep IM injection only).  Elderly / Frail: Start at **PO** 5 mg **BD** due to intense sedation and orthostatic hypotension risks."
+        "value": "Nausea / Vertigo: **PO** 5-10 mg **TDS** or **QID** (Max 40 mg/day).  Severe Acute Vertigo: **IM** 12.5 mg STAT (Deep IM injection only).  Elderly / Frail: Start at **PO** 5 mg **BD** due to intense sedation and orthostatic hypotension risks."
       },
       {
         "label": "Best Uses",
@@ -41426,6 +41457,11 @@
               },
               "note": "Inferred from existing decision-section wording; review before clinical use."
             }
+          },
+          {
+            "key": "Pregnancy",
+            "val": "INFO — No TGA pregnancy category: enemas are exempt from pregnancy categorisation. The TGA notes that exempt does not mean safe in all circumstances; check the dose and indication.",
+            "tags": []
           }
         ]
       },
@@ -44396,7 +44432,7 @@
         "rows": [
           {
             "key": "Pharmacokinetic",
-            "val": "CRITICAL — **CYP2C9** inhibitors (Amiodarone, Metronidazole, Fluconazole, Bactrim) massively spike INR and cause bleeding. You MUST halve the warfarin dose if starting these.",
+            "val": "CRITICAL — **CYP2C9** inhibitors (Amiodarone, Metronidazole, Fluconazole, Bactrim) massively spike INR and cause bleeding. Check the INR closely when starting or stopping these; a dose reduction is often needed. The Coumadin and Marevan PIs advise INR monitoring, not a fixed dose cut.",
             "tags": []
           },
           {
@@ -44522,9 +44558,9 @@
             "tags": [],
             "patient": {
               "factors": ["pregnancy"],
-              "action": "caution",
-              "severity": "caution",
-              "note": "Inferred from existing decision-section wording; review before clinical use."
+              "action": "contraindication",
+              "severity": "danger",
+              "note": "Matches this record's contraindication row (audit finding MB-F-03, 26 Oct 2026); review before clinical use."
             }
           },
           {
@@ -44587,7 +44623,7 @@
       },
       {
         "label": "Key Interactions",
-        "value": "**CYP2C9** inhibitors (Amiodarone, Metronidazole, Fluconazole, Bactrim) massively spike INR and cause bleeding. You MUST halve the warfarin dose if starting these.  **CYP2C9** inducers (Carbamazepine, Rifampicin, St John's Wort). These destroy Warfarin, dropping the INR to 1.0 and causing massive strokes.  NSAIDs, Aspirin, SSRIs (increase bleeding risk without changing INR).  Leafy greens (broccoli, spinach) contain high Vitamin K and reverse the drug's effect. Diet must be consistent."
+        "value": "**CYP2C9** inhibitors (Amiodarone, Metronidazole, Fluconazole, Bactrim) massively spike INR and cause bleeding. Check the INR closely when starting or stopping these; a dose reduction is often needed. The Coumadin and Marevan PIs advise INR monitoring, not a fixed dose cut.  **CYP2C9** inducers (Carbamazepine, Rifampicin, St John's Wort). These destroy Warfarin, dropping the INR to 1.0 and causing massive strokes.  NSAIDs, Aspirin, SSRIs (increase bleeding risk without changing INR).  Leafy greens (broccoli, spinach) contain high Vitamin K and reverse the drug's effect. Diet must be consistent."
       },
       {
         "label": "Monitoring",
@@ -44779,7 +44815,7 @@
         "rows": [
           {
             "key": "Pharmacokinetic",
-            "val": "CRITICAL — **CYP2C9** inhibitors (Amiodarone, Metronidazole, Fluconazole, Bactrim) massively spike INR and cause bleeding. You MUST halve the warfarin dose if starting these.",
+            "val": "CRITICAL — **CYP2C9** inhibitors (Amiodarone, Metronidazole, Fluconazole, Bactrim) massively spike INR and cause bleeding. Check the INR closely when starting or stopping these; a dose reduction is often needed. The Coumadin and Marevan PIs advise INR monitoring, not a fixed dose cut.",
             "tags": []
           },
           {
@@ -44899,9 +44935,9 @@
             "tags": [],
             "patient": {
               "factors": ["pregnancy"],
-              "action": "caution",
-              "severity": "caution",
-              "note": "Inferred from existing decision-section wording; review before clinical use."
+              "action": "contraindication",
+              "severity": "danger",
+              "note": "Matches this record's contraindication row (audit finding MB-F-03, 26 Oct 2026); review before clinical use."
             }
           },
           {
@@ -44964,7 +45000,7 @@
       },
       {
         "label": "Key Interactions",
-        "value": "**CYP2C9** inhibitors (Amiodarone, Metronidazole, Fluconazole, Bactrim) massively spike INR and cause bleeding. You MUST halve the warfarin dose if starting these.  **CYP2C9** inducers (Carbamazepine, Rifampicin, St John's Wort). These destroy Warfarin, dropping the INR to 1.0 and causing massive strokes.  NSAIDs, Aspirin, SSRIs (increase bleeding risk without changing INR).  Leafy greens (broccoli, spinach) contain high Vitamin K and reverse the drug's effect. Diet must be consistent."
+        "value": "**CYP2C9** inhibitors (Amiodarone, Metronidazole, Fluconazole, Bactrim) massively spike INR and cause bleeding. Check the INR closely when starting or stopping these; a dose reduction is often needed. The Coumadin and Marevan PIs advise INR monitoring, not a fixed dose cut.  **CYP2C9** inducers (Carbamazepine, Rifampicin, St John's Wort). These destroy Warfarin, dropping the INR to 1.0 and causing massive strokes.  NSAIDs, Aspirin, SSRIs (increase bleeding risk without changing INR).  Leafy greens (broccoli, spinach) contain high Vitamin K and reverse the drug's effect. Diet must be consistent."
       },
       {
         "label": "Monitoring",
@@ -50196,7 +50232,7 @@
         "rows": [
           {
             "key": "Severe Systemic MRSA",
-            "val": "**IV** 15-20 mg/kg (actual body weight) q12h. Loading dose of 25-30 mg/kg in critical illness.",
+            "val": "**IV** 15-20 mg/kg (actual body weight) q12h. Loading dose of 25-30 mg/kg in critical illness. Practice dosing, not the PI dose; follow local antimicrobial guidelines.",
             "tags": []
           },
           {
@@ -50297,7 +50333,7 @@
         "rows": [
           {
             "key": "Laboratory",
-            "val": "MANDATORY — **TDM**. Check trough level immediately before the 3rd or 4th dose. Target is usually 15-20 mg/L for severe infections. Daily **U&E** check.",
+            "val": "MANDATORY — **TDM**. Check trough level immediately before the 3rd or 4th dose. A trough of 15-20 mg/L for severe infections is a local practice target, not from the PI. Daily **U&E** check.",
             "tags": []
           },
           {
@@ -50366,11 +50402,11 @@
       },
       {
         "label": "Usual Dose & Max",
-        "value": "**IV** 15-20 mg/kg (actual body weight) q12h. Loading dose of 25-30 mg/kg in critical illness. Titrated strictly via Therapeutic Drug Monitoring (TDM). Loading doses often 25-30 mg/kg."
+        "value": "**IV** 15-20 mg/kg (actual body weight) q12h. Loading dose of 25-30 mg/kg in critical illness. Practice dosing, not the PI dose; follow local antimicrobial guidelines. Titrated strictly via Therapeutic Drug Monitoring (TDM). Loading doses often 25-30 mg/kg."
       },
       {
         "label": "Key Indication Doses",
-        "value": "Severe Systemic MRSA: **IV** 15-20 mg/kg (actual body weight) q12h. Loading dose of 25-30 mg/kg in critical illness.  C. Difficile Colitis: **PO** 125 mg **QID** for 10 days. (Oral Vanc is NOT absorbed systemically; it stays in the gut to kill C. diff).  Renal Impairment: Dose frequency drastically reduced (e.g., q24h, q48h, or post-dialysis only)."
+        "value": "Severe Systemic MRSA: **IV** 15-20 mg/kg (actual body weight) q12h. Loading dose of 25-30 mg/kg in critical illness. Practice dosing, not the PI dose; follow local antimicrobial guidelines.  C. Difficile Colitis: **PO** 125 mg **QID** for 10 days. (Oral Vanc is NOT absorbed systemically; it stays in the gut to kill C. diff).  Renal Impairment: Dose frequency drastically reduced (e.g., q24h, q48h, or post-dialysis only)."
       },
       {
         "label": "Best Uses",
@@ -50390,7 +50426,7 @@
       },
       {
         "label": "Monitoring",
-        "value": "**TDM**. Check trough level immediately before the 3rd or 4th dose. Target is usually 15-20 mg/L for severe infections. Daily **U&E** check.  Ensure infusion rate is NEVER faster than 10 mg/minute (e.g., a 1g dose must take at least 100 minutes) to prevent Red Man Syndrome."
+        "value": "**TDM**. Check trough level immediately before the 3rd or 4th dose. A trough of 15-20 mg/L for severe infections is a local practice target, not from the PI. Daily **U&E** check.  Ensure infusion rate is NEVER faster than 10 mg/minute (e.g., a 1g dose must take at least 100 minutes) to prevent Red Man Syndrome."
       },
       {
         "label": "Clinical Pearl",
@@ -59854,7 +59890,7 @@
       },
       {
         "label": "Folic Acid",
-        "value": "MANDATORY",
+        "value": "ADVISED",
         "cls": "good",
         "flag": ""
       },
@@ -59887,7 +59923,7 @@
           },
           {
             "key": "Bottom Line",
-            "val": "Methotrexate is the anchor DMARD for rheumatoid arthritis and psoriasis with proven long-term efficacy, but requires strict folic acid supplementation, regular blood monitoring, and is absolutely teratogenic.",
+            "val": "Methotrexate is the anchor DMARD for rheumatoid arthritis and psoriasis with proven long-term efficacy, but is usually given with folic acid, regular blood monitoring, and is absolutely teratogenic.",
             "tags": []
           }
         ]
@@ -59934,8 +59970,8 @@
             "tags": []
           },
           {
-            "key": "Folic Acid Rescue",
-            "val": "**PO** 5 mg ONCE A WEEK (MANDATORY — taken 1 to 2 days AFTER the Methotrexate dose to reduce toxicity without blocking efficacy).",
+            "key": "Folic Acid",
+            "val": "**PO** 5 mg ONCE A WEEK, taken 1 to 2 days after the methotrexate dose, to reduce toxicity (usual Australian rheumatology practice, not a PI requirement).",
             "tags": []
           },
           {
@@ -60147,9 +60183,9 @@
             "tags": [],
             "patient": {
               "factors": ["pregnancy"],
-              "action": "caution",
-              "severity": "caution",
-              "note": "Inferred from existing decision-section wording; review before clinical use."
+              "action": "contraindication",
+              "severity": "danger",
+              "note": "Matches this record's contraindication row (audit finding MB-F-03, 26 Oct 2026); review before clinical use."
             }
           },
           {
@@ -60157,15 +60193,10 @@
             "val": "CRITICAL — Methotrexate is secreted in breast milk and accumulates in neonatal tissues. Absolutely contraindicated during breastfeeding.",
             "tags": [],
             "patient": {
-              "factors": ["lactation", "paediatric"],
-              "action": "dose-adjust",
-              "severity": "caution",
-              "match": {
-                "age": {
-                  "lt": 18
-                }
-              },
-              "note": "Inferred from existing decision-section wording; review before clinical use."
+              "factors": ["lactation"],
+              "action": "contraindication",
+              "severity": "danger",
+              "note": "Matches this record's contraindication row (audit finding MB-F-03, 26 Oct 2026); review before clinical use."
             }
           }
         ]
@@ -60196,11 +60227,11 @@
       },
       {
         "label": "Key Indication Doses",
-        "value": "Rheumatoid Arthritis: **PO** start 7.5 mg ONCE A WEEK; may increase to 15 mg/week after 6 weeks, then gradually to a maximum of 20 mg ONCE A WEEK (PI). Usually taken on the same day every week (e.g., 'Methotrexate Mondays').  Folic Acid Rescue: **PO** 5 mg ONCE A WEEK (MANDATORY — taken 1 to 2 days AFTER the Methotrexate dose to reduce toxicity without blocking efficacy).  Renal Impairment: Reduce dose if **eGFR** < 60. Avoid if **eGFR** < 30."
+        "value": "Rheumatoid Arthritis: **PO** start 7.5 mg ONCE A WEEK; may increase to 15 mg/week after 6 weeks, then gradually to a maximum of 20 mg ONCE A WEEK (PI). Usually taken on the same day every week (e.g., 'Methotrexate Mondays').  Folic Acid: **PO** 5 mg ONCE A WEEK, taken 1 to 2 days after the methotrexate dose, to reduce toxicity (usual Australian rheumatology practice, not a PI requirement).  Renal Impairment: Reduce dose if **eGFR** < 60. Avoid if **eGFR** < 30."
       },
       {
         "label": "Best Uses",
-        "value": "Methotrexate is the anchor DMARD for rheumatoid arthritis and psoriasis with proven long-term efficacy, but requires strict folic acid supplementation, regular blood monitoring, and is absolutely teratogenic."
+        "value": "Methotrexate is the anchor DMARD for rheumatoid arthritis and psoriasis with proven long-term efficacy, but is usually given with folic acid, regular blood monitoring, and is absolutely teratogenic."
       },
       {
         "label": "Avoid / Cautions",
@@ -62199,7 +62230,7 @@
           },
           {
             "key": "Prescribing & PBS",
-            "val": "Unrestricted General Benefit (S4).",
+            "val": "Restricted Benefit (PBS; for prescribing by certain health practitioners). S4.",
             "tags": []
           }
         ]
@@ -62238,6 +62269,17 @@
               "action": "contraindication",
               "severity": "danger",
               "note": "Carbamazepine pregnancy row remains a source-backed high-risk/contraindication prompt."
+            }
+          },
+          {
+            "key": "Lactation",
+            "val": "CAUTION — Carbamazepine passes into breast milk. The Tegretol PI allows breastfeeding when the benefit outweighs the risk, with the infant observed for adverse effects such as excessive sleepiness or skin reactions.",
+            "tags": [],
+            "patient": {
+              "factors": ["lactation"],
+              "action": "monitor",
+              "severity": "caution",
+              "note": "Tegretol PI 4.6: breastfeeding possible with infant observation."
             }
           }
         ]
@@ -62624,7 +62666,7 @@
         "rows": [
           {
             "key": "Status",
-            "val": "Drafted from ScriptCheckWA and Monitored Medicines Prescribing Code; awaiting clinical review.",
+            "val": "Drafted from ScriptCheckWA and Monitored Medicines Prescribing Code (Dec 2024) Part 8 / §8.5; awaiting clinical review.",
             "tags": []
           },
           {
@@ -63080,7 +63122,7 @@
         "rows": [
           {
             "key": "Status Epilepticus / Acute Load",
-            "val": "**IV** 40-60 mg/kg STAT (Max 4500 mg load). Infuse over 15 mins.",
+            "val": "**IV** 40-60 mg/kg STAT (Max 4500 mg load). Infuse over 15 mins. Guideline practice, outside the PI: the Keppra PI gives no IV loading dose.",
             "tags": []
           },
           {
@@ -63249,7 +63291,7 @@
       },
       {
         "label": "Key Indication Doses",
-        "value": "Status Epilepticus / Acute Load: **IV** 40-60 mg/kg STAT (Max 4500 mg load). Infuse over 15 mins.  Epilepsy Maintenance: **PO** 250-500 mg **BD**. Titrate every 2 weeks to Max **3000 mg/day**.  Renal Impairment: By CrCl (mL/min/1.73 m²): 50-79, 500-1000 mg **BD**. 30-49, 250-750 mg **BD**. < 30, 250-500 mg **BD**. Dialysis (end-stage renal disease): 500-1000 mg **OD** (750 mg load on day 1) plus 250-500 mg after each dialysis (PI)."
+        "value": "Status Epilepticus / Acute Load: **IV** 40-60 mg/kg STAT (Max 4500 mg load). Infuse over 15 mins. Guideline practice, outside the PI: the Keppra PI gives no IV loading dose.  Epilepsy Maintenance: **PO** 250-500 mg **BD**. Titrate every 2 weeks to Max **3000 mg/day**.  Renal Impairment: By CrCl (mL/min/1.73 m²): 50-79, 500-1000 mg **BD**. 30-49, 250-750 mg **BD**. < 30, 250-500 mg **BD**. Dialysis (end-stage renal disease): 500-1000 mg **OD** (750 mg load on day 1) plus 250-500 mg after each dialysis (PI)."
       },
       {
         "label": "Best Uses",
@@ -63366,7 +63408,7 @@
         "rows": [
           {
             "key": "Status Epilepticus (Load)",
-            "val": "**IV** 15-20 mg/kg. MUST infuse extremely slowly (Max 50 mg/minute) with continuous ECG monitoring.",
+            "val": "**IV** 15-20 mg/kg (guideline practice; the DBL Phenytoin Injection PI loading dose is 10-15 mg/kg). MUST infuse extremely slowly (Max 50 mg/minute) with continuous ECG monitoring.",
             "tags": []
           },
           {
@@ -63402,7 +63444,7 @@
           },
           {
             "key": "Prescribing & PBS",
-            "val": "Unrestricted General Benefit (S4).",
+            "val": "Restricted Benefit (PBS; for prescribing by certain health practitioners). S4.",
             "tags": []
           }
         ]
@@ -63559,14 +63601,14 @@
             "tags": [],
             "patient": {
               "factors": ["pregnancy"],
-              "action": "caution",
-              "severity": "caution",
-              "note": "Inferred from existing decision-section wording; review before clinical use."
+              "action": "contraindication",
+              "severity": "danger",
+              "note": "Matches this record's contraindication row (audit finding MB-F-03, 26 Oct 2026); review before clinical use."
             }
           },
           {
             "key": "Hepatic Impairment",
-            "val": "HIGH — Phenytoin is extensively hepatically metabolised (CYP2C9). Any significant hepatic impairment dramatically raises free levels. Halve the dose in moderate impairment; avoid in severe.",
+            "val": "HIGH — Phenytoin is extensively hepatically metabolised (CYP2C9). Significant hepatic impairment can raise free levels. The Dilantin PI advises caution with level monitoring rather than a fixed dose cut: use free levels where available and adjust the dose to them.",
             "tags": [],
             "patient": {
               "factors": ["hepatic"],
@@ -63599,11 +63641,11 @@
       },
       {
         "label": "Usual Dose & Max",
-        "value": "**IV** 15-20 mg/kg. MUST infuse extremely slowly (Max 50 mg/minute) with continuous ECG monitoring. Maintenance is usually 300-400 mg/day. Strictly guided by **TDM**."
+        "value": "**IV** 15-20 mg/kg (guideline practice; the DBL Phenytoin Injection PI loading dose is 10-15 mg/kg). MUST infuse extremely slowly (Max 50 mg/minute) with continuous ECG monitoring. Maintenance is usually 300-400 mg/day. Strictly guided by **TDM**."
       },
       {
         "label": "Key Indication Doses",
-        "value": "Status Epilepticus (Load): **IV** 15-20 mg/kg. MUST infuse extremely slowly (Max 50 mg/minute) with continuous ECG monitoring.  Maintenance: **PO** initially 4-5 mg/kg/day in 2-3 divided doses (usually 300-400 mg/day), guided by levels; max 600 mg/day. Adjust by NO MORE than 25-50 mg increments, about 2 weeks apart.  Enteral Feeding (NGT): Enteral feeds bind Phenytoin. Feeds must be stopped 2 hours before and 2 hours after the dose, or absorption will be zero."
+        "value": "Status Epilepticus (Load): **IV** 15-20 mg/kg (guideline practice; the DBL Phenytoin Injection PI loading dose is 10-15 mg/kg). MUST infuse extremely slowly (Max 50 mg/minute) with continuous ECG monitoring.  Maintenance: **PO** initially 4-5 mg/kg/day in 2-3 divided doses (usually 300-400 mg/day), guided by levels; max 600 mg/day. Adjust by NO MORE than 25-50 mg increments, about 2 weeks apart.  Enteral Feeding (NGT): Enteral feeds bind Phenytoin. Feeds must be stopped 2 hours before and 2 hours after the dose, or absorption will be zero."
       },
       {
         "label": "Best Uses",
@@ -63895,7 +63937,7 @@
         "rows": [
           {
             "key": "Status",
-            "val": "Drafted from ScriptCheckWA and Monitored Medicines Prescribing Code; awaiting clinical review.",
+            "val": "Drafted from ScriptCheckWA and Monitored Medicines Prescribing Code (Dec 2024) Part 8 / §8.5; awaiting clinical review.",
             "tags": []
           },
           {
@@ -64059,7 +64101,7 @@
         "rows": [
           {
             "key": "Bipolar Mania",
-            "val": "Start **PO** 500 mg **BD** (enteric-coated). Titrate rapidly to target range. Maintenance 1000-2000 mg/day.",
+            "val": "Start **PO** 500 mg **BD** (enteric-coated; local practice, the Epilim PI starts at 600 mg/day and increases by 200 mg/day every 3 days). Titrate rapidly to target range. Maintenance 1000-2000 mg/day.",
             "tags": []
           },
           {
@@ -64069,7 +64111,7 @@
           },
           {
             "key": "Status Epilepticus",
-            "val": "**IV** 20-30 mg/kg bolus, then continuous infusion.",
+            "val": "**IV** 20-30 mg/kg bolus, then continuous infusion (guideline practice, outside the PI: status epilepticus is not an Epilim IV indication, and the PI gives up to 10 mg/kg then 1-2 mg/kg/hr, maximum 2500 mg/day).",
             "tags": []
           }
         ]
@@ -64229,13 +64271,13 @@
         "rows": [
           {
             "key": "Pregnancy",
-            "val": "CONTRAINDICATED — **Pregnancy** Category D (effectively Category X). High teratogenic risk: major congenital malformations in about 11% (neural tube defects about 1-2%; facial/cranial, cardiac and limb malformations) and neurodevelopmental disorders (autism spectrum disorder about 3-fold, lower IQ). Strictly contraindicated in pregnancy and in women of childbearing potential unless full pregnancy prevention program requirements are met under TGA and RANZCP safety mandates.",
+            "val": "CONTRAINDICATED — **Pregnancy** Category D. High teratogenic risk: major congenital malformations in about 11% (neural tube defects about 1-2%; facial/cranial, cardiac and limb malformations) and neurodevelopmental disorders (autism spectrum disorder about 3-fold, lower IQ). Contraindicated in pregnancy for mania, and for epilepsy unless there is no suitable alternative (Epilim PI). Do not use in women of childbearing potential unless pregnancy prevention requirements are met.",
             "tags": [],
             "patient": {
               "factors": ["pregnancy"],
               "action": "contraindication",
               "severity": "danger",
-              "note": "Contraindicated in pregnancy due to high teratogenic risk (major congenital malformations ~11%, neural tube defects ~1-2%) and long-term neurodevelopmental impairment (autism, cognitive deficit) per Epilim PI and TGA and RANZCP safety mandates."
+              "note": "Epilim PI: contraindicated in pregnancy for mania, and for epilepsy unless there is no suitable alternative. High teratogenic and neurodevelopmental risk."
             }
           },
           {
@@ -64305,11 +64347,11 @@
       },
       {
         "label": "Usual Dose & Max",
-        "value": "Start **PO** 500 mg **BD** (enteric-coated). Titrate rapidly to target range. Maintenance 1000-2000 mg/day. Max **2500 mg/day** (Titrated to response and blood levels)."
+        "value": "Start **PO** 500 mg **BD** (enteric-coated; local practice, the Epilim PI starts at 600 mg/day and increases by 200 mg/day every 3 days). Titrate rapidly to target range. Maintenance 1000-2000 mg/day. Max **2500 mg/day** (Titrated to response and blood levels)."
       },
       {
         "label": "Key Indication Doses",
-        "value": "Bipolar Mania: Start **PO** 500 mg **BD** (enteric-coated). Titrate rapidly to target range. Maintenance 1000-2000 mg/day.  Epilepsy: **PO** Start 600 mg/day, increasing by 200 mg/day every 3 days until seizures are controlled (usually 1000-2000 mg/day). Max 2500 mg/day.  Status Epilepticus: **IV** 20-30 mg/kg bolus, then continuous infusion."
+        "value": "Bipolar Mania: Start **PO** 500 mg **BD** (enteric-coated; local practice, the Epilim PI starts at 600 mg/day and increases by 200 mg/day every 3 days). Titrate rapidly to target range. Maintenance 1000-2000 mg/day.  Epilepsy: **PO** Start 600 mg/day, increasing by 200 mg/day every 3 days until seizures are controlled (usually 1000-2000 mg/day). Max 2500 mg/day.  Status Epilepticus: **IV** 20-30 mg/kg bolus, then continuous infusion (guideline practice, outside the PI: status epilepticus is not an Epilim IV indication, and the PI gives up to 10 mg/kg then 1-2 mg/kg/hr, maximum 2500 mg/day)."
       },
       {
         "label": "Best Uses",
@@ -64462,7 +64504,7 @@
           },
           {
             "key": "Prescribing & PBS",
-            "val": "Authority Required (PBS).",
+            "val": "Authority Required (STREAMLINED) on the PBS for seizures and for migraine.",
             "tags": []
           }
         ]
@@ -64504,13 +64546,13 @@
           },
           {
             "key": "Pregnancy",
-            "val": "ABSOLUTE — **Pregnancy** Category D. High risk of cleft lip/palate. Must use strict contraception.",
+            "val": "HIGH RISK — **Pregnancy** Category D. Increased risk of congenital malformations, including cleft lip and palate. Contraindicated in pregnancy for migraine prophylaxis (Topamax PI). For epilepsy, use only after specialist benefit-risk review, with highly effective contraception in women of childbearing potential.",
             "tags": [],
             "patient": {
               "factors": ["pregnancy"],
               "action": "contraindication",
               "severity": "danger",
-              "note": "Topiramate pregnancy row remains a source-backed high-risk/contraindication prompt."
+              "note": "Contraindicated in pregnancy for migraine prophylaxis. For epilepsy, specialist benefit-risk review. The alert stays at contraindication level because the indication is not recorded."
             }
           }
         ]
@@ -64601,7 +64643,7 @@
       },
       {
         "label": "Usual Dose & Max",
-        "value": "Start **PO** 25 mg **NOCTE**. Titrate up by 25 mg weekly to target 50 mg **BD** (100 mg/day). Max **400 mg/day** (For epilepsy)."
+        "value": "Start **PO** 25 mg **NOCTE**. Titrate up by 25 mg weekly to target 50 mg **BD** (100 mg/day). Epilepsy: Topamax PI recommended dose 500 mg/day; some refractory patients have tolerated 1000 mg/day."
       },
       {
         "label": "Key Indication Doses",
@@ -64613,7 +64655,7 @@
       },
       {
         "label": "Avoid / Cautions",
-        "value": "Hypersensitivity to any component. Migraine prophylaxis: contraindicated in pregnancy and in women of childbearing potential not using a highly effective method of contraception. Caution: kidney stones, glaucoma. **Pregnancy** Category D. High risk of cleft lip/palate. Must use strict contraception."
+        "value": "Hypersensitivity to any component. Migraine prophylaxis: contraindicated in pregnancy and in women of childbearing potential not using a highly effective method of contraception. Caution: kidney stones, glaucoma. **Pregnancy** Category D. Increased risk of cleft lip and palate; epilepsy use needs specialist benefit-risk review."
       },
       {
         "label": "Key Risks",
@@ -65192,7 +65234,7 @@
         "rows": [
           {
             "key": "Status",
-            "val": "Drafted from Monitored Medicines Prescribing Code; awaiting clinical review.",
+            "val": "Drafted from Monitored Medicines Prescribing Code (Dec 2024) Part 6 (§6.2, §6.5–6.5.2.1); awaiting clinical review.",
             "tags": []
           },
           {
@@ -65268,7 +65310,7 @@
     "stats": [
       {
         "label": "Max Dose",
-        "value": "8 mg/day",
+        "value": "20 mg/day",
         "cls": "hi",
         "flag": "hi"
       },
@@ -65303,7 +65345,7 @@
           },
           {
             "key": "Maximum Dose",
-            "val": "Max **8 mg/day** shown (usual adult epilepsy maintenance 4-8 mg/day); the Rivotril PI adult maximum is 20 mg/day. Off-label panic dosing is usually 1-4 mg/day.",
+            "val": "Rivotril PI adult maximum **20 mg/day**. Usual adult epilepsy maintenance is 4-8 mg/day. Off-label panic dosing is usually 1-4 mg/day.",
             "tags": []
           },
           {
@@ -65345,7 +65387,7 @@
           },
           {
             "key": "Epilepsy / Myoclonus",
-            "val": "**PO** 0.5 mg **TDS**. Titrate up slowly based on response. Max 8 mg/day.",
+            "val": "**PO** 0.5 mg **TDS**. Titrate up slowly based on response. Usual maintenance 4-8 mg/day (PI maximum 20 mg/day).",
             "tags": []
           },
           {
@@ -65546,7 +65588,7 @@
       },
       {
         "label": "Key Indication Doses",
-        "value": "Panic Disorder (off-label in Australia): **PO** 0.5-1 mg **BD**. Max 4 mg/day.  Epilepsy / Myoclonus: **PO** 0.5 mg **TDS**. Titrate up slowly based on response. Max 8 mg/day.  Status Epilepticus: **IV** 1 mg STAT slow push (Often used as second-line to Diazepam/Midazolam)."
+        "value": "Panic Disorder (off-label in Australia): **PO** 0.5-1 mg **BD**. Max 4 mg/day.  Epilepsy / Myoclonus: **PO** 0.5 mg **TDS**. Titrate up slowly based on response. Usual maintenance 4-8 mg/day (PI maximum 20 mg/day).  Status Epilepticus: **IV** 1 mg STAT slow push (Often used as second-line to Diazepam/Midazolam)."
       },
       {
         "label": "Best Uses",
@@ -65980,7 +66022,7 @@
           },
           {
             "key": "Status Epilepticus",
-            "val": "**IV** 4 mg slow push (2 mg/min).",
+            "val": "No lorazepam injection is registered in Australia (ARTG); IV use needs the Special Access Scheme. Where used: **IV** 4 mg slow push (2 mg/min).",
             "tags": []
           },
           {
@@ -66006,7 +66048,7 @@
           },
           {
             "key": "Parenteral",
-            "val": "Ampoules for **IV** / **IM** use. (Unlike Diazepam, IM absorption is excellent and predictable).",
+            "val": "No lorazepam injection is on the ARTG; ampoules are only available through the Special Access Scheme. (Unlike Diazepam, IM absorption is excellent and predictable).",
             "tags": []
           },
           {
@@ -66056,6 +66098,17 @@
             "key": "Parenteral Olanzapine",
             "val": "CRITICAL — Avoid simultaneous parenteral administration with parenteral olanzapine due to risk of fatal respiratory depression and severe hypotension.",
             "tags": []
+          },
+          {
+            "key": "Pregnancy",
+            "val": "CAUTION — **Pregnancy** Category C (TGA prescribing medicines in pregnancy database (CSV dated 21 Oct 2026)). High doses during labour may cause neonatal hypotonia, respiratory depression and hypothermia; withdrawal symptoms in newborns have been reported with prolonged use.",
+            "tags": [],
+            "patient": {
+              "factors": ["pregnancy"],
+              "action": "caution",
+              "severity": "caution",
+              "note": "Lorazepam: TGA pregnancy Category C; benefit-risk caution, not an automatic contraindication."
+            }
           }
         ]
       },
@@ -66154,7 +66207,7 @@
       },
       {
         "label": "Key Indication Doses",
-        "value": "Acute Anxiety / Agitation: **PO** or **SL** 0.5 - 1 mg PRN. Max 4 mg/day.  Status Epilepticus: **IV** 4 mg slow push (2 mg/min).  Alcohol Withdrawal (Hepatic Failure): **PO** 1-2 mg q2h PRN (replaces diazepam)."
+        "value": "Acute Anxiety / Agitation: **PO** or **SL** 0.5 - 1 mg PRN. Max 4 mg/day.  Status Epilepticus: no lorazepam injection is registered in Australia, so IV use needs the Special Access Scheme. Where used: **IV** 4 mg slow push (2 mg/min).  Alcohol Withdrawal (Hepatic Failure): **PO** 1-2 mg q2h PRN (replaces diazepam)."
       },
       {
         "label": "Best Uses",
@@ -66162,7 +66215,7 @@
       },
       {
         "label": "Avoid / Cautions",
-        "value": "Severe respiratory failure, sleep apnoea, Myasthenia Gravis. Avoid simultaneous parenteral administration with parenteral olanzapine (risk of fatal respiratory depression and severe hypotension)."
+        "value": "Severe respiratory failure, sleep apnoea, Myasthenia Gravis. Avoid simultaneous parenteral administration with parenteral olanzapine (risk of fatal respiratory depression and severe hypotension). **Pregnancy** Category C."
       },
       {
         "label": "Key Risks",
@@ -66368,6 +66421,17 @@
             "key": "Parenteral Olanzapine",
             "val": "CRITICAL — Avoid simultaneous parenteral administration with parenteral olanzapine due to risk of fatal respiratory depression and severe hypotension.",
             "tags": []
+          },
+          {
+            "key": "Pregnancy",
+            "val": "CAUTION — **Pregnancy** Category C (TGA prescribing medicines in pregnancy database (CSV dated 21 Oct 2026)). High doses during labour may cause neonatal hypotonia, respiratory depression and hypothermia; withdrawal symptoms in newborns have been reported with prolonged use.",
+            "tags": [],
+            "patient": {
+              "factors": ["pregnancy"],
+              "action": "caution",
+              "severity": "caution",
+              "note": "Midazolam: TGA pregnancy Category C; benefit-risk caution, not an automatic contraindication."
+            }
           }
         ]
       },
@@ -66474,7 +66538,7 @@
       },
       {
         "label": "Avoid / Cautions",
-        "value": "Unmonitored environments without airway equipment. Avoid simultaneous parenteral administration with parenteral olanzapine (risk of fatal respiratory depression and severe hypotension)."
+        "value": "Unmonitored environments without airway equipment. Avoid simultaneous parenteral administration with parenteral olanzapine (risk of fatal respiratory depression and severe hypotension). **Pregnancy** Category C."
       },
       {
         "label": "Key Risks",
@@ -66660,6 +66724,17 @@
               },
               "note": "Nitrazepam is long-acting and substantially increases sedation, confusion, unsteadiness and falls in older/frail patients."
             }
+          },
+          {
+            "key": "Pregnancy",
+            "val": "CAUTION — **Pregnancy** Category C (TGA prescribing medicines in pregnancy database (CSV dated 21 Oct 2026)). High doses during labour may cause neonatal hypotonia, respiratory depression and hypothermia; withdrawal symptoms in newborns have been reported with prolonged use.",
+            "tags": [],
+            "patient": {
+              "factors": ["pregnancy"],
+              "action": "caution",
+              "severity": "caution",
+              "note": "Nitrazepam: TGA pregnancy Category C; benefit-risk caution, not an automatic contraindication."
+            }
           }
         ]
       },
@@ -66766,7 +66841,7 @@
       },
       {
         "label": "Avoid / Cautions",
-        "value": "Severe respiratory failure, Myasthenia Gravis, severe hepatic impairment."
+        "value": "Severe respiratory failure, Myasthenia Gravis, severe hepatic impairment. **Pregnancy** Category C."
       },
       {
         "label": "Key Risks",
@@ -68554,7 +68629,7 @@
         "rows": [
           {
             "key": "Status",
-            "val": "Drafted from Monitored Medicines Prescribing Code; awaiting clinical review.",
+            "val": "Drafted from Monitored Medicines Prescribing Code (Dec 2024) §3.4–3.5.4; awaiting clinical review.",
             "tags": []
           },
           {
@@ -69197,7 +69272,7 @@
         "rows": [
           {
             "key": "Status",
-            "val": "Drafted from Monitored Medicines Prescribing Code; awaiting clinical review.",
+            "val": "Drafted from Monitored Medicines Prescribing Code (Dec 2024) §3.4–3.5.4; awaiting clinical review.",
             "tags": []
           },
           {
@@ -69571,7 +69646,7 @@
         "rows": [
           {
             "key": "Status",
-            "val": "Drafted from Monitored Medicines Prescribing Code; awaiting clinical review.",
+            "val": "Drafted from Monitored Medicines Prescribing Code (Dec 2024) §3.4–3.5.4; awaiting clinical review.",
             "tags": []
           },
           {
@@ -69861,6 +69936,17 @@
               },
               "note": "Inferred from existing decision-section wording; review before clinical use."
             }
+          },
+          {
+            "key": "Pregnancy",
+            "val": "CAUTION — **Pregnancy** Category C (TGA prescribing medicines in pregnancy database (CSV dated 21 Oct 2026)). High doses in late pregnancy have caused prolonged neurological disturbances in the newborn.",
+            "tags": [],
+            "patient": {
+              "factors": ["pregnancy"],
+              "action": "caution",
+              "severity": "caution",
+              "note": "Alimemazine: TGA pregnancy Category C; benefit-risk caution, not an automatic contraindication."
+            }
           }
         ]
       },
@@ -69963,7 +70049,7 @@
       },
       {
         "label": "Avoid / Cautions",
-        "value": "Children < 2 years old. Severe hepatic or renal impairment. Narrow-angle glaucoma."
+        "value": "Children < 2 years old. Severe hepatic or renal impairment. Narrow-angle glaucoma. **Pregnancy** Category C."
       },
       {
         "label": "Key Risks",
@@ -71692,6 +71778,17 @@
             "key": "Ambulatory Patients",
             "val": "CRITICAL — Do not give to a patient expected to walk around the ward. They will collapse from hypotension.",
             "tags": []
+          },
+          {
+            "key": "Pregnancy",
+            "val": "CAUTION — No Australian pregnancy category found (not in the TGA prescribing medicines in pregnancy database, checked 26 Oct 2026). For related phenothiazines the TGA notes that high doses in late pregnancy have caused prolonged neurological disturbances in the newborn.",
+            "tags": [],
+            "patient": {
+              "factors": ["pregnancy"],
+              "action": "caution",
+              "severity": "caution",
+              "note": "No TGA category; phenothiazine class caution in late pregnancy."
+            }
           }
         ]
       },
@@ -72156,7 +72253,7 @@
           },
           {
             "key": "Clinical Focus",
-            "val": "High baseline risk of QTc prolongation. Limit use to a maximum of 3 consecutive days before switching to oral.",
+            "val": "High baseline risk of QTc prolongation. IM use for more than three consecutive days has not been studied (Zeldox IM PI); switch to oral as soon as possible.",
             "tags": []
           },
           {
@@ -72209,7 +72306,7 @@
           },
           {
             "key": "Elderly / Frail",
-            "val": "MANDATORY — Max 10 mg STAT. Extreme caution due to orthostatic drops.",
+            "val": "MANDATORY — IM ziprasidone has not been systematically evaluated in people aged 65 and over (Zeldox IM PI). Local practice: 10 mg per dose (not a PI maximum). Extreme caution due to orthostatic drops.",
             "tags": []
           }
         ]
@@ -72385,7 +72482,7 @@
       },
       {
         "label": "Key Indication Doses",
-        "value": "Acute Agitation: **IM** 10-20 mg STAT. May repeat 10 mg after 2 hours, or 20 mg after 4 hours. Max 40 mg/day.  Elderly / Frail: Max 10 mg STAT. Extreme caution due to orthostatic drops."
+        "value": "Acute Agitation: **IM** 10-20 mg STAT. May repeat 10 mg after 2 hours, or 20 mg after 4 hours. Max 40 mg/day.  Elderly / Frail: IM ziprasidone has not been systematically evaluated in people aged 65 and over (Zeldox IM PI). Local practice: 10 mg per dose (not a PI maximum). Extreme caution due to orthostatic drops."
       },
       {
         "label": "Best Uses",
@@ -72734,7 +72831,7 @@
     "stats": [
       {
         "label": "Max Dose",
-        "value": "150 mg/day",
+        "value": "150 mg/day (PI 200 inpatient)",
         "cls": "hi",
         "flag": "hi"
       },
@@ -72848,7 +72945,7 @@
           },
           {
             "key": "Elderly / Frail",
-            "val": "MANDATORY — Avoid if possible. If required, strictly max 10 mg NOCTE due to severe falls/delirium risk.",
+            "val": "MANDATORY — Avoid if possible. Local practice: if required, keep to about 10 mg NOCTE because of falls and delirium risk (not a PI maximum; the Endep PI allows up to 50 mg/day in older patients).",
             "tags": []
           }
         ]
@@ -73050,7 +73147,7 @@
       },
       {
         "label": "Key Indication Doses",
-        "value": "Neuropathic Pain / Migraine: Start **PO** 10-25 mg **NOCTE**. Titrate up every 1-2 weeks. Target 25-75 mg NOCTE.  Depression: Start **PO** 50 mg **NOCTE**. Titrate to 100-150 mg/day. (Rarely used due to safer SSRIs).  Elderly / Frail: Avoid if possible. If required, strictly max 10 mg NOCTE due to severe falls/delirium risk."
+        "value": "Neuropathic Pain / Migraine: Start **PO** 10-25 mg **NOCTE**. Titrate up every 1-2 weeks. Target 25-75 mg NOCTE.  Depression: Start **PO** 50 mg **NOCTE**. Titrate to 100-150 mg/day. (Rarely used due to safer SSRIs).  Elderly / Frail: Avoid if possible. Local practice: if required, keep to about 10 mg NOCTE because of falls and delirium risk (not a PI maximum; the Endep PI allows up to 50 mg/day in older patients)."
       },
       {
         "label": "Best Uses",
@@ -73210,7 +73307,7 @@
           },
           {
             "key": "Oral Routes",
-            "val": "Tablets (20 mg, 40 mg). Oral liquid.",
+            "val": "Tablets (20 mg, 40 mg). No oral liquid found on the ARTG (audit search 20 Oct 2026).",
             "tags": []
           },
           {
@@ -73378,7 +73475,7 @@
       },
       {
         "label": "Route / Formulation",
-        "value": "Tablets (20 mg, 40 mg). Oral liquid. (Celapram, Cipramil)"
+        "value": "Tablets (20 mg, 40 mg). No oral liquid found on the ARTG (audit search 20 Oct 2026). (Celapram, Cipramil)"
       },
       {
         "label": "Usual Dose & Max",
@@ -73394,7 +73491,7 @@
       },
       {
         "label": "Avoid / Cautions",
-        "value": "Baseline **QTc** > 500 ms, concurrent MAOI use. **Pregnancy** Category C."
+        "value": "Congenital long QT syndrome and concurrent MAOI use (Cipramil PI). Baseline **QTc** > 500 ms is a conservative local threshold, not a PI number. **Pregnancy** Category C."
       },
       {
         "label": "Key Risks",
@@ -73426,7 +73523,7 @@
     "stats": [
       {
         "label": "Max Dose",
-        "value": "250 mg/day",
+        "value": "Usual 100-150 mg/day",
         "cls": "hi",
         "flag": "hi"
       },
@@ -73461,7 +73558,7 @@
           },
           {
             "key": "Maximum Dose",
-            "val": "Max **250 mg/day** reflects overseas labelling; the Australian Placil PI gives no maximum and recommends titrating to 100-150 mg/day, then a maintenance dose averaging 50-100 mg/day.",
+            "val": "The Australian Placil and Anafranil PIs give no maximum and recommend titrating to 100-150 mg/day, then a maintenance dose averaging 50-100 mg/day. The 250 mg/day sometimes used in specialist OCD practice reflects overseas labelling.",
             "tags": []
           },
           {
@@ -73514,7 +73611,7 @@
         "rows": [
           {
             "key": "Obsessive-Compulsive Disorder",
-            "val": "Start **PO** 25 mg **NOCTE**. Titrate slowly to 100-250 mg/day. (Requires massive doses to break OCD loops).",
+            "val": "Start **PO** 25 mg **NOCTE**. Titrate slowly to 100-150 mg/day (Placil and Anafranil PIs, which state no maximum). Specialist OCD practice sometimes goes up to 250 mg/day, which reflects overseas labelling; ECG before exceeding 150 mg/day.",
             "tags": []
           },
           {
@@ -73695,11 +73792,11 @@
       },
       {
         "label": "Usual Dose & Max",
-        "value": "Start **PO** 25 mg **NOCTE**. Titrate slowly to 100-250 mg/day. (Requires massive doses to break OCD loops). Max **250 mg/day**."
+        "value": "Start **PO** 25 mg **NOCTE**. Titrate slowly to 100-150 mg/day (Placil and Anafranil PIs, which state no maximum). Specialist OCD practice sometimes goes up to 250 mg/day, which reflects overseas labelling; ECG before exceeding 150 mg/day."
       },
       {
         "label": "Key Indication Doses",
-        "value": "Obsessive-Compulsive Disorder: Start **PO** 25 mg **NOCTE**. Titrate slowly to 100-250 mg/day. (Requires massive doses to break OCD loops).  Depression: **PO** 100-150 mg/day after stepwise titration (maintenance 50-100 mg/day). Cataplexy: **PO** 25-75 mg/day.  Elderly / Frail: Start at 10 mg. High risk of falls, delirium, and heart block."
+        "value": "Obsessive-Compulsive Disorder: Start **PO** 25 mg **NOCTE**. Titrate slowly to 100-150 mg/day (Placil and Anafranil PIs, which state no maximum). Specialist OCD practice sometimes goes up to 250 mg/day, which reflects overseas labelling; ECG before exceeding 150 mg/day.  Depression: **PO** 100-150 mg/day after stepwise titration (maintenance 50-100 mg/day). Cataplexy: **PO** 25-75 mg/day.  Elderly / Frail: Start at 10 mg. High risk of falls, delirium, and heart block."
       },
       {
         "label": "Best Uses",
@@ -74065,7 +74162,7 @@
           },
           {
             "key": "Clinical Focus",
-            "val": "Do not initiate. TGA guidelines actively discourage prescribing Dosulepin due to the unacceptably narrow margin between therapeutic dose and fatal overdose.",
+            "val": "Do not initiate (local practice advice). Dosulepin has a narrow margin between therapeutic dose and fatal overdose. No TGA restriction or guideline on this was found.",
             "tags": []
           },
           {
@@ -74162,6 +74259,17 @@
             "key": "Suicide Risk",
             "val": "CRITICAL — NEVER prescribe to a suicidal patient. A 10-day supply is easily fatal.",
             "tags": []
+          },
+          {
+            "key": "Pregnancy",
+            "val": "CAUTION — **Pregnancy** Category C (TGA prescribing medicines in pregnancy database (CSV dated 21 Oct 2026)). Withdrawal symptoms in newborns have been reported with prolonged maternal use of tricyclic antidepressants.",
+            "tags": [],
+            "patient": {
+              "factors": ["pregnancy"],
+              "action": "caution",
+              "severity": "caution",
+              "note": "Dosulepin: TGA pregnancy Category C; benefit-risk caution, not an automatic contraindication."
+            }
           }
         ]
       },
@@ -74279,7 +74387,7 @@
       },
       {
         "label": "Avoid / Cautions",
-        "value": "Recent myocardial infarction, heart block, concurrent MAOIs, narrow-angle glaucoma, history of epilepsy."
+        "value": "Recent myocardial infarction, heart block, concurrent MAOIs, narrow-angle glaucoma, history of epilepsy. **Pregnancy** Category C."
       },
       {
         "label": "Key Risks",
@@ -75111,7 +75219,7 @@
           },
           {
             "key": "Pharmacokinetic",
-            "val": "HIGH — Omeprazole inhibits CYP2C19, significantly increasing Escitalopram levels and QTc risk. Max Escitalopram dose is 10mg if on Omeprazole.",
+            "val": "HIGH — Omeprazole inhibits CYP2C19, significantly increasing Escitalopram levels and QTc risk. With omeprazole, the Lexapro PI advises caution at the upper end of the dose range; it sets no fixed cap.",
             "tags": []
           },
           {
@@ -75238,7 +75346,7 @@
       },
       {
         "label": "Key Interactions",
-        "value": "Avoid mixing with other QTc prolonging drugs (e.g., Amiodarone, Haloperidol, Sotalol).  Omeprazole inhibits CYP2C19, significantly increasing Escitalopram levels and QTc risk. Max Escitalopram dose is 10mg if on Omeprazole.  NSAIDs (Bleeding risk)."
+        "value": "Avoid mixing with other QTc prolonging drugs (e.g., Amiodarone, Haloperidol, Sotalol).  Omeprazole inhibits CYP2C19, significantly increasing Escitalopram levels and QTc risk. With omeprazole, the Lexapro PI advises caution at the upper end of the dose range; it sets no fixed cap.  NSAIDs (Bleeding risk)."
       },
       {
         "label": "Monitoring",
@@ -75845,7 +75953,7 @@
     "stats": [
       {
         "label": "Max Dose",
-        "value": "200 mg/day",
+        "value": "200 mg/day (PI 300 inpatient)",
         "cls": "hi",
         "flag": "hi"
       },
@@ -75991,7 +76099,7 @@
           },
           {
             "key": "Elderly",
-            "val": "CRITICAL — Do not use. Will cause severe falls and confusion.",
+            "val": "CRITICAL — Avoid where possible because of a high risk of falls and confusion (local practice). The Tofranil PI does allow use in older patients, starting at 10 mg/day, usually 30-50 mg/day.",
             "tags": [],
             "patient": {
               "factors": ["elderly"],
@@ -76003,6 +76111,17 @@
                 }
               },
               "note": "Inferred from existing decision-section wording; review before clinical use."
+            }
+          },
+          {
+            "key": "Pregnancy",
+            "val": "CAUTION — **Pregnancy** Category C (TGA prescribing medicines in pregnancy database (CSV dated 21 Oct 2026)). Withdrawal symptoms in newborns have been reported with prolonged maternal use of tricyclic antidepressants.",
+            "tags": [],
+            "patient": {
+              "factors": ["pregnancy"],
+              "action": "caution",
+              "severity": "caution",
+              "note": "Imipramine: TGA pregnancy Category C; benefit-risk caution, not an automatic contraindication."
             }
           }
         ]
@@ -76116,7 +76235,7 @@
       },
       {
         "label": "Avoid / Cautions",
-        "value": "Recent myocardial infarction, heart block, concurrent MAOIs, narrow-angle glaucoma."
+        "value": "Recent myocardial infarction, heart block, concurrent MAOIs, narrow-angle glaucoma. **Pregnancy** Category C."
       },
       {
         "label": "Key Risks",
@@ -76642,7 +76761,7 @@
           },
           {
             "key": "The Short Washout",
-            "val": "Because it is reversible, the MAO enzyme is fully functional within 24 hours of stopping the drug. You only need to wait 2 days after stopping Moclobemide to safely start an SSRI (unlike the 14-day wait for Phenelzine).",
+            "val": "Because it is reversible, the MAO enzyme is fully functional within 24 hours of stopping the drug. The SSRI PIs (e.g. Cipramil) require at least one day after stopping moclobemide before starting the SSRI; waiting 2 days is a conservative local margin (unlike the 14-day wait for Phenelzine).",
             "tags": []
           }
         ]
@@ -78421,8 +78540,8 @@
         "type": "pearl",
         "rows": [
           {
-            "key": "The Afternoon Ban",
-            "val": "Never prescribe Tranylcypromine after 3 PM. Its amphetamine-like structure will guarantee the patient does not sleep for 24 hours.",
+            "key": "The 3 pm Rule",
+            "val": "Give the last dose of the day no later than 3 pm. Tranylcypromine's stimulant-like effect can cause insomnia, which the Parnate PI says can usually be overcome this way.",
             "tags": []
           },
           {
@@ -78503,7 +78622,7 @@
       },
       {
         "label": "Clinical Pearl",
-        "value": "Never prescribe Tranylcypromine after 3 PM. Its amphetamine-like structure will guarantee the patient does not sleep for 24 hours."
+        "value": "Give the last dose of the day no later than 3 pm. Tranylcypromine's stimulant-like effect can cause insomnia, which the Parnate PI says can usually be overcome this way."
       }
     ]
   },
@@ -78554,7 +78673,7 @@
           },
           {
             "key": "Maximum Dose",
-            "val": "Max **225 mg/day** (Specialist psych regimens may occasionally push to 375 mg).",
+            "val": "Max **225 mg/day** (Efexor-XR PI). Doses up to 375 mg/day appear only in overseas labelling (US immediate-release, severely depressed inpatients); above 225 mg/day is off-label in Australia and specialist only.",
             "tags": []
           },
           {
@@ -80473,7 +80592,7 @@
           },
           {
             "key": "Elderly",
-            "val": "Start at 12.5 mg **NOCTE**. Max **100 mg/day** in elderly. Highly sensitive to alpha-1 mediated falls.",
+            "val": "The Seroquel PI advises slower titration and a lower daily dose in older patients. Local practice: start at 12.5 mg **NOCTE** and keep to about 100 mg/day where possible (not a PI maximum). Highly sensitive to alpha-1 mediated falls. Hepatic impairment (PI): start at 25 mg/day and increase daily by 25-50 mg/day to an effective dose.",
             "tags": []
           }
         ]
@@ -80543,6 +80662,17 @@
                 }
               },
               "note": "Inferred from existing decision-section wording; review before clinical use."
+            }
+          },
+          {
+            "key": "Pregnancy",
+            "val": "CAUTION — **Pregnancy** Category C (TGA prescribing medicines in pregnancy database (CSV dated 21 Oct 2026)). Neonates exposed in the third trimester are at risk of extrapyramidal and/or withdrawal symptoms after delivery.",
+            "tags": [],
+            "patient": {
+              "factors": ["pregnancy"],
+              "action": "caution",
+              "severity": "caution",
+              "note": "Quetiapine: TGA pregnancy Category C; benefit-risk caution, not an automatic contraindication."
             }
           }
         ]
@@ -80647,7 +80777,7 @@
       },
       {
         "label": "Key Indication Doses",
-        "value": "Insomnia / Anxiety (Off-Label): **PO** 12.5 - 25 mg **NOCTE**.  Bipolar Depression: **PO** 300 mg **NOCTE** (Often using XR formulations).  Schizophrenia / Mania: Schizophrenia usual 300-450 mg/day (range 150-750 mg/day); acute mania usual 400-800 mg/day.  Elderly: Start at 12.5 mg **NOCTE**. Max **100 mg/day** in elderly. Highly sensitive to alpha-1 mediated falls."
+        "value": "Insomnia / Anxiety (Off-Label): **PO** 12.5 - 25 mg **NOCTE**.  Bipolar Depression: **PO** 300 mg **NOCTE** (Often using XR formulations).  Schizophrenia / Mania: Schizophrenia usual 300-450 mg/day (range 150-750 mg/day); acute mania usual 400-800 mg/day.  Elderly: The Seroquel PI advises slower titration and a lower daily dose in older patients. Local practice: start at 12.5 mg **NOCTE** and keep to about 100 mg/day where possible (not a PI maximum). Highly sensitive to alpha-1 mediated falls. Hepatic impairment (PI): start at 25 mg/day and increase daily by 25-50 mg/day to an effective dose."
       },
       {
         "label": "Best Uses",
@@ -80655,7 +80785,7 @@
       },
       {
         "label": "Avoid / Cautions",
-        "value": "Known hypersensitivity to any component. Potent CYP3A4 inhibitors (e.g. Clarithromycin, Ketoconazole) need lower quetiapine doses."
+        "value": "Known hypersensitivity to any component. Potent CYP3A4 inhibitors (e.g. Clarithromycin, Ketoconazole) need lower quetiapine doses. **Pregnancy** Category C."
       },
       {
         "label": "Key Risks",
@@ -80845,6 +80975,17 @@
               },
               "note": "Inferred from existing decision-section wording; review before clinical use."
             }
+          },
+          {
+            "key": "Pregnancy",
+            "val": "CAUTION — **Pregnancy** Category C (TGA prescribing medicines in pregnancy database (CSV dated 21 Oct 2026)). Neonates exposed in the third trimester are at risk of extrapyramidal and/or withdrawal symptoms after delivery.",
+            "tags": [],
+            "patient": {
+              "factors": ["pregnancy"],
+              "action": "caution",
+              "severity": "caution",
+              "note": "Risperidone: TGA pregnancy Category C; benefit-risk caution, not an automatic contraindication."
+            }
           }
         ]
       },
@@ -80951,7 +81092,7 @@
       },
       {
         "label": "Avoid / Cautions",
-        "value": "Known hypersensitivity to risperidone or any excipient."
+        "value": "Known hypersensitivity to risperidone or any excipient. **Pregnancy** Category C."
       },
       {
         "label": "Key Risks",
@@ -81145,6 +81286,17 @@
               },
               "note": "ABILIFY MAINTENA PI 4.2: no adjustment in mild or moderate hepatic impairment; in severe impairment dose cautiously and consider oral aripiprazole."
             }
+          },
+          {
+            "key": "Pregnancy",
+            "val": "CAUTION — **Pregnancy** Category C (TGA prescribing medicines in pregnancy database (CSV dated 21 Oct 2026)). Neonates exposed in the third trimester are at risk of extrapyramidal and/or withdrawal symptoms after delivery.",
+            "tags": [],
+            "patient": {
+              "factors": ["pregnancy"],
+              "action": "caution",
+              "severity": "caution",
+              "note": "Aripiprazole LAI: TGA pregnancy Category C; benefit-risk caution, not an automatic contraindication."
+            }
           }
         ]
       },
@@ -81251,7 +81403,7 @@
       },
       {
         "label": "Avoid / Cautions",
-        "value": "Known hypersensitivity. Do not administer IV or SC."
+        "value": "Known hypersensitivity. Do not administer IV or SC. **Pregnancy** Category C."
       },
       {
         "label": "Key Risks",
@@ -82405,6 +82557,17 @@
               },
               "note": "INVEGA SUSTENNA PI 4.2: not recommended when CrCl < 50 mL/min; mild impairment (CrCl 50 to < 80 mL/min) needs reduced dosing, not avoidance."
             }
+          },
+          {
+            "key": "Pregnancy",
+            "val": "CAUTION — **Pregnancy** Category C (TGA prescribing medicines in pregnancy database (CSV dated 21 Oct 2026)). Neonates exposed in the third trimester are at risk of extrapyramidal and/or withdrawal symptoms after delivery.",
+            "tags": [],
+            "patient": {
+              "factors": ["pregnancy"],
+              "action": "caution",
+              "severity": "caution",
+              "note": "Paliperidone LAI: TGA pregnancy Category C; benefit-risk caution, not an automatic contraindication."
+            }
           }
         ]
       },
@@ -82517,7 +82680,7 @@
       },
       {
         "label": "Avoid / Cautions",
-        "value": "Known hypersensitivity to Paliperidone or Risperidone."
+        "value": "Known hypersensitivity to Paliperidone or Risperidone. **Pregnancy** Category C."
       },
       {
         "label": "Key Risks",
@@ -82714,6 +82877,17 @@
               },
               "note": "Inferred from existing decision-section wording; review before clinical use."
             }
+          },
+          {
+            "key": "Pregnancy",
+            "val": "CAUTION — **Pregnancy** Category C (TGA prescribing medicines in pregnancy database (CSV dated 21 Oct 2026)). Neonates exposed in the third trimester are at risk of extrapyramidal and/or withdrawal symptoms after delivery.",
+            "tags": [],
+            "patient": {
+              "factors": ["pregnancy"],
+              "action": "caution",
+              "severity": "caution",
+              "note": "Risperidone LAI: TGA pregnancy Category C; benefit-risk caution, not an automatic contraindication."
+            }
           }
         ]
       },
@@ -82815,7 +82989,7 @@
       },
       {
         "label": "Avoid / Cautions",
-        "value": "Known hypersensitivity to risperidone or any excipient."
+        "value": "Known hypersensitivity to risperidone or any excipient. **Pregnancy** Category C."
       },
       {
         "label": "Key Risks",
@@ -82929,7 +83103,7 @@
           },
           {
             "key": "Elderly / Frail",
-            "val": "MANDATORY — Max 25-50 mg STAT. Extremely sensitive.",
+            "val": "MANDATORY — The Clopixol Acuphase PI says the dose may need to be reduced in older patients. Local practice: 25-50 mg per injection (not a PI maximum). Extremely sensitive.",
             "tags": []
           }
         ]
@@ -83088,7 +83262,7 @@
       },
       {
         "label": "Key Indication Doses",
-        "value": "Acute Psychosis / Mania: **IM** 50-150 mg STAT. May repeat in 2-3 days if necessary. Maximum 4 injections (or 400mg total) per acute episode.  Elderly / Frail: Max 25-50 mg STAT. Extremely sensitive."
+        "value": "Acute Psychosis / Mania: **IM** 50-150 mg STAT. May repeat in 2-3 days if necessary. Maximum 4 injections (or 400mg total) per acute episode.  Elderly / Frail: The Clopixol Acuphase PI says the dose may need to be reduced in older patients. Local practice: 25-50 mg per injection (not a PI maximum). Extremely sensitive."
       },
       {
         "label": "Best Uses",
@@ -83215,7 +83389,7 @@
           },
           {
             "key": "Elderly / Frail",
-            "val": "MANDATORY — Max 50-100 mg every 4 weeks. (Extreme risk of falls/sedation).",
+            "val": "MANDATORY — The Clopixol PI says the dose may need to be reduced in older patients. Local practice: 50-100 mg every 4 weeks (not a PI maximum). Extreme risk of falls and sedation.",
             "tags": []
           }
         ]
@@ -83379,7 +83553,7 @@
       },
       {
         "label": "Key Indication Doses",
-        "value": "Schizophrenia / Severe Agitation: **IM** 200-400 mg every 2 to 4 weeks. Deep gluteal Z-Track injection.  Switching to Depot: oral daily dose × 8 = depot dose every 2 weeks (taper oral over the first week); from Acuphase, 200-400 mg depot with the last Acuphase injection, then every 2 weeks.  Elderly / Frail: Max 50-100 mg every 4 weeks. (Extreme risk of falls/sedation)."
+        "value": "Schizophrenia / Severe Agitation: **IM** 200-400 mg every 2 to 4 weeks. Deep gluteal Z-Track injection.  Switching to Depot: oral daily dose × 8 = depot dose every 2 weeks (taper oral over the first week); from Acuphase, 200-400 mg depot with the last Acuphase injection, then every 2 weeks.  Elderly / Frail: The Clopixol PI says the dose may need to be reduced in older patients. Local practice: 50-100 mg every 4 weeks (not a PI maximum). Extreme risk of falls and sedation."
       },
       {
         "label": "Best Uses",
@@ -83506,7 +83680,7 @@
         "rows": [
           {
             "key": "Bipolar Maintenance",
-            "val": "Start **PO** 250 mg (IR) **BD**. Quilonum SR 450 mg is given every 12 hours (PI); do not break, crush or chew SR tablets. Titrate carefully over weeks. Target blood level: 0.6 - 0.8 mmol/L (Maintenance) or up to 1.0 mmol/L (Acute Mania) (Australian Prescriber). Australian PIs: maintenance 0.6-1.0 mmol/L; acute mania 0.8-1.4 mmol/L.",
+            "val": "Start **PO** 250 mg (IR) **BD**. Quilonum SR 450 mg is given every 12 hours (PI); do not break, crush or chew SR tablets. Titrate carefully over weeks. Target blood level: 0.6 - 0.8 mmol/L (Maintenance) or up to 1.0 mmol/L (Acute Mania) (Australian Prescriber). Quilonum SR PI: maintenance 0.6-1.0 mmol/L; acute mania 0.8-1.4 mmol/L. Lithicarb PI: acute 0.8-1.6 mmol/L, with no separate maintenance range.",
             "tags": []
           },
           {
@@ -83697,9 +83871,9 @@
             "tags": [],
             "patient": {
               "factors": ["pregnancy"],
-              "action": "caution",
-              "severity": "caution",
-              "note": "Inferred from existing decision-section wording; review before clinical use."
+              "action": "contraindication",
+              "severity": "danger",
+              "note": "Matches this record's contraindication row (audit finding MB-F-03, 26 Oct 2026); review before clinical use."
             }
           },
           {
@@ -83737,11 +83911,11 @@
       },
       {
         "label": "Usual Dose & Max",
-        "value": "Start **PO** 250 mg (IR) **BD**. Quilonum SR 450 mg is given every 12 hours (PI); do not break, crush or chew SR tablets. Titrate carefully over weeks. Target blood level: 0.6 - 0.8 mmol/L (Maintenance) or up to 1.0 mmol/L (Acute Mania) (Australian Prescriber). Australian PIs: maintenance 0.6-1.0 mmol/L; acute mania 0.8-1.4 mmol/L. Titrated strictly via Therapeutic Drug Monitoring (TDM)."
+        "value": "Start **PO** 250 mg (IR) **BD**. Quilonum SR 450 mg is given every 12 hours (PI); do not break, crush or chew SR tablets. Titrate carefully over weeks. Target blood level: 0.6 - 0.8 mmol/L (Maintenance) or up to 1.0 mmol/L (Acute Mania) (Australian Prescriber). Quilonum SR PI: maintenance 0.6-1.0 mmol/L; acute mania 0.8-1.4 mmol/L. Lithicarb PI: acute 0.8-1.6 mmol/L, with no separate maintenance range. Titrated strictly via Therapeutic Drug Monitoring (TDM)."
       },
       {
         "label": "Key Indication Doses",
-        "value": "Bipolar Maintenance: Start **PO** 250 mg (IR) **BD**. Quilonum SR 450 mg is given every 12 hours (PI); do not break, crush or chew SR tablets. Titrate carefully over weeks. Target blood level: 0.6 - 0.8 mmol/L (Maintenance) or up to 1.0 mmol/L (Acute Mania) (Australian Prescriber). Australian PIs: maintenance 0.6-1.0 mmol/L; acute mania 0.8-1.4 mmol/L.  Renal Impairment: Excreted 100% by the kidneys. Avoid entirely in severe renal failure. If eGFR drops, dose MUST drop."
+        "value": "Bipolar Maintenance: Start **PO** 250 mg (IR) **BD**. Quilonum SR 450 mg is given every 12 hours (PI); do not break, crush or chew SR tablets. Titrate carefully over weeks. Target blood level: 0.6 - 0.8 mmol/L (Maintenance) or up to 1.0 mmol/L (Acute Mania) (Australian Prescriber). Quilonum SR PI: maintenance 0.6-1.0 mmol/L; acute mania 0.8-1.4 mmol/L. Lithicarb PI: acute 0.8-1.6 mmol/L, with no separate maintenance range.  Renal Impairment: Excreted 100% by the kidneys. Avoid entirely in severe renal failure. If eGFR drops, dose MUST drop."
       },
       {
         "label": "Best Uses",
@@ -84527,16 +84701,21 @@
         "rows": [
           {
             "key": "Absolute",
-            "val": "CRITICAL — Hypersensitivity to asenapine or any component. Not recommended in severe hepatic impairment (Child-Pugh C; about 7-fold higher exposure); no adjustment needed in mild to moderate impairment.",
+            "val": "CRITICAL — Hypersensitivity to asenapine or any component.",
+            "tags": []
+          },
+          {
+            "key": "Hepatic Impairment",
+            "val": "CAUTION — Not recommended in severe hepatic impairment (Child-Pugh C; about 7-fold higher exposure). No dose adjustment in mild to moderate impairment (Saphris PI 4.2). This is not a PI contraindication.",
             "tags": [],
             "patient": {
               "factors": ["hepatic"],
-              "action": "contraindication",
+              "action": "caution",
               "severity": "danger",
               "match": {
                 "hepatic": ["severe"]
               },
-              "note": "SAPHRIS PI 4.2: not recommended in severe hepatic impairment (Child-Pugh C); no dose adjustment in mild to moderate impairment."
+              "note": "SAPHRIS PI 4.2: not recommended in severe hepatic impairment (Child-Pugh C); 4.3 lists hypersensitivity only."
             }
           },
           {
@@ -85384,7 +85563,7 @@
           },
           {
             "key": "Elderly",
-            "val": "MANDATORY — Start at 10-25 mg/day. High risk of falls and delirium.",
+            "val": "MANDATORY — The Largactil PI says the dose may need to be reduced. Local practice: start at 10-25 mg/day. High risk of falls and delirium.",
             "tags": []
           }
         ]
@@ -85553,7 +85732,7 @@
       },
       {
         "label": "Key Indication Doses",
-        "value": "Acute Psychosis / Agitation: **PO** 25-100 mg **TDS** to **QID**.  Intractable Hiccups: **PO** 25-50 mg **TDS**.  Palliative Agitation / Nausea: **PO** or **IV** 12.5 - 25 mg q4-8h PRN.  Elderly: Start at 10-25 mg/day. High risk of falls and delirium."
+        "value": "Acute Psychosis / Agitation: **PO** 25-100 mg **TDS** to **QID**.  Intractable Hiccups: **PO** 25-50 mg **TDS**.  Palliative Agitation / Nausea: **PO** or **IV** 12.5 - 25 mg q4-8h PRN.  Elderly: The Largactil PI says the dose may need to be reduced. Local practice: start at 10-25 mg/day. High risk of falls and delirium."
       },
       {
         "label": "Best Uses",
@@ -86077,6 +86256,17 @@
               },
               "note": "Inferred from existing decision-section wording; review before clinical use."
             }
+          },
+          {
+            "key": "Pregnancy",
+            "val": "CAUTION — **Pregnancy** Category C (TGA prescribing medicines in pregnancy database (CSV dated 21 Oct 2026)). Neonates exposed in the third trimester are at risk of extrapyramidal and/or withdrawal symptoms after delivery.",
+            "tags": [],
+            "patient": {
+              "factors": ["pregnancy"],
+              "action": "caution",
+              "severity": "caution",
+              "note": "Paliperidone ER: TGA pregnancy Category C; benefit-risk caution, not an automatic contraindication."
+            }
           }
         ]
       },
@@ -86178,7 +86368,7 @@
       },
       {
         "label": "Avoid / Cautions",
-        "value": "Known hypersensitivity to paliperidone or risperidone, CrCl < 10 mL/min, mechanical bowel obstruction."
+        "value": "Known hypersensitivity to paliperidone or risperidone, CrCl < 10 mL/min, mechanical bowel obstruction. **Pregnancy** Category C."
       },
       {
         "label": "Key Risks",
@@ -86379,6 +86569,17 @@
               },
               "note": "Inferred from existing decision-section wording; review before clinical use."
             }
+          },
+          {
+            "key": "Pregnancy",
+            "val": "CAUTION — **Pregnancy** Category C (TGA prescribing medicines in pregnancy database (CSV dated 21 Oct 2026)). High doses in late pregnancy have caused prolonged neurological disturbances in the newborn.",
+            "tags": [],
+            "patient": {
+              "factors": ["pregnancy"],
+              "action": "caution",
+              "severity": "caution",
+              "note": "Periciazine: TGA pregnancy Category C; benefit-risk caution, not an automatic contraindication."
+            }
           }
         ]
       },
@@ -86470,7 +86671,7 @@
       },
       {
         "label": "Avoid / Cautions",
-        "value": "Circulatory collapse, CNS depression or coma, previous blood dyscrasias or agranulocytosis, angle-closure glaucoma risk, urinary retention risk, uncontrolled seizures, dopaminergic antiparkinson drugs, children under 1 year. Caution: cardiac failure, liver or renal dysfunction, Parkinson's disease."
+        "value": "Circulatory collapse, CNS depression or coma, previous blood dyscrasias or agranulocytosis, angle-closure glaucoma risk, urinary retention risk, uncontrolled seizures, dopaminergic antiparkinson drugs, children under 1 year. Caution: cardiac failure, liver or renal dysfunction, Parkinson's disease. **Pregnancy** Category C."
       },
       {
         "label": "Key Risks",
@@ -90995,6 +91196,17 @@
             "key": "Chronic Pain",
             "val": "CAUTION — Stripping opioids off a chronic pain patient will cause excruciating, difficult-to-treat pain. Micro-dose (20mcg) if they are just drowsy but still breathing.",
             "tags": []
+          },
+          {
+            "key": "Pregnancy",
+            "val": "CAUTION — **Pregnancy** Category B1 (TGA prescribing medicines in pregnancy database (CSV dated 21 Oct 2026)).",
+            "tags": [],
+            "patient": {
+              "factors": ["pregnancy"],
+              "action": "caution",
+              "severity": "caution",
+              "note": "Naloxone: TGA pregnancy Category B1; benefit-risk caution, not an automatic contraindication."
+            }
           }
         ]
       },
@@ -91096,7 +91308,7 @@
       },
       {
         "label": "Avoid / Cautions",
-        "value": "NONE — No absolute contraindications in life-threatening respiratory depression."
+        "value": "NONE — No absolute contraindications in life-threatening respiratory depression. **Pregnancy** Category B1."
       },
       {
         "label": "Key Risks",
@@ -91721,7 +91933,7 @@
           },
           {
             "key": "Maximum Dose",
-            "val": "Max **20 mg/day** (Immediate release) or **30 mg/day** (Patch).",
+            "val": "Max **20 mg/day** (Immediate release) or one 3.9 mg/day patch applied twice weekly (Oxytrol PI).",
             "tags": []
           },
           {
@@ -91863,7 +92075,7 @@
           },
           {
             "key": "Pregnancy",
-            "val": "CAUTION — **Pregnancy** Category B1/B3 varies by formulation/source; use only if clearly needed and specialist-reviewed.",
+            "val": "CAUTION — **Pregnancy** Category B1 (TGA database; Ditropan and Oxytrol PIs). Use only if clearly needed.",
             "tags": [],
             "patient": {
               "factors": ["pregnancy"],
@@ -91988,7 +92200,7 @@
       },
       {
         "label": "Avoid / Cautions",
-        "value": "Narrow-angle glaucoma, urinary retention, severe ulcerative colitis, myasthenia gravis. **Pregnancy** Category B3."
+        "value": "Narrow-angle glaucoma, urinary retention, severe ulcerative colitis, myasthenia gravis. **Pregnancy** Category B1."
       },
       {
         "label": "Key Risks",
@@ -94013,6 +94225,11 @@
               },
               "note": "Copper supplementation is unsafe when copper excretion is impaired by severe cholestatic/biliary liver disease."
             }
+          },
+          {
+            "key": "Pregnancy",
+            "val": "INFO — No TGA pregnancy category: mineral supplements are exempt from pregnancy categorisation. The TGA notes that exempt does not mean safe in all circumstances; check the dose and indication.",
+            "tags": []
           }
         ]
       },
@@ -95123,6 +95340,11 @@
               },
               "note": "Magnesium supplementation can accumulate in severe renal impairment."
             }
+          },
+          {
+            "key": "Pregnancy",
+            "val": "INFO — No TGA pregnancy category: mineral supplements are exempt from pregnancy categorisation. The TGA notes that exempt does not mean safe in all circumstances; check the dose and indication.",
+            "tags": []
           }
         ]
       },
@@ -96803,6 +97025,11 @@
             "key": "Absolute",
             "val": "CRITICAL — Selenosis.",
             "tags": []
+          },
+          {
+            "key": "Pregnancy",
+            "val": "INFO — No TGA pregnancy category: mineral supplements are exempt from pregnancy categorisation. The TGA notes that exempt does not mean safe in all circumstances; check the dose and indication.",
+            "tags": []
           }
         ]
       },
@@ -97053,6 +97280,11 @@
               },
               "note": "Salt-tablet therapy can worsen ascites/oedema in severe cirrhosis and needs specialist review."
             }
+          },
+          {
+            "key": "Pregnancy",
+            "val": "INFO — No TGA pregnancy category: mineral supplements and intravenous solutions are exempt from pregnancy categorisation. The TGA notes that exempt does not mean safe in all circumstances; check the dose and indication.",
+            "tags": []
           }
         ]
       },
@@ -97889,13 +98121,13 @@
           },
           {
             "key": "Pregnancy",
-            "val": "SAFE — **Pregnancy** Category A; replace deficiency promptly to protect maternal haematologic and neurologic function.",
+            "val": "CAUTION — No TGA pregnancy category (vitamins are exempt from categorisation). The Hydroxo-B12 PI says use in pregnancy is not recommended unless the expected benefit outweighs the risk, and not for megaloblastic anaemia of pregnancy caused by folate deficiency. True B12 deficiency in pregnancy still needs treatment.",
             "tags": [],
             "patient": {
               "factors": ["pregnancy"],
-              "action": "info",
-              "severity": "info",
-              "note": "Vitamin B12 replacement is compatible with pregnancy and deficiency should be treated."
+              "action": "caution",
+              "severity": "caution",
+              "note": "Hydroxo-B12 PI 4.6: benefit-risk in pregnancy; not for folate-deficiency megaloblastic anaemia of pregnancy."
             }
           }
         ]
@@ -97998,7 +98230,7 @@
       },
       {
         "label": "Avoid / Cautions",
-        "value": "Known hypersensitivity to cobalt or cobalamin. **Pregnancy** Category A."
+        "value": "Known hypersensitivity to cobalt or cobalamin. **Pregnancy** no TGA category (vitamins are exempt); see the Pregnancy row."
       },
       {
         "label": "Key Risks",

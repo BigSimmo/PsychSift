@@ -20,6 +20,7 @@ import {
 } from "@/lib/developer-area/link-access";
 import { readSearchNavigationContext } from "@/lib/search-navigation-context";
 import { buildContentSecurityPolicy, resolveRuntimeFlags } from "@/lib/security-headers";
+import { createServerAuthDeadline } from "@/lib/supabase/auth-deadline";
 import { signProxyAuthPayload } from "@/lib/supabase/proxy-auth-crypto";
 import {
   resolveWorkModeLaunch,
@@ -390,12 +391,19 @@ export async function proxy(request: NextRequest) {
 
   let userHeaderValue: string | null = null;
   let response = NextResponse.next({ request: { headers: requestHeadersWithNonce() } });
+  // H1 (performance audit 2026-10-26): the sign-in check has a deadline. A stalled
+  // Supabase auth server used to hold every signed-in page for over 100 s. Past the
+  // deadline the request continues as signed out, and late cookie writes are dropped
+  // so a stalled refresh never clears the browser's session (see auth-deadline.ts).
+  const authDeadline = createServerAuthDeadline();
   const supabase = createServerClient(url, key, {
+    global: { fetch: authDeadline.fetch },
     cookies: {
       getAll() {
         return request.cookies.getAll();
       },
       setAll(cookiesToSet, responseHeaders) {
+        if (authDeadline.expired) return;
         for (const { name, value } of cookiesToSet) request.cookies.set(name, value);
         response = NextResponse.next({ request: { headers: requestHeadersWithNonce(userHeaderValue) } });
         for (const { name, value, options } of cookiesToSet) response.cookies.set(name, value, options);
@@ -407,7 +415,7 @@ export async function proxy(request: NextRequest) {
   // Refresh the session. Per @supabase/ssr guidance, do not run other logic
   // between createServerClient and getClaims — a stale token here would sign the
   // user out on the next request.
-  const claimsResult = await supabase.auth.getClaims();
+  const { value: claimsResult } = await authDeadline.run(() => supabase.auth.getClaims(), null);
   const claims = claimsResult?.data?.claims;
   if (claims && typeof claims === "object" && typeof claims.sub === "string" && claims.sub) {
     const userPayload = {

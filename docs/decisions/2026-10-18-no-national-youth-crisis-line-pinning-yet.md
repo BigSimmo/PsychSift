@@ -1,6 +1,6 @@
 # Decision: National youth crisis lines are not pinned for CAMHS crisis searches until the owner approves the list
 
-- **Status:** decided 2026-10-18
+- **Status:** decided 2026-10-18; superseded by 2026-10-26-crisis-routing-under-18-youth-and-000.md
 - **Source:** `docs/outstanding-issues-inbox/dd1b66e0-1761-474c-b9bd-280288c5e294.json`, find "Owner ruling 18 Oct 2026 00:10 AWST: do NOT pin national youth crisis lines"
 
 On 18 Oct 2026 at 00:10 AWST the owner ruled that national youth crisis lines (Lifeline WA, Suicide Call
