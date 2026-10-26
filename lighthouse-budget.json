@@ -3,7 +3,7 @@
   "enforce": true,
   "$lighthouseVersion": "Pinned exactly, not `lighthouse@12`: a patch published between a baseline run and its follow-up would silently change the measurement. Kept in step with LIGHTHOUSE_VERSION in .github/workflows/live-web-vitals.yml by tests/check-lighthouse-budget.test.ts so the two Lighthouse entry points cannot drift apart.",
   "lighthouseVersion": "12.8.2",
-  "routes": ["/", "/documents/search"],
+  "routes": ["/", "/documents/search", "/roster", "/open-shifts"],
   "strategies": ["mobile", "desktop"],
   "tolerance": {
     "lcpMs": {

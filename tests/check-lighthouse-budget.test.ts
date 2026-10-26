@@ -45,7 +45,7 @@ const ROUTES = ["/", "/therapy-compass", "/documents/search", "/dsm", "/forms"];
  * captured on the retired detailed home. All three now render the same shared home
  * as `/`, so their removal costs duplication rather than coverage.
  */
-const COMMITTED_ROUTES = ["/", "/documents/search"];
+const COMMITTED_ROUTES = ["/", "/documents/search", "/roster", "/open-shifts"];
 
 const budget = (overrides: Record<string, unknown> = {}) => ({
   enforce: true,
