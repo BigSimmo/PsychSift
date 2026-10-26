@@ -4914,7 +4914,10 @@ describe("RAG structured-output fallback", () => {
     // The route refuses signed-out callers outright since 2026-10-20 (Answer needs sign-in).
     // An ownerless answer still reaches the library in local no-auth mode, so the
     // no-cache, no-coalesce rule for it is pinned here with that check stood aside.
-    vi.doMock("@/lib/clinical-access", () => ({ requireSignedInClinicalAccess: () => undefined }));
+    vi.doMock("@/lib/clinical-access", () => ({
+      requireSignedInClinicalAccess: () => undefined,
+      requireHealthProfessionalDeclaration: async () => undefined,
+    }));
     vi.doMock("@/lib/api-rate-limit", async () => {
       const actual = await vi.importActual<typeof import("../src/lib/api-rate-limit")>("@/lib/api-rate-limit");
       return {

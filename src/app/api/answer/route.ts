@@ -10,7 +10,7 @@ import {
   consumeSubjectApiRateLimit,
   rateLimitJsonResponse,
 } from "@/lib/api-rate-limit";
-import { requireSignedInClinicalAccess } from "@/lib/clinical-access";
+import { requireHealthProfessionalDeclaration, requireSignedInClinicalAccess } from "@/lib/clinical-access";
 import { publicAccessContext } from "@/lib/public-api-access";
 import { setAgentConversationId } from "@/lib/observability/agent-monitoring";
 import { classifyRagQuery } from "@/lib/clinical-search";
@@ -93,6 +93,7 @@ export async function POST(request: Request) {
     const authStartedAt = Date.now();
     const access = await publicAccessContext(request, supabase);
     requireSignedInClinicalAccess(access);
+    await requireHealthProfessionalDeclaration(access, supabase);
     const authMs = Date.now() - authStartedAt;
     const accessScope = resolveRetrievalAccessScope(access.ownerId);
 

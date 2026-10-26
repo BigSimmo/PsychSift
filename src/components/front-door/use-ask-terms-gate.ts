@@ -3,14 +3,13 @@
 import { useRef, useState } from "react";
 
 import { clinicalToolAccessForStatus } from "@/components/mode-kit/use-clinical-tool-access";
-import { TERMS_PROMPT_SAVE_ERROR, TERMS_VERSION } from "@/lib/front-door-content";
+import { ASK_TERMS_SAVE_ERROR, TERMS_VERSION } from "@/lib/front-door-content";
 import { useAuthSession } from "@/lib/supabase/client";
 import {
   TERMS_METADATA_KEY,
   buildTermsAcceptance,
-  hasAcceptedTerms,
   readDeviceTermsVersion,
-  readLocalTermsVersion,
+  readTermsAcceptance,
   writeDeviceTermsVersion,
   writeLocalTermsVersion,
 } from "@/lib/terms-acceptance";
@@ -52,8 +51,9 @@ export type AskTermsGate = {
  *
  * Signed-out visitors are remembered in this browser only
  * (`writeDeviceTermsVersion`). Signed-in users are recorded on the account, the
- * same way `TermsAcceptancePrompt` does it, with the per-user local copy as a
- * fallback. A new `TERMS_VERSION` asks again in both cases.
+ * same way `TermsAcceptancePrompt` does it. Only the account record counts for
+ * them, because the answer server checks it (`requireHealthProfessionalDeclaration`),
+ * so a failed save keeps the step open. A new `TERMS_VERSION` asks again in both cases.
  *
  * Not now sends nothing to Answer: `onNotNow` receives the held question so the
  * caller can show matching documents instead, and the step returns next Ask. Its
@@ -90,9 +90,9 @@ export function useAskTermsGate({
 
   function isAccepted() {
     if (acceptedRef.current === `${owner}\n${TERMS_VERSION}`) return true;
-    if (userId) {
-      return hasAcceptedTerms({ metadata: session?.user.user_metadata, localVersion: readLocalTermsVersion(userId) });
-    }
+    // A signed-in user counts only the account record: the answer server reads that, never
+    // this device's copy (regulatory re-audit R2-01, 26 Oct 2026).
+    if (userId) return readTermsAcceptance(session?.user.user_metadata)?.version === TERMS_VERSION;
     return readDeviceTermsVersion() === TERMS_VERSION;
   }
 
@@ -125,10 +125,14 @@ export function useAskTermsGate({
       } catch {
         saved = false;
       }
-      // Kept on this device either way, so a failed account save never re-asks here.
-      writeLocalTermsVersion(userId, record.version);
       setSaving(false);
-      if (!saved) onSaveFailed?.(TERMS_PROMPT_SAVE_ERROR);
+      // The answer server checks the account record, so a failed save keeps the step open
+      // and sends nothing rather than sending a question the server will refuse.
+      if (!saved) {
+        onSaveFailed?.(ASK_TERMS_SAVE_ERROR);
+        return;
+      }
+      writeLocalTermsVersion(userId, record.version);
     } else {
       writeDeviceTermsVersion(record.version);
     }

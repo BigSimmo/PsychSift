@@ -28,7 +28,7 @@ import { PublicApiError, jsonError } from "@/lib/http";
 import { logger } from "@/lib/logger";
 import { setAgentConversationId } from "@/lib/observability/agent-monitoring";
 import { resolveRetrievalAccessScope } from "@/lib/owner-scope";
-import { requireSignedInClinicalAccess } from "@/lib/clinical-access";
+import { requireHealthProfessionalDeclaration, requireSignedInClinicalAccess } from "@/lib/clinical-access";
 import { publicAccessContext } from "@/lib/public-api-access";
 import { safeErrorLogDetails } from "@/lib/privacy";
 import { buildServerTimingHeader, preambleServerTimingEntries } from "@/lib/server-timing";
@@ -184,6 +184,7 @@ export async function POST(request: Request) {
     const authStarted = Date.now();
     const access = await publicAccessContext(request, supabase);
     requireSignedInClinicalAccess(access);
+    await requireHealthProfessionalDeclaration(access, supabase);
     const authMs = Date.now() - authStarted;
     const rateStarted = Date.now();
     const rateLimit = await consumeSubjectApiRateLimit({
