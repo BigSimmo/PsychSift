@@ -1,11 +1,11 @@
 {
   "version": 1,
   "generatedFrom": "data/medications-snapshot.json",
-  "sourceRowCount": 542,
+  "sourceRowCount": 543,
   "stats": {
-    "resolvedRows": 410,
+    "resolvedRows": 411,
     "unresolvedRows": 132,
-    "rowsWithCatalogueTarget": 459,
+    "rowsWithCatalogueTarget": 460,
     "medicationsWithUnresolvedRows": 117
   },
   "names": {
@@ -6270,8 +6270,17 @@
           "note": "HIGH — Directly and indirectly acting sympathomimetics, including pseudoephedrine and stimulants such as dexamfetamine, lisdexamfetamine and methylphenidate, and vasopressors (metaraminol, adrenaline, noradrenaline, dopamine, dobutamine). MAO inhibition can enhance pressor responses and raise blood pressure. Monitor closely (e.g. blood pressure); seek specialist or source guidance."
         },
         {
-          "rowKey": "Food",
+          "rowKey": "Pharmacodynamic",
           "rowIndex": 4,
+          "severity": "high",
+          "counterparties": ["atomoxetine", "bupropion-sr", "reboxetine"],
+          "termIds": [],
+          "resolved": true,
+          "note": "HIGH — Atomoxetine, reboxetine and bupropion. Their Australian product information contraindicates use with an MAO inhibitor, and linezolid is a reversible, non-selective MAO inhibitor; the US atomoxetine and bupropion labels and the UK reboxetine SmPC name linezolid specifically. Combined use may raise blood pressure or cause other serious reactions. Monitor closely (e.g. blood pressure); seek specialist or source guidance."
+        },
+        {
+          "rowKey": "Food",
+          "rowIndex": 5,
           "severity": "caution",
           "counterparties": [],
           "termIds": ["food"],
