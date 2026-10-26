@@ -373,6 +373,13 @@ const CATALOGUE_TERMS: LexiconTerm[] = [
     surfaces: ["antibiotics", "antibiotic", "oral antibiotics", "broad-spectrum antibiotics"],
     kind: "catalogue",
     select: { classes: ["Antibiotic"] },
+    sourceDenySlugs: ["magnesium-oxide", "meropenem"],
+    sourceDenyRationales: {
+      "magnesium-oxide":
+        "Row names the chelating classes (tetracyclines, fluoroquinolones); 'their antibiotic absorption' is not a claim against every antibiotic.",
+      meropenem:
+        "Valproate row; 'use alternative antibiotic' is advice, not an interaction with every other antibiotic.",
+    },
   },
   {
     id: "sulfonylureas",

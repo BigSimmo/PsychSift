@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "07b1bcba-3ebe-437d-908e-058110f4e85a",
+  "createdOn": "2026-10-23",
+  "action": "done",
+  "payload": {
+    "id": "#GCB0DV",
+    "outcome": "Revalidated 23 October 2026 at df1e07db04. The original request to obtain answer timing has been fulfilled. Archive this duplicate measurement umbrella; unresolved attribution is H69FNZ and uncached search latency is AZXEDC. No claim that latency is fixed. Evidence: scripts/probe-answer-timing.mjs; docs/audit/2026-10-21-database-performance-evidence.md.",
+    "baseRowFingerprint": "6170bee83511302dd58e1eb9711cff2858f0c15ebf4bd383a02d069d2a2a4c56",
+    "targetUlid": "01M2T8FKPFGCB0DVMDYG2X1TKK"
+  }
+}

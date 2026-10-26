@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "783dd428-5321-464b-9c1a-5109726484fc",
+  "createdOn": "2026-10-23",
+  "action": "update",
+  "payload": {
+    "id": "#NZ4X41",
+    "summary": "26 reset therapy profiles need genuine owner review; references are present",
+    "detail": "REVALIDATED 2026-10-23 at df1e07db04. Replace obsolete unsourced-record counts with the recorded reset of 26 therapy profiles needing genuine owner review. Governed references exist; owner approval, refresh and client revocation remain separate. Source inspection only; no fresh application/provider execution or clinical sign-off. Evidence: docs/decisions/2026-10-17-agent-recorded-therapy-and-did-sign-offs-reset.md; src/data/therapy-source-links.json. PRIOR DETAIL: PS-062 verified against the 2026-10-18 checkout: 179 therapies remain reviewed and 26 were reset to needs_review under the owner ruling recorded in docs/decisions/2026-10-17-agent-recorded-therapy-and-did-sign-offs-reset.md. The previous completion described all 205 as signed; that outcome is superseded. Governed references are present, but the 26 need genuine owner review through therapy:review. Clinical approval, corpus refresh and loaded-client revocation are not established. (Previously archived 2026-10-17: Populated governed guideline and clinical literature references for the remaining 26 Therapy Compass records and completed clinician sign-off across all 205 Therapy Compass profiles.)",
+    "source": "Current-state issue revalidation 2026-10-23 at df1e07db04; PS-062 supplied merged-PR review; canonical therapies-source.json and reset decision, inspected 2026-10-18",
+    "baseRowFingerprint": "0066eefe89118eac537155fa8946c9d127b202f823bbcb6196d8f7a639b761cc",
+    "targetUlid": "01M488JH90NZ4X41FZT2339F40"
+  }
+}

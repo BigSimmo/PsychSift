@@ -312,7 +312,7 @@ describe("My Day shelf, round 2", () => {
       </ToastProvider>,
     );
 
-    const tile = screen.getByRole("button", { name: /Liaison, number 6457 2210/ });
+    const tile = screen.getByRole("button", { name: /Liaison, 6457 2210/ });
     expect(within(tile).getByText("6457 2210")).toHaveClass("font-mono");
     await user.click(tile);
     const sheet = await screen.findByTestId("number-actions-sheet");

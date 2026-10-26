@@ -50,6 +50,15 @@ describe("email authentication form", () => {
     expect(auth.signUpWithPassword).toHaveBeenCalledWith("person@example.com", "new-passphrase-one");
   });
 
+  it("links the Terms and the privacy notice beside account creation (PD-03)", async () => {
+    const user = userEvent.setup();
+    render(<EmailAuthForm />);
+    await user.click(screen.getByRole("button", { name: "Create account" }));
+    const note = screen.getByTestId("email-auth-terms-note");
+    expect(note.querySelector('a[href="/terms"]')).not.toBeNull();
+    expect(screen.getByRole("link", { name: "privacy notice" })).toHaveAttribute("href", "/privacy");
+  });
+
   it("keeps email links and password recovery available", async () => {
     const user = userEvent.setup();
     render(<EmailAuthForm />);

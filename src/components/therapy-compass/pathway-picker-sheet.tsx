@@ -47,14 +47,14 @@ export function PathwayListRail({ pathways, activeSlug, onSelect }: PathwayListR
                 <Waypoints aria-hidden="true" size={20} strokeWidth={1.6} />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block text-sm font-semibold text-[color:var(--text-heading)]">{pathway.name}</span>
+                <span className="block text-sm font-semibold text-[color:var(--text-heading)]">{pathway.name}</span>{" "}
                 <span className="mt-0.5 mb-2 block line-clamp-2 text-xs text-[color:var(--text-muted)]">
                   {pathway.clinicalProblem ?? pathway.summary ?? "Therapy workflow"}
-                </span>
+                </span>{" "}
                 <span className="flex items-center justify-between gap-2">
                   <span className="text-2xs text-[color:var(--text-muted)]">
                     {pathwayLinkedStepCount(pathway)} linked steps
-                  </span>
+                  </span>{" "}
                   <span
                     className={cn(
                       "inline-flex items-center rounded-md border px-2 py-0.5 text-2xs font-semibold",
@@ -199,14 +199,14 @@ export function PathwayMobileBar({ pathways, activePathway, onSelect }: PathwayP
                   <Waypoints aria-hidden="true" size={18} strokeWidth={1.6} />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-semibold text-[color:var(--text-heading)]">{pathway.name}</span>
+                  <span className="block text-sm font-semibold text-[color:var(--text-heading)]">{pathway.name}</span>{" "}
                   <span className="mt-0.5 block text-xs text-[color:var(--text-muted)]">
                     {pathway.clinicalProblem ?? pathway.summary ?? "Therapy workflow"}
-                  </span>
+                  </span>{" "}
                   <span className="mt-1.5 flex items-center justify-between gap-2">
                     <span className="text-2xs text-[color:var(--text-muted)]">
                       {pathwayLinkedStepCount(pathway)} linked steps
-                    </span>
+                    </span>{" "}
                     <span
                       className={cn(
                         "inline-flex items-center rounded-md border px-2 py-0.5 text-2xs font-semibold",

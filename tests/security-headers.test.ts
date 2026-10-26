@@ -213,6 +213,12 @@ describe("security headers", () => {
 
       vi.stubEnv("PLAYWRIGHT_BASE_URL", "http://localhost:4788");
       expect(resolveRuntimeFlags()).toEqual({ isDevelopment: false, isLocalHttpRuntime: true });
+      vi.stubEnv("PLAYWRIGHT_BASE_URL", "http://127.0.0.1:4788");
+      expect(resolveRuntimeFlags()).toEqual({ isDevelopment: false, isLocalHttpRuntime: true });
+      vi.stubEnv("PLAYWRIGHT_BASE_URL", "https://127.0.0.1:4788");
+      expect(resolveRuntimeFlags()).toEqual({ isDevelopment: false, isLocalHttpRuntime: false });
+      vi.stubEnv("PLAYWRIGHT_BASE_URL", "http://127.0.0.1.example.com:4788");
+      expect(resolveRuntimeFlags()).toEqual({ isDevelopment: false, isLocalHttpRuntime: false });
 
       vi.stubEnv("PLAYWRIGHT_BASE_URL", "https://staging.example.com");
       expect(resolveRuntimeFlags()).toEqual({ isDevelopment: false, isLocalHttpRuntime: false });

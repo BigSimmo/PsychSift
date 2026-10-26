@@ -185,15 +185,15 @@ describe("CME dashboard reminders", () => {
     renderDashboard();
     expect(screen.getByTestId("cme-reporting-reminder")).toBeInTheDocument();
     expect(screen.getByTestId("cme-routines-due")).toHaveTextContent("Invented peer group");
-    expect(screen.queryByRole("button", { name: /Snooze for a week/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Snooze a week/ })).toBeNull();
   });
 
   it("offers a week's snooze on each nudge", async () => {
     const user = userEvent.setup();
     const onSnooze = vi.fn();
     renderDashboard(DEFAULT_REMINDER_SETTINGS, onSnooze);
-    await user.click(screen.getByRole("button", { name: "Snooze for a week: CPD year-end claim" }));
-    await user.click(screen.getByRole("button", { name: "Snooze for a week: CPD routines due" }));
+    await user.click(screen.getByRole("button", { name: "Snooze a week: CPD year-end claim" }));
+    await user.click(screen.getByRole("button", { name: "Snooze a week: CPD routines due" }));
     expect(onSnooze.mock.calls).toEqual([["cpd-year-end"], ["cpd-routines"]]);
   });
 

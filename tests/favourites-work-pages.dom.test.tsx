@@ -164,10 +164,9 @@ describe("work pages on the Favourites page", () => {
     const row = workRow(0);
     // The row draws its body twice, once for the xl workspace button and once for the phone link.
     expect(within(row).getAllByText("This phone").length).toBeGreaterThan(0);
-    expect(within(row).getByRole("link", { name: `Open ${first!.item.title ?? first!.item.label}` })).toHaveAttribute(
-      "href",
-      first!.item.href,
-    );
+    expect(
+      within(row).getByRole("link", { name: new RegExp(`^Open ${first!.item.title ?? first!.item.label}\\b`) }),
+    ).toHaveAttribute("href", first!.item.href);
     const shelf = screen.getByTestId("favourites-shelf");
     expect(
       within(shelf)
@@ -183,9 +182,9 @@ describe("work pages on the Favourites page", () => {
     renderPage();
 
     const chips = within(screen.getByTestId("favourites-set-chips"));
-    expect(chips.getByRole("button", { name: "All favourites, 5" })).toBeInTheDocument();
-    expect(chips.getByRole("button", { name: "Ward round, 1 favourite" })).toBeInTheDocument();
-    expect(chips.getByRole("button", { name: "Unsorted, 2 favourites" })).toBeInTheDocument();
+    expect(chips.getByRole("button", { name: "All 5 favourites" })).toBeInTheDocument();
+    expect(chips.getByRole("button", { name: "Ward round 1 favourite" })).toBeInTheDocument();
+    expect(chips.getByRole("button", { name: "Unsorted 2 favourites" })).toBeInTheDocument();
     expect(chips.queryByRole("button", { name: new RegExp(`^${first!.area.name},`) })).toBeNull();
 
     await user.click(within(workRow(0)).getByRole("button", { name: /More actions/ }));

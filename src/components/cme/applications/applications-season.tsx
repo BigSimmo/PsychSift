@@ -86,11 +86,6 @@ export function SeasonRail({
                 type="button"
                 onClick={() => onEdit(item.stage)}
                 data-testid={`applications-stage-${item.stage}`}
-                aria-label={
-                  item.date
-                    ? `${item.label}, ${shortDate(item.date.on, today)}${item.date.time ? ` at ${item.date.time}` : ""}. Change date`
-                    : `${item.label}, date to be confirmed. Add date`
-                }
                 className={cn(focusRing, "flex min-h-12 min-w-0 flex-1 items-center gap-3 rounded-md text-left")}
               >
                 <span className="grid min-w-0 flex-1">
@@ -101,20 +96,24 @@ export function SeasonRail({
                     )}
                   >
                     {item.label}
-                  </span>
+                  </span>{" "}
                   <span className="text-sm leading-5 text-[color:var(--text-muted)]">
                     {item.date
                       ? `Added by you${item.date.source ? `, from ${item.date.source}` : ""}${item.date.time ? ` · ${item.date.time}` : ""}`
                       : "Date to be confirmed"}
-                  </span>
+                  </span>{" "}
                   {outOfOrder.has(item.stage) ? (
                     <span className="text-sm leading-5 text-[color:var(--warning)]">
                       Earlier than the stage before. Check the advert.
                     </span>
                   ) : null}
-                </span>
+                </span>{" "}
+                {/* Named by what it shows, so voice control can say it (WCAG 2.5.3, A11Y-02). */}
                 {item.date ? (
-                  <DateTile on={item.date.on} label={shortDate(item.date.on, today)} />
+                  <>
+                    <DateTile on={item.date.on} label={shortDate(item.date.on, today)} />
+                    <span className="sr-only">. Change date</span>
+                  </>
                 ) : (
                   <span className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-[color:var(--mode-identity)]">
                     <Plus aria-hidden="true" strokeWidth={2} className="size-3.5" />

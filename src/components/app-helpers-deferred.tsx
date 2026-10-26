@@ -22,6 +22,10 @@ const SignInEndedNotice = dynamic(
   () => import("@/components/front-door/sign-in-ended-notice").then((m) => m.SignInEndedNotice),
   { ssr: false },
 );
+const SignedOutWorkPrompt = dynamic(
+  () => import("@/components/front-door/signed-out-work-prompt").then((m) => m.SignedOutWorkPrompt),
+  { ssr: false },
+);
 const MotionEnter = dynamic(() => import("@/components/motion/motion-enter").then((m) => m.MotionEnter), {
   ssr: false,
 });
@@ -36,6 +40,8 @@ export function AppHelpersDeferred() {
       <TermsAcceptancePrompt />
       {/* Says when an ended sign-in cleared this device's private notes. */}
       <SignInEndedNotice />
+      {/* Asks whether a first sign-in keeps the shift's signed-out work on this phone. */}
+      <SignedOutWorkPrompt />
     </>
   );
 }

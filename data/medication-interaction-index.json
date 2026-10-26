@@ -1,12 +1,12 @@
 {
   "version": 1,
   "generatedFrom": "data/medications-snapshot.json",
-  "sourceRowCount": 531,
+  "sourceRowCount": 542,
   "stats": {
-    "resolvedRows": 400,
-    "unresolvedRows": 131,
-    "rowsWithCatalogueTarget": 449,
-    "medicationsWithUnresolvedRows": 116
+    "resolvedRows": 410,
+    "unresolvedRows": 132,
+    "rowsWithCatalogueTarget": 459,
+    "medicationsWithUnresolvedRows": 117
   },
   "names": {
     "acamprosate": "Acamprosate",
@@ -190,6 +190,7 @@
     "lidocaine-viscous": "Lidocaine viscous",
     "lignocaine-lidocaine-sc": "Lignocaine/Lidocaine SC",
     "linagliptin": "Linagliptin",
+    "linezolid": "Linezolid",
     "lisdexamfetamine": "Lisdexamfetamine",
     "lithium-carbonate-ir-sr": "Lithium carbonate (IR/SR)",
     "loperamide": "Loperamide",
@@ -522,6 +523,7 @@
     "lidocaine-viscous": "2026-05-11",
     "lignocaine-lidocaine-sc": "2026-05-11",
     "linagliptin": "2026-05-13",
+    "linezolid": "2026-10-26",
     "lisdexamfetamine": "2026-05-10",
     "lithium-carbonate-ir-sr": "2026-05-10",
     "loperamide": "2026-05-11",
@@ -807,6 +809,42 @@
           "termIds": ["antiretrovirals", "cns-depressants", "cyp-inducers", "st-johns-wort"],
           "resolved": false,
           "note": "HIGH — CYP inducers such as rifampicin, phenytoin, carbamazepine, St John's Wort, and some antiretrovirals can lower methadone exposure and precipitate withdrawal. CNS depressants increase sedation/respiratory depression; QT-prolongers and electrolyte-lowering medicines increase torsade risk."
+        },
+        {
+          "rowKey": "Pharmacodynamic",
+          "rowIndex": 1,
+          "severity": "high",
+          "counterparties": ["citalopram"],
+          "termIds": [],
+          "resolved": true,
+          "note": "HIGH — Citalopram. Both medicines can prolong the QT interval, and combined use may add to the risk of QT prolongation and torsades de pointes. Monitor closely (e.g. ECG and electrolytes); seek specialist or source guidance."
+        },
+        {
+          "rowKey": "Pharmacodynamic",
+          "rowIndex": 2,
+          "severity": "high",
+          "counterparties": ["escitalopram"],
+          "termIds": [],
+          "resolved": true,
+          "note": "HIGH — Escitalopram. Both medicines can prolong the QT interval, and combined use may add to the risk of QT prolongation and torsades de pointes. The UK MHRA (Drug Safety Update, Dec 2011) lists use of escitalopram with other medicines that prolong the QT interval as a contraindication; the Australian Lexapro PI does not carry that contraindication. Monitor closely (e.g. ECG and electrolytes); seek specialist or source guidance."
+        },
+        {
+          "rowKey": "Pharmacodynamic",
+          "rowIndex": 3,
+          "severity": "high",
+          "counterparties": ["quetiapine"],
+          "termIds": [],
+          "resolved": true,
+          "note": "HIGH — Quetiapine. Both medicines are associated with QT prolongation, and combined use may add to the risk of torsades de pointes. Monitor closely (e.g. ECG and electrolytes); seek specialist or source guidance."
+        },
+        {
+          "rowKey": "Pharmacokinetic",
+          "rowIndex": 4,
+          "severity": "high",
+          "counterparties": ["fluconazole"],
+          "termIds": [],
+          "resolved": true,
+          "note": "HIGH — Fluconazole. May raise methadone concentrations by inhibiting its metabolism, which can increase methadone-related adverse effects and the risk of QT prolongation. Monitor closely; seek specialist or source guidance."
         }
       ],
       "unresolvedRowCount": 1
@@ -1632,6 +1670,15 @@
           "termIds": ["cyp-inhibitors", "opioids", "snris"],
           "resolved": false,
           "note": "HIGH — CYP2D6 inhibitors (Fluoxetine, Paroxetine) block conversion to the active M1 opioid metabolite, robbing the patient of opioid pain relief while increasing the SNRI seizure/serotonin risks."
+        },
+        {
+          "rowKey": "Pharmacodynamic",
+          "rowIndex": 2,
+          "severity": "critical",
+          "counterparties": ["moclobemide", "phenelzine", "tranylcypromine"],
+          "termIds": ["maois"],
+          "resolved": true,
+          "note": "CRITICAL — MAOIs, including moclobemide. Combined use can cause serotonin syndrome or other serious toxicity, and the cited product label lists use with an MAOI, or within 14 days of stopping one, as a contraindication. Monitor closely; seek specialist or source guidance."
         }
       ],
       "unresolvedRowCount": 1
@@ -3244,6 +3291,7 @@
             "fosfomycin",
             "gentamicin",
             "levonorgestrel",
+            "linezolid",
             "meropenem",
             "metronidazole",
             "minocycline",
@@ -4566,6 +4614,7 @@
             "flucloxacillin",
             "fosfomycin",
             "gentamicin",
+            "linezolid",
             "meropenem",
             "metronidazole",
             "minocycline",
@@ -4707,6 +4756,7 @@
             "flucloxacillin",
             "fosfomycin",
             "gentamicin",
+            "linezolid",
             "meropenem",
             "metronidazole",
             "minocycline",
@@ -5845,43 +5895,8 @@
           "rowKey": "Pharmacokinetic",
           "rowIndex": 0,
           "severity": "critical",
-          "counterparties": [
-            "amikacin",
-            "amoxicillin",
-            "amoxicillin-clavulanate",
-            "azithromycin",
-            "aztreonam",
-            "benzathine-benzylpenicillin",
-            "cefazolin",
-            "cefepime",
-            "ceftriaxone",
-            "cefuroxime",
-            "cephalexin",
-            "ciprofloxacin",
-            "clarithromycin",
-            "clindamycin",
-            "co-trimoxazole",
-            "colistin",
-            "dicloxacillin",
-            "doxycycline",
-            "ertapenem",
-            "erythromycin",
-            "flucloxacillin",
-            "fosfomycin",
-            "gentamicin",
-            "metronidazole",
-            "minocycline",
-            "moxifloxacin",
-            "nitrofurantoin",
-            "norfloxacin",
-            "phenoxymethylpenicillin",
-            "piperacillin-tazobactam",
-            "roxithromycin",
-            "sodium-valproate-oral-iv",
-            "trimethoprim",
-            "vancomycin"
-          ],
-          "termIds": ["antibiotics", "valproate"],
+          "counterparties": ["sodium-valproate-oral-iv"],
+          "termIds": ["valproate"],
           "resolved": true,
           "note": "CRITICAL — Sodium Valproate (Epilim). Meropenem rapidly accelerates the hepatic breakdown of Valproate. Blood levels drop to zero within 24 hours. The interaction cannot be overcome by increasing Valproate dose. Use alternative antibiotic or antiepileptic."
         }
@@ -6190,6 +6205,81 @@
         }
       ],
       "unresolvedRowCount": 0
+    },
+    "linezolid": {
+      "rows": [
+        {
+          "rowKey": "Pharmacodynamic",
+          "rowIndex": 0,
+          "severity": "critical",
+          "counterparties": ["moclobemide", "phenelzine", "tranylcypromine"],
+          "termIds": ["maois"],
+          "resolved": true,
+          "note": "CRITICAL — MAOIs, including moclobemide. Linezolid is itself a reversible, non-selective MAO inhibitor, and the cited product labels list use with another MAO inhibitor, or within two weeks of one, as a contraindication. Monitor closely; seek specialist or source guidance."
+        },
+        {
+          "rowKey": "Pharmacodynamic",
+          "rowIndex": 1,
+          "severity": "high",
+          "counterparties": ["citalopram", "escitalopram"],
+          "termIds": [],
+          "resolved": true,
+          "note": "HIGH — Citalopram and Escitalopram. Serotonin syndrome has been reported when linezolid is combined with serotonergic antidepressants. The cited US Celexa and Lexapro labels list linezolid as a contraindication; the Australian Zyvox, Cipramil and Lexapro PIs advise against the combination unless the patient is carefully observed for serotonin syndrome. Monitor closely; seek specialist or source guidance."
+        },
+        {
+          "rowKey": "Pharmacodynamic",
+          "rowIndex": 2,
+          "severity": "high",
+          "counterparties": [
+            "amitriptyline",
+            "citalopram",
+            "clomipramine",
+            "desvenlafaxine",
+            "dosulepin",
+            "doxepin",
+            "duloxetine",
+            "escitalopram",
+            "fluoxetine",
+            "fluvoxamine",
+            "imipramine",
+            "nortriptyline",
+            "paroxetine",
+            "sertraline",
+            "sumatriptan",
+            "tramadol-ir",
+            "venlafaxine-xr"
+          ],
+          "termIds": ["serotonergic", "snris", "ssris", "tcas"],
+          "resolved": false,
+          "note": "HIGH — Other serotonergic agents named in the cited labels: other SSRIs, SNRIs (venlafaxine, desvenlafaxine, duloxetine), tricyclic antidepressants, triptans (e.g. sumatriptan), pethidine, buspirone, and tramadol. Combined use may cause serotonin syndrome. Monitor closely; seek specialist or source guidance."
+        },
+        {
+          "rowKey": "Pharmacodynamic",
+          "rowIndex": 3,
+          "severity": "high",
+          "counterparties": [
+            "adrenaline-epinephrine",
+            "dexamfetamine",
+            "lisdexamfetamine",
+            "metaraminol",
+            "methylphenidate",
+            "noradrenaline"
+          ],
+          "termIds": [],
+          "resolved": true,
+          "note": "HIGH — Directly and indirectly acting sympathomimetics, including pseudoephedrine and stimulants such as dexamfetamine, lisdexamfetamine and methylphenidate, and vasopressors (metaraminol, adrenaline, noradrenaline, dopamine, dobutamine). MAO inhibition can enhance pressor responses and raise blood pressure. Monitor closely (e.g. blood pressure); seek specialist or source guidance."
+        },
+        {
+          "rowKey": "Food",
+          "rowIndex": 4,
+          "severity": "caution",
+          "counterparties": [],
+          "termIds": ["food"],
+          "resolved": true,
+          "note": "CAUTION — Large amounts of tyramine-rich food and drink (e.g. mature cheese, yeast extracts, undistilled alcoholic beverages, fermented soy products) may raise blood pressure. Monitor closely; seek specialist or source guidance."
+        }
+      ],
+      "unresolvedRowCount": 1
     },
     "allopurinol": {
       "rows": [
@@ -8541,6 +8631,15 @@
           "termIds": ["cyp-inhibitors"],
           "resolved": false,
           "note": "HIGH — Ciprofloxacin and Fluvoxamine (potent CYP1A2 inhibitors) spike clozapine levels."
+        },
+        {
+          "rowKey": "Pharmacokinetic",
+          "rowIndex": 2,
+          "severity": "high",
+          "counterparties": ["erythromycin"],
+          "termIds": [],
+          "resolved": true,
+          "note": "HIGH — Erythromycin. Inhibition of clozapine metabolism can raise clozapine levels and lead to adverse reactions; erythromycin can also prolong the QT interval. Monitor closely (e.g. clozapine levels and adverse effects); seek specialist or source guidance."
         }
       ],
       "unresolvedRowCount": 1
@@ -10036,43 +10135,8 @@
           "rowKey": "Pharmacokinetic",
           "rowIndex": 0,
           "severity": "critical",
-          "counterparties": [
-            "amikacin",
-            "amoxicillin",
-            "amoxicillin-clavulanate",
-            "azithromycin",
-            "aztreonam",
-            "benzathine-benzylpenicillin",
-            "cefazolin",
-            "cefepime",
-            "ceftriaxone",
-            "cefuroxime",
-            "cephalexin",
-            "ciprofloxacin",
-            "clarithromycin",
-            "clindamycin",
-            "co-trimoxazole",
-            "colistin",
-            "dicloxacillin",
-            "doxycycline",
-            "ertapenem",
-            "erythromycin",
-            "flucloxacillin",
-            "fosfomycin",
-            "gentamicin",
-            "meropenem",
-            "metronidazole",
-            "minocycline",
-            "moxifloxacin",
-            "nitrofurantoin",
-            "norfloxacin",
-            "phenoxymethylpenicillin",
-            "piperacillin-tazobactam",
-            "roxithromycin",
-            "trimethoprim",
-            "vancomycin"
-          ],
-          "termIds": ["antibiotics", "fluoroquinolones"],
+          "counterparties": ["ciprofloxacin", "doxycycline", "moxifloxacin", "norfloxacin"],
+          "termIds": ["fluoroquinolones"],
           "resolved": true,
           "note": "CRITICAL — Binds to Tetracyclines (Doxycycline) and Fluoroquinolones (Ciprofloxacin) in the gut, completely destroying their antibiotic absorption. Separate by 4 hours."
         }

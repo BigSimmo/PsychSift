@@ -3368,7 +3368,10 @@ test.describe("PsychSift service detail page", () => {
     const actions = page.getByTestId("service-actions-sheet");
     await expect(actions.getByRole("link", { name: "Call" })).toBeVisible();
     await expect(actions.getByRole("link", { name: "Open source" })).toHaveAttribute("href", /^https?:\/\//);
-    await expect(page.getByRole("link", { name: "View service source" })).toHaveAttribute("href", /^https?:\/\//);
+    await expect(page.getByRole("link", { name: "View source for this service" })).toHaveAttribute(
+      "href",
+      /^https?:\/\//,
+    );
   });
 
   test("service detail actions save and back from direct entry", async ({ page }) => {

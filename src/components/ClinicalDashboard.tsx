@@ -107,7 +107,7 @@ import { useAskTermsGate } from "@/components/front-door/use-ask-terms-gate";
 import { Button } from "@/components/ui/button";
 import { ClinicalSignInNotice } from "@/components/mode-kit/clinical-sign-in-notice";
 import { ClinicalCatalogueGate } from "@/components/mode-kit/clinical-catalogue-gate";
-import { useClinicalToolAccess } from "@/components/mode-kit/use-clinical-tool-access";
+import { clinicalToolLocked, useClinicalToolAccess } from "@/components/mode-kit/use-clinical-tool-access";
 import { ASK_TERMS_DECLINED_NOTICE, ASK_TERMS_REVIEW_LABEL, CLINICAL_SIGN_IN_COPY } from "@/lib/front-door-content";
 import { focusComposerInput as scheduleComposerFocus } from "@/components/clinical-dashboard/focus-composer-input";
 import {
@@ -449,6 +449,7 @@ function ClinicalDashboardContent({
   // while `error` is truthy, and set alongside every `setError(<message>)` so a
   // stale value can never leak into a later, unrelated error.
   const [errorKind, setErrorKind] = useState<AnswerErrorKind | null>(null);
+  const [errorDetail, setErrorDetail] = useState<{ message: string; detail: string } | null>(null);
   const [lastFailedQuery, setLastFailedQuery] = useState<string | null>(null);
   const [setupWarning, setSetupWarning] = useState<string | null>(null);
   const [setupChecks, setSetupChecks] = useState<SetupCheck[]>(fallbackSetupChecks);
@@ -954,6 +955,7 @@ function ClinicalDashboardContent({
     setRestoredAnswerSavedAt,
     setError,
     setErrorKind,
+    setErrorDetail,
     setLastFailedQuery,
     setDemoMode,
     setActionNotice,
@@ -1102,6 +1104,21 @@ function ClinicalDashboardContent({
   useLayoutEffect(() => {
     askRef.current = ask;
   });
+
+  // Sign in and send (D26-05): a question an expired sign-in held back goes once the person is
+  // signed in again. Any newer search or cleared error drops the pending send.
+  const pendingSignInResendRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!error) pendingSignInResendRef.current = null;
+  }, [error]);
+  useEffect(() => {
+    if (authStatus !== "authenticated") return;
+    const held = pendingSignInResendRef.current;
+    if (!held) return;
+    pendingSignInResendRef.current = null;
+    setError(null);
+    void askRef.current(held);
+  }, [authStatus]);
 
   useEffect(() => {
     const trimmedQuery = query.trim();
@@ -2173,6 +2190,7 @@ function ClinicalDashboardContent({
                     errorKind={errorKind}
                     activeModeResultKind={activeModeResultKind}
                     documentsResultsOwnError={documentsResultsOwnError}
+                    errorDetail={errorDetail?.message === error ? errorDetail.detail : null}
                     lastFailedQuery={lastFailedQuery}
                     query={query}
                     onRephrase={() => focusComposerInput()}
@@ -2182,6 +2200,12 @@ function ClinicalDashboardContent({
                       void ask(retryQuery);
                     }}
                     onSearchDocuments={() => crossModeSearch("documents", (lastFailedQuery ?? query).trim())}
+                    onSignInAndSend={() => {
+                      const held = lastFailedQuery ?? query;
+                      pendingSignInResendRef.current = held;
+                      setQuery(held);
+                      openSettings();
+                    }}
                   />
                 )}
 
@@ -2342,7 +2366,7 @@ function ClinicalDashboardContent({
                     </ClinicalCatalogueGate>
                   ) : (
                     <>
-                      {searchMode === "documents" && clinicalToolAccess === "sign-in-required" ? (
+                      {searchMode === "documents" && clinicalToolLocked(clinicalToolAccess) ? (
                         askTermsGate.signInQuery && askTermsGate.signInQuery === query.trim() ? null : (
                           <ClinicalSignInNotice copy={CLINICAL_SIGN_IN_COPY.library} testId="library-sign-in" />
                         )

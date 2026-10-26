@@ -134,7 +134,7 @@ describe("DsmSearchPage empty state", () => {
     expect(rows[0]).not.toHaveAttribute("data-outside-filter");
     expect(rows[1]).toHaveTextContent("Anxiety one");
     expect(rows[1]).toHaveAttribute("data-outside-filter", "true");
-    expect(screen.getByRole("link", { name: "Open Anxiety one" })).toBeVisible();
+    expect(screen.getByRole("link", { name: /^Open Anxiety one\b/ })).toBeVisible();
     expect(screen.getByTestId("dsm-highlight-note")).toHaveTextContent("1 of 2 highlighted, all rows stay");
     expect(screen.getByTestId("dsm-outside-heading")).toHaveTextContent("Not matching · 1");
   });

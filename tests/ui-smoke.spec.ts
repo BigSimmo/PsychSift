@@ -2041,11 +2041,13 @@ test.describe("PsychSift UI smoke coverage", () => {
     const modeOptions = appModeMenu.getByRole("menuitemradio");
     const modeCount = await modeOptions.count();
     expect(modeCount).toBeGreaterThanOrEqual(10);
-    await expect(appModeMenu.getByRole("heading", { name: "Search" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading", { name: "Psychiatry" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading", { name: "Medicines" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading", { name: "On Call" })).toHaveCount(0);
-    await expect(appModeMenu.getByRole("heading", { name: "My Day" })).toHaveCount(0);
+    // The group titles name their groups; a menu holds no headings (A11Y-01).
+    await expect(appModeMenu.getByRole("heading")).toHaveCount(0);
+    await expect(appModeMenu.getByRole("group", { name: "Search" })).toBeAttached();
+    await expect(appModeMenu.getByRole("group", { name: "Psychiatry" })).toBeAttached();
+    await expect(appModeMenu.getByRole("group", { name: "Medicines" })).toBeAttached();
+    await expect(appModeMenu.getByRole("group", { name: "On Call" })).toHaveCount(0);
+    await expect(appModeMenu.getByRole("group", { name: "My Day" })).toHaveCount(0);
     // Tools left the menu (audit item 8, 11 Oct 2026); `/tools` still opens for old links.
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Tools\b/ })).toHaveCount(0);
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Medication\b/ })).toBeAttached();
@@ -4945,11 +4947,12 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(modeDialog.getByRole("radio", { name: "Clinical" })).toBeChecked();
     await expect(modeDialog.getByRole("status")).toHaveText("18 in Clinical");
     await expect(appModeMenu.getByRole("menuitemradio")).toHaveCount(18);
-    await expect(appModeMenu.getByRole("heading", { name: "Search" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading", { name: "Psychiatry" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading", { name: "Mental Health Act" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading", { name: "Medicines" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading")).toHaveCount(4);
+    // Group titles name their groups rather than sitting as headings among menu items (A11Y-01).
+    await expect(appModeMenu.getByRole("group", { name: "Search", exact: true })).toBeAttached();
+    await expect(appModeMenu.getByRole("group", { name: "Psychiatry", exact: true })).toBeAttached();
+    await expect(appModeMenu.getByRole("group", { name: "Mental Health Act", exact: true })).toBeAttached();
+    await expect(appModeMenu.getByRole("group", { name: "Medicines", exact: true })).toBeAttached();
+    await expect(appModeMenu.getByRole("heading")).toHaveCount(0);
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Dictionary\b/ })).toBeAttached();
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^CPD\b/ })).toHaveCount(0);
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Roster\b/ })).toHaveCount(0);
@@ -5977,7 +5980,7 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(sectionSheet.getByRole("button", { name: /Indexed source text/ })).toBeVisible();
     const mobileDensityToggle = sectionSheet.getByTestId("document-view-density-toggle");
     await expect(mobileDensityToggle).toHaveAttribute("aria-pressed", "true");
-    await expect(mobileDensityToggle).toHaveAccessibleName("Show full document content");
+    await expect(mobileDensityToggle).toHaveAccessibleName(/^Condensed view\b/);
     await page.keyboard.press("Escape");
     await expect(sectionSheet).toHaveCount(0);
     await expect(page.getByRole("heading", { level: 1, name: "Synthetic lithium monitoring protocol" })).toBeVisible();
@@ -7000,7 +7003,7 @@ test.describe("PsychSift UI smoke coverage", () => {
 
     const axeResults = await new AxeBuilder({ page })
       .include('[data-testid="clinical-kb-guide-centre"]')
-      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
       .analyze();
     expect(
       axeResults.violations
