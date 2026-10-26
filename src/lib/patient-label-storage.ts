@@ -182,6 +182,26 @@ export function clearPatientLabels(reason: PatientLabelClearReason = "manual"): 
 }
 
 /**
+ * Whether this phone still holds any of this shift's patient labels (timers, call notes, handover
+ * drafts), so Sign out can say what it will clear before it clears it (D26-26). Expired labels are
+ * wiped first, so a finished shift never counts.
+ */
+export function patientLabelsOnDevice(now: number = Date.now()): boolean {
+  if (typeof window === "undefined") return false;
+  clearExpiredPatientLabels(now);
+  for (const area of ["local", "session"] as const) {
+    const storage = storageFor(area);
+    if (!storage) continue;
+    try {
+      if (labelKeysIn(storage).some((key) => key !== PATIENT_LABEL_EXPIRY_STORAGE_KEY)) return true;
+    } catch {
+      // Storage that refuses access holds nothing to lose.
+    }
+  }
+  return false;
+}
+
+/**
  * When the end of a shift last wiped this phone's labels: a time only, never a label, kept outside
  * the label prefix so the wipe itself leaves it. On Call says "were cleared at" from it, because the
  * wipe often happens while the page is closed and the list was simply empty next morning (D26-25).
