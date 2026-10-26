@@ -198,7 +198,7 @@ function SearchField({ placeholder, compact = false }: { placeholder: string; co
       )}
     >
       <Search className="h-4 w-4 text-[color:var(--text-soft)]" aria-hidden="true" />
-      <span className={cn("truncate font-semibold text-[color:var(--text-soft)]", compact ? "text-xs" : "text-sm")}>
+      <span className={cn("truncate font-semibold text-[color:var(--text-muted)]", compact ? "text-xs" : "text-sm")}>
         {placeholder}
       </span>
     </div>
@@ -714,7 +714,7 @@ export function SourceOverlayRedesignMockups() {
         <section data-testid="document-scope-redesign-mockups" className="grid gap-4">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <p className="text-xs font-extrabold uppercase text-[color:var(--text-soft)]">Set 1</p>
+              <p className="text-xs font-extrabold uppercase text-[color:var(--text-muted)]">Set 1</p>
               <h2 className="text-2xl font-black text-[color:var(--text-heading)]">Document scope</h2>
             </div>
             <Pill icon={Filter} active tone="scope">
@@ -744,7 +744,7 @@ export function SourceOverlayRedesignMockups() {
         <section data-testid="source-library-redesign-mockups" className="grid gap-4">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <p className="text-xs font-extrabold uppercase text-[color:var(--text-soft)]">Set 2</p>
+              <p className="text-xs font-extrabold uppercase text-[color:var(--text-muted)]">Set 2</p>
               <h2 className="text-2xl font-black text-[color:var(--text-heading)]">Source library</h2>
             </div>
             <Pill icon={FolderOpen} active tone="library">

@@ -851,7 +851,7 @@ export function MasterDocumentSearch() {
                           {row.statusLabel ? (
                             <Pill tone={row.statusIsCurrent ? "green" : "amber"}>{row.statusLabel}</Pill>
                           ) : (
-                            <span className="text-xs font-semibold text-[color:var(--text-soft)]">—</span>
+                            <span className="text-xs font-semibold text-[color:var(--text-muted)]">—</span>
                           )}
                           {row.reviewLine ? (
                             <p className="text-xs font-semibold text-[color:var(--text-muted)]">{row.reviewLine}</p>
@@ -1072,7 +1072,7 @@ function EvidenceCard({
       </div>
       <h3 className="text-sm font-extrabold leading-5 text-[color:var(--text-heading)]">{evidence.title}</h3>
       <p className="line-clamp-2 text-xs font-medium leading-5 text-[color:var(--text-muted)]">{evidence.body}</p>
-      <p className="text-xs font-bold text-[color:var(--text-soft)]">
+      <p className="text-xs font-bold text-[color:var(--text-muted)]">
         Page {evidence.page} · Section {evidence.section}
       </p>
     </Link>
@@ -1315,7 +1315,7 @@ export function MasterDocumentReader() {
                   ))}
                 </div>
                 <section>
-                  <p className="text-xs font-extrabold uppercase tracking-eyebrow text-[color:var(--text-soft)]">
+                  <p className="text-xs font-extrabold uppercase tracking-eyebrow text-[color:var(--text-muted)]">
                     Matched terms
                   </p>
                   <div className="mt-2 flex flex-wrap gap-1.5">
@@ -1365,7 +1365,7 @@ export function MasterDocumentReader() {
                     key={label}
                     className="rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-subtle)] p-3"
                   >
-                    <p className="text-xs font-extrabold uppercase tracking-eyebrow text-[color:var(--text-soft)]">
+                    <p className="text-xs font-extrabold uppercase tracking-eyebrow text-[color:var(--text-muted)]">
                       {label}
                     </p>
                     <p className="mt-1 text-sm font-bold text-[color:var(--text-heading)]">{value}</p>
@@ -1833,7 +1833,7 @@ function MasterEvidenceDetailContent({
                 </div>
               ))}
               <div>
-                <p className="text-xs font-extrabold uppercase tracking-eyebrow text-[color:var(--text-soft)]">
+                <p className="text-xs font-extrabold uppercase tracking-eyebrow text-[color:var(--text-muted)]">
                   Matched terms
                 </p>
                 <div className="mt-2 flex flex-wrap gap-1.5">
@@ -1843,7 +1843,7 @@ function MasterEvidenceDetailContent({
                 </div>
               </div>
               <div>
-                <p className="text-xs font-extrabold uppercase tracking-eyebrow text-[color:var(--text-soft)]">
+                <p className="text-xs font-extrabold uppercase tracking-eyebrow text-[color:var(--text-muted)]">
                   Relevance
                 </p>
                 <p className="nums mt-1 text-2xl font-extrabold text-[color:var(--clinical-accent)]">
