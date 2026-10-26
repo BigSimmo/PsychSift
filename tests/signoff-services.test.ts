@@ -241,22 +241,22 @@ describe("the service sign-off kind", () => {
   });
 
   it("flags the Fiona Stanley Mother and Baby Unit shape: not a crisis service, shown as Crisis / urgent", () => {
-    // Ledger #4WSEG4. The record is a legacy catalogue row (data/services-snapshot.json S115), not
-    // a curated one, so it is not in this kind; the detector must still catch its contradiction.
+    // Ledger #4WSEG4. The legacy catalogue row (data/services-snapshot.json S115) had this shape
+    // until the 26 Oct 2026 audit fix (MC-F-07) dropped its crisis flag, so the detector is
+    // pinned on the old shape and the fixed row must no longer trip it.
     const legacy = (servicesSnapshot as { services: Json[] }).services.find((service) => service.id === "S115")!;
     expect(legacy.name).toBe("Mother and Baby Mental Health Unit (Fiona Stanley Hospital)");
     const tags = legacy.tags as { acuity_flags: string[]; specialist_groups?: string[] };
-    const warnings = serviceContradictions(
-      {
-        name: legacy.name,
-        exclusions: [legacy.exclusions, legacy.exclusion_rejection_criteria],
-        groups: tags.specialist_groups ?? [],
-      },
-      { acuityFlags: tags.acuity_flags },
-    );
+    const record = {
+      name: legacy.name,
+      exclusions: [legacy.exclusions, legacy.exclusion_rejection_criteria],
+      groups: tags.specialist_groups ?? [],
+    };
+    const warnings = serviceContradictions(record, { acuityFlags: ["crisis_high", ...tags.acuity_flags] });
     expect(warnings).toHaveLength(1);
     expect(warnings[0]).toContain("Not emergency/crisis service");
     expect(warnings[0]).toContain("Crisis / urgent");
+    expect(serviceContradictions(record, { acuityFlags: tags.acuity_flags })).toEqual([]);
   });
 
   it("warns and refuses to describe a row whose curated record is missing", () => {
