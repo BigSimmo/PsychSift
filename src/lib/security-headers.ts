@@ -18,10 +18,16 @@ export type SecurityHeader = { key: string; value: string };
 export type SecurityHeaderFlags = {
   // Next.js dev server: allows `unsafe-eval` in the script-src for React refresh.
   isDevelopment: boolean;
-  // Local http runtime (dev or Playwright against http://localhost): skip
+  // Local http runtime (dev or Playwright against http://localhost or
+  // http://127.0.0.1, where scripts/run-playwright.mjs binds next start): skip
   // HTTPS-only hardening (upgrade-insecure-requests, HSTS) that would break http.
   isLocalHttpRuntime: boolean;
 };
+
+// Plain-http loopback origins only. Chromium does not exempt 127.0.0.1 from
+// upgrade-insecure-requests, so leaving it out upgrades same-origin requests to
+// https://127.0.0.1 and they fail with ERR_SSL_PROTOCOL_ERROR.
+const LOCAL_HTTP_PLAYWRIGHT_ORIGIN = /^http:\/\/(?:localhost|127\.0\.0\.1):\d+(?:\/|$)/u;
 
 // Single source of truth for the runtime flags that shape the policy. Both the
 // static headers (next.config.ts) and the per-request nonce CSP (src/proxy.ts)
@@ -31,7 +37,7 @@ export function resolveRuntimeFlags(): SecurityHeaderFlags {
   const isDevelopment = process.env.NODE_ENV === "development";
   return {
     isDevelopment,
-    isLocalHttpRuntime: isDevelopment || process.env.PLAYWRIGHT_BASE_URL?.startsWith("http://localhost:") === true,
+    isLocalHttpRuntime: isDevelopment || LOCAL_HTTP_PLAYWRIGHT_ORIGIN.test(process.env.PLAYWRIGHT_BASE_URL ?? ""),
   };
 }
 
