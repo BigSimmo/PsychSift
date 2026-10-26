@@ -279,6 +279,7 @@ describe("evaluatePatientAlerts — partial / empty profile and unassessed", () 
       interactionCount: 0,
       unresolvedRowCount: 0,
       unreachableCounterpartyCount: 0,
+      unreviewedHighRiskCount: 0,
     });
     expect(verdict.tone).toBe("neutral");
     expect(verdict.incomplete).toBe(true);
