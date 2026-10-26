@@ -2041,11 +2041,13 @@ test.describe("PsychSift UI smoke coverage", () => {
     const modeOptions = appModeMenu.getByRole("menuitemradio");
     const modeCount = await modeOptions.count();
     expect(modeCount).toBeGreaterThanOrEqual(10);
-    await expect(appModeMenu.getByRole("heading", { name: "Search" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading", { name: "Psychiatry" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading", { name: "Medicines" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading", { name: "On Call" })).toHaveCount(0);
-    await expect(appModeMenu.getByRole("heading", { name: "My Day" })).toHaveCount(0);
+    // The group titles name their groups; a menu holds no headings (A11Y-01).
+    await expect(appModeMenu.getByRole("heading")).toHaveCount(0);
+    await expect(appModeMenu.getByRole("group", { name: "Search" })).toBeAttached();
+    await expect(appModeMenu.getByRole("group", { name: "Psychiatry" })).toBeAttached();
+    await expect(appModeMenu.getByRole("group", { name: "Medicines" })).toBeAttached();
+    await expect(appModeMenu.getByRole("group", { name: "On Call" })).toHaveCount(0);
+    await expect(appModeMenu.getByRole("group", { name: "My Day" })).toHaveCount(0);
     // Tools left the menu (audit item 8, 11 Oct 2026); `/tools` still opens for old links.
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Tools\b/ })).toHaveCount(0);
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Medication\b/ })).toBeAttached();

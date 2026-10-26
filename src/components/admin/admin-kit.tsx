@@ -135,12 +135,19 @@ export function AdminRow({
   readonly disabled?: boolean;
   readonly className?: string;
 }) {
-  // A row that acts is named by its title and end status; the sub line and tags describe it,
-  // so "Copy for workforce" is the button's name, not the whole paragraph under it.
+  // A row that acts is named by every line it shows, in the order it shows them, so a
+  // voice-control user can say any of it (WCAG 2.5.3, A11Y-02). The lead is an icon and
+  // stays out of the name.
   const baseId = useId();
   const hasEnd = end !== undefined && end !== null;
-  const labelledBy = hasEnd ? `${baseId}-t ${baseId}-e` : `${baseId}-t`;
-  const describedBy = [sub ? `${baseId}-s` : null, tags ? `${baseId}-g` : null].filter(Boolean).join(" ") || undefined;
+  const labelledBy = [
+    `${baseId}-t`,
+    sub ? `${baseId}-s` : null,
+    tags ? `${baseId}-g` : null,
+    hasEnd ? `${baseId}-e` : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
   const body = (
     <>
       {lead}
@@ -174,13 +181,7 @@ export function AdminRow({
     </>
   );
   const control = href ? (
-    <Link
-      href={href}
-      className="work-row"
-      aria-labelledby={labelledBy}
-      aria-describedby={describedBy}
-      data-testid={testId}
-    >
+    <Link href={href} className="work-row" aria-labelledby={labelledBy} data-testid={testId}>
       {body}
     </Link>
   ) : onClick ? (
@@ -191,7 +192,6 @@ export function AdminRow({
       className={cn("work-row", ariaExpanded !== undefined && styles.disclosure)}
       aria-expanded={ariaExpanded}
       aria-labelledby={labelledBy}
-      aria-describedby={describedBy}
       data-testid={testId}
     >
       {body}

@@ -60,6 +60,7 @@ import { onCallEntrySchema, type OnCallEntry } from "@/lib/on-call/entry-model";
 import { cacheOnCallEntries, readCachedOnCallEntries, useOnCallEntries } from "@/lib/on-call/entry-store";
 import { parseApiErrorResponse } from "@/lib/api-client-error";
 import { guardExampleAction } from "@/lib/example-data/guards";
+import { useHoldWhileEngaged } from "@/components/use-hold-while-engaged";
 
 type CatalogueItem = (typeof ADMIN_REQUIREMENTS_CATALOGUE)[number];
 type RenewSubject = { entry: OnCallEntry | null; createItem?: CatalogueItem };
@@ -183,11 +184,12 @@ export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
   const [undoBusy, setUndoBusy] = useState(false);
   const [failedAction, setFailedAction] = useState<FailedAction | null>(null);
 
+  const { held: undoHeld, holdProps: undoHoldProps } = useHoldWhileEngaged(undoBar !== null);
   useEffect(() => {
-    if (!undoBar || undoBar.failed) return;
+    if (!undoBar || undoBar.failed || undoHeld) return;
     const timer = setTimeout(() => setUndoBar(null), UNDO_WINDOW_MS);
     return () => clearTimeout(timer);
-  }, [undoBar]);
+  }, [undoBar, undoHeld]);
 
   // Items marked not for this job are left out here: they show once, in their own closing section.
   const rows = useMemo(() => requirementChecklistRowsForJob(ADMIN_REQUIREMENTS_CATALOGUE, own), [own]);
@@ -598,7 +600,7 @@ export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
       )}
 
       {undoBar ? (
-        <div data-testid="admin-renewals-undo-bar" className={adminStyles.undoBar} role="status">
+        <div data-testid="admin-renewals-undo-bar" className={adminStyles.undoBar} role="status" {...undoHoldProps}>
           <span className={adminStyles.undoText}>
             {undoBar.failed ? `Undo didn't save · ${undoBar.message}` : undoBar.message}
           </span>
