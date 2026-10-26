@@ -1,5 +1,6 @@
 import "server-only";
 import { fetchCmeCertificateEntryIds, fetchCmeEvidenceCounts } from "@/lib/cme/evidence-repository";
+import { logger } from "@/lib/logger";
 import type { CmeDraft } from "@/lib/cme/drafts";
 import { fetchOwnerCmeDraft, fetchOwnerCmeDrafts } from "@/lib/cme/drafts-repository";
 import type { CmeMissedSession } from "@/lib/cme/missed-sessions";
@@ -222,7 +223,12 @@ async function load(
         ? fetchOwnerTrainingPeriods(admin, auth.user.id)
             // An empty record is not a reading: the CPD rule is left unticked rather than "Everyone else".
             .then((periods) => (periods.length ? currentPosition(periods, perthCalendarDate(now)) : null))
-            .catch(() => null)
+            .catch((error: unknown) => {
+              logger.warn("CME page: training position read failed; CPD rule left unticked", {
+                errorName: error instanceof Error ? error.name : typeof error,
+              });
+              return null;
+            })
         : null,
     ]);
     if (!set) {
@@ -252,7 +258,12 @@ async function load(
               confirmed: nextSet ? cmeYearConfigurationState(nextSet) === "ready" : false,
               goals: nextSet ? await fetchOwnerCmePlanGoals(admin, auth.user.id, nextSet.id) : [],
             }))
-            .catch(() => null)
+            .catch((error: unknown) => {
+              logger.warn("CME page: next-year plan read failed; year-end offer hidden", {
+                errorName: error instanceof Error ? error.name : typeof error,
+              });
+              return null;
+            })
         : null,
     ]);
     const entryGoals = await fetchOwnerCmeEntryGoals(

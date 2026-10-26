@@ -1,6 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { preloadSearchPatientCheck } from "@/components/clinical-dashboard/search-patient-detail-guard";
 import { useMedicationCatalog } from "@/components/clinical-dashboard/use-medication-catalog";
 import { useRegistryRecord, useRegistryRecords } from "@/lib/use-registry-records";
 
@@ -31,6 +32,12 @@ async function flushMicrotasks() {
     await Promise.resolve();
   });
 }
+
+// The medication search checks typed text for patient details before it sends; load the check once
+// up front so the fake-timer steps below see the request go out (privacy audit CA-02).
+beforeAll(async () => {
+  await preloadSearchPatientCheck();
+});
 
 beforeEach(() => {
   authSession.authorizationHeader = { Authorization: "Bearer user-a-token" };

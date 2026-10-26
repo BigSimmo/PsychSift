@@ -7,6 +7,7 @@ import { focusRing } from "@/components/card-recipes";
 import { modeInsetHairline, modePressable, modeRowHeight } from "@/components/mode-kit/recipes";
 import { modeNameText, modeSecondaryText } from "@/components/mode-kit/type";
 import { cn } from "@/components/ui-primitives";
+import type { useHoldWhileEngaged } from "@/components/use-hold-while-engaged";
 
 /*
  * A grouped-list row that opens something in place (`onClick`) or leaves the
@@ -113,15 +114,19 @@ export function TeachingUndoBar({
   children,
   onUndo,
   testId,
+  holdProps,
 }: {
   readonly children: ReactNode;
   readonly onUndo: () => void;
   readonly testId?: string;
+  /** From `useHoldWhileEngaged`, when a timer takes this bar away. */
+  readonly holdProps?: ReturnType<typeof useHoldWhileEngaged>["holdProps"];
 }) {
   return (
     <div
       role="status"
       data-testid={testId}
+      {...holdProps}
       className="fixed inset-x-4 bottom-4 z-[var(--z-toast)] mx-auto flex max-w-md items-center justify-between gap-3 rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-raised)] py-1 pr-1 pl-3 shadow-[var(--e4)]"
     >
       <span className="min-w-0 text-sm text-[color:var(--text-heading)]">{children}</span>

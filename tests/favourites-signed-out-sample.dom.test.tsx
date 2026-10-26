@@ -101,7 +101,7 @@ describe("Favourites signed out", () => {
     render(<FavouritesCommandLibraryPage query="" demoMode={false} />);
     const [select] = await screen.findAllByRole(
       "button",
-      { name: /^Select Major depressive disorder for workspace$/ },
+      { name: /^Select Major depressive disorder\b.* for workspace$/ },
       { timeout: 15000 },
     );
     fireEvent.click(select!);

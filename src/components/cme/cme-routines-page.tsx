@@ -49,18 +49,18 @@ function RoutineText({
 }) {
   const text = (
     <span className="work-row__text">
-      <span className="work-row__title">{routine.title}</span>
-      <span className="work-row__sub">{sub}</span>
+      <span className="work-row__title">{routine.title}</span> <span className="work-row__sub">{sub}</span>
     </span>
   );
   return onEdit ? (
     <button
       type="button"
-      aria-label={`Edit ${routine.title}`}
       onClick={() => onEdit(routine)}
       className="flex min-h-tap min-w-0 flex-1 items-center border-0 bg-transparent p-0 text-left font-[inherit] text-inherit"
     >
+      {/* Named by what it shows, so voice control can say it (WCAG 2.5.3, A11Y-02). */}
       {text}
+      <span className="sr-only">. Edit</span>
     </button>
   ) : (
     text

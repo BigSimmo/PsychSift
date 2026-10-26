@@ -59,10 +59,7 @@
     },
     {
       "slug": "acute-dystonia",
-      "status": "reviewed",
-      "reviewedBy": "PsychSift",
-      "reviewedAt": "2026-10-06T09:19:28.105Z",
-      "reviewedContentSha256": "82ad8f6e6e8fb3946da630bafec26e3011bec3cf6fcd55f8027f545b2e007545"
+      "status": "drafted"
     },
     {
       "slug": "akathisia",

@@ -198,7 +198,7 @@ function SearchField({ placeholder, compact = false }: { placeholder: string; co
       )}
     >
       <Search className="h-4 w-4 text-[color:var(--text-soft)]" aria-hidden="true" />
-      <span className={cn("truncate font-semibold text-[color:var(--text-soft)]", compact ? "text-xs" : "text-sm")}>
+      <span className={cn("truncate font-semibold text-[color:var(--text-muted)]", compact ? "text-xs" : "text-sm")}>
         {placeholder}
       </span>
     </div>
@@ -208,7 +208,7 @@ function SearchField({ placeholder, compact = false }: { placeholder: string; co
 function SelectField({ label, value, compact = false }: { label: string; value: string; compact?: boolean }) {
   return (
     <label className="grid gap-1">
-      <span className="truncate text-3xs font-extrabold uppercase text-[color:var(--text-soft)]">{label}</span>
+      <span className="truncate text-3xs font-extrabold uppercase text-[color:var(--text-muted)]">{label}</span>
       <span
         className={cn(
           "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--text)] shadow-[var(--shadow-inset)]",
@@ -280,7 +280,7 @@ function SourceRow({ row, compact = false }: { row: (typeof sourceRows)[number];
         >
           {row.title}
         </span>
-        <span className="mt-0.5 block truncate text-2xs font-semibold text-[color:var(--text-soft)]">{row.meta}</span>
+        <span className="mt-0.5 block truncate text-2xs font-semibold text-[color:var(--text-muted)]">{row.meta}</span>
       </span>
       <Pill small tone={row.tone === "accent" ? "scope" : row.tone === "warning" ? "graphite" : "library"} active>
         {row.status}
@@ -383,7 +383,7 @@ function MockupPair({
           <h2 className="text-xl font-extrabold text-[color:var(--text-heading)]">{label}</h2>
           <p className="mt-1 max-w-3xl text-sm font-medium leading-6 text-[color:var(--text-muted)]">{intent}</p>
         </div>
-        <span className="w-fit rounded-md border border-[color:var(--border)] bg-[color:var(--surface-subtle)] px-2.5 py-1 text-2xs font-extrabold uppercase text-[color:var(--text-soft)]">
+        <span className="w-fit rounded-md border border-[color:var(--border)] bg-[color:var(--surface-subtle)] px-2.5 py-1 text-2xs font-extrabold uppercase text-[color:var(--text-muted)]">
           Desktop + phone
         </span>
       </div>
@@ -411,7 +411,7 @@ function ScopeControlStrip({ device }: { device: Device }) {
       <div className={cn("grid flex-1 gap-3 bg-[color:var(--surface-subtle)]", device === "desktop" ? "p-4" : "p-3")}>
         <section className="grid gap-3 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] p-3">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-xs font-extrabold uppercase text-[color:var(--text-soft)]">Scope</p>
+            <p className="text-xs font-extrabold uppercase text-[color:var(--text-muted)]">Scope</p>
             <Pill small active tone="scope">
               All documents
             </Pill>
@@ -427,7 +427,7 @@ function ScopeControlStrip({ device }: { device: Device }) {
         </section>
         <section className="grid gap-3 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] p-3">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-xs font-extrabold uppercase text-[color:var(--text-soft)]">Refine</p>
+            <p className="text-xs font-extrabold uppercase text-[color:var(--text-muted)]">Refine</p>
             <Pill small icon={ListFilter}>
               10 filters
             </Pill>
@@ -479,7 +479,7 @@ function ScopeSplitWorkbench({ device }: { device: Device }) {
         </section>
         <section className="grid content-start gap-3 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] p-3">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-xs font-extrabold uppercase text-[color:var(--text-soft)]">Filter set</p>
+            <p className="text-xs font-extrabold uppercase text-[color:var(--text-muted)]">Filter set</p>
             <Pill small active tone="graphite">
               Compact
             </Pill>
@@ -625,7 +625,7 @@ function LibraryStatusSplit({ device }: { device: Device }) {
         )}
       >
         <section className="grid content-start gap-2 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] p-3">
-          <p className="text-xs font-extrabold uppercase text-[color:var(--text-soft)]">Status</p>
+          <p className="text-xs font-extrabold uppercase text-[color:var(--text-muted)]">Status</p>
           <Pill active tone="graphite" icon={CheckCircle2}>
             Indexed
           </Pill>
@@ -714,7 +714,7 @@ export function SourceOverlayRedesignMockups() {
         <section data-testid="document-scope-redesign-mockups" className="grid gap-4">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <p className="text-xs font-extrabold uppercase text-[color:var(--text-soft)]">Set 1</p>
+              <p className="text-xs font-extrabold uppercase text-[color:var(--text-muted)]">Set 1</p>
               <h2 className="text-2xl font-black text-[color:var(--text-heading)]">Document scope</h2>
             </div>
             <Pill icon={Filter} active tone="scope">
@@ -744,7 +744,7 @@ export function SourceOverlayRedesignMockups() {
         <section data-testid="source-library-redesign-mockups" className="grid gap-4">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <p className="text-xs font-extrabold uppercase text-[color:var(--text-soft)]">Set 2</p>
+              <p className="text-xs font-extrabold uppercase text-[color:var(--text-muted)]">Set 2</p>
               <h2 className="text-2xl font-black text-[color:var(--text-heading)]">Source library</h2>
             </div>
             <Pill icon={FolderOpen} active tone="library">

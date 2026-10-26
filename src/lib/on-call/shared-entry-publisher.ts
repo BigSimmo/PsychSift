@@ -39,3 +39,53 @@ export function sharedOnCallEntryRefusedResponse() {
     { code: "on_call_shared_entry_administrator_required" },
   );
 }
+
+/**
+ * How long the list of site administrators is trusted before Auth is asked again. Granting or
+ * removing the role takes effect on the shared read within this window.
+ */
+export const SHARED_ON_CALL_PUBLISHER_TTL_MS = 5 * 60_000;
+const PUBLISHER_PAGE_SIZE = 1000;
+const PUBLISHER_MAX_PAGES = 50;
+
+let publisherCache: { ids: readonly string[]; expiresAt: number } | null = null;
+
+/**
+ * The accounts whose shared On Call entries every signed-in user may read: site administrators,
+ * read live from Auth (owner decision, 26 Oct 2026). The 25 Oct rule stopped ordinary accounts
+ * creating shared entries, but a shared entry one posted before then would still have reached
+ * everyone, because the shared read never asked who wrote it. Now it does, so a row from an
+ * ordinary account stays with its owner whenever it was written. Nothing is deleted.
+ *
+ * Read from the administrator side, not per row, so a flood of rows from one account cannot push
+ * an administrator's entries past the read's row cap. A failed refresh reuses the last list it
+ * had. With no list at all it throws rather than guess, because an empty answer would read as
+ * "no shared entries".
+ */
+export async function sharedOnCallPublisherIds(
+  supabase: AdminClient,
+  now: number = Date.now(),
+): Promise<readonly string[]> {
+  if (publisherCache && publisherCache.expiresAt > now) return publisherCache.ids;
+  try {
+    const ids: string[] = [];
+    for (let page = 1; page <= PUBLISHER_MAX_PAGES; page += 1) {
+      const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: PUBLISHER_PAGE_SIZE });
+      if (error) throw error;
+      const users = data?.users ?? [];
+      for (const user of users) {
+        if (isAdministratorAppMetadata(user.app_metadata)) ids.push(user.id);
+      }
+      if (users.length < PUBLISHER_PAGE_SIZE) break;
+    }
+    publisherCache = { ids, expiresAt: now + SHARED_ON_CALL_PUBLISHER_TTL_MS };
+    return ids;
+  } catch (error) {
+    if (publisherCache) return publisherCache.ids;
+    throw error;
+  }
+}
+
+export function resetSharedOnCallPublisherCacheForTests() {
+  publisherCache = null;
+}

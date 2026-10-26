@@ -1,5 +1,6 @@
 import { answerContractForRollout, type RagProgrammeRolloutDecision } from "@/lib/rag/rag-rollout";
 import { isIssuedRagShadowControl } from "@/lib/rag/rag-rollout";
+import { logger } from "@/lib/logger";
 import { reviewedPolicyStateForRequest } from "@/lib/rag/rag-reviewed-policy-input";
 import { sanitizeRagEvalDiagnostics } from "@/lib/rag/rag-eval-diagnostics";
 import { createHash } from "node:crypto";
@@ -798,7 +799,12 @@ export async function setCachedAnswer(
       if (!invalidationEpochChanged(descriptor.invalidationOwnerId, invalidationEpochAtStart)) return;
       answerCache.delete(descriptor.localCacheKey);
       await deleteSharedCacheRowByIdentity(rowIdentity);
-    })().catch(() => undefined);
+    })().catch((error: unknown) => {
+      logger.warn("RAG cache: background invalidation of a cached answer failed", {
+        errorName: error instanceof Error ? error.name : typeof error,
+      });
+      return undefined;
+    });
     return;
   }
   if (!cacheWriteProofAllows(args, "answer", answer.sources ?? [], options?.publicCacheWriteProof)) return;
@@ -835,7 +841,12 @@ export async function setCachedAnswer(
     if (!invalidationEpochChanged(args.ownerId, invalidationEpochAtStart)) return;
     answerCache.delete(key);
     await deleteSharedCachedAnswerRow(args, indexingVersion);
-  })().catch(() => undefined);
+  })().catch((error: unknown) => {
+    logger.warn("RAG cache: background deletion of a shared cached answer failed", {
+      errorName: error instanceof Error ? error.name : typeof error,
+    });
+    return undefined;
+  });
 }
 
 function stableHash(value: string) {

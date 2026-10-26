@@ -144,6 +144,7 @@ import { useCommandDropdownDisplayableByPlacement } from "@/components/clinical-
 import type { ClinicalQueryMode } from "@/lib/types";
 import { standaloneModeHomeHref } from "@/lib/search-route-ownership";
 import { confirmShellNavigation } from "@/lib/navigation-guards";
+import { nameContainsLabel } from "@/lib/label-in-name";
 
 // Lazy chunks; the clinical bell loads the bell alone, never AI Search.
 const StaffWorkHeaderControls = dynamic(() =>
@@ -1032,6 +1033,10 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
 
   function renderModeMenuOption(mode: (typeof visibleAppModeOptions)[number], index: number) {
     const active = mode.id === modeMenuRowFor(searchMode);
+    // The phone line is picker B's one-line hint. Work's desktop list shows
+    // the registry description, as #3351 drew it.
+    const description = usesPhoneSearchLayout ? modePickerHint(mode.id) : mode.description;
+    const showDescription = modeMenuSide === "work";
     return (
       <button
         key={mode.id}
@@ -1041,7 +1046,8 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
         type="button"
         role="menuitemradio"
         aria-checked={active}
-        aria-label={`${mode.label}. ${mode.description}`}
+        // Says the line the row shows, so voice control can say it (WCAG 2.5.3, A11Y-02).
+        aria-label={`${mode.label}. ${showDescription ? description : mode.description}`}
         tabIndex={active ? 0 : -1}
         data-sheet-autofocus={usesPhoneSearchLayout && index === modeMenuFocusIndex ? "true" : undefined}
         onFocus={() => prefetchModeSelection(mode.id)}
@@ -1055,11 +1061,9 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
         {renderModeMenuRowContent({
           icon: appModeIcons[mode.id],
           label: mode.label,
-          // The phone line is picker B's one-line hint. Work's desktop list shows
-          // the registry description, as #3351 drew it.
-          description: usesPhoneSearchLayout ? modePickerHint(mode.id) : mode.description,
+          description,
           active,
-          showDescription: modeMenuSide === "work",
+          showDescription,
           modeIconId: usesPhoneSearchLayout ? mode.id : undefined,
         })}
       </button>
@@ -1198,7 +1202,9 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
       const headingId = `desktop-app-mode-group-${group.id}`;
       return (
         <section key={group.id} role="group" aria-labelledby={headingId} className={modeMenuGroupCard}>
-          <h3 id={headingId} className={cn(eyebrowText, "px-2 pb-0.5 pt-1")}>
+          {/* A menu may hold only its items and groups (A11Y-01), so the group's title is
+              read as the group's name rather than as a heading among the items. */}
+          <h3 id={headingId} role="presentation" className={cn(eyebrowText, "px-2 pb-0.5 pt-1")}>
             {group.label}
           </h3>
           {rows}
@@ -1233,6 +1239,25 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
       </div>
     );
   }
+
+  const modePillLegacyName =
+    !routeWorkArea && currentPathname !== "/"
+      ? `Modes, current mode ${selectedAppMode.label}${activeModePage ? `, page ${activeModePage.label}` : ""}`
+      : activeModePage
+        ? `Mode ${selectedAppMode.label}, page ${activeModePage.label}`
+        : `Mode ${selectedAppMode.label}`;
+  // What the pill paints, in reading order (see the pill's branches below).
+  const modePillVisibleText =
+    !routeWorkArea && currentPathname !== "/"
+      ? "Modes"
+      : pillPageLine
+        ? `${pillPageLine.label}, ${pillModeLabel}`
+        : pillShowsAreaOnly
+          ? pillModeLabel
+          : selectedAppMode.label;
+  const modePillAccessibleName = nameContainsLabel(modePillLegacyName, modePillVisibleText)
+    ? modePillLegacyName
+    : `Mode ${selectedAppMode.label}: ${modePillVisibleText}`;
 
   const restoreActionMenuFocusRef = useRef(false);
   const closeScope = useCallback((restoreFocus = false) => {
@@ -2069,13 +2094,12 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
             // other than `/`), the name must contain it (WCAG 2.5.3 Label in
             // Name). "Modes, current mode X" still contains `Mode X` for the
             // substring lookups above.
-            aria-label={
-              !routeWorkArea && currentPathname !== "/"
-                ? `Modes, current mode ${selectedAppMode.label}${activeModePage ? `, page ${activeModePage.label}` : ""}`
-                : activeModePage
-                  ? `Mode ${selectedAppMode.label}, page ${activeModePage.label}`
-                  : `Mode ${selectedAppMode.label}`
-            }
+            //
+            // On work pages the pill can show words the name above leaves out or
+            // reorders ("Week" over "MY DAY", or the area "Roster" on Open shifts).
+            // Then the name keeps its `Mode …` opening and ends with exactly what
+            // the pill shows, in order (A11Y-02).
+            aria-label={modePillAccessibleName}
             // The mode's own hue, on the mode's own control. Resolves to the
             // product accent for every mode that names no identity, so this is
             // inert everywhere but On Call — see the `--mode-identity` block in
@@ -2391,7 +2415,12 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
                 return (
                   <section key={group.id} role="group" aria-labelledby={headingId} data-mode-group={group.id}>
                     <div className="flex min-w-0 items-baseline gap-2 px-1 pb-2">
-                      <h3 id={headingId} className="shrink-0 text-sm font-bold text-[color:var(--text-heading)]">
+                      {/* Inside role="menu": named the group, not a heading among its items (A11Y-01). */}
+                      <h3
+                        id={headingId}
+                        role="presentation"
+                        className="shrink-0 text-sm font-bold text-[color:var(--text-heading)]"
+                      >
                         {group.label}
                       </h3>
                       <p className="min-w-0 truncate text-xs text-[color:var(--text-muted)]">{group.hint}</p>

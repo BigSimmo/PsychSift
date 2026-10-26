@@ -9,4 +9,8 @@ all-zero placeholders, the control warns before loading, and removal is one requ
 example slugs out of the shared read was rejected because it could hide a real row that shares a
 slug.
 
+**Update 26 Oct 2026.** The rows stay shared, but only a site administrator can now load them,
+because loading them publishes to every signed-in reader (privacy audit PP-01, owner question 6).
+Anyone holding a copy can still remove it.
+
 If this summary and the source ever differ, the source wins.

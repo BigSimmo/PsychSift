@@ -168,8 +168,38 @@ describe("Clinical Ask SSE contract", () => {
     expect(result.feedback).toBeNull();
     expect(result.response).toMatchObject({ state: "failed", mode: "services", code: "rate_limited", retryable: true });
     if (result.response.state === "failed") {
-      expect(result.response.message).toContain("Too many Clinical Ask requests.");
-      expect(result.response.message).toContain("42 seconds");
+      // The wait reads as plain time, never a raw count of seconds (design audit D26-10).
+      expect(result.response.message).toBe("Too many questions in a short time. Wait a minute, then try again.");
+      expect(result.response.message).not.toMatch(/seconds/);
+    }
+  });
+
+  it("does not offer Retry at the daily answer cap and says when it resets (D26-09, D26-10)", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 9, 26, 9, 0, 0));
+    try {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          Response.json(
+            {
+              error: "Daily limit reached.",
+              message: "This account has reached its daily limit for generated answers.",
+              code: "generation_daily_cap",
+            },
+            { status: 429, headers: { "Retry-After": String(10 * 60 * 60 + 40 * 60) } },
+          ),
+        ),
+      );
+      const result = await streamClinicalAsk(streamRequest, new AbortController().signal, vi.fn());
+      expect(result.response).toMatchObject({ state: "failed", code: "rate_limited", retryable: false });
+      if (result.response.state === "failed") {
+        expect(result.response.message).toContain("You've used today's answers.");
+        expect(result.response.message).toMatch(/You can ask again from 7:40\s?pm\./);
+        expect(result.response.message).not.toMatch(/seconds|86400/);
+      }
+    } finally {
+      vi.useRealTimers();
     }
   });
 

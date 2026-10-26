@@ -84,6 +84,8 @@ describe("security headers", () => {
       it("keeps the baseline hardening headers", () => {
         expect(byKey.get("X-Content-Type-Options")).toBe("nosniff");
         expect(byKey.get("X-Frame-Options")).toBe("DENY");
+        // Origin only, even within the site, so ?q= search text never rides in a Referer (privacy audit CA-06).
+        expect(byKey.get("Referrer-Policy")).toBe("strict-origin");
         expect(byKey.get("Cross-Origin-Opener-Policy")).toBe("same-origin");
       });
 
@@ -211,6 +213,12 @@ describe("security headers", () => {
 
       vi.stubEnv("PLAYWRIGHT_BASE_URL", "http://localhost:4788");
       expect(resolveRuntimeFlags()).toEqual({ isDevelopment: false, isLocalHttpRuntime: true });
+      vi.stubEnv("PLAYWRIGHT_BASE_URL", "http://127.0.0.1:4788");
+      expect(resolveRuntimeFlags()).toEqual({ isDevelopment: false, isLocalHttpRuntime: true });
+      vi.stubEnv("PLAYWRIGHT_BASE_URL", "https://127.0.0.1:4788");
+      expect(resolveRuntimeFlags()).toEqual({ isDevelopment: false, isLocalHttpRuntime: false });
+      vi.stubEnv("PLAYWRIGHT_BASE_URL", "http://127.0.0.1.example.com:4788");
+      expect(resolveRuntimeFlags()).toEqual({ isDevelopment: false, isLocalHttpRuntime: false });
 
       vi.stubEnv("PLAYWRIGHT_BASE_URL", "https://staging.example.com");
       expect(resolveRuntimeFlags()).toEqual({ isDevelopment: false, isLocalHttpRuntime: false });

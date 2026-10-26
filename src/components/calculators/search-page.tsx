@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  searchTextPatientDetailRefusal,
+  usePreloadSearchPatientCheck,
+} from "@/components/clinical-dashboard/search-patient-detail-guard";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, Clock3, History, Info, LayoutGrid, ListChecks, Rows3, Search, Sigma } from "lucide-react";
 import { useCallback, useEffect, useId, useMemo, useState, useSyncExternalStore } from "react";
@@ -140,7 +144,6 @@ function CalculatorTile({
       // Focus-return anchor: closing the sheet re-renders this list, so the page
       // finds the tile again by calculator id rather than holding a node ref.
       data-calculator-open={calc.id}
-      aria-label={`Open ${calc.abbrev} — ${calc.name}`}
       // A compact row of the list's one hairline card (Clinical audit, 13 Oct
       // 2026, item 12), the same row Therapy search uses: name, one line,
       // tags, and the whole row opens the calculator.
@@ -149,6 +152,8 @@ function CalculatorTile({
         focusRing,
       )}
     >
+      {/* Named by what the row shows, after what it does (WCAG 2.5.3, A11Y-02). */}
+      <span className="sr-only">Open</span>{" "}
       <span
         className={cn(
           "mt-0.5 grid size-9 shrink-0 place-items-center rounded-lg bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]",
@@ -156,30 +161,29 @@ function CalculatorTile({
       >
         <Icon className="size-icon-md" aria-hidden="true" />
       </span>
-
       <span className="min-w-0">
         <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <span className="text-base font-extrabold leading-6 text-[color:var(--text-heading)]">{calc.abbrev}</span>
+          <span className="text-base font-extrabold leading-6 text-[color:var(--text-heading)]">{calc.abbrev}</span>{" "}
           <span className="inline-flex min-h-5 items-center rounded-md bg-[color:var(--surface-subtle)] px-1.5 text-3xs font-bold uppercase tracking-label text-[color:var(--text-muted)]">
             {domainLabels[calc.domain]}
-          </span>
+          </span>{" "}
           {derived.started ? (
             <SeverityPill tone={derived.result.tone} label={`${derived.score} · ${derived.result.label}`} />
           ) : null}
-        </span>
+        </span>{" "}
         <span className="mt-0.5 block truncate text-2xs font-semibold leading-4 text-[color:var(--text-muted)]">
           {calc.name}
-        </span>
+        </span>{" "}
         {compact ? null : (
           <span className="mt-0.5 line-clamp-1 block text-sm-minus font-medium leading-5 text-[color:var(--text-muted)]">
             {calc.indication}
           </span>
-        )}
+        )}{" "}
         <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
-          <MetaPill icon={ListChecks} label={`${calc.items.length} items`} />
-          <MetaPill icon={Clock3} label={calc.timeEstimate} />
+          <MetaPill icon={ListChecks} label={`${calc.items.length} items`} />{" "}
+          <MetaPill icon={Clock3} label={calc.timeEstimate} />{" "}
           {compact ? null : <MetaPill icon={Sigma} label={`${calc.minScore}–${calc.maxScore}`} />}
-        </span>
+        </span>{" "}
         {context ? (
           <span className="mt-2 flex min-w-0 items-center gap-1.5 text-2xs font-medium leading-4 text-[color:var(--text-muted)]">
             <Search className="size-icon-xs shrink-0 text-[color:var(--decoration-soft)]" aria-hidden="true" />
@@ -189,7 +193,6 @@ function CalculatorTile({
           </span>
         ) : null}
       </span>
-
       <ArrowRight
         className="size-icon-md shrink-0 self-center text-[color:var(--decoration-soft)] transition group-hover:translate-x-0.5 group-hover:text-[color:var(--clinical-accent)] motion-reduce:transition-none motion-reduce:group-hover:translate-x-0"
         aria-hidden="true"
@@ -330,6 +333,7 @@ export function CalculatorsSearchPage({
     () => false,
   );
   const query = hydrated ? (searchCommand?.query ?? initialQuery) : initialQuery;
+  usePreloadSearchPatientCheck(query);
   const normalizedQuery = normalizeCalculatorQuery(query);
   const smartExpansions = useMemo(() => smartSearchExpansions("calculators", query), [query]);
   const filterPanelId = useId();
@@ -382,7 +386,7 @@ export function CalculatorsSearchPage({
     const nextParams = new URLSearchParams(
       searchParams ? searchParams.toString() : typeof window !== "undefined" ? window.location.search : "",
     );
-    if (!nextParams.has("q") && query.trim()) {
+    if (!nextParams.has("q") && query.trim() && !searchTextPatientDetailRefusal(query)) {
       nextParams.set("q", query.trim());
     }
     nextParams.set("calculator", calculator.id);
@@ -394,7 +398,7 @@ export function CalculatorsSearchPage({
       searchParams ? searchParams.toString() : typeof window !== "undefined" ? window.location.search : "",
     );
     nextParams.delete("calculator");
-    if (!nextParams.has("q") && query.trim()) {
+    if (!nextParams.has("q") && query.trim() && !searchTextPatientDetailRefusal(query)) {
       nextParams.set("q", query.trim());
     }
     const searchString = nextParams.toString();

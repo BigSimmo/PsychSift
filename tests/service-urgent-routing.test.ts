@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { detectServiceUrgentIntents } from "@/lib/service-urgent-routing";
+import { detectServiceUrgentIntents, hasUnder18Wording } from "@/lib/service-urgent-routing";
 import { rankServiceRecords } from "@/lib/service-ranker";
 import { serviceRecords } from "@/lib/services";
 
@@ -35,23 +35,37 @@ describe("service urgent routing — Requirement R2", () => {
   });
 
   describe("preserves youth crisis priorities", () => {
-    it("pins CAMHS Crisis Connect first and MHERL second for youth queries", () => {
+    // Owner decisions 2026-10-26 (D4, D6, D9): CAMHS Crisis Connect, then 000, then the adult
+    // lines, then Kids Helpline.
+    it("pins CAMHS Crisis Connect, 000, MHERL, Lifeline WA and Kids Helpline for youth queries", () => {
       for (const query of [
         "youth crisis",
         "youth self harm",
         "youths suicidal",
         "young person suicidal",
         "suicidal young people",
+        "15M suicidal",
+        "16F self harm",
+        "my daughter (14) is self harming",
       ]) {
-        expect(detectServiceUrgentIntents(query)).toEqual(["camhs_crisis", "adult_metro_crisis"]);
-        expect(titles(query, 8).slice(0, 2)).toEqual([
+        expect(detectServiceUrgentIntents(query), query).toEqual([
+          "camhs_crisis",
+          "emergency",
+          "adult_metro_crisis",
+          "youth_crisis_lines",
+        ]);
+        expect(titles(query, 8).slice(0, 5), query).toEqual([
           "CAMHS Crisis Connect",
+          "Emergency services",
           "Mental Health Emergency Response Line (MHERL)",
+          "Lifeline WA",
+          "Kids Helpline",
         ]);
       }
     });
 
-    it("pins CAMHS Crisis Connect alone for explicit under-18 crisis queries", () => {
+    // Owner decisions 2026-10-26 (D4, D5, D9): no adult MHERL line for explicit under-18 wording.
+    it("pins CAMHS Crisis Connect, 000, Kids Helpline and Lifeline WA for explicit under-18 crisis queries", () => {
       for (const query of [
         "child crisis",
         "teen suicidal",
@@ -66,9 +80,45 @@ describe("service urgent routing — Requirement R2", () => {
         "under 18 crisis",
         "<18 crisis",
         "minor crisis",
+        "aged 15, suicidal",
+        "age 12 self harm",
+        "15 yo boy suicidal",
+        "14 girl self harm",
+        "year 10 student suicidal",
+        "high school student wants to die",
+        "high schooler self harming",
       ]) {
-        expect(detectServiceUrgentIntents(query)).toEqual(["camhs_crisis"]);
-        expect(titles(query, 8)[0]).toBe("CAMHS Crisis Connect");
+        expect(detectServiceUrgentIntents(query), query).toEqual(["camhs_crisis", "emergency", "youth_crisis_lines"]);
+        expect(titles(query, 8).slice(0, 4), query).toEqual([
+          "CAMHS Crisis Connect",
+          "Emergency services",
+          "Kids Helpline",
+          "Lifeline WA",
+        ]);
+      }
+    });
+
+    it("pins 000 first and CAMHS Crisis Connect second when an under-18 person has swallowed an amount", () => {
+      expect(detectServiceUrgentIntents("my 15 year old took 20 panadol")).toEqual([
+        "emergency",
+        "camhs_crisis",
+        "youth_crisis_lines",
+      ]);
+      expect(titles("my 15 year old took 20 panadol", 8).slice(0, 2)).toEqual([
+        "Emergency services",
+        "CAMHS Crisis Connect",
+      ]);
+    });
+
+    it("keeps adult routing for adult ages and wording that only looks like an age", () => {
+      for (const query of ["aged care crisis", "aged 75 suicidal", "age 18 suicidal", "jumped from 15 m suicidal"]) {
+        expect(detectServiceUrgentIntents(query), query).toEqual(["emergency", "adult_metro_crisis"]);
+      }
+      for (const query of ["olanzapine 15mg", "aged 15 mg", "year 10 of the program", "school counsellor"]) {
+        expect(hasUnder18Wording(query), query).toBe(false);
+      }
+      for (const query of ["16yo", "aged 15", "my 14 year old", "year 9 student"]) {
+        expect(hasUnder18Wording(query), query).toBe(true);
       }
     });
 
@@ -78,19 +128,15 @@ describe("service urgent routing — Requirement R2", () => {
       }
     });
 
-    it("does not promote non-approved national lines as crisis pins for youth queries", () => {
-      // Owner ruling 18 Oct 2026 00:10 AWST: national youth lines are not pinned until the
-      // owner approves the list (#8CKX6F). Only the detected intents' urgent routes are pinned:
-      // camhs_crisis (CAMHS Crisis Connect) and adult_metro_crisis (MHERL, Lifeline WA). The
-      // first unpinned slot must not be taken by a promoted national line.
-      const topTitles = titles("youth self harm", 8);
-      expect(topTitles.slice(0, 3)).toEqual([
-        "CAMHS Crisis Connect",
-        "Mental Health Emergency Response Line (MHERL)",
-        "Lifeline WA",
-      ]);
-      for (const line of ["Suicide Call Back Service", "Kids Helpline", "13YARN"]) {
-        expect(topTitles.slice(0, 4), line).not.toContain(line);
+    it("pins only the owner-approved national youth lines", () => {
+      // Owner decision 2026-10-26 (D9, #8CKX6F) approved the list held since 18 Oct: Kids Helpline
+      // and Lifeline WA only. The Suicide Call Back Service is not pinned for youth searches, and
+      // 13YARN is pinned only for Aboriginal or Torres Strait Islander wording.
+      for (const query of ["youth self harm", "16yo self harm"]) {
+        const topTitles = titles(query, 8);
+        for (const line of ["Suicide Call Back Service", "13YARN"]) {
+          expect(topTitles.slice(0, 5), `${query}: ${line}`).not.toContain(line);
+        }
       }
     });
   });
@@ -157,6 +203,21 @@ describe("service urgent routing — medical emergencies pin 000 first", () => {
     "not breathing",
     "collapsed",
     "patient collapse",
+    // Owner decision 2026-10-26 (D8).
+    "status epilepticus",
+    "patient fitting",
+    "patient is fitting",
+    "having a fit",
+    "having seizures",
+    "having a stroke",
+    "stroke symptoms",
+    "signs of a stroke",
+    "chest pain",
+    "crushing chest pain",
+    "severe allergic reaction",
+    "bleeding heavily after cutting",
+    "can't wake him up",
+    "blue lips",
   ])("pins Emergency services first for %j", (query) => {
     expect(detectServiceUrgentIntents(query)).toEqual(["emergency"]);
     expect(titles(query, 8)[0]).toBe("Emergency services");
@@ -192,5 +253,69 @@ describe("service urgent routing — explicitly named services", () => {
 
   it("does not let a bare crisis word claim a named-service lead", () => {
     expect(titles("crisis", 1)[0]).toBe("Emergency services");
+  });
+});
+
+describe("service urgent routing — owner decisions of 26 Oct 2026", () => {
+  it.each([
+    "fitting the criteria",
+    "fitting criteria for BPD",
+    "risperidone stroke risk in dementia",
+    "stroke rehab services",
+    "post stroke depression",
+    "fitness to drive",
+    "fit for discharge",
+    "epilepsy clinic referral",
+    "bleeding risk with SSRIs",
+    "took 2 tablets",
+    "take 10 x 5 mg",
+    "swallowed the whole tablet",
+  ])("pins nothing for routine wording %j", (query) => {
+    expect(detectServiceUrgentIntents(query)).toEqual([]);
+  });
+
+  it.each([
+    "took a handful of pills",
+    "swallowed a whole packet of paracetamol",
+    "took my whole blister pack",
+    "swallowed a bottle of pills",
+    "pt ingested 20 x 25mg quetiapine",
+    "took 30 tablets",
+  ])("pins 000 first for swallowed-amount wording %j (D7)", (query) => {
+    expect(detectServiceUrgentIntents(query)).toEqual(["emergency", "adult_metro_crisis"]);
+    expect(titles(query, 8)[0]).toBe("Emergency services");
+  });
+
+  it("routes wanting to die as crisis wording", () => {
+    for (const query of ["I want to die", "she wants to die", "wanna die", "wants to be dead"]) {
+      expect(detectServiceUrgentIntents(query), query).toEqual(["emergency", "adult_metro_crisis"]);
+    }
+  });
+
+  it("pins 000 ahead of regional routes for a swallowed amount or immediate danger", () => {
+    for (const query of ["took 20 tablets and wants to die in Broome", "actively suicidal in Kununurra 10am"]) {
+      expect(detectServiceUrgentIntents(query)[0], query).toBe("emergency");
+    }
+  });
+
+  it("does not read a school named without a student as an age", () => {
+    expect(detectServiceUrgentIntents("high school teacher suicidal")).toEqual(["emergency", "adult_metro_crisis"]);
+    expect(hasUnder18Wording("primary school counsellor")).toBe(false);
+  });
+
+  it.each(["swallowed a bottle of water", "took a handful of nuts", "took a box of chocolates"])(
+    "pins nothing when %j names no medicine",
+    (query) => {
+      expect(detectServiceUrgentIntents(query)).toEqual([]);
+    },
+  );
+
+  it("keeps regional routing first for an under-18 crisis", () => {
+    expect(detectServiceUrgentIntents("teen suicidal tonight in Broome")).toEqual([
+      "regional_after_hours",
+      "camhs_crisis",
+      "emergency",
+      "youth_crisis_lines",
+    ]);
   });
 });

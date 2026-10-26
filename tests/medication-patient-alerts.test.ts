@@ -184,9 +184,9 @@ describe("evaluatePatientAlerts — factor triggers", () => {
     });
 
     it("pins the threshold values themselves", () => {
-      // These are clinical numbers with no citation in the repository, and the comment beside
-      // them still carries an undischarged "confirm against the BigSimmo/Medications reference".
-      // Pinned so changing one is a deliberate, reviewed act rather than a drive-by edit.
+      // These are clinical numbers, each cited beside its constant (audit finding N-05,
+      // 26 Oct 2026). Pinned so changing one is a deliberate, reviewed act rather than a
+      // drive-by edit.
       expect(RENAL_IMPAIRMENT_EGFR).toBe(60);
       expect(QTC_PROLONGED_MS).toBe(450);
       expect(ELDERLY_AGE_YEARS).toBe(65);

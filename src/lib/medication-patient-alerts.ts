@@ -105,12 +105,23 @@ export type PatientAlertResult = {
 };
 
 // ---------------------------------------------------------------------------
-// Heuristic constants (⚠️ confirm against the BigSimmo/Medications reference).
-// Only used when a row lists a numeric factor with no covering `match` key.
+// Default thresholds. Only used when a row lists a numeric factor with no covering
+// `match` key, and the reason they produce is labelled "(default threshold)" on screen.
+// Each is a general screening cut-off, not a medicine-specific PI limit; the source
+// for each is named below (clinical content audit 26 Oct 2026, finding N-05).
 // ---------------------------------------------------------------------------
-export const RENAL_IMPAIRMENT_EGFR = 60; // mL/min; CKD stage 3+.
-export const QTC_PROLONGED_MS = 450; // ms; sex-agnostic conservative threshold.
+// eGFR below 60 mL/min/1.73 m2 is CKD G3a or worse (KDIGO 2024 CKD guideline, as
+// adopted by Kidney Health Australia, Chronic Kidney Disease Management in Primary Care).
+export const RENAL_IMPAIRMENT_EGFR = 60;
+// QTc above 450 ms is prolonged in men (AHA/ACCF/HRS 2009 ECG standardisation
+// recommendations); the female cut-off is 460 ms, so one sex-agnostic value of 450 ms
+// errs towards flagging.
+export const QTC_PROLONGED_MS = 450;
+// 65 years is the age the AGS Beers Criteria and STOPP/START apply from, and the
+// age AIHW uses for older Australians.
 export const ELDERLY_AGE_YEARS = 65;
+// Under 18 years is a child or adolescent for prescribing purposes (TGA PI
+// "paediatric use" sections).
 export const PAEDIATRIC_AGE_YEARS = 18;
 
 /**

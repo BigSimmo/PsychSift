@@ -302,7 +302,7 @@ export function RosterRequestsPage() {
         lead={<RosterIconLead icon={LEAVE_ICON[item.kind]} />}
         title={LEAVE_KIND[item.kind]}
         sub={leaveLine(item)}
-        label={`Review ${LEAVE_KIND[item.kind].toLowerCase()}, ${leaveLine(item)}`}
+        label={`${LEAVE_KIND[item.kind]} ${leaveLine(item)}. Review`}
         onClick={() => setSheet({ kind: "leave", leaveId: item.id })}
       />
     );

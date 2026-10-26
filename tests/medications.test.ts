@@ -36,7 +36,7 @@ function buildRecord(overrides: Partial<MedicationRecord>): MedicationRecord {
 describe("medications catalogue", () => {
   it("loads the full reviewed export snapshot", () => {
     const records = loadMedicationSnapshot();
-    expect(records.length).toBe(330);
+    expect(records.length).toBe(331);
     expect(records.some((record) => record.slug === "acamprosate")).toBe(true);
     expect(records.some((record) => record.slug === "sertraline")).toBe(true);
     expect(records.some((record) => record.slug === "ramipril")).toBe(true);

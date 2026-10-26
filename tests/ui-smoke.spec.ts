@@ -2041,11 +2041,13 @@ test.describe("PsychSift UI smoke coverage", () => {
     const modeOptions = appModeMenu.getByRole("menuitemradio");
     const modeCount = await modeOptions.count();
     expect(modeCount).toBeGreaterThanOrEqual(10);
-    await expect(appModeMenu.getByRole("heading", { name: "Search" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading", { name: "Psychiatry" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading", { name: "Medicines" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading", { name: "On Call" })).toHaveCount(0);
-    await expect(appModeMenu.getByRole("heading", { name: "My Day" })).toHaveCount(0);
+    // The group titles name their groups; a menu holds no headings (A11Y-01).
+    await expect(appModeMenu.getByRole("heading")).toHaveCount(0);
+    await expect(appModeMenu.getByRole("group", { name: "Search" })).toBeAttached();
+    await expect(appModeMenu.getByRole("group", { name: "Psychiatry" })).toBeAttached();
+    await expect(appModeMenu.getByRole("group", { name: "Medicines" })).toBeAttached();
+    await expect(appModeMenu.getByRole("group", { name: "On Call" })).toHaveCount(0);
+    await expect(appModeMenu.getByRole("group", { name: "My Day" })).toHaveCount(0);
     // Tools left the menu (audit item 8, 11 Oct 2026); `/tools` still opens for old links.
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Tools\b/ })).toHaveCount(0);
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Medication\b/ })).toBeAttached();
@@ -3675,7 +3677,9 @@ test.describe("PsychSift UI smoke coverage", () => {
       (url) =>
         url.pathname === "/" &&
         url.searchParams.get("mode") === "answer" &&
-        url.searchParams.get("q") === question &&
+        // The question stays out of the address (FE-01): an `ask` id stands for it.
+        !url.searchParams.has("q") &&
+        Boolean(url.searchParams.get("ask")) &&
         url.searchParams.get("run") === "1",
       { timeout: 45_000 },
     );
@@ -3720,7 +3724,15 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(page.getByTestId("plain-answer-response")).toHaveCount(1);
     await expect(page.locator('[data-dashboard-stage="answer-thread-turn"][data-collapsed="true"]')).toHaveCount(1);
     await expect(composer).toHaveValue("");
-    await expect(page).toHaveURL(/\?mode=answer&q=what\+about\+renal\+impairment\%3F&run=1/);
+    // Only the latest question is named, by an `ask` id rather than the question itself (FE-01).
+    await expect(page).toHaveURL(
+      (url) =>
+        url.searchParams.get("mode") === "answer" &&
+        url.searchParams.get("run") === "1" &&
+        /^[0-9a-f-]{36}$/.test(url.searchParams.get("ask") ?? "") &&
+        !url.searchParams.has("q"),
+    );
+    expect(page.url()).not.toContain("renal");
     await expectNoPageHorizontalOverflow(page);
 
     await waitForPersistedAnswerThread(page, 1);
@@ -3732,6 +3744,68 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(page.getByTestId("user-question-bubble").first()).toContainText(firstQuestion);
     await expect(page.getByTestId("user-question-bubble").last()).toContainText(followUp);
     await expect(page.locator('[data-dashboard-stage="answer-thread-turn"][data-collapsed="true"]')).toHaveCount(1);
+  });
+
+  test("an answered question stays out of the address bar and history (FE-01)", async ({ page, browser }) => {
+    const answerRequests: string[] = [];
+    await mockDemoApi(page, { onAnswerRequest: (query) => answerRequests.push(query) });
+    // Synthetic question. An older-style link still carries it in `q`.
+    const question = "lithium monitoring after a dose change";
+    await gotoApp(page, `/?mode=answer&q=${encodeURIComponent(question)}&run=1`);
+    await expect(page.getByTestId("plain-answer-response")).toBeVisible({ timeout: uiAssertionTimeoutMs });
+    const noQuestionInAddress = (url: URL) =>
+      url.pathname === "/" &&
+      url.searchParams.get("mode") === "answer" &&
+      url.searchParams.get("run") === "1" &&
+      Boolean(url.searchParams.get("ask")) &&
+      !url.searchParams.has("q") &&
+      !url.href.includes("lithium");
+    await expect(page).toHaveURL(noQuestionInAddress);
+    const answeredUrl = page.url();
+    expect(answerRequests).toEqual([question]);
+
+    // A new question from the composer never writes its text into the address either.
+    const followUp = "what about renal impairment?";
+    await fillVisibleQuestionInput(page, followUp);
+    await visibleAnswerSubmitButton(page).click();
+    await expect(page.getByTestId("user-question-bubble")).toHaveCount(2, { timeout: uiAssertionTimeoutMs });
+    await expect(page).toHaveURL((url) => noQuestionInAddress(url) && !url.href.includes("renal"));
+    // A follow-up is sent with its earlier question as context.
+    expect(answerRequests).toHaveLength(2);
+    expect(answerRequests[1]).toContain(followUp);
+
+    // Refresh in the same tab keeps the answer and does not ask again.
+    await waitForPersistedAnswerThread(page, 1);
+    await page.reload();
+    await waitForDemoDashboardReady(page);
+    await expect(page.getByTestId("user-question-bubble").last()).toContainText(followUp, {
+      timeout: uiAssertionTimeoutMs,
+    });
+    expect(answerRequests).toHaveLength(2);
+
+    // Back from another page returns to the answer without asking again.
+    await gotoApp(page, "/?mode=documents");
+    await page.goBack();
+    await expect(page).toHaveURL(noQuestionInAddress);
+    await expect(page.getByTestId("user-question-bubble").last()).toContainText(followUp, {
+      timeout: uiAssertionTimeoutMs,
+    });
+    expect(answerRequests).toHaveLength(2);
+
+    // The same address opened somewhere without this tab's storage (a copied link)
+    // lands on the Answer home and sends nothing.
+    const otherContext = await browser.newContext({ baseURL: new URL(answeredUrl).origin });
+    try {
+      const otherPage = await otherContext.newPage();
+      const otherRequests: string[] = [];
+      await mockDemoApi(otherPage, { onAnswerRequest: (query) => otherRequests.push(query) });
+      await otherPage.goto(answeredUrl);
+      await waitForDemoDashboardReady(otherPage);
+      await expect(otherPage.getByTestId("plain-answer-response")).toHaveCount(0);
+      expect(otherRequests).toEqual([]);
+    } finally {
+      await otherContext.close();
+    }
   });
 
   test("answer follow-up suggestions run the next question", async ({ page }) => {
@@ -4873,11 +4947,12 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(modeDialog.getByRole("radio", { name: "Clinical" })).toBeChecked();
     await expect(modeDialog.getByRole("status")).toHaveText("18 in Clinical");
     await expect(appModeMenu.getByRole("menuitemradio")).toHaveCount(18);
-    await expect(appModeMenu.getByRole("heading", { name: "Search" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading", { name: "Psychiatry" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading", { name: "Mental Health Act" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading", { name: "Medicines" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading")).toHaveCount(4);
+    // Group titles name their groups rather than sitting as headings among menu items (A11Y-01).
+    await expect(appModeMenu.getByRole("group", { name: "Search", exact: true })).toBeAttached();
+    await expect(appModeMenu.getByRole("group", { name: "Psychiatry", exact: true })).toBeAttached();
+    await expect(appModeMenu.getByRole("group", { name: "Mental Health Act", exact: true })).toBeAttached();
+    await expect(appModeMenu.getByRole("group", { name: "Medicines", exact: true })).toBeAttached();
+    await expect(appModeMenu.getByRole("heading")).toHaveCount(0);
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Dictionary\b/ })).toBeAttached();
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^CPD\b/ })).toHaveCount(0);
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Roster\b/ })).toHaveCount(0);
@@ -5905,7 +5980,7 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(sectionSheet.getByRole("button", { name: /Indexed source text/ })).toBeVisible();
     const mobileDensityToggle = sectionSheet.getByTestId("document-view-density-toggle");
     await expect(mobileDensityToggle).toHaveAttribute("aria-pressed", "true");
-    await expect(mobileDensityToggle).toHaveAccessibleName("Show full document content");
+    await expect(mobileDensityToggle).toHaveAccessibleName(/^Condensed view\b/);
     await page.keyboard.press("Escape");
     await expect(sectionSheet).toHaveCount(0);
     await expect(page.getByRole("heading", { level: 1, name: "Synthetic lithium monitoring protocol" })).toBeVisible();
@@ -6928,7 +7003,7 @@ test.describe("PsychSift UI smoke coverage", () => {
 
     const axeResults = await new AxeBuilder({ page })
       .include('[data-testid="clinical-kb-guide-centre"]')
-      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
       .analyze();
     expect(
       axeResults.violations

@@ -238,12 +238,14 @@ export function CompareCatalogPicker({
                     >
                       {item.title}
                     </strong>
+                    {/* Word breaks between the parts, so the text reads as the name does (A11Y-02).
+                        Whitespace between flex items and block boxes draws nothing. */}{" "}
                     {item.tag ? (
                       <span className="inline-flex items-center rounded-full border border-[color:var(--border)] bg-[color:var(--surface-subtle)] px-2 py-0.5 text-3xs font-bold uppercase tracking-wide text-[color:var(--text-muted)]">
                         {item.tag}
                       </span>
                     ) : null}
-                  </span>
+                  </span>{" "}
                   {item.snippet ? (
                     <span
                       className={cn(

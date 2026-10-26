@@ -178,7 +178,7 @@ describe("Now: the safety order", () => {
     expect(pin.querySelector('a[href^="tel:"]')).toBeNull();
     const wardPhone = screen.getByTestId("on-call-now-emergency-e1-ward-phone");
     expect(wardPhone.tagName).toBe("BUTTON");
-    expect(wardPhone).toHaveTextContent("Dial 55from a ward phone");
+    expect(wardPhone).toHaveTextContent("Dial 55 from a ward phone");
     expect(wardPhone).toHaveAttribute("aria-haspopup", "dialog");
     expect(wardPhone.className).toMatch(/\bmin-h-12\b/);
     await userEvent.click(wardPhone);
@@ -195,7 +195,7 @@ describe("Now: the safety order", () => {
     const pin = screen.getByTestId("on-call-now-emergency");
     const call = screen.getByTestId("on-call-now-emergency-e1-call");
     expect(call).toHaveAttribute("href", "tel:0890000000,55");
-    expect(call).toHaveAccessibleName(/^Call Code A from your mobile, emergency, 9 0 0 0, 0 0 0 0/);
+    expect(call).toHaveAccessibleName(/^Call Code A, emergency: .*\(9 0 0 0, 0 0 0 0.*\) from your mobile$/);
     expect(call).toHaveTextContent("from your mobile");
     expect(call.className).toMatch(/\bmin-h-12\b/);
     // The mobile route is the only call link; 55 stays a ward-phone button.
@@ -218,7 +218,7 @@ describe("Now: the safety order", () => {
     expect(pin.querySelector('a[href^="tel:"]')).toBeNull();
     const details = screen.getByTestId("on-call-now-emergency-e1-dial-details");
     expect(details.tagName).toBe("BUTTON");
-    expect(details).toHaveTextContent("Press the wall emergency buttonDialling details");
+    expect(details).toHaveTextContent("Press the wall emergency button Dialling details");
     expect(details).toHaveAccessibleName("Press the wall emergency button. Dialling details for Code A");
     expect(details.className).toMatch(/\bmin-h-12\b/);
     await userEvent.click(details);

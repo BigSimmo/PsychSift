@@ -314,7 +314,8 @@ function DocumentControls({
     <button
       type="button"
       className={cn(frameControl, controls.fitWidth && frameControlActive, className)}
-      aria-label="Fit document to width"
+      // Contains the words it shows from sm up ("Fit width"), WCAG 2.5.3.
+      aria-label="Fit width of document"
       aria-pressed={controls.fitWidth}
       disabled={controlsDisabled}
       onClick={controls.onFitWidth}
@@ -328,7 +329,7 @@ function DocumentControls({
     <button
       type="button"
       className={cn(frameControl, viewingAidActive && frameControlActive, className)}
-      aria-label={zoomed ? "Viewing aid unavailable while zoomed" : "Reduce document surround glare"}
+      aria-label={zoomed ? "Viewing aid unavailable while zoomed" : "Viewing aid: reduce glare around the document"}
       aria-pressed={viewingAidActive}
       disabled={controlsDisabled || zoomed}
       onClick={() => controls.onViewingAidChange(!viewingAidActive)}
