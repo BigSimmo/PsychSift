@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowRight, Clock3, Heart, Loader2, ShieldCheck, SlidersHorizontal, type LucideIcon } from "lucide-react";
 
 import { BrandMark } from "@/components/clinical-dashboard/brand";
@@ -14,6 +14,7 @@ import {
 import { ProviderBrandIcon, type SsoProvider } from "@/components/clinical-dashboard/provider-brand-icons";
 import { Sheet } from "@/components/ui/sheet";
 import { cn, floatingControl, InlineNotice } from "@/components/ui-primitives";
+import { ACCOUNT_SETUP_OPEN_ATTRIBUTE } from "@/lib/account-setup-open";
 import { useAuthSession, type OAuthProvider } from "@/lib/supabase/client";
 
 const workspaceBenefits = [
@@ -76,6 +77,13 @@ export function AccountSetupDialog({
     : tab === "signup"
       ? "Free for health professionals. It takes about a minute."
       : "Sign in to your PsychSift account. You stay signed in on this device until you sign out.";
+
+  // Tells the install notice to stay out of the way while this window is open.
+  useEffect(() => {
+    if (!open) return;
+    document.documentElement.setAttribute(ACCOUNT_SETUP_OPEN_ATTRIBUTE, "");
+    return () => document.documentElement.removeAttribute(ACCOUNT_SETUP_OPEN_ATTRIBUTE);
+  }, [open]);
 
   async function chooseProvider(provider: SsoProvider) {
     if (actionBusy) return;

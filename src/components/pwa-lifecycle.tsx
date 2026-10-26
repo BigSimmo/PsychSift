@@ -24,6 +24,8 @@ import {
   scheduleIdleTask,
   takeEarlyInstallPrompt,
 } from "@/lib/pwa-early-install-prompt";
+import { ACCOUNT_SETUP_OPEN_ATTRIBUTE } from "@/lib/account-setup-open";
+import { isInAppBrowser } from "@/lib/in-app-browser";
 import { BRAND_INSTALL_TAGLINE, BRAND_NAME } from "@/lib/brand";
 import { createBrowserStore } from "@/lib/client-store-factory";
 import type { savedLine as SavedLine } from "@/lib/offline-line";
@@ -101,6 +103,25 @@ function rememberInstallDismissal(key: string = INSTALL_DISMISSAL_KEY) {
     // See wasInstallRecentlyDismissed: the prompt can still be dismissed for
     // this render even when persistence is unavailable.
   }
+}
+
+function subscribeAccountSetupOpen(onStoreChange: () => void) {
+  const observer = new MutationObserver(onStoreChange);
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: [ACCOUNT_SETUP_OPEN_ATTRIBUTE] });
+  return () => observer.disconnect();
+}
+
+function accountSetupOpenSnapshot() {
+  return document.documentElement.hasAttribute(ACCOUNT_SETUP_OPEN_ATTRIBUTE);
+}
+
+function accountSetupOpenOnServer() {
+  return false;
+}
+
+/** Installing is impossible inside another app's browser, so no install notice there. */
+function canOfferInstall() {
+  return !isStandaloneDisplay() && !isInAppBrowser(window.navigator.userAgent);
 }
 
 function isIosBrowser() {
@@ -390,6 +411,11 @@ export function PwaLifecycle() {
     };
   }, []);
   const [showIosHint, setShowIosHint] = useState(false);
+  const accountSetupOpen = useSyncExternalStore(
+    subscribeAccountSetupOpen,
+    accountSetupOpenSnapshot,
+    accountSetupOpenOnServer,
+  );
   const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
   const [activatedUpdateReady, setActivatedUpdateReady] = useState(false);
   const registrationRef = useRef<ServiceWorkerRegistration | null>(null);
@@ -446,7 +472,7 @@ export function PwaLifecycle() {
     const handleInstallPrompt = (event: Event) => {
       const deferredPrompt = event as BeforeInstallPromptEvent;
       deferredPrompt.preventDefault();
-      if (!isStandaloneDisplay() && !wasInstallRecentlyDismissed()) setInstallPrompt(deferredPrompt);
+      if (canOfferInstall() && !wasInstallRecentlyDismissed()) setInstallPrompt(deferredPrompt);
     };
     const handleInstalled = () => {
       setInstallPrompt(null);
@@ -464,7 +490,7 @@ export function PwaLifecycle() {
     // mount task that is still finishing the page's hydration work (mobile TBT).
     const cancelReplay = earlyPrompt
       ? scheduleIdleTask(() => {
-          if (!isStandaloneDisplay() && !wasInstallRecentlyDismissed()) {
+          if (canOfferInstall() && !wasInstallRecentlyDismissed()) {
             setInstallPrompt(earlyPrompt as BeforeInstallPromptEvent);
           }
         })
@@ -485,7 +511,7 @@ export function PwaLifecycle() {
     // again within the dismissal window. Deferred a tick so the client-only
     // eligibility check cannot diverge from the server-rendered markup.
     const timer = window.setTimeout(() => {
-      if (!isIosBrowser() || isStandaloneDisplay()) return;
+      if (!isIosBrowser() || !canOfferInstall()) return;
       if (wasInstallRecentlyDismissed(IOS_INSTALL_DISMISSAL_KEY)) return;
       setShowIosHint(true);
     }, 0);
@@ -620,8 +646,10 @@ export function PwaLifecycle() {
 
   const wantsOffline = !isOnline && !offlineNoticeDismissed;
   const wantsUpdate = isOnline && (Boolean(waitingWorker) || activatedUpdateReady);
-  const wantsInstall = isOnline && !wantsUpdate && Boolean(installPrompt);
-  const wantsIosInstallHint = isOnline && !wantsUpdate && !wantsInstall && showIosHint;
+  // Never over the sign-in window: on a phone the install sheet covered its Sign in button.
+  const installHeldForSignIn = accountSetupOpen;
+  const wantsInstall = isOnline && !wantsUpdate && !installHeldForSignIn && Boolean(installPrompt);
+  const wantsIosInstallHint = isOnline && !wantsUpdate && !wantsInstall && !installHeldForSignIn && showIosHint;
   const desiredSignature =
     wantsOffline || connectionRestored || wantsUpdate || wantsIosInstallHint || wantsInstall
       ? [wantsOffline, connectionRestored, wantsUpdate, wantsIosInstallHint, wantsInstall]
