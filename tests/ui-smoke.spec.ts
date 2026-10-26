@@ -4875,11 +4875,12 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(modeDialog.getByRole("radio", { name: "Clinical" })).toBeChecked();
     await expect(modeDialog.getByRole("status")).toHaveText("18 in Clinical");
     await expect(appModeMenu.getByRole("menuitemradio")).toHaveCount(18);
-    await expect(appModeMenu.getByRole("heading", { name: "Search" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading", { name: "Psychiatry" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading", { name: "Mental Health Act" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading", { name: "Medicines" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading")).toHaveCount(4);
+    // Group titles name their groups rather than sitting as headings among menu items (A11Y-01).
+    await expect(appModeMenu.getByRole("group", { name: "Search", exact: true })).toBeAttached();
+    await expect(appModeMenu.getByRole("group", { name: "Psychiatry", exact: true })).toBeAttached();
+    await expect(appModeMenu.getByRole("group", { name: "Mental Health Act", exact: true })).toBeAttached();
+    await expect(appModeMenu.getByRole("group", { name: "Medicines", exact: true })).toBeAttached();
+    await expect(appModeMenu.getByRole("heading")).toHaveCount(0);
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Dictionary\b/ })).toBeAttached();
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^CPD\b/ })).toHaveCount(0);
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Roster\b/ })).toHaveCount(0);
