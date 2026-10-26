@@ -58411,12 +58411,12 @@
           },
           {
             "key": "Pharmacodynamic",
-            "val": "CRITICAL — Citalopram and Escitalopram. Serotonin syndrome has been reported when linezolid is combined with serotonergic antidepressants; the cited US Celexa and Lexapro labels list linezolid as a contraindication, and the Australian Cipramil and Lexapro PIs advise against the combination unless there is close observation. Monitor closely; seek specialist or source guidance.",
+            "val": "HIGH — Citalopram and Escitalopram. Serotonin syndrome has been reported when linezolid is combined with serotonergic antidepressants. The cited US Celexa and Lexapro labels list linezolid as a contraindication; the Australian Zyvox, Cipramil and Lexapro PIs advise against the combination unless the patient is carefully observed for serotonin syndrome. Monitor closely; seek specialist or source guidance.",
             "tags": []
           },
           {
             "key": "Pharmacodynamic",
-            "val": "HIGH — Other serotonergic agents named in the cited labels: other SSRIs and serotonin reuptake inhibitors, tricyclic antidepressants, triptans, pethidine, buspirone, and tramadol. Combined use may cause serotonin syndrome. Monitor closely; seek specialist or source guidance.",
+            "val": "HIGH — Other serotonergic agents named in the cited labels: other SSRIs, SNRIs (venlafaxine, desvenlafaxine, duloxetine), tricyclic antidepressants, triptans (e.g. sumatriptan), pethidine, buspirone, and tramadol. Combined use may cause serotonin syndrome. Monitor closely; seek specialist or source guidance.",
             "tags": []
           },
           {
