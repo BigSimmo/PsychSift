@@ -100,20 +100,16 @@ ARG NEXT_DEPLOYMENT_ID=
 # runtime-only Railway value still works even if these build args are unset.
 ARG NEXT_PUBLIC_SITE_URL=
 ARG RAILWAY_PUBLIC_DOMAIN=
-# Sentry source-map upload, inert until an operator supplies all three on the Railway service.
-# Declaring them here is not optional bookkeeping. A build argument the Dockerfile does not
-# declare is simply not in the build environment, so a value set on the Railway service cannot
-# reach next.config.ts and withSentryConfig stays skipped — no error, no uploaded maps, a change
-# that looks applied and does nothing. (The reference-variable note above is the same trap in the
-# narrower form Railway documents; this is the plain Docker version of it.)
+# Sentry source maps: with SENTRY_ORG and SENTRY_PROJECT set, next.config.ts builds browser source
+# maps and lets the Sentry plugin inject debug ids, but this build NEVER uploads. Both stay declared
+# because a build argument the Dockerfile does not declare never reaches next.config.ts.
 #
-# No ENV lines: an ARG is already in the environment of this stage's RUN, so promoting it to ENV
-# would only widen where it is recorded. This is a multi-stage build and the published image is
-# the separate `runner` stage, so the token does not travel to Railway's registry — but it IS in
-# this builder stage's environment and readable by every script `npm run build` invokes. That,
-# not the shipped artefact, is why it must be a token scoped to project release/sourcemap upload
-# ONLY, never a broader-scoped one.
-ARG SENTRY_AUTH_TOKEN=
+# There is deliberately no SENTRY_AUTH_TOKEN build argument. An ARG is in the environment of every
+# script `npm run build` runs, and Railway's Dockerfile builder rejects BuildKit secret mounts
+# (`--mount=type=secret`; only cache mounts are supported), so there is no narrower way to hand it
+# to this stage. The upload instead runs in .github/workflows/sentry-sourcemaps.yml, which rebuilds
+# the same commit with the same release identity and reads the token from a GitHub secret. See
+# docs/error-tracking.md ("Source-map upload") for the token scope and rotation runbook.
 ARG SENTRY_ORG=
 ARG SENTRY_PROJECT=
 ENV NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
@@ -139,7 +135,10 @@ ENV ALLOW_LOW_RAM_BUILD=${ALLOW_LOW_RAM_BUILD}
 # into the parity guard's checker-only name, then remove MAX_UPLOAD_MB from the
 # Next build process so application env validation cannot mistake an empty
 # build argument for a runtime value.
-RUN UPLOAD_LIMIT_PARITY_SERVER_MB="${MAX_UPLOAD_MB}" env -u MAX_UPLOAD_MB npm run build
+# Nothing uploads here, so browser maps (only built when SENTRY_ORG/SENTRY_PROJECT are set) must
+# not reach the runner stage, which copies .next and would serve them publicly.
+RUN UPLOAD_LIMIT_PARITY_SERVER_MB="${MAX_UPLOAD_MB}" env -u MAX_UPLOAD_MB npm run build \
+    && find .next/static -name '*.map' -delete
 
 FROM node-base AS prod-deps
 WORKDIR /app

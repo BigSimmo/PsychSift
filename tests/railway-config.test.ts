@@ -92,15 +92,17 @@ describe("Railway config as code", () => {
     );
   });
 
-  it("declares the Sentry source-map build arguments so a Railway variable can reach the build", () => {
-    // next.config.ts gates withSentryConfig on all three being present at build time, and a build
-    // argument the Dockerfile does not declare is not in the build environment at all — so
-    // dropping any of these makes an operator's Railway variable a silent no-op.
-    expect(appDockerfile).toContain("ARG SENTRY_AUTH_TOKEN=");
+  it("declares the Sentry org/project build arguments but never the upload token", () => {
+    // next.config.ts builds (and debug-id-injects) source maps when SENTRY_ORG and SENTRY_PROJECT
+    // reach the build, so these stay declared. The upload token is deliberately NOT a build
+    // argument: Railway cannot supply BuildKit secrets, and an ARG is readable by every script the
+    // build runs. Uploads happen in .github/workflows/sentry-sourcemaps.yml from a GitHub secret.
     expect(appDockerfile).toContain("ARG SENTRY_ORG=");
     expect(appDockerfile).toContain("ARG SENTRY_PROJECT=");
-    // The token must not be promoted into stage ENV metadata.
+    expect(appDockerfile).not.toMatch(/^\s*ARG\s+SENTRY_AUTH_TOKEN\b/m);
     expect(appDockerfile).not.toContain("ENV SENTRY_AUTH_TOKEN=");
+    // Without an upload the maps would otherwise be copied into the public runtime image.
+    expect(appDockerfile).toContain("find .next/static -name '*.map' -delete");
   });
 
   it("uses the deep readiness endpoint for app rolling deploys", () => {
