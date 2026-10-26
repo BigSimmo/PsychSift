@@ -3,7 +3,9 @@
 import { isPdfDocument } from "@/lib/pdf-documents";
 import { useSubmittedModeSearch } from "@/components/clinical-dashboard/use-submitted-mode-search";
 import { useSettingsState } from "./clinical-dashboard/SettingsStateProvider";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
+import { useAnswerSearchParams, usePrivateAnswerRouter } from "@/components/clinical-dashboard/use-private-answer-url";
+import { resolveAnswerHandoffParams } from "@/lib/answer-question-handoff";
 import { Clock3, ExternalLink, FolderOpen, Activity } from "lucide-react";
 import {
   type CSSProperties,
@@ -235,8 +237,8 @@ function ClinicalDashboardContent({
   autoRunSearch = false,
   clinicalAskAvailableModeIds = [],
 }: ClinicalDashboardProps = {}) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const router = usePrivateAnswerRouter();
+  const searchParams = useAnswerSearchParams();
   const pathname = usePathname();
   const [lastAppMode, setLastAppMode] = useLastAppMode();
   const [initialSearchNavigationContext] = useState(() => readSearchNavigationContext(searchParams));
@@ -1018,7 +1020,7 @@ function ClinicalDashboardContent({
 
   useEffect(() => {
     if (urlSearchBootstrappedRef.current) return;
-    const params = new URLSearchParams(window.location.search);
+    const params = resolveAnswerHandoffParams(new URLSearchParams(window.location.search));
     const mode = params.get("mode");
     const searchText = params.get("q")?.trim();
     const shouldFocusComposer = params.get("focus") === "1";
@@ -1047,7 +1049,7 @@ function ClinicalDashboardContent({
   useEffect(() => {
     if (urlDocumentSearchBootstrappedRef.current) return;
     if (authStatus === "loading") return;
-    const params = new URLSearchParams(window.location.search);
+    const params = resolveAnswerHandoffParams(new URLSearchParams(window.location.search));
     const mode = params.get("mode");
     const searchText = params.get("q")?.trim();
     if (!searchText || !isAppModeId(mode) || !isAppModeVisible(mode)) return;
