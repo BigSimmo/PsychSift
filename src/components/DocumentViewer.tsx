@@ -1302,7 +1302,9 @@ export function DocumentViewer({
               </p>
               <p className={cn("mt-1 truncate text-xs", textMuted)}>{readyDocument.file_name}</p>
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                {!isOnline ? <span className={cn("text-xs font-semibold", textMuted)}>Offline</span> : null}
+                <span role="status" aria-live="polite" className={cn("text-xs font-semibold", textMuted)}>
+                  {!isOnline ? "Offline" : null}
+                </span>
               </div>
             </section>
             {originalsLocked ? null : (
