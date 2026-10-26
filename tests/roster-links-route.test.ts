@@ -10,13 +10,27 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   from: vi.fn(),
   rpc: vi.fn(),
+  linkUrls: vi.fn(),
+  linkAdd: vi.fn(),
   auth: vi.fn(),
   demo: vi.fn(),
   rate: vi.fn(),
   fetchLink: vi.fn(),
 }));
 vi.mock("server-only", () => ({}));
-vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({ from: mocks.from, rpc: mocks.rpc }) }));
+// The database adds a link sealed (roster_calendar_link_add) and decrypts one for a refresh
+// (roster_calendar_link_urls); every other rpc is a save.
+vi.mock("@/lib/supabase/admin", () => ({
+  createAdminClient: () => ({
+    from: mocks.from,
+    rpc: (name: string, args: Record<string, unknown>) =>
+      name === "roster_calendar_link_urls"
+        ? mocks.linkUrls(args)
+        : name === "roster_calendar_link_add"
+          ? mocks.linkAdd(args)
+          : mocks.rpc(name, args),
+  }),
+}));
 vi.mock("@/lib/supabase/auth", () => ({
   requireAuthenticatedUser: mocks.auth,
   AuthenticationError: class extends Error {},
@@ -59,6 +73,43 @@ function fakeSupabase(
   options: { insertError?: (table: string) => { message?: string; code?: string } | null } = {},
 ) {
   const calls: Recorded[] = [];
+  // Like the database function: only the named owner's links, read from the live rows.
+  mocks.linkUrls.mockImplementation(async ({ p_owner_id, p_ids }: { p_owner_id: string; p_ids: string[] }) => ({
+    data: (rows.roster_calendar_links ?? [])
+      .map((row) => row as { id: string; owner_id: string; url: string })
+      .filter((row) => row.owner_id === p_owner_id && p_ids.includes(row.id))
+      .map(({ id, url }) => ({ id, url })),
+    error: null,
+  }));
+  // Like the database function: one insert for the caller, answered with the host only.
+  mocks.linkAdd.mockImplementation(
+    ({ p_owner_id, p_url, p_workplace }: { p_owner_id: string; p_url: string; p_workplace: string | null }) => {
+      const call: Recorded = {
+        table: "roster_calendar_links",
+        op: "insert",
+        eq: [],
+        insertedRow: { owner_id: p_owner_id, url: p_url, workplace: p_workplace },
+      };
+      calls.push(call);
+      return {
+        single: async () => {
+          const failure = options.insertError?.("roster_calendar_links");
+          if (failure) return { data: null, error: failure };
+          return {
+            data: {
+              id: linkId,
+              url_host: new URL(p_url).hostname,
+              workplace: p_workplace,
+              last_fetched_at: null,
+              last_error: null,
+              created_at: "2026-09-26T00:00:00.000Z",
+            },
+            error: null,
+          };
+        },
+      };
+    },
+  );
   mocks.from.mockImplementation((table: string) => {
     const call: Recorded = { table, op: "select", eq: [] };
     calls.push(call);
@@ -92,6 +143,8 @@ function fakeSupabase(
             last_fetched_at: null,
             last_error: null,
             ...call.insertedRow,
+            // The database derives the host from the address on insert.
+            ...(typeof call.insertedRow?.url === "string" ? { url_host: new URL(call.insertedRow.url).hostname } : {}),
           },
           error: null,
         };
@@ -180,6 +233,7 @@ const storedLinks = {
       id: linkId,
       owner_id: ownerId,
       url: "https://roster.example.org/feed.ics?token=SECRET",
+      url_host: "roster.example.org",
       workplace: "Example Hospital",
       last_fetched_at: null,
       last_error: null,
@@ -189,6 +243,7 @@ const storedLinks = {
       id: otherLinkId,
       owner_id: otherOwnerId,
       url: "https://roster.example.org/other.ics?token=OTHERSECRET",
+      url_host: "roster.example.org",
       workplace: null,
       last_fetched_at: null,
       last_error: null,
@@ -238,6 +293,9 @@ describe("POST /api/roster/links", () => {
     expect(response.status).toBe(200);
     const insert = calls.find((call) => call.op === "insert");
     expect(insert?.insertedRow).toMatchObject({ owner_id: ownerId, workplace: "Example Hospital" });
+    // Added only through the database's sealing function, never a direct insert of the address.
+    expect(mocks.linkAdd).toHaveBeenCalledTimes(1);
+    expect(mocks.from).not.toHaveBeenCalledWith("roster_calendar_links");
     const text = JSON.stringify(await response.json());
     expect(text).not.toContain("t=abc");
   });
@@ -321,6 +379,8 @@ describe("POST /api/roster/links/refresh", () => {
     expect(mocks.rpc).toHaveBeenCalledTimes(1);
     const [name, args] = mocks.rpc.mock.calls[0]! as [string, Record<string, unknown>];
     expect(name).toBe("roster_own_shifts_replace");
+    // The address is read back only through the database's owner-checked decrypt.
+    expect(mocks.linkUrls).toHaveBeenCalledWith({ p_owner_id: ownerId, p_ids: [linkId] });
     expect(args.p_format).toBe("link");
     expect(args.p_workplace).toBe("Example Hospital");
     expect((args.p_shifts as unknown[]).length).toBe(3);
