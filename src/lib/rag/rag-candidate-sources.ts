@@ -1849,9 +1849,14 @@ export function groupTableFactMatches(data: TableFactRpcRow[]) {
     const current = grouped.get(fact.source_chunk_id);
     const tableFact = { ...fact, text_rank: textRank, match_reason: fact.match_reason ?? "table_row" };
     const existingFacts = current?.tableFacts ?? [];
-    const tableFacts =
-      fact.id &&
-      existingFacts.some((existing) => existing.id === fact.id && Number(existing.text_rank ?? 0) >= textRank)
+    // Audit RET-N8 (24 Oct 2026): a row the owner reviewed out is dropped before the five-row cut,
+    // so it can no longer take a slot from a useful row of the same table. It still counts towards
+    // the chunk's score, so scores and ordering are unchanged.
+    const promotable = isReviewedTablePromotable(fact.metadata);
+    const tableFacts = !promotable
+      ? existingFacts
+      : fact.id &&
+          existingFacts.some((existing) => existing.id === fact.id && Number(existing.text_rank ?? 0) >= textRank)
         ? existingFacts
         : [...existingFacts.filter((existing) => !fact.id || existing.id !== fact.id), tableFact]
             // Keep the highest-ranked facts (stable sort keeps arrival order for ties), so a better

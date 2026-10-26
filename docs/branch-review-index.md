@@ -15,14 +15,14 @@ Retention and rotation: [`branch-review-archival-policy.md`](branch-review-archi
 
 ## Summary
 
-- Records: 744
-- Distinct ref cells: 472
-- Distinct reviewed heads: 724
+- Records: 745
+- Distinct ref cells: 473
+- Distinct reviewed heads: 725
 - Date range: `2026-08-12` to `2026-10-20`
 
 Records per date, newest first:
 
-- `2026-10-20` — 1 record
+- `2026-10-20` — 2 records
 - `2026-10-19` — 3 records
 - `2026-10-18` — 22 records
 - `2026-10-17` — 12 records
@@ -82,6 +82,7 @@ Scope and outcome are truncated; follow the record link for the full six-cell ro
 
 | Date | Ref | Scope | Outcome | Record |
 | --- | --- | --- | --- | --- |
+| 2026-10-20 | fix/worker-native-followup-20261020 | worker-native-followup-and-readonly-smoke-20261020 | One fresh blind six-file review at9cb07a099 found P2 shutdown proof de… | [59336213](archive/branch-review-records/59336213f8c15585d1bb9596b4389107079c13d026a9c3c320cfe94ffce54358.record.md) |
 | 2026-10-20 | fix/worker-native-security-20261020 | worker-native-security-runtime-and-NLTK-20261020 | Fresh blind eight-file security review: no actionable P0/P1/P2 defect;… | [f6299d27](archive/branch-review-records/f6299d27ad0b6e6b675601dfa15f869fe14a110e0be9db55e648383633e3666a.record.md) |
 | 2026-10-19 | fix/worker-security-remediation-20261019 | worker Perl security remediation current diff | No actionable findings in independent read-only candidate review; seve… | [95fe94b8](archive/branch-review-records/95fe94b84bcddf1ff28cb46b67666a8b1e8295bcb7927b73e70fa4d813b89937.record.md) |
 | 2026-10-19 | PR #3674 fix/audit-rag-complete-20261019 | working-tree OCR fallback correction fe6a983590b5 / 9d61e5fcde85 | Independent source review clear; transient fallback corrected with 10s… | [c53fa60f](archive/branch-review-records/c53fa60f9b3cd8979ef1e2da2e3f3830b5a6ef64c75aca71925a5b2218214fd6.record.md) |

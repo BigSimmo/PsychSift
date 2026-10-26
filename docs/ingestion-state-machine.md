@@ -48,12 +48,15 @@ it is the July 2026 analysis, kept as history._
    [reindex-runbook.md](reindex-runbook.md#recovery-transaction-merged-18-october-2026).
 9. **Admin Retry, rollback and last attempts (added 24 Oct 2026).**
    - The admin Retry button (`src/app/api/ingestion/jobs/[id]/retry/route.ts`) also goes through
-     `recover_ingestion_job`. It lists and retries only the administrator's own documents' jobs, so
-     jobs for owner-less public-library documents do not appear there yet (audit ING-S-N7; widening it
-     needs a tenancy-review entry, see docs/audit/tenancy-defense-in-depth-review.md §6).
+     `recover_ingestion_job`. It lists and retries the administrator's own documents' jobs and the
+     jobs of owner-less shared-library documents (audit ING-S-N7, reviewed in
+     docs/audit/tenancy-defense-in-depth-review.md §6).
    - `scripts/reindex-rollback.ts` moves a document back to its previous generation and stamps
-     `index_generation_rolled_back_from` and `index_generation_rolled_back_at` in its metadata. The next
-     commit does not yet clear those markers; a database fix is drafted separately. See
+     `index_generation_rolled_back_from` and `index_generation_rolled_back_at` in its metadata.
+     Migration `20261025170000` (drafted 25 Oct 2026, merges only after the owner's own yes) makes
+     the next commit clear those markers, lets a rollback return to a generation committed before
+     13 Oct 2026 (unstamped pages), restores the summary and generated labels it kept, and refuses
+     while the background enrichment queue has work for the document. See
      [reindex-runbook.md](reindex-runbook.md#rolling-back-a-reindex).
    - A job that fails on its last attempt (`attempt_count` has reached `max_attempts`) is not retried
      (`ingestionFailureDecision` in `worker/behavior.ts`). The job ends `failed`; during a re-index the

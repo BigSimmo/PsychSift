@@ -11,6 +11,7 @@ import { clientAnswerFieldsSchema } from "@/lib/answer-client-fields";
 import {
   activeReviewedGuidanceDifferences,
   guidanceDifferenceNoteForAnswer,
+  guidancePassageFingerprint,
   type ReviewedGuidanceDifference,
 } from "@/lib/rag/guidance-difference-note";
 import registry from "@/data/reviewed-guidance-differences.json";
@@ -89,6 +90,31 @@ describe("guidance difference note", () => {
     expect(guidanceDifferenceNoteForAnswer(partial, [ENTRY])).toBeUndefined();
     expect(guidanceDifferenceNoteForAnswer(answer({ grounded: false }), [ENTRY])).toBeUndefined();
     expect(guidanceDifferenceNoteForAnswer(answer({ sources: [] }), [ENTRY])).toBeUndefined();
+  });
+
+  // Audit E2E-05/RET-N7: a re-index gives the signed WA passage a new id.
+  it("still matches a re-indexed WA passage by its text, and stops when the text changes", () => {
+    const passage = "Check **renal function** every 3 months.";
+    const entry = { ...ENTRY, waPassageFingerprints: [guidancePassageFingerprint(passage)] };
+    const reindexed = (content: string) =>
+      answer({
+        sources: [{ id: "chunk-wa-new", document_id: "doc-wa", content }] as SearchResult[],
+        supportedClaims: [
+          {
+            claimId: "c1",
+            text: "Check renal function.",
+            riskClass: "routine",
+            supportingChunkIds: ["chunk-wa-new"],
+            supportStatus: "direct",
+          },
+        ],
+      });
+    expect(guidanceDifferenceNoteForAnswer(reindexed("Check renal  function every 3 months."), [entry])).toMatchObject({
+      differenceId: "synthetic-renal-interval",
+    });
+    expect(guidanceDifferenceNoteForAnswer(reindexed("Check renal function every 6 months."), [entry])).toBeUndefined();
+    expect(guidanceDifferenceNoteForAnswer(reindexed(passage), [ENTRY])).toBeUndefined();
+    expect(activeReviewedGuidanceDifferences([{ ...entry, waPassageFingerprints: ["not-a-hash"] }])).toEqual([]);
   });
 
   it("drops expired, unsigned and malformed entries", () => {

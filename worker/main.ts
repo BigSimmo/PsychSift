@@ -880,6 +880,10 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
 const FAILURE_WEBHOOK_TIMEOUT_MS = 5_000;
 
 export async function runWorkerMain() {
+  // A fixed label for the step that failed. The error itself stays content-free, so without this a
+  // crash before the first log line (for example an unreadable runtime module) is indistinguishable
+  // from any other startup failure in the deploy log.
+  let stage = "supabase_client";
   try {
     const client = withControlPlaneAbortClient(
       createAdminClient({ timeoutMs: resolveWorkerSupabaseTimeoutMs(process.env) }),
@@ -887,15 +891,17 @@ export async function runWorkerMain() {
     );
     const scannerWarning = adminSourceRuntimeStartupWarning();
     if (scannerWarning) console.warn(scannerWarning);
+    stage = "admin_source_runtime_module";
     const adminSourceOptions = await loadAdminSourceRuntimeOptions(client, env.SUPABASE_DOCUMENT_BUCKET);
+    stage = "worker_runtime";
     await createWorkerRuntime({ client, ...adminSourceOptions }).run();
     process.exit(0);
   } catch (error) {
     const abort = error instanceof WorkerAbortError ? error : null;
-    console.error(
-      abort ? "PsychSift worker aborted" : "PsychSift worker stopped unexpectedly",
-      contentFreeErrorDetails(error),
-    );
+    console.error(abort ? "PsychSift worker aborted" : "PsychSift worker stopped unexpectedly", {
+      ...contentFreeErrorDetails(error),
+      stage,
+    });
     captureWorkerException(error, "fatal");
     const failureDetails = contentFreeErrorDetails(error);
     // WorkerAbortError wraps the underlying failure in `cause`; read its allowlisted code too.
@@ -909,7 +915,7 @@ export async function runWorkerMain() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            text: `CRITICAL: PsychSift worker ${abort ? "aborted" : "stopped unexpectedly"}. errorType=${failureDetails.errorType} errorCode=${failureCode}.`,
+            text: `CRITICAL: PsychSift worker ${abort ? "aborted" : "stopped unexpectedly"}. errorType=${failureDetails.errorType} errorCode=${failureCode} stage=${stage}.`,
           }),
           // Bounded so a stalled endpoint cannot hold the exit, and with it Railway's restart.
           signal: AbortSignal.timeout(FAILURE_WEBHOOK_TIMEOUT_MS),

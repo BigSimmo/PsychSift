@@ -82,16 +82,18 @@ export async function GET(request: Request) {
       return rateLimitJsonResponse("Too many ingestion administration requests. Retry shortly.", rateLimit);
     }
 
+    // Audit ING-S-N7 (24 Oct 2026): the administrator also sees jobs for shared public-library
+    // documents (no owner), which used to fail out of sight of this panel.
     let query = supabase
       .from("ingestion_jobs")
       .select("*, documents!inner(title,file_name,status,owner_id)", { count: "exact" })
-      .eq("documents.owner_id", user.id)
+      .or(adminJobOwnerFilter(user.id), { referencedTable: "documents" })
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
     let activeCountQuery = supabase
       .from("ingestion_jobs")
       .select("id, documents!inner(owner_id)", { count: "exact", head: true })
-      .eq("documents.owner_id", user.id)
+      .or(adminJobOwnerFilter(user.id), { referencedTable: "documents" })
       .in("status", ACTIVE_JOB_STATUSES);
     // #L15: a pre-pagination full count, same shape as activeCountQuery, so
     // the failed-jobs tile stops under-reporting once a corpus has more jobs
@@ -99,7 +101,7 @@ export async function GET(request: Request) {
     let failedCountQuery = supabase
       .from("ingestion_jobs")
       .select("id, documents!inner(owner_id)", { count: "exact", head: true })
-      .eq("documents.owner_id", user.id)
+      .or(adminJobOwnerFilter(user.id), { referencedTable: "documents" })
       .eq("status", "failed");
 
     if (batchId) {
@@ -130,4 +132,8 @@ export async function GET(request: Request) {
     if (error instanceof AuthenticationError) return unauthorizedResponse();
     return jsonError(error);
   }
+}
+
+function adminJobOwnerFilter(userId: string) {
+  return `owner_id.eq.${userId},owner_id.is.null`;
 }

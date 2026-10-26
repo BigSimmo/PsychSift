@@ -66,6 +66,7 @@ describe("content-free operational diagnostics", () => {
     expect(post).toHaveBeenCalledTimes(1);
     const sent = String(post.mock.calls[0]?.[1]?.body);
     expect(sent).toContain("CRITICAL");
+    expect(sent).toContain("stage=supabase_client");
     expect(sent).not.toContain(privateText);
     expect(JSON.stringify(printed.mock.calls)).not.toContain(privateText);
   });
@@ -92,5 +93,23 @@ describe("content-free operational diagnostics", () => {
     const sent = String(post.mock.calls[0]?.[1]?.body);
     expect(sent).toContain("errorCode=23505");
     expect(sent).not.toContain(privateText);
+  });
+
+  it("names the startup stage when the runtime module cannot be read, without its path", async () => {
+    const modulePath = `/${privateText}/runtime-module.mjs`;
+    vi.stubEnv("WORKER_ADMIN_SOURCE_RUNTIME_MODULE", modulePath);
+    vi.doMock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({}) }));
+    vi.doMock("../worker/observability", () => ({
+      captureWorkerException: vi.fn(),
+      flushWorkerErrorTracking: vi.fn(async () => undefined),
+    }));
+    const printed = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
+    const { runWorkerMain } = await import("../worker/main");
+    await runWorkerMain();
+    const logged = JSON.stringify(printed.mock.calls);
+    expect(logged).toContain("admin_source_runtime_module");
+    expect(logged).not.toContain(privateText);
   });
 });

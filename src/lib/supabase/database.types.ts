@@ -1022,22 +1022,28 @@ export type Database = {
           captured_at: string;
           document_id: string;
           index_generation_id: string;
+          labels: Json | null;
           metadata: Json | null;
           quality: Json | null;
+          summary: Json | null;
         };
         Insert: {
           captured_at?: string;
           document_id: string;
           index_generation_id: string;
+          labels?: Json | null;
           metadata?: Json | null;
           quality?: Json | null;
+          summary?: Json | null;
         };
         Update: {
           captured_at?: string;
           document_id?: string;
           index_generation_id?: string;
+          labels?: Json | null;
           metadata?: Json | null;
           quality?: Json | null;
+          summary?: Json | null;
         };
         Relationships: [
           {
@@ -2087,6 +2093,7 @@ export type Database = {
           metadata: Json;
           owner_id: string | null;
           page_count: number;
+          page_storage_mode: string;
           search_tsv: unknown;
           source_path: string | null;
           status: string;
@@ -2111,6 +2118,7 @@ export type Database = {
           metadata?: Json;
           owner_id?: string | null;
           page_count?: number;
+          page_storage_mode?: string;
           search_tsv?: unknown;
           source_path?: string | null;
           status?: string;
@@ -2135,6 +2143,7 @@ export type Database = {
           metadata?: Json;
           owner_id?: string | null;
           page_count?: number;
+          page_storage_mode?: string;
           search_tsv?: unknown;
           source_path?: string | null;
           status?: string;

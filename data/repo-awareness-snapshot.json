@@ -5332,6 +5332,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-25-licence-withdrawal-leaves-answers.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/source-acquisition-protocol.md",
         "section": "root",
         "catalogued": true

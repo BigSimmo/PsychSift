@@ -42,4 +42,28 @@ describe("currentDocumentPageRows (audit 2026-10-24, E2E-02)", () => {
     ];
     expect(currentDocumentPageRows(rows, { index_generation_id: G2 })).toEqual([]);
   });
+
+  it("follows the document's page mode after a rollback to pre-cutover pages", () => {
+    // The rollback names the restored generation in metadata but sets the mode back to legacy,
+    // because that generation's pages were saved before pages carried a stamp.
+    const rows = [
+      { page_number: 1, text: "pre-typed copy", index_generation_id: null },
+      { page_number: 1, text: "rolled-back generation", index_generation_id: G2 },
+    ];
+    expect(
+      currentDocumentPageRows(rows, { index_generation_id: G1 }, "legacy_unqualified").map((row) => row.text),
+    ).toEqual(["pre-typed copy"]);
+    expect(currentDocumentPageRows(rows, { index_generation_id: G1 })).toEqual([]);
+  });
+
+  it("shows only the committed generation for a typed document, and nothing when it names none", () => {
+    const rows = [
+      { page_number: 1, text: "pre-typed copy", index_generation_id: null },
+      { page_number: 1, text: "current generation", index_generation_id: G2 },
+    ];
+    expect(currentDocumentPageRows(rows, { index_generation_id: G2 }, "typed_exact").map((row) => row.text)).toEqual([
+      "current generation",
+    ]);
+    expect(currentDocumentPageRows(rows, {}, "typed_exact")).toEqual([]);
+  });
 });

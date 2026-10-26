@@ -1614,18 +1614,18 @@ export const DERIVED_QUERY_INVENTORY = [
     table: "ingestion_jobs",
     fn: "GET",
     queries: 3,
-    proof: PROOF_KINDS.DOCUMENTS_INNER_JOIN,
+    proof: PROOF_KINDS.REVIEWED_INDIRECT,
     reason:
-      'The page query, the active-count query and the failed-count query each join `documents!inner` and filter `.eq("documents.owner_id", user.id)`, so ownership rides on every one of the three query chains itself. 2 -> 3 on 2026-09-04 when #L15 added the pre-pagination failed-job head count, built as a copy of the active-count chain precisely so it would carry the same on-chain filter rather than need a weaker proof.',
+      "Administrator-only (`requireAuthenticatedUser(..., { administrator: true })`). The page query, the active-count query and the failed-count query each join `documents!inner` and filter the joined document to the administrator's own documents or a shared public-library document (`owner_id.eq.<user>,owner_id.is.null` on the `documents` reference), so no other user's private document is ever listed. Widened from the owner-only `documents-inner-join` proof on 2026-10-25 (audit ING-S-N7): jobs for owner-less library documents were invisible here, so a failed one could not be seen or retried from the panel.",
   },
   {
     file: "src/app/api/ingestion/jobs/[id]/retry/route.ts",
     table: "ingestion_jobs",
     fn: "POST",
     queries: 2,
-    proof: PROOF_KINDS.DOCUMENTS_INNER_JOIN,
+    proof: PROOF_KINDS.REVIEWED_INDIRECT,
     reason:
-      'Admin Retry (audit 2026-10-20 DB-01): the pre-recovery state read and the post-recovery re-read both join `documents!inner` and filter `.eq("documents.owner_id", user.id)` on the chain itself.',
+      "Admin Retry (audit 2026-10-20 DB-01), administrator-only. The pre-recovery state read and the post-recovery re-read both join `documents!inner` and allow only the administrator's own document or a shared public-library document (`owner_id.eq.<user>,owner_id.is.null` on the `documents` reference); the handler re-checks that the joined owner is null or the requester before recovering. Widened on 2026-10-25 (audit ING-S-N7) so failed library-document jobs can be retried.",
   },
   {
     file: "src/app/api/ingestion/quality/route.ts",

@@ -2730,6 +2730,32 @@ describe("RAG structured-output fallback", () => {
     expect(answer.answer).not.toMatch(/agranulocytosis|malignant syndrome|vte/i);
   });
 
+  // Audit NEW-G-05 (24 Oct 2026): with no safe extract, the base fallback used to pass through the
+  // prose quality gate and could read "No current source ... was found" above retrieved passages.
+  it("keeps retrieved passages as a review fallback when a timed-out escalation query has no safe extract", async () => {
+    const answer = await answerFromTextSources(
+      "When should neuroleptic side effects be escalated?",
+      [
+        source({
+          id: "zuclopenthixol-review",
+          document_id: "zuclopenthixol-review-document",
+          title: "Zuclopenthixol (AKG)",
+          file_name: "Zuclopenthixol (AKG).pdf",
+          section_heading: "Armadale Kalamunda Group",
+          content:
+            "Contraindications and precautions include agranulocytosis, blood dyscrasias, VTE risk, and a history of neuroleptic malignant syndrome. VTE risk should be assessed by the prescriber and documented.",
+        }),
+      ],
+      new Error("OpenAI request timed out"),
+    );
+
+    expect(answer.answer).not.toMatch(/No current source/i);
+    expect(answer.answer).toMatch(/A written answer could not be produced/);
+    expect(answer.sourceBackedReviewFallback).toBe(true);
+    expect(answer.grounded).toBe(false);
+    expect(answer.citations.map((citation) => citation.chunk_id)).toContain("zuclopenthixol-review");
+  });
+
   it("prioritizes late answer and section citations over ranked overflow without admitting unknown sources", async () => {
     const { compactExtractiveCitations } = await import("../src/lib/rag/rag-extractive-answer");
     const results = Array.from({ length: 7 }, (_, index) =>

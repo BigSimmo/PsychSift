@@ -22,8 +22,10 @@ import {
   applyRollbackPlans,
   collectCommittedGenerations,
   formatRollbackOutcome,
+  mergeLegacyGenerations,
   parseRollbackArgs,
   runReindexRollback,
+  staleEnrichmentAfterRollback,
   type RollbackScope,
   type RollbackStore,
 } from "@/lib/reindex-rollback";
@@ -63,28 +65,16 @@ function supabaseRollbackStore(supabase: AdminClient): RollbackStore {
         yield* scope.documentIds;
         return;
       }
-      if (scope.kind === "committed-after") {
-        yield* distinctDocumentIds((from, to) =>
-          supabase
-            .from("document_pages")
-            .select("document_id")
-            .not("index_generation_id", "is", null)
-            .gt("created_at", scope.after)
-            .order("created_at", { ascending: false })
-            .order("id")
-            .range(from, to),
-        );
-        return;
-      }
-      yield* distinctDocumentIds((from, to) =>
-        supabase
-          .from("document_chunks")
-          .select("document_id")
-          .eq("metadata->>chunker_version", scope.chunkerVersion)
-          .order("document_id")
-          .order("id")
-          .range(from, to),
-      );
+      // Audit DB-N3 (24 Oct 2026): candidates come from the small documents table, never from a
+      // whole-table scan of pages or chunks (neither created_at nor chunker_version is indexed
+      // there). Committing a generation updates its document row, so updated_at after the cut-off
+      // covers every document committed after it; the planner then checks each candidate's own
+      // pages and chunks, which are indexed by document id, before it counts as in scope.
+      yield* distinctDocumentIds((from, to) => {
+        let query = supabase.from("documents").select("document_id:id").not("index_generation_id", "is", null);
+        if (scope.kind === "committed-after") query = query.gt("updated_at", scope.after);
+        return query.order("id").range(from, to);
+      });
     },
     async currentGeneration(documentId) {
       const { data, error } = await supabase
@@ -96,7 +86,7 @@ function supabaseRollbackStore(supabase: AdminClient): RollbackStore {
       return data?.index_generation_id ?? null;
     },
     async committedGenerations(documentId) {
-      return collectCommittedGenerations(async (from, to) => {
+      const stamped = await collectCommittedGenerations(async (from, to) => {
         const { data, error } = await supabase
           .from("document_pages")
           .select("index_generation_id,created_at")
@@ -110,6 +100,22 @@ function supabaseRollbackStore(supabase: AdminClient): RollbackStore {
         // generated database types, so the row shape is stated here.
         return (data ?? []) as unknown as Array<{ index_generation_id: string | null; created_at: string }>;
       }, PAGE);
+      // Audit E2E-01: a generation committed before the 13 Oct 2026 cutover has unstamped pages,
+      // so it appears only through its chunks. The database function decides whether it can be
+      // restored (unstamped pages present, snapshot kept); here it only needs to be visible.
+      const fromChunks = await collectCommittedGenerations(async (from, to) => {
+        const { data, error } = await supabase
+          .from("document_chunks")
+          .select("index_generation_id,created_at")
+          .eq("document_id", documentId)
+          .not("index_generation_id", "is", null)
+          .order("created_at", { ascending: true })
+          .order("id")
+          .range(from, to);
+        if (error) throw new Error(error.message);
+        return (data ?? []) as Array<{ index_generation_id: string | null; created_at: string }>;
+      }, PAGE);
+      return mergeLegacyGenerations(stamped, fromChunks);
     },
     async chunkCount(documentId, generationId) {
       const { count, error } = await supabase
@@ -152,8 +158,18 @@ function supabaseRollbackStore(supabase: AdminClient): RollbackStore {
         p_target_generation: targetGeneration,
       });
       if (error) throw new Error(error.message);
-      const result = (data ?? {}) as { ok?: boolean; reason?: string };
-      return { ok: result.ok === true, reason: result.reason };
+      const result = (data ?? {}) as {
+        ok?: boolean;
+        reason?: string;
+        summary_restored?: boolean;
+        labels_restored?: boolean;
+      };
+      return {
+        ok: result.ok === true,
+        reason: result.reason,
+        summaryRestored: result.summary_restored,
+        labelsRestored: result.labels_restored,
+      };
     },
   };
 }
@@ -199,6 +215,18 @@ async function main() {
   const applied = await applyRollbackPlans(store, preview);
   for (const outcome of applied) console.log(formatRollbackOutcome(outcome, true));
   const failed = applied.filter((outcome) => !outcome.refusal && !outcome.applied).length;
+  // Audit DB-N1 (24 Oct 2026): the rollback restores the summary, clinical specifics and labels only
+  // when the target generation's snapshot holds them (generations committed after migration
+  // 20261025170000). Name only the fields that still come from the newer version.
+  const stale = applied
+    .map((outcome) => ({ documentId: outcome.documentId, fields: staleEnrichmentAfterRollback(outcome) }))
+    .filter((entry) => entry.fields.length > 0);
+  if (stale.length > 0) {
+    console.log(
+      `\nNote: ${stale.length} rolled-back document(s) still show the newer version's enrichment. Rebuild it (see docs/reindex-runbook.md, "Rolling back a reindex"):`,
+    );
+    for (const entry of stale) console.log(`  ${entry.documentId}: ${entry.fields.join(", ")}`);
+  }
   if (failed > 0) process.exitCode = 1;
 }
 
