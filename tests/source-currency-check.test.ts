@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { ClinicalSourceClientEntry } from "@/lib/sources/catalogue-types";
-import { deriveSourceCurrencyCheck, perthToday } from "@/lib/sources/currency-check";
+import { NEEDS_REVIEW_STATUSES, deriveSourceCurrencyCheck, perthToday } from "@/lib/sources/currency-check";
 
 function entry(overrides: Partial<ClinicalSourceClientEntry> = {}): ClinicalSourceClientEntry {
   return {
@@ -120,6 +120,22 @@ describe("deriveSourceCurrencyCheck", () => {
     );
     expect(check.needsReview.map((item) => item.id)).toEqual(["out", "due-a", "due-b"]);
     expect(check.replaced.map((item) => item.id)).toEqual(["replaced"]);
+  });
+
+  it("lists not-reviewed sources after outdated and review-due ones", () => {
+    const check = deriveSourceCurrencyCheck(
+      [
+        entry({ id: "unrev-b", title: "Beta unreviewed", documentStatus: "unknown" }),
+        entry({ id: "due", title: "Zeta", documentStatus: "review_due" }),
+        entry({ id: "unrev-a", title: "Alpha unreviewed", documentStatus: "unknown" }),
+        entry({ id: "out", title: "Yankee", documentStatus: "outdated" }),
+        entry({ id: "unrev-replaced", title: "Old", documentStatus: "unknown", supersededBy: ["src_new"] }),
+        entry({ id: "fine" }),
+      ],
+      TODAY,
+    );
+    expect(check.needsReview.map((item) => item.id)).toEqual(["out", "due", "unrev-a", "unrev-b"]);
+    expect(NEEDS_REVIEW_STATUSES).toEqual(["outdated", "review_due", "unknown"]);
   });
 });
 

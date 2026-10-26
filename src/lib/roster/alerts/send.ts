@@ -1,6 +1,7 @@
 import "server-only";
 
 import webpush from "web-push";
+import { logger } from "@/lib/logger";
 
 import { env } from "@/lib/env";
 import { fetchRosterSettings } from "@/lib/roster/settings";
@@ -130,7 +131,13 @@ async function pushOne(client: RosterAdminClient, row: PushRow, code: string, tt
     return true;
   } catch (error) {
     const status = (error as { statusCode?: number })?.statusCode;
-    if (status === 404 || status === 410) await removeGoneSubscription(client, row).catch(() => {});
+    if (status === 404 || status === 410)
+      await removeGoneSubscription(client, row).catch((error: unknown) => {
+        logger.warn("Roster alerts: removing a gone push subscription failed", {
+          errorName: error instanceof Error ? error.name : typeof error,
+        });
+        return undefined;
+      });
     return false;
   }
 }
@@ -163,7 +170,12 @@ export async function sendTestAlert(
   } catch (error) {
     const status = (error as { statusCode?: number })?.statusCode;
     if (status === 404 || status === 410) {
-      await removeGoneSubscription(client, row).catch(() => {});
+      await removeGoneSubscription(client, row).catch((error: unknown) => {
+        logger.warn("Roster alerts: removing a gone push subscription failed", {
+          errorName: error instanceof Error ? error.name : typeof error,
+        });
+        return undefined;
+      });
       return { sent: 0, reason: "gone" };
     }
     return { sent: 0, reason: "failed" };
