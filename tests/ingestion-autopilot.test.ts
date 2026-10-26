@@ -271,6 +271,8 @@ describe("assessIngestionHealth", () => {
     expect(healthSource).toContain('"jobs_pending_exhausted"');
     expect(healthSource).toContain('"jobs_pending_exhausted_unindexed"');
     expect(healthSource).toContain('"jobs_pending_exhausted_overdue"');
+    // These counts are subtracted from an exact whole-queue count, so the read must not truncate.
+    expect(healthSource).toMatch(/\.order\("id", \{ ascending: true \}\)\s*\.range\(page \* pageSize/);
   });
 
   it("asks reindex-health for an exact overdue-pending count at the autopilot's threshold", () => {

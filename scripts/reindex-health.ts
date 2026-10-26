@@ -158,14 +158,25 @@ async function main() {
   // split by whether the document is already searchable, so the autopilot can say what they are.
   // The `_overdue` count is the share of them inside jobs_pending_overdue above.
   function exhaustedPendingCounts() {
+    // Paged, because jobs_pending_overdue is an exact whole-queue count and these are subtracted
+    // from it: a truncated read would leave abandoned jobs counted as waiting uploads.
+    const pageSize = 1000;
+    const maxPages = 20;
     const rows = (async () => {
-      const { data, error } = await supabase
-        .from("ingestion_jobs")
-        .select("id,attempt_count,max_attempts,next_run_at,documents!inner(status,chunk_count)")
-        .eq("status", "pending")
-        .limit(500);
-      if (error) throw new Error(error.message);
-      return (data ?? []).filter((job) => Number(job.attempt_count ?? 0) >= Number(job.max_attempts ?? 0));
+      const exhausted: Array<{ next_run_at: string | null; documents?: unknown }> = [];
+      for (let page = 0; page < maxPages; page += 1) {
+        const { data, error } = await supabase
+          .from("ingestion_jobs")
+          .select("id,attempt_count,max_attempts,next_run_at,documents!inner(status,chunk_count)")
+          .eq("status", "pending")
+          .order("id", { ascending: true })
+          .range(page * pageSize, (page + 1) * pageSize - 1);
+        if (error) throw new Error(error.message);
+        const batch = data ?? [];
+        exhausted.push(...batch.filter((job) => Number(job.attempt_count ?? 0) >= Number(job.max_attempts ?? 0)));
+        if (batch.length < pageSize) return exhausted;
+      }
+      throw new Error(`more than ${pageSize * maxPages} pending jobs; exhausted jobs not classified`);
     })();
     const searchable = (job: { documents?: unknown }) => {
       const document = (Array.isArray(job.documents) ? job.documents[0] : job.documents) as
