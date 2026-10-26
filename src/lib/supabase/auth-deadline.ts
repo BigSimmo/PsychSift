@@ -98,8 +98,8 @@ const timedOutAuthError = () => ({ name: "AuthRetryableFetchError", message: "Si
  * call site changing. A timed-out check resolves the same way a failed one does (no user, an
  * error), and every caller already treats that as signed out.
  */
-export function boundServerAuthChecks<C extends { auth?: unknown }>(client: C, deadline: ServerAuthDeadline): C {
-  const auth = client.auth as AuthLike | undefined;
+export function boundServerAuthChecks<C extends object>(client: C, deadline: ServerAuthDeadline): C {
+  const auth = (client as { auth?: unknown }).auth as AuthLike | undefined;
   if (!auth || typeof auth !== "object") return client;
 
   if (typeof auth.getUser === "function") {
