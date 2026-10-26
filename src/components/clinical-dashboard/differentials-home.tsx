@@ -1115,12 +1115,14 @@ function SearchResultsView({
         faultTitle={
           catalog.status === "unauthorized"
             ? "Sign in again to search the differentials catalogue"
-            : "The differentials catalogue could not be searched"
+            : catalog.heldBack
+              ? "This search was not sent"
+              : "The differentials catalogue could not be searched"
         }
         faultBody={
           catalog.status === "unauthorized"
             ? "Sign in again to search, or browse the catalogue pages directly."
-            : "Retry the search shortly, or browse the catalogue pages directly."
+            : (catalog.heldBack ?? "Retry the search shortly, or browse the catalogue pages directly.")
         }
         // The fault copy promises two recoveries, so both have to exist: rerun the
         // search, and the catalogue links that the removed error section used to
@@ -1131,7 +1133,7 @@ function SearchResultsView({
         // parent document-evidence search; the catalogue hook keys on query + auth
         // identity, neither of which changes when the reader asks to try again, so
         // routing Retry through it left the band permanently faulted.
-        onRetry={catalog.status === "unauthorized" ? undefined : catalog.refetch}
+        onRetry={catalog.status === "unauthorized" || catalog.heldBack ? undefined : catalog.refetch}
         faultAction={
           <>
             <Link
