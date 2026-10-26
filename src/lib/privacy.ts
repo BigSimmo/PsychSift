@@ -87,7 +87,8 @@ export function startupCrashLogDetails(error: unknown): {
     const name = typeof record.name === "string" ? bounded(record.name) : undefined;
     const code = typeof record.code === "string" ? bounded(record.code) : undefined;
     const ctor = record.constructor;
-    const constructorName = typeof ctor === "function" && typeof ctor.name === "string" ? bounded(ctor.name) : undefined;
+    const constructorName =
+      typeof ctor === "function" && typeof ctor.name === "string" ? bounded(ctor.name) : undefined;
 
     let stack = typeof record.stack === "string" ? record.stack : "";
     const message = typeof record.message === "string" ? record.message : "";
