@@ -42,10 +42,7 @@ export async function GET(request: Request) {
       status: response.status,
       errorName: error instanceof Error ? error.name : typeof error,
     });
-    return NextResponse.json(
-      { error: "Shifts are temporarily unavailable.", code: "roster_unavailable" },
-      { status: 502, headers: noStore },
-    );
+    return publicErrorResponse("Shifts are temporarily unavailable.", 502, { code: "roster_unavailable" });
   }
   if (isRecord(body) && body.sample === true) {
     return NextResponse.json({ shifts: [], latestImport: null }, { headers: noStore });

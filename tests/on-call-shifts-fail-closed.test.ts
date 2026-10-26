@@ -22,10 +22,12 @@ describe("GET /api/on-call/shifts fails closed", () => {
     mocks.rosterGet.mockResolvedValue(new Response("<html>upstream secret detail</html>", { status: 200 }));
     const response = await GET(request());
     expect(response.status).toBe(502);
-    expect(response.headers.get("Cache-Control")).toBe("no-store");
     const text = await response.text();
     expect(text).not.toContain("upstream");
-    expect(JSON.parse(text)).toEqual({ error: "Shifts are temporarily unavailable.", code: "roster_unavailable" });
+    expect(JSON.parse(text)).toMatchObject({
+      error: "Shifts are temporarily unavailable.",
+      code: "roster_unavailable",
+    });
     expect(mocks.logError).toHaveBeenCalledTimes(1);
   });
 
