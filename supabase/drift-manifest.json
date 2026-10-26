@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-10-26T04:39:42.171Z",
+  "generated_at": "2026-10-26T04:46:49.542Z",
   "generator": "scripts/generate-drift-manifest.ts",
   "postgres_image": "supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83",
-  "schema_sha256": "a24332e793203b29281c07f4c0257fe4157fc8d8b1e0c55b133bc2b355f1595b",
-  "replay_seconds": 25,
+  "schema_sha256": "b9364f9857dac5198f7a7254fb5a7792250a781e68f7af1b77e603c8c9914f76",
+  "replay_seconds": 20,
   "snapshot": {
     "views": [
       {
@@ -2547,7 +2547,7 @@
             "type": "uuid",
             "default": null,
             "identity": "",
-            "not_null": true,
+            "not_null": false,
             "generated": ""
           },
           {
@@ -9475,42 +9475,6 @@
           {
             "name": "service_id",
             "type": "uuid",
-            "default": null,
-            "identity": "",
-            "not_null": true,
-            "generated": ""
-          }
-        ],
-        "reloptions": null,
-        "rls_forced": false,
-        "rls_enabled": true
-      },
-      {
-        "acl": [
-          "postgres=arwdDxtm/postgres",
-          "service_role=arwdDxtm/postgres"
-        ],
-        "name": "roster_open_post_alerts",
-        "columns": [
-          {
-            "name": "delivered_at",
-            "type": "timestamp with time zone",
-            "default": "now()",
-            "identity": "",
-            "not_null": true,
-            "generated": ""
-          },
-          {
-            "name": "open_shift_id",
-            "type": "text",
-            "default": null,
-            "identity": "",
-            "not_null": true,
-            "generated": ""
-          },
-          {
-            "name": "service_id",
-            "type": "text",
             "default": null,
             "identity": "",
             "not_null": true,
@@ -16532,10 +16496,22 @@
         "def_hash": "590bcff136e7af842298b48ee261e3f2"
       },
       {
+        "def": "CREATE INDEX roster_offer_alert_devices_owner_idx ON public.roster_offer_alert_devices USING btree (owner_id)",
+        "name": "roster_offer_alert_devices_owner_idx",
+        "table": "roster_offer_alert_devices",
+        "def_hash": "9cee6d0c847cdf7a7cc392c26ed7b093"
+      },
+      {
         "def": "CREATE UNIQUE INDEX roster_offer_alert_devices_pkey ON public.roster_offer_alert_devices USING btree (open_shift_id, subscription_id)",
         "name": "roster_offer_alert_devices_pkey",
         "table": "roster_offer_alert_devices",
         "def_hash": "d08f116cc6279363d5cf78ff56696d25"
+      },
+      {
+        "def": "CREATE INDEX roster_offer_alert_devices_subscription_idx ON public.roster_offer_alert_devices USING btree (subscription_id)",
+        "name": "roster_offer_alert_devices_subscription_idx",
+        "table": "roster_offer_alert_devices",
+        "def_hash": "6cfeec46449dab3e2cd522e9f15380dc"
       },
       {
         "def": "CREATE INDEX roster_offer_alert_due ON public.roster_offer_alert_outbox USING btree (available_at, created_at) WHERE (completed_at IS NULL)",
@@ -16544,16 +16520,22 @@
         "def_hash": "239cd5bd0090ba73e64d3fe2e3ab52d3"
       },
       {
+        "def": "CREATE INDEX roster_offer_alert_outbox_actor_idx ON public.roster_offer_alert_outbox USING btree (actor_id)",
+        "name": "roster_offer_alert_outbox_actor_idx",
+        "table": "roster_offer_alert_outbox",
+        "def_hash": "797f48c07a9d0c727bee4f1edbc814cd"
+      },
+      {
         "def": "CREATE UNIQUE INDEX roster_offer_alert_outbox_pkey ON public.roster_offer_alert_outbox USING btree (open_shift_id)",
         "name": "roster_offer_alert_outbox_pkey",
         "table": "roster_offer_alert_outbox",
         "def_hash": "b15bdbc810b12682660735d65c80b307"
       },
       {
-        "def": "CREATE UNIQUE INDEX roster_open_post_alerts_pkey ON public.roster_open_post_alerts USING btree (service_id, open_shift_id)",
-        "name": "roster_open_post_alerts_pkey",
-        "table": "roster_open_post_alerts",
-        "def_hash": "554f543336fac0f6b87febcd93bf1b92"
+        "def": "CREATE INDEX roster_offer_alert_outbox_service_idx ON public.roster_offer_alert_outbox USING btree (service_id)",
+        "name": "roster_offer_alert_outbox_service_idx",
+        "table": "roster_offer_alert_outbox",
+        "def_hash": "b3298f7f9bd99521318f8e7bf1eff1c7"
       },
       {
         "def": "CREATE INDEX roster_open_post_keys_open_shift_idx ON public.roster_open_post_keys USING btree (open_shift_id)",
@@ -18645,8 +18627,13 @@
         "table": "document_admission_events"
       },
       {
-        "def": "CREATE TRIGGER reject_document_admission_event_update BEFORE UPDATE ON public.document_admission_events FOR EACH ROW EXECUTE FUNCTION public.reject_document_admission_event_mutation()",
+        "def": "CREATE TRIGGER reject_document_admission_event_update BEFORE UPDATE ON public.document_admission_events FOR EACH ROW EXECUTE FUNCTION public.guard_document_admission_event_update()",
         "name": "reject_document_admission_event_update",
+        "table": "document_admission_events"
+      },
+      {
+        "def": "CREATE TRIGGER require_document_admission_event_identity BEFORE INSERT ON public.document_admission_events FOR EACH ROW EXECUTE FUNCTION public.guard_document_admission_event_insert()",
+        "name": "require_document_admission_event_identity",
         "table": "document_admission_events"
       },
       {
@@ -19136,7 +19123,7 @@
         "acl": [
           "postgres=X/postgres"
         ],
-        "def_hash": "0eb7082711bef8a51095679808d0efa5",
+        "def_hash": "5290019c73a7624a9db4d371fb0ce42b",
         "signature": "public.audit_logs_prevent_mutation()"
       },
       {
@@ -19670,7 +19657,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "5884e713b6874d57c20593b8deada2dc",
+        "def_hash": "c165caaf9d816c160d83f9d2cfd3f863",
         "signature": "public.document_index_generation_metadata_keys()"
       },
       {
@@ -19790,6 +19777,20 @@
         ],
         "def_hash": "baa4902eb42ad6438e48517450c6cc46",
         "signature": "public.guard_australian_source_activation()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "c2264c2ecac8e209de6a21f5213b43c7",
+        "signature": "public.guard_document_admission_event_insert()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "06d5d28a39b4dc45a2e85d32f226fd89",
+        "signature": "public.guard_document_admission_event_update()"
       },
       {
         "acl": [
@@ -20364,6 +20365,14 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
+        "def_hash": "d6e507ded2f0eb9bb850a1c9eecd4ade",
+        "signature": "public.purge_stale_teaching_epa_magic_links(integer)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
         "def_hash": "6e2e9461e611d13573b2e1aea26f0d5e",
         "signature": "public.rag_cache_scope_revision_v1(uuid,boolean,uuid[])"
       },
@@ -20627,7 +20636,7 @@
         "acl": [
           "postgres=X/postgres"
         ],
-        "def_hash": "ed665023f2990f6a70dcf149dede94e4",
+        "def_hash": "ba4ea805e8e76ff3640b7b133956a12a",
         "signature": "public.require_recent_site_content_administrator_assurance()"
       },
       {
@@ -20809,7 +20818,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "084f9f92232ced865e0e3aa679ba7a7e",
+        "def_hash": "4c802b54cb9b4b4732f6c3e63d6018d3",
         "signature": "public.roster_open_post_once(uuid,uuid,uuid,jsonb)"
       },
       {
@@ -22679,7 +22688,7 @@
         "table": "differential_records"
       },
       {
-        "def": "CHECK ((((actor_kind = 'administrator'::text) AND (source_channel = 'admin_api'::text) AND (administrator_id IS NOT NULL) AND (backend_principal IS NULL)) OR ((actor_kind = 'trusted_backend'::text) AND (source_channel = 'backend_import'::text) AND (administrator_id IS NULL) AND (backend_principal IS NOT NULL))))",
+        "def": "CHECK ((((actor_kind = 'administrator'::text) AND (source_channel = 'admin_api'::text) AND (backend_principal IS NULL) AND ((administrator_id IS NOT NULL) OR (staging_owner_id IS NULL))) OR ((actor_kind = 'trusted_backend'::text) AND (source_channel = 'backend_import'::text) AND (administrator_id IS NULL) AND (backend_principal IS NOT NULL))))",
         "name": "document_admission_events_actor_identity_check",
         "table": "document_admission_events"
       },
@@ -22744,7 +22753,7 @@
         "table": "document_admission_events"
       },
       {
-        "def": "FOREIGN KEY (staging_owner_id) REFERENCES auth.users(id) ON DELETE RESTRICT",
+        "def": "FOREIGN KEY (staging_owner_id) REFERENCES auth.users(id) ON DELETE SET NULL",
         "name": "document_admission_events_staging_owner_id_fkey",
         "table": "document_admission_events"
       },
@@ -24667,11 +24676,6 @@
         "def": "FOREIGN KEY (service_id) REFERENCES public.on_call_services(id) ON DELETE CASCADE",
         "name": "roster_offer_alert_outbox_service_id_fkey",
         "table": "roster_offer_alert_outbox"
-      },
-      {
-        "def": "PRIMARY KEY (service_id, open_shift_id)",
-        "name": "roster_open_post_alerts_pkey",
-        "table": "roster_open_post_alerts"
       },
       {
         "def": "FOREIGN KEY (open_shift_id) REFERENCES public.roster_open_shifts(id) ON DELETE CASCADE",
