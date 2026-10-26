@@ -26,7 +26,8 @@ describe("26 Oct 2026 service record corrections", () => {
     const fsh = service("S115");
     expect(JSON.stringify(fsh)).not.toMatch(/6458 1799|MBU@health\.wa\.gov\.au/);
     expect(fsh.tags.acuity_flags).not.toContain("crisis_high");
-    expect(serviceCallTarget(catalogToServiceRecord(fsh))).toBeNull();
+    // The published referral line on the SMHS Mother and Baby Unit referrals page.
+    expect(serviceCallTarget(catalogToServiceRecord(fsh))?.href).toBe("tel:0861521583");
   });
 
   it("MC-F-08: only a tier A canonical record reads as Crisis / urgent", () => {
@@ -50,7 +51,8 @@ describe("26 Oct 2026 service record corrections", () => {
 
   it("MC-F-13: PANDA hours come from PANDA's own page", () => {
     const panda = canonicalServiceRecords().find((record) => record.id === "SVC-PER-003")!;
-    expect(panda.hours.display).toMatch(/Monday to Friday 9am to 7\.30pm and Saturday 9am to 4pm/);
+    expect(panda.hours.display).toMatch(/Monday to Friday 9am to 7\.30pm, and Saturday and Sunday 9am to 4pm/);
+    expect(panda.hours.display).not.toMatch(/Closed Sundays/);
     expect(panda.hours.display).not.toMatch(/Contested/);
     expect(panda.sources.some((source) => source.url === "https://www.panda.org.au/contact")).toBe(true);
   });
@@ -66,6 +68,9 @@ describe("26 Oct 2026 service record corrections", () => {
     expect(serviceCallTarget(catalogToServiceRecord(service("S081")))?.href).toBe("tel:0863921700");
     const wandas = service("S195");
     expect(serviceCallTarget(catalogToServiceRecord(wandas))?.href).toBe("tel:0864581582");
+    expect(wandas.contact_details).toMatch(
+      /After 36 weeks WANDAS does not accept referrals\. Refer urgently to the KEMH Antenatal Clinic after discussion with the On Call Obstetrics Registrar/,
+    );
     expect(wandas.public_source_urls).toEqual([
       "https://www.wnhs.health.wa.gov.au/For-Health-Professionals/Obstetrics/WANDAS",
     ]);

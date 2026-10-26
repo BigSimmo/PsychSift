@@ -64552,7 +64552,7 @@
               "factors": ["pregnancy"],
               "action": "contraindication",
               "severity": "danger",
-              "note": "Topiramate pregnancy row remains a source-backed high-risk/contraindication prompt."
+              "note": "Contraindicated in pregnancy for migraine prophylaxis. For epilepsy, specialist benefit-risk review. The alert stays at contraindication level because the indication is not recorded."
             }
           }
         ]
@@ -73558,7 +73558,7 @@
           },
           {
             "key": "Maximum Dose",
-            "val": "The Australian Placil and Anafranil PIs give no maximum and recommends titrating to 100-150 mg/day, then a maintenance dose averaging 50-100 mg/day. The 250 mg/day sometimes used in specialist OCD practice reflects overseas labelling.",
+            "val": "The Australian Placil and Anafranil PIs give no maximum and recommend titrating to 100-150 mg/day, then a maintenance dose averaging 50-100 mg/day. The 250 mg/day sometimes used in specialist OCD practice reflects overseas labelling.",
             "tags": []
           },
           {
@@ -74162,7 +74162,7 @@
           },
           {
             "key": "Clinical Focus",
-            "val": "Do not initiate (local practice advice). Dosulepin has a narrow margin between therapeutic dose and fatal overdose. No TGA restriction or guideline on this was found; the earlier wording claimed one.",
+            "val": "Do not initiate (local practice advice). Dosulepin has a narrow margin between therapeutic dose and fatal overdose. No TGA restriction or guideline on this was found.",
             "tags": []
           },
           {
