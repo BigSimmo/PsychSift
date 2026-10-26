@@ -12,6 +12,7 @@ import { modeInsetHairline } from "@/components/mode-kit/recipes";
 import { modeNameText, modeNumberText, modeSecondaryText } from "@/components/mode-kit/type";
 import { FormField } from "@/components/ui/form-field";
 import { announce } from "@/components/ui/live-announcer";
+import { useOptionalToast } from "@/components/ui/toast";
 import { TextField } from "@/components/ui/text-field";
 import { cn, fieldControlPlain } from "@/components/ui-primitives";
 import {
@@ -21,6 +22,7 @@ import {
   onCallCallLogStorageKey,
   visibleOnCallCallLog,
   removeOnCallCallLogEntry,
+  restoreOnCallCallLogEntry,
   setOnCallCallLogDone,
   type OnCallCallLogDraft,
   type OnCallCallLogEntry,
@@ -36,6 +38,9 @@ import {
 import {
   PATIENT_LABEL_EXPIRY_STORAGE_KEY,
   PATIENT_LABELS_CLEARED_EVENT,
+  SHIFT_LABELS_CLEARED_AT_STORAGE_KEY,
+  dismissShiftLabelsClearedNotice,
+  readShiftLabelsClearedAt,
   startPatientLabelRetention,
 } from "@/lib/patient-label-storage";
 import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
@@ -168,8 +173,40 @@ export const ON_CALL_CALLER_CHIPS = ["Ward nurse", "Emergency dept", "Registrar"
  * before, with "Who called" as chips so most calls need one tap and one line,
  * then tonight's calls and "Add the 1 to-do to the handover".
  */
+/** How long a deleted note can be put back (D26-25). */
+export const ON_CALL_CALL_LOG_UNDO_MS = 10_000;
+
+/**
+ * When the end of the last shift wiped the labels and notes on this phone, so the card can say so
+ * once instead of the notes silently vanishing (D26-25). Null when there is nothing to say.
+ */
+function useShiftLabelsClearedAt(): readonly [number | null, () => void] {
+  const [clearedAt, setClearedAt] = useState<number | null>(null);
+  useEffect(() => {
+    const refresh = () => setClearedAt(readShiftLabelsClearedAt());
+    refresh();
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === null || event.key === SHIFT_LABELS_CLEARED_AT_STORAGE_KEY) refresh();
+    };
+    window.addEventListener(PATIENT_LABELS_CLEARED_EVENT, refresh);
+    window.addEventListener(onCallDeviceStoreChangedEvent, refresh);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener(PATIENT_LABELS_CLEARED_EVENT, refresh);
+      window.removeEventListener(onCallDeviceStoreChangedEvent, refresh);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, []);
+  const dismiss = () => {
+    dismissShiftLabelsClearedNotice();
+    setClearedAt(null);
+  };
+  return [clearedAt, dismiss] as const;
+}
+
 export function OnCallCallLogCard() {
   const { zone } = useWorkTimeZone();
+  const [shiftClearedAt, dismissShiftCleared] = useShiftLabelsClearedAt();
   const view = useOnCallCallLog();
   const entries = view?.entries ?? null;
   const [draft, setDraft] = useState<OnCallCallLogDraft>(emptyDraft);
@@ -270,6 +307,20 @@ export function OnCallCallLogCard() {
 
   return (
     <section className="grid min-w-0 gap-4" aria-label="Log a call" data-testid="on-call-call-log">
+      {shiftClearedAt !== null ? (
+        <ModeNotice testId="on-call-shift-cleared">
+          Last shift&apos;s labels and notes were cleared at {clockLabel(shiftClearedAt, zone)}, when the shift ended,
+          to protect patient privacy.{" "}
+          <button
+            type="button"
+            onClick={dismissShiftCleared}
+            data-testid="on-call-shift-cleared-dismiss"
+            className={cn(focusRing, "font-medium underline underline-offset-2")}
+          >
+            OK
+          </button>
+        </ModeNotice>
+      ) : null}
       <form onSubmit={onSubmit} noValidate className="grid min-w-0 gap-3" data-testid="on-call-call-log-form">
         <fieldset className="grid min-w-0 gap-1">
           <legend className="text-sm font-medium text-[color:var(--text-heading)]">Who called</legend>
@@ -368,8 +419,29 @@ export function OnCallCallLogCard() {
 }
 
 function CallLogRow({ entry }: { readonly entry: OnCallCallLogEntry }) {
+  const toast = useOptionalToast();
   const who = [entry.caller, entry.label].filter(Boolean).join(" · ");
   const title = [onCallCallLogTime(entry.at), who].filter(Boolean).join(" · ");
+  // Delete at once, with a short Undo, instead of a confirm box (D26-25).
+  const onDelete = () => {
+    removeOnCallCallLogEntry(entry.id);
+    const deleted = `${title} note deleted`;
+    if (!toast) {
+      announce(deleted);
+      return;
+    }
+    toast.push({
+      tone: "info",
+      title: deleted,
+      duration: ON_CALL_CALL_LOG_UNDO_MS,
+      action: {
+        label: "Undo",
+        onAction: () => {
+          announce(restoreOnCallCallLogEntry(entry) ? "Note put back." : "The note could not be put back.");
+        },
+      },
+    });
+  };
   return (
     <li
       className={cn(modeInsetHairline, "flex min-w-0 items-start gap-3 py-2 pl-3 pr-1")}
@@ -409,7 +481,7 @@ function CallLogRow({ entry }: { readonly entry: OnCallCallLogEntry }) {
       <ModeActionButton
         icon={Trash2}
         label={`Delete the ${title} note`}
-        onClick={() => removeOnCallCallLogEntry(entry.id)}
+        onClick={onDelete}
         testId="on-call-call-log-delete"
       />
     </li>

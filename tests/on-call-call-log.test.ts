@@ -12,6 +12,7 @@ import {
   onCallHandoverText,
   readOnCallCallLog,
   removeOnCallCallLogEntry,
+  restoreOnCallCallLogEntry,
   onCallCallLogStorageKey,
   setOnCallCallLogDone,
   visibleOnCallCallLog,
@@ -137,6 +138,24 @@ describe("the call log store", () => {
     removeOnCallCallLogEntry(second.entry.id, halfThree);
     expect(readOnCallCallLog(halfThree)).toHaveLength(1);
     clearOnCallCallLog();
+    expect(window.localStorage.getItem(onCallCallLogStorageKey)).toBeNull();
+  });
+
+  it("puts a deleted note back for Undo, but never into the next shift", () => {
+    const first = addOnCallCallLogEntry(draft(), twoAm);
+    if (!first.ok) throw new Error("setup failed");
+    removeOnCallCallLogEntry(first.entry.id, halfThree);
+    expect(readOnCallCallLog(halfThree)).toEqual([]);
+    expect(restoreOnCallCallLogEntry(first.entry, halfThree)).toBe(true);
+    expect(readOnCallCallLog(halfThree).map((entry) => entry.id)).toEqual([first.entry.id]);
+    // A second Undo does not duplicate it.
+    expect(restoreOnCallCallLogEntry(first.entry, halfThree)).toBe(true);
+    expect(readOnCallCallLog(halfThree)).toHaveLength(1);
+
+    removeOnCallCallLogEntry(first.entry.id, halfThree);
+    const afterShift = new Date(twoAm.getTime() + 12 * 3_600_000);
+    clearExpiredPatientLabels(afterShift.getTime());
+    expect(restoreOnCallCallLogEntry(first.entry, afterShift)).toBe(false);
     expect(window.localStorage.getItem(onCallCallLogStorageKey)).toBeNull();
   });
 

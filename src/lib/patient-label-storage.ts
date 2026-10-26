@@ -177,7 +177,44 @@ export function clearPatientLabels(reason: PatientLabelClearReason = "manual"): 
       // Storage that refuses access has nothing stored to clear.
     }
   }
+  if (reason === "account-transition") setShiftLabelsClearedAt(null);
   notifyPatientLabelsCleared(reason);
+}
+
+/**
+ * When the end of a shift last wiped this phone's labels: a time only, never a label, kept outside
+ * the label prefix so the wipe itself leaves it. On Call says "were cleared at" from it, because the
+ * wipe often happens while the page is closed and the list was simply empty next morning (D26-25).
+ * A new shift's first label, a sign-out or an account change removes it.
+ */
+export const SHIFT_LABELS_CLEARED_AT_STORAGE_KEY = "psychsift-shift-labels-cleared-at";
+
+function setShiftLabelsClearedAt(at: number | null): void {
+  const local = storageFor("local");
+  if (!local) return;
+  try {
+    if (at === null) local.removeItem(SHIFT_LABELS_CLEARED_AT_STORAGE_KEY);
+    else local.setItem(SHIFT_LABELS_CLEARED_AT_STORAGE_KEY, String(at));
+  } catch {
+    // A notice that cannot be kept is simply not shown.
+  }
+}
+
+/** When the end of the last shift wiped this phone's labels, or null. */
+export function readShiftLabelsClearedAt(): number | null {
+  const local = storageFor("local");
+  if (!local) return null;
+  try {
+    const value = Number(local.getItem(SHIFT_LABELS_CLEARED_AT_STORAGE_KEY));
+    return Number.isFinite(value) && value > 0 ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The reader has seen the "were cleared" notice. */
+export function dismissShiftLabelsClearedNotice(): void {
+  setShiftLabelsClearedAt(null);
 }
 
 function notifyPatientLabelsCleared(reason: PatientLabelClearReason): void {
@@ -242,6 +279,7 @@ export function clearExpiredPatientLabels(now: number = Date.now()): boolean {
     return true;
   }
   if (now >= stamp.expiresAt) {
+    setShiftLabelsClearedAt(stamp.expiresAt);
     clearPatientLabels("shift-ended");
     return true;
   }
@@ -312,6 +350,8 @@ function ensurePatientLabelStamp(options: WritePatientLabelsOptions = {}): Expir
   } catch {
     return null;
   }
+  // A new shift has started, so last shift's "were cleared" notice no longer applies.
+  if (typeof existing !== "object") setShiftLabelsClearedAt(null);
   clearStaleSessionLabels(stamp, now);
   return stamp;
 }

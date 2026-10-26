@@ -3,6 +3,7 @@ import { z } from "zod";
 import { recordOnCallCallCount } from "@/lib/on-call/call-counts";
 import { onCallDeviceStoreChangedEvent } from "@/lib/on-call/device-state-keys";
 import {
+  PATIENT_LABEL_EXPIRY_STORAGE_KEY,
   parsePatientLabelExpiryStamp,
   patientLabelStorageKey,
   readPatientLabels,
@@ -219,6 +220,27 @@ export function removeOnCallCallLogEntry(id: string, now: Date = new Date()): vo
     live(readStored(now), now).filter((entry) => entry.id !== id),
     now,
   );
+}
+
+/**
+ * Put back a note deleted moments ago (the Undo on the delete toast, D26-25). Refused once the
+ * shift's labels have been wiped, so an Undo never carries a note into the next shift, and when
+ * the log is already full again.
+ */
+export function restoreOnCallCallLogEntry(entry: OnCallCallLogEntry, now: Date = new Date()): boolean {
+  if (typeof window === "undefined") return false;
+  let stamp: string | null = null;
+  try {
+    stamp = window.localStorage.getItem(PATIENT_LABEL_EXPIRY_STORAGE_KEY);
+  } catch {
+    return false;
+  }
+  const expiresAt = parsePatientLabelExpiry(stamp);
+  if (expiresAt === null || now.getTime() >= expiresAt) return false;
+  const current = live(readStored(now), now);
+  if (current.some((existing) => existing.id === entry.id)) return true;
+  if (current.length >= ON_CALL_CALL_LOG_LIMIT || live([entry], now).length === 0) return false;
+  return write([entry, ...current], now);
 }
 
 /** Clear every note on this device. */
