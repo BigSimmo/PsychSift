@@ -1,7 +1,7 @@
 {
   "version": "repo-awareness-snapshot-v3",
   "captured_revision": {
-    "committed_at": "2026-10-25"
+    "committed_at": "2026-10-26"
   },
   "routes": {
     "modes": [
@@ -4683,6 +4683,11 @@
       },
       {
         "path": "docs/decisions/2026-10-16-teaching-admins-export-named-attendance.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-26-answer-safety-reaudit-fixes.md",
         "section": "decisions",
         "catalogued": true
       },
