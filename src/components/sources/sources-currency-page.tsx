@@ -9,6 +9,7 @@ import type { ClinicalSourceClientEntry } from "@/lib/sources/catalogue-types";
 import { projectSourceCatalogueForClient } from "@/lib/sources/catalogue-view";
 import {
   CURRENCY_CHECK_MONTHS,
+  NEEDS_REVIEW_STATUSES,
   SOURCE_CURRENCY_STATUS_LABELS,
   SOURCE_CURRENCY_STATUS_ORDER,
   deriveSourceCurrencyCheck,
@@ -282,11 +283,13 @@ function NeedsReviewCard({ check }: { check: SourceCurrencyCheck }) {
           ))}
         </ul>
       ) : (
-        <p className="text-sm text-[color:var(--text-muted)]">No source is marked review due or outdated.</p>
+        <p className="text-sm text-[color:var(--text-muted)]">
+          No source is marked review due, outdated or not reviewed.
+        </p>
       )}
       {check.needsReview.length > shown.length ? (
         <Link
-          href={catalogueHref(["outdated", "review_due"])}
+          href={catalogueHref(NEEDS_REVIEW_STATUSES)}
           className="inline-flex min-h-12 items-center text-sm font-semibold text-[color:var(--primary)]"
         >
           See all {check.needsReview.length} in the catalogue

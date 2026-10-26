@@ -49,6 +49,38 @@ describe("hasCrisisWording", () => {
     "she took too much of something that is impossible to trace",
     "thinking of jumping off a bridge",
     "kill me now",
+    // Owner decision 2026-10-26 (D1).
+    "i wanna die",
+    "she said she wants to die",
+    "i don't want to wake up",
+    "I wish I could go to sleep and not wake up",
+    "I want to sleep forever",
+    "I'm going to end it",
+    "thinking about ending it",
+    "I can't go on",
+    "i cant go on anymore.",
+    "no point living",
+    "life isn't worth living",
+    "everyone would be better off without me",
+    "unalive myself",
+    "want to unalive",
+    "my son is talking about killing himself",
+    "he tried to hang himself",
+    "she wants to shoot herself",
+    "gas myself in the car",
+    "i'm going to cut myself",
+    "cutting my wrists",
+    "slit my wrists",
+    "my 15 year old is cutting herself",
+    "going to step in front of a train",
+    "drive my car into a tree",
+    "took a handful of pills",
+    "swallowed a whole packet of paracetamol",
+    "took my whole blister pack",
+    "my friend swallowed a bottle of pills",
+    "took a packet of mirtazapine",
+    "pt ingested 20 x 25mg quetiapine",
+    "she took all her tablets",
   ])("matches %j", (query) => {
     expect(hasCrisisWording(query)).toBe(true);
   });
@@ -77,6 +109,32 @@ describe("hasCrisisWording", () => {
     "a jumping off point for the assessment",
     "jump off the deep end with clozapine",
     "kill medication side effects",
+    // Owner decision 2026-10-26 (D1): ordinary wording next to the new phrases.
+    "cutting down on alcohol",
+    "cut the dose in half",
+    "cut the tablet in half",
+    "end of life care in dementia",
+    "ending the session early",
+    "end it with a summary",
+    "I want to end it with my partner",
+    "can't go on leave",
+    "cannot go on lithium",
+    "can't go on clozapine if neutropenic",
+    "life is worth living group",
+    "worth living with side effects",
+    "swallowed the tablet whole",
+    "swallowed the whole tablet",
+    "took the whole morning",
+    "take 10 x 5 mg",
+    "took 15 minutes",
+    "ingested 10 mg diazepam",
+    "shoot through a referral",
+    "gas exchange in COPD",
+    "the car into the car park",
+    "kms driven",
+    "swallowed a bottle of water",
+    "took a handful of nuts",
+    "took a box of chocolates",
     "best coffee machine",
     "",
   ])("does not match %j", (query) => {
@@ -114,7 +172,15 @@ describe("AnswerCrisisBanner", () => {
 });
 
 describe("hasOverdoseWording", () => {
-  it.each(["paracetamol overdose", "suspected poisoning", "ingested lithium tablets"])("matches %j", (query) => {
+  it.each([
+    "paracetamol overdose",
+    "suspected poisoning",
+    "ingested lithium tablets",
+    // Owner decision 2026-10-26 (D3): a swallowed amount adds the Poisons Information Centre.
+    "took a handful of pills",
+    "swallowed a whole packet of paracetamol",
+    "took 30 tablets",
+  ])("matches %j", (query) => {
     expect(hasOverdoseWording(query)).toBe(true);
   });
   it.each(["lithium dose in renal impairment", "I want to kill myself", "", null])("does not match %j", (query) => {

@@ -96,6 +96,7 @@ import { DashboardSearchErrorState } from "@/components/clinical-dashboard/dashb
 import { useDashboardShellActions } from "@/components/clinical-dashboard/use-dashboard-shell-actions";
 import { useDashboardSearchExecution } from "@/components/clinical-dashboard/use-dashboard-search-execution";
 import {
+  checkSearchTextPatientDetail,
   searchTextPatientDetailRefusal,
   usePreloadSearchPatientCheck,
 } from "@/components/clinical-dashboard/search-patient-detail-guard";
@@ -1208,6 +1209,20 @@ function ClinicalDashboardContent({
       });
       return;
     }
+    // Every other mode writes the text into the address bar, history and recent searches too,
+    // so a patient detail is held back here as well (privacy audit CA-01, 2026-10-26).
+    if (crossQuery.trim()) {
+      const submittedSeq = searchRequestSeqRef.current;
+      void checkSearchTextPatientDetail(crossQuery).then((refusal) => {
+        if (submittedSeq !== searchRequestSeqRef.current) return;
+        if (refusal) {
+          setActionNotice({ tone: "warning", message: refusal });
+          return;
+        }
+        latestNavigateCrossModeSearch(mode, crossQuery);
+      });
+      return;
+    }
     navigateCrossModeSearch(mode, crossQuery);
   }
 
@@ -2196,13 +2211,15 @@ function ClinicalDashboardContent({
                         question={loading ? (answerLifecycle.query ?? latestAnswerQuery) : null}
                       />
                     ) : null
-                  ) : loading && answerProgress ? (
+                  ) : loading && answerProgress && activeModeResultKind !== "documents" ? (
+                    // Document searches skip this line: their results area shows its own
+                    // "Finding matching documents" placeholder, and this line vanishing
+                    // as results landed moved them up by its height (performance audit M2).
                     <SearchProgressBanner message={answerProgress} onStop={stopSearch} />
                   ) : null)}
 
                 {showUniversalAlsoMatches &&
                 (activeModeResultKind === "tools" ||
-                  activeModeResultKind === "documents" ||
                   activeModeResultKind === "services" ||
                   activeModeResultKind === "forms") ? (
                   <UniversalSearchAlsoMatches modeId={searchMode} query={universalAlsoMatchesQuery} />
@@ -2450,7 +2467,14 @@ function ClinicalDashboardContent({
                     near-identical panels under one answer is what the owner
                     photographed on 2026-08-26. The mode-level view is still
                     reachable from mode navigation and still renders on the
-                    tools, documents, services and forms result kinds above. */}
+                    tools, documents, services and forms result kinds. */}
+
+                {/* Documents draw it under the results, not above: the strip arrives after the
+                    results and, above them, pushed every result down by its height on a phone
+                    (performance audit M2, CLS 0.129 on document results). */}
+                {showUniversalAlsoMatches && activeModeResultKind === "documents" ? (
+                  <UniversalSearchAlsoMatches modeId={searchMode} query={universalAlsoMatchesQuery} />
+                ) : null}
               </section>
 
               {showSystemNotice && answer ? (

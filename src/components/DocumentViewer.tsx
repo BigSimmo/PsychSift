@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  checkSearchTextPatientDetail,
+  SearchHeldBack,
+} from "@/components/clinical-dashboard/search-patient-detail-guard";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -827,10 +831,16 @@ export function DocumentViewer({
     const timeout = window.setTimeout(() => {
       setSearchingDocument(true);
       setDocumentSearchError(null);
-      fetch(`/api/documents/${documentId}/search?q=${encodeURIComponent(query)}&limit=30`, {
-        signal: controller.signal,
-        headers: clientDemoMode ? undefined : authorizationHeader,
-      })
+      // Typed text is checked for patient details before it leaves the page (privacy audit CA-02).
+      // A held-back search shows the held-back sentence through the error line below.
+      checkSearchTextPatientDetail(query)
+        .then((refusal) => {
+          if (refusal) throw new SearchHeldBack(refusal);
+          return fetch(`/api/documents/${documentId}/search?q=${encodeURIComponent(query)}&limit=30`, {
+            signal: controller.signal,
+            headers: clientDemoMode ? undefined : authorizationHeader,
+          });
+        })
         .then(async (response) => {
           if (response.status === 401) markSessionExpired();
           if (!response.ok) throw await parseApiErrorResponse(response);
@@ -1302,7 +1312,14 @@ export function DocumentViewer({
               </p>
               <p className={cn("mt-1 truncate text-xs", textMuted)}>{readyDocument.file_name}</p>
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                {!isOnline ? <span className={cn("text-xs font-semibold", textMuted)}>Offline</span> : null}
+                {!isOnline ? (
+                  <span aria-hidden="true" className={cn("text-xs font-semibold", textMuted)}>
+                    Offline
+                  </span>
+                ) : null}
+                <span role="status" className="sr-only">
+                  {!isOnline ? "Offline" : null}
+                </span>
               </div>
             </section>
             {originalsLocked ? null : (
