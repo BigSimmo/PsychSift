@@ -120,6 +120,12 @@ ones (`9436f30d7`, `8657a081e`). That cause is on the Railway side and was not r
 GitHub. The owner then chose to turn Wait for CI off until a narrower gate is ready
 (`docs/decisions/2026-09-25-railway-waits-for-ci-once-safe.md`, update 2026-10-21).
 
+**Observed 2026-10-26 (live settings audit LS-11):** the production app has Wait for CI off
+(`checkSuites: false`), but the production **worker** still has it on (`checkSuites: true`), and
+so do the staging app and worker. The two production services therefore gate differently. Which
+way the worker should go is the owner's Railway setting; until it changes, a worker commit whose
+CI run failed is not deployed while the app commit beside it is.
+
 Railway's documented behaviour (read 2026-10-09): it reads each workflow run's
 conclusion, not single jobs. A failed run skips the deploy at once, a skipped
 or neutral run never blocks, a cancelled run blocks only when no other run on

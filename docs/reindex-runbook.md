@@ -83,6 +83,26 @@ older probes that omit these fields remain compatible. These signals alone never
 recovery, including with `--apply`. If separate recoverable queue work also exists, bounded
 recovery may run, but the integrity alert remains until a subsequent probe confirms resolution.
 
+### Abandoned jobs
+
+A `pending` job whose `attempt_count` has reached `max_attempts` is never claimed again: the claim
+RPC skips it, and recovery leaves every pending job alone because it treats one as the document's
+live queue owner. Resuming the worker does not clear it. `reindex:health` counts these separately
+(`jobs_pending_exhausted`, the `_unindexed` subset whose document is not searchable, and the
+`_overdue` share already inside `jobs_pending_overdue`), and the autopilot does not count them as
+uploads waiting for the worker (audit 26 Oct 2026 LS-07, four September enrichment-backfill jobs).
+
+- On a document that is already searchable, the autopilot prints a note and does not alert. No
+  upload waits on the job; it is leftover enrichment work.
+- On a document that is not searchable, it is an upload that will never finish by itself, so it is
+  an integrity alert like `jobs_stranded_final_attempt`.
+
+Closing an abandoned job is a write to the live database, so it needs the owner's own yes for that
+change (`AGENTS.md`, Supabase project safety). Neither `recover:ingestion` nor the admin Retry
+button can do it today, because `recover_ingestion_job` accepts only `failed` and `processing`
+jobs. Re-queueing the enrichment instead (a document reindex) is the other route, and also needs
+the worker healthy first.
+
 `reindex:health` also reports how well documents were read: the `quality_extraction_good`,
 `_partial`, `_poor` and `_unknown` counts and an `extractionQuality` verdict (audit EM-N6). It
 warns when at least a fifth of five or more assessed documents read poorly. Before a re-index,

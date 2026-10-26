@@ -152,6 +152,37 @@ async function main() {
   // stranded on its final attempt can sit behind old failed jobs unseen. Count it directly, along
   // with indexed documents that have no searchable chunks. (Embeddings are NOT NULL, so no missing-embedding count.)
   const nowIso = new Date().toISOString();
+  // Audit 26 Oct 2026 LS-07: a `pending` job that has used every attempt can never be claimed (the
+  // claim RPC skips attempt_count >= max_attempts) and recovery leaves pending jobs alone, so it
+  // waits forever and looks like an upload the paused worker has not reached. Count these apart,
+  // split by whether the document is already searchable, so the autopilot can say what they are.
+  // The `_overdue` count is the share of them inside jobs_pending_overdue above.
+  function exhaustedPendingCounts() {
+    const rows = (async () => {
+      const { data, error } = await supabase
+        .from("ingestion_jobs")
+        .select("id,attempt_count,max_attempts,next_run_at,documents!inner(status,chunk_count)")
+        .eq("status", "pending")
+        .limit(500);
+      if (error) throw new Error(error.message);
+      return (data ?? []).filter((job) => Number(job.attempt_count ?? 0) >= Number(job.max_attempts ?? 0));
+    })();
+    const searchable = (job: { documents?: unknown }) => {
+      const document = (Array.isArray(job.documents) ? job.documents[0] : job.documents) as
+        { status?: string | null; chunk_count?: number | null } | undefined;
+      return document?.status === "indexed" && Number(document.chunk_count ?? 0) > 0;
+    };
+    return [
+      safeDerivedCount("jobs_pending_exhausted", () => rows),
+      safeDerivedCount("jobs_pending_exhausted_unindexed", async () => (await rows).filter((job) => !searchable(job))),
+      safeDerivedCount("jobs_pending_exhausted_overdue", async () =>
+        (await rows).filter(
+          (job) => job.next_run_at != null && Date.parse(job.next_run_at) < Date.parse(pendingOverdueBefore),
+        ),
+      ),
+    ];
+  }
+  const exhaustedCounts = await Promise.all(exhaustedPendingCounts());
   const integrityCounts = await Promise.all([
     safeDerivedCount("jobs_stranded_final_attempt", async () => {
       const { data, error } = await supabase
@@ -234,7 +265,7 @@ async function main() {
     chunksWithSynopsis,
   ];
   // Quality reads are advisory: a failed one is reported, but never blocks the queue-recovery verdict.
-  const countErrors = [...counts, ...integrityCounts].filter((item) => item.error);
+  const countErrors = [...counts, ...integrityCounts, ...exhaustedCounts].filter((item) => item.error);
   const qualityErrors = qualityCounts.filter((item) => item.error);
   const errors = [
     ...[...countErrors, ...qualityErrors].map((item) => ({
@@ -250,7 +281,7 @@ async function main() {
         ok: countErrors.length === 0 && !jobsError,
         generatedAt: new Date().toISOString(),
         counts: Object.fromEntries(
-          [...counts, ...integrityCounts, ...qualityCounts].map((item) => [item.label, item.count]),
+          [...counts, ...integrityCounts, ...exhaustedCounts, ...qualityCounts].map((item) => [item.label, item.count]),
         ),
         integrityProblems,
         extractionQuality,

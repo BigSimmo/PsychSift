@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import {
   assessIngestionHealth,
+  describeAbandonedJobs,
   describeWorkerState,
   workerPausedFromEnv,
   type IngestionHealth,
@@ -176,6 +177,100 @@ describe("assessIngestionHealth", () => {
     );
     expect(a.agedPendingJobs).toBe(1);
     expect(a.stuck).toBe(true);
+  });
+
+  // Audit 26 Oct 2026 LS-07: four September enrichment-backfill jobs sat pending at 3 of 3
+  // attempts. The claim RPC never takes them again, yet they were read as uploads waiting for the
+  // paused worker, so the daily summary was amber every day and the advice (resume the worker)
+  // would not have cleared them.
+  const abandoned = (minutes: number) => ({
+    status: "pending",
+    stage: "indexed + enrichment backfill v3",
+    attempt_count: 3,
+    max_attempts: 3,
+    next_run_at: minutesAgo(minutes),
+    created_at: minutesAgo(minutes + 60),
+  });
+
+  it("does not read exhausted pending jobs on searchable documents as waiting uploads", () => {
+    const a = assessIngestionHealth(
+      {
+        ok: true,
+        counts: {
+          jobs_failed: 0,
+          jobs_pending_overdue: 4,
+          jobs_pending_exhausted: 4,
+          jobs_pending_exhausted_unindexed: 0,
+          jobs_pending_exhausted_overdue: 4,
+        },
+        openJobs: [abandoned(50_000), abandoned(50_000), abandoned(50_000), abandoned(50_000)],
+      },
+      { now: NOW, staleAfterMinutes: 30, workerPaused: true },
+    );
+    expect(a).toMatchObject({ stuck: false, recoveryNeeded: false, agedPendingJobs: 0, abandonedSearchableJobs: 4 });
+    expect(describeAbandonedJobs(a)).toContain("4 pending job(s) on documents that are already searchable");
+    expect(describeAbandonedJobs(a)).toContain("does not alert");
+  });
+
+  it("still alerts on a real upload waiting beside abandoned jobs", () => {
+    const a = assessIngestionHealth(
+      {
+        ok: true,
+        counts: {
+          jobs_failed: 0,
+          jobs_pending_overdue: 5,
+          jobs_pending_exhausted: 4,
+          jobs_pending_exhausted_unindexed: 0,
+          jobs_pending_exhausted_overdue: 4,
+        },
+        openJobs: [
+          abandoned(50_000),
+          { status: "pending", attempt_count: 0, max_attempts: 3, created_at: minutesAgo(90) },
+        ],
+      },
+      { now: NOW, staleAfterMinutes: 30, workerPaused: true },
+    );
+    expect(a.stuck).toBe(true);
+    expect(a.agedPendingJobs).toBe(1);
+    expect(a.abandonedSearchableJobs).toBe(4);
+  });
+
+  it("alerts, without queue recovery, on an exhausted job whose document never became searchable", () => {
+    const a = assessIngestionHealth(
+      {
+        ok: true,
+        counts: {
+          jobs_failed: 0,
+          jobs_pending_overdue: 1,
+          jobs_pending_exhausted: 1,
+          jobs_pending_exhausted_unindexed: 1,
+          jobs_pending_exhausted_overdue: 1,
+        },
+        openJobs: [abandoned(500)],
+      },
+      { now: NOW, staleAfterMinutes: 30 },
+    );
+    expect(a).toMatchObject({ stuck: true, recoveryNeeded: false, agedPendingJobs: 0, abandonedSearchableJobs: 0 });
+    expect(a.integrityProblems).toEqual([
+      "1 pending job(s) on unsearchable document(s) used every attempt and will never run",
+    ]);
+    expect(describeAbandonedJobs(a)).toBeNull();
+  });
+
+  it("keeps the old behaviour when the probe does not report exhausted counts", () => {
+    const a = assessIngestionHealth(
+      { ok: true, counts: { jobs_failed: 0, jobs_pending_overdue: 4 }, openJobs: [abandoned(500)] },
+      { now: NOW, staleAfterMinutes: 30 },
+    );
+    // Conservative: without the split, the overdue count still alerts.
+    expect(a.agedPendingJobs).toBe(4);
+    expect(a.abandonedSearchableJobs).toBe(0);
+  });
+
+  it("asks reindex-health for the exhausted pending counts", () => {
+    expect(healthSource).toContain('"jobs_pending_exhausted"');
+    expect(healthSource).toContain('"jobs_pending_exhausted_unindexed"');
+    expect(healthSource).toContain('"jobs_pending_exhausted_overdue"');
   });
 
   it("asks reindex-health for an exact overdue-pending count at the autopilot's threshold", () => {
