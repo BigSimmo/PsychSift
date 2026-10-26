@@ -564,6 +564,8 @@ export function OnCallHandoverPage() {
   const [copiedWard, setCopiedWard] = useState("");
   const [problem, setProblem] = useState<string | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
+  // The patient whose delete is waiting for a second tap. Keyed by id, so picking another patient drops it.
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   // When this shift's labels are wiped (epoch ms). Checked before every write, as the call log does,
   // so a draft left on screen past the end of the shift is cleared rather than saved under a fresh stamp.
@@ -997,16 +999,44 @@ export function OnCallHandoverPage() {
                         {problem}
                       </ModeNotice>
                     ) : null}
-                    {currentId ? (
+                    {currentId && confirmDeleteId === currentId ? (
+                      <div
+                        className="grid min-w-0 gap-2 rounded-lg border border-[color:var(--border)] p-3 forced-colors:border"
+                        role="group"
+                        aria-label="Delete this patient"
+                      >
+                        <p className="text-sm text-[color:var(--text-heading)]">
+                          Delete this patient from this phone? This cannot be undone.
+                        </p>
+                        <div className="flex min-w-0 flex-wrap items-center gap-2">
+                          <Button
+                            variant="danger"
+                            icon={Trash2}
+                            onClick={() => {
+                              removeOnCallHandoverPatient(currentId);
+                              setConfirmDeleteId(null);
+                              startNew();
+                            }}
+                            testId="on-call-handover-delete-confirm"
+                          >
+                            Delete the patient
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            onClick={() => setConfirmDeleteId(null)}
+                            testId="on-call-handover-delete-cancel"
+                          >
+                            Keep the patient
+                          </Button>
+                        </div>
+                      </div>
+                    ) : currentId ? (
                       <div>
                         <Button
                           variant="ghost"
                           size="sm"
                           icon={Trash2}
-                          onClick={() => {
-                            removeOnCallHandoverPatient(currentId);
-                            startNew();
-                          }}
+                          onClick={() => setConfirmDeleteId(currentId)}
                           testId="on-call-handover-delete"
                         >
                           Delete this patient

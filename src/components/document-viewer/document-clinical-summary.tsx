@@ -12,6 +12,7 @@ import {
   ListChecks,
   ShieldAlert,
   Sparkles,
+  Users,
   type LucideIcon,
 } from "lucide-react";
 import { useId, useRef, useState } from "react";
@@ -27,7 +28,7 @@ import type {
   DocumentSummarySupportLevel,
 } from "@/lib/types";
 
-type PriorityTone = "safety" | "monitoring" | "action";
+type PriorityTone = "safety" | "monitoring" | "action" | "scope";
 
 export type DocumentClinicalPriority = {
   id: string;
@@ -51,6 +52,8 @@ type PriorityCandidate = {
   label: string;
   tone: PriorityTone;
   items: DocumentSummaryProfileItem[];
+  /** Fills this slot, under its own title and label, only when `items` has nothing to show. */
+  fallback?: PriorityCandidate;
 };
 
 const priorityTone: Record<PriorityTone, { icon: LucideIcon; iconClassName: string; labelClassName: string }> = {
@@ -68,6 +71,11 @@ const priorityTone: Record<PriorityTone, { icon: LucideIcon; iconClassName: stri
     icon: ClipboardCheck,
     iconClassName: "bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]",
     labelClassName: "bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]",
+  },
+  scope: {
+    icon: Users,
+    iconClassName: "bg-[color:var(--surface-subtle)] text-[color:var(--text-muted)]",
+    labelClassName: "bg-[color:var(--surface-subtle)] text-[color:var(--text-muted)]",
   },
 };
 
@@ -131,11 +139,17 @@ function profilePriorityCandidates(profile: ClinicalDocumentSummaryProfile): Pri
       title: "Key clinical action",
       label: "Clinical action",
       tone: "action",
-      items: [
-        ...profileItems(profile.key_clinical_actions),
-        ...profileItems(profile.required_forms_documentation),
-        ...profileItems(profile.applies_to),
-      ],
+      items: [...profileItems(profile.key_clinical_actions), ...profileItems(profile.required_forms_documentation)],
+      // Who or where the guideline covers is not an instruction, so it never
+      // takes the "Key clinical action" title and badge; it fills the slot under
+      // its own neutral heading instead.
+      fallback: {
+        id: "scope",
+        title: "Applies to",
+        label: "Scope",
+        tone: "scope",
+        items: profileItems(profile.applies_to),
+      },
     },
   ];
 }
@@ -143,8 +157,13 @@ function profilePriorityCandidates(profile: ClinicalDocumentSummaryProfile): Pri
 function prioritiesFromProfile(profile: ClinicalDocumentSummaryProfile): DocumentClinicalPriority[] {
   const usedText = new Set<string>();
 
-  return profilePriorityCandidates(profile).flatMap((candidate) => {
-    const item = firstRenderableItem(candidate.items, usedText);
+  return profilePriorityCandidates(profile).flatMap((primary) => {
+    let candidate = primary;
+    let item = firstRenderableItem(primary.items, usedText);
+    if (!item && primary.fallback) {
+      candidate = primary.fallback;
+      item = firstRenderableItem(candidate.items, usedText);
+    }
     if (!item) return [];
     const text = cleanClinicalSummaryText(item.text);
     usedText.add(text.toLowerCase());

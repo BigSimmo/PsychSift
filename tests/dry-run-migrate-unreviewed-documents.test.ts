@@ -1,3 +1,6 @@
+import { spawnSync } from "node:child_process";
+import { join } from "node:path";
+
 import { describe, expect, it } from "vitest";
 import { planUnreviewedDocumentsMigration } from "../scripts/dry-run-migrate-unreviewed-documents";
 
@@ -61,5 +64,22 @@ describe("planUnreviewedDocumentsMigration", () => {
 
     expect(plan.sqlMigration).toContain("imported_unreviewed");
     expect(plan.sqlMigration).toContain("clinical_validation_status");
+  });
+});
+
+describe("dry-run-migrate-unreviewed-documents CLI", () => {
+  it("refuses --json with --write instead of reporting an unperformed write as written", () => {
+    const run = spawnSync(
+      process.execPath,
+      ["scripts/run-tsx.mjs", "scripts/dry-run-migrate-unreviewed-documents.ts", "--write", "--confirm", "--json"],
+      {
+        cwd: join(__dirname, ".."),
+        encoding: "utf8",
+        env: { ...process.env, NEXT_PUBLIC_SUPABASE_URL: "", SUPABASE_SERVICE_ROLE_KEY: "" },
+      },
+    );
+    expect(run.status).toBe(1);
+    expect(run.stderr).toContain("cannot be combined with --write");
+    expect(run.stdout).not.toContain('"written"');
   });
 });

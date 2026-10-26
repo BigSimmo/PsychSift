@@ -33,6 +33,31 @@ describe("DictionaryTermPage", () => {
     expect(contextButton).toHaveAttribute("aria-expanded", "true");
   });
 
+  it("reports every section expanded, and keeps the inert toggles out of the tab order, from sm up", () => {
+    vi.stubGlobal(
+      "matchMedia",
+      (query: string) =>
+        ({
+          matches: query === "(min-width: 40rem)",
+          media: query,
+          addEventListener: () => {},
+          removeEventListener: () => {},
+        }) as unknown as MediaQueryList,
+    );
+    try {
+      const entry = findDictionaryEntry("auditory-hallucination")!;
+      render(<DictionaryTermPage entry={entry} />);
+
+      const contextButton = screen.getByRole("button", { name: /Use and context/ });
+      expect(contextButton).toHaveAttribute("aria-expanded", "true");
+      expect(contextButton).toHaveAttribute("tabindex", "-1");
+      fireEvent.click(contextButton);
+      expect(contextButton).toHaveAttribute("aria-expanded", "true");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("shows four real related-entry destinations", () => {
     const entry = findDictionaryEntry("auditory-hallucination")!;
     render(<DictionaryTermPage entry={entry} />);

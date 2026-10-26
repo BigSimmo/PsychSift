@@ -1,6 +1,7 @@
 "use client";
 
 import { CloudOff, WifiOff } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import { cn } from "@/components/ui-primitives";
 import { savedLine } from "@/lib/offline-line";
@@ -27,6 +28,11 @@ export interface OnCallOfflineBannerProps {
  * paired `sr-only` `aria-live="polite"` node, which is the one channel a
  * screen-reader user actually needs: a spoken heads-up that this is not
  * live data.
+ *
+ * Callers mount the whole banner only once the page goes offline, and a live
+ * region inserted already holding its text is usually not read out (screen
+ * readers announce changes to a region, not its first content). So the
+ * region mounts empty and its text is set a frame later, which is a change.
  */
 export function OnCallOfflineBanner({
   savedAt,
@@ -35,6 +41,12 @@ export function OnCallOfflineBanner({
 }: OnCallOfflineBannerProps) {
   const message = savedLine({ reason, savedAt });
   const Icon = reason === "failed" ? CloudOff : WifiOff;
+  const [spoken, setSpoken] = useState("");
+  useEffect(() => {
+    // Set in the frame callback, never the effect body: the deferral is the mechanism.
+    const frame = window.requestAnimationFrame(() => setSpoken(message));
+    return () => window.cancelAnimationFrame(frame);
+  }, [message]);
 
   return (
     <>
@@ -48,7 +60,7 @@ export function OnCallOfflineBanner({
         <span>{message}</span>
       </div>
       <span data-testid={`${testId}-announcement`} role="status" aria-live="polite" className="sr-only">
-        {message}
+        {spoken}
       </span>
     </>
   );

@@ -75,7 +75,9 @@ function subscribe(onChange: () => void): () => void {
 function read(): string | null {
   if (refused) return memory;
   try {
-    return window.localStorage.getItem(ADMIN_PAPERWORK_STORAGE_KEY) ?? memory;
+    // No fallback to `memory` here: a key removed elsewhere (another tab's sign-out or
+    // "Remove from this phone", or work sync emptying it) must read as removed.
+    return window.localStorage.getItem(ADMIN_PAPERWORK_STORAGE_KEY);
   } catch {
     return memory;
   }

@@ -4,7 +4,7 @@
 // catalogue entries, in memory only: no fetch, no browser storage writes, no
 // account calls. Signed-in readers see none of it.
 
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { FavouritesCommandLibraryPage } from "@/components/clinical-dashboard/favourites-command-library-page";
@@ -95,6 +95,21 @@ describe("Favourites signed out", () => {
     fetchSpy.mockRestore();
     setItem.mockRestore();
     removeItem.mockRestore();
+  });
+
+  it("offers no move, reorder or remove controls in the item workspace for a sample item", async () => {
+    render(<FavouritesCommandLibraryPage query="" demoMode={false} />);
+    const [select] = await screen.findAllByRole(
+      "button",
+      { name: /^Select Major depressive disorder for workspace$/ },
+      { timeout: 15000 },
+    );
+    fireEvent.click(select!);
+
+    const workspace = screen.getByTestId("favourites-item-workspace");
+    expect(within(workspace).queryByRole("button", { name: "Remove favourite" })).toBeNull();
+    expect(within(workspace).queryByRole("button", { name: "Move up" })).toBeNull();
+    expect(within(workspace).queryByLabelText("Move to set")).toBeNull();
   });
 
   it("shows the sample for an expired sign-in too", async () => {

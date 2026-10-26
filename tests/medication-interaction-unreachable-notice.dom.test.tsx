@@ -69,3 +69,32 @@ describe("unreachable-counterparty notice", () => {
     expect(screen.getByText(NOTICE)).toBeInTheDocument();
   });
 });
+
+describe("no-interaction-data notice", () => {
+  // A slug the interaction index has no entry for, so `dataAvailable` is false.
+  const uncatalogued: MedicationRecord = {
+    ...(getMedicationRecord("sertraline") as MedicationRecord),
+    slug: "zz-uncatalogued-test-med",
+    name: "Uncatalogued Test Med",
+  };
+
+  function renderUncatalogued(medications: string[]) {
+    window.sessionStorage.setItem(PATIENT_PROFILE_STORAGE_KEY, JSON.stringify({ medications }));
+    render(
+      <PatientProfileProvider>
+        <MedicationConsiderations record={uncatalogued} />
+      </PatientProfileProvider>,
+    );
+  }
+
+  it("says it once, without naming an entered list, when no list is entered", () => {
+    renderUncatalogued([]);
+    expect(screen.getAllByText(/carries no interaction data for this medication/i)).toHaveLength(1);
+    expect(screen.queryByText(/against the entered list/i)).not.toBeInTheDocument();
+  });
+
+  it("keeps the not-shown-as-clear notice when a list is entered", () => {
+    renderUncatalogued(["tramadol-ir"]);
+    expect(screen.getByText(/nothing could be cross-checked against the entered list/i)).toBeInTheDocument();
+  });
+});

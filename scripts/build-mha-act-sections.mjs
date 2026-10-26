@@ -318,6 +318,17 @@ export function checkProblems({ source, curated, catalog, supplemental }) {
   const sourceBySection = new Map(source.sections.map((entry) => [entry.section, entry]));
   const curatedBySection = new Map(curated.sections.map((entry) => [entry.section, entry]));
 
+  // The summary pins below trust the stored hash, so prove it still describes the verbatim
+  // text: a hand edit to the Act text that keeps its old hash would otherwise pass.
+  for (const entry of source.sections) {
+    if (sha256(entry.text ?? "") !== entry.textSha256) {
+      problems.push(
+        `Act extraction for section ${entry.section} does not match its textSha256 — the verbatim text was ` +
+          "edited by hand. Restore the extracted text; only the manual --refresh run may re-extract it.",
+      );
+    }
+  }
+
   for (const section of citedSections(catalog, supplemental)) {
     if (!sourceBySection.has(section)) {
       problems.push(`Form cue cites section ${section}, which is absent from the Act extraction.`);

@@ -11,7 +11,11 @@ import {
   withOwnerReadScope,
   redactNonOwnedDocumentFields,
 } from "@/lib/public-api-access";
-import { committedIndexGeneration, isCommittedGenerationMetadata } from "@/lib/reindex-pipeline";
+import {
+  committedIndexGeneration,
+  currentDocumentPageRows,
+  isCommittedGenerationMetadata,
+} from "@/lib/reindex-pipeline";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError } from "@/lib/supabase/auth";
 import { parseRouteParams } from "@/lib/validation/params";
@@ -37,7 +41,7 @@ const maxChunkWindow = 80;
 const selectedChunkNeighborCount = 3;
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const documentDetailProjection =
-  "id,owner_id,title,description,file_name,file_type,file_size,storage_path,content_hash,source_path,import_batch_id,status,page_count,chunk_count,image_count,error_message,metadata,created_at,updated_at" as const;
+  "id,owner_id,title,description,file_name,file_type,file_size,storage_path,content_hash,source_path,import_batch_id,status,page_count,chunk_count,image_count,error_message,metadata,page_storage_mode,created_at,updated_at" as const;
 // Matches the TableFactRow DTO in components/document-viewer/types.ts field for
 // field. Selecting these explicitly keeps the generated `search_tsv` tsvector and
 // `owner_id` off the wire; the table-facts route shares it for the same reason.
@@ -172,6 +176,12 @@ function withImageTableMetadata<T extends object>(image: T) {
 function withoutMetadata<T extends { metadata?: unknown }>(row: T) {
   const projected = { ...row };
   delete projected.metadata;
+  return projected;
+}
+
+function withoutPageInternals<T extends { metadata?: unknown; index_generation_id?: string | null }>(row: T) {
+  const projected = withoutMetadata(row);
+  delete projected.index_generation_id;
   return projected;
 }
 
@@ -405,14 +415,16 @@ export async function loadAuthorizedDocumentDetail(args: {
   if (rateLimit.limited) throw new DocumentDetailRateLimitError(rateLimit);
   args.request.signal.throwIfAborted();
 
-  const { data: document, error: documentError } = await withOwnerReadScope(
+  const { data: documentRow, error: documentError } = await withOwnerReadScope(
     supabase.from("documents").select(documentDetailProjection).eq("id", id),
     access.ownerId,
   )
     .abortSignal(args.request.signal)
     .maybeSingle();
   if (documentError) throw new Error(documentError.message);
-  if (!document) throw new PublicApiError("Document not found.", 404);
+  if (!documentRow) throw new PublicApiError("Document not found.", 404);
+  // The page mode only picks which page rows are current; it is not part of the response.
+  const { page_storage_mode: pageStorageMode, ...document } = documentRow;
   args.request.signal.throwIfAborted();
 
   const isOwner = callerOwnsDocumentRow(document, access.ownerId);
@@ -494,7 +506,7 @@ export async function loadAuthorizedDocumentDetail(args: {
 
   const pagesRequest = supabase
     .from("document_pages")
-    .select("id,page_number,text,ocr_used,metadata")
+    .select("id,page_number,text,ocr_used,metadata,index_generation_id")
     .eq("document_id", id)
     .gte("page_number", pageRange.from)
     .lte("page_number", pageRange.to)
@@ -593,7 +605,9 @@ export async function loadAuthorizedDocumentDetail(args: {
     } as unknown as ClinicalDocument,
     ...(!isOwner ? { publicReviewDate } : {}),
     pages: publicRows(
-      committedRows(document, pagesResult.data ?? []).map(withoutMetadata) as Record<string, unknown>[],
+      currentDocumentPageRows(pagesResult.data ?? [], document.metadata, pageStorageMode).map(
+        withoutPageInternals,
+      ) as Record<string, unknown>[],
     ) as DocumentDetailPage[],
     images: publicRows(
       committedRows(document, imagesResult.data ?? []).map(withImageTableMetadata) as Record<string, unknown>[],

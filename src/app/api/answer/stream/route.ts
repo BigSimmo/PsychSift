@@ -10,7 +10,7 @@ import {
   rateLimitJsonResponse,
   type ApiRateLimitResult,
 } from "@/lib/api-rate-limit";
-import { requireSignedInClinicalAccess } from "@/lib/clinical-access";
+import { requireHealthProfessionalDeclaration, requireSignedInClinicalAccess } from "@/lib/clinical-access";
 import { publicAccessContext } from "@/lib/public-api-access";
 import { setAgentConversationId } from "@/lib/observability/agent-monitoring";
 import {
@@ -366,6 +366,7 @@ export async function POST(request: Request) {
       if (rateLimit.limited) return rateLimitStream(rateLimit);
     }
     const rateLimitMs = Date.now() - rateLimitStartedAt;
+    await requireHealthProfessionalDeclaration(access, supabase);
 
     return streamAnswer(
       body,

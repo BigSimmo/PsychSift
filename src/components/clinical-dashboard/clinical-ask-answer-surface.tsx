@@ -3,6 +3,7 @@
 import { useId, useRef, useState } from "react";
 import { Check, ClipboardCopy, Printer } from "lucide-react";
 import { ignoreUnavailableActivation } from "@/components/ui-primitives";
+import { announce } from "@/components/ui/live-announcer";
 import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
 import type { AnswerFeedbackType } from "@/lib/answer-feedback";
 import type { ClinicalAskFeedbackMetadata, ClinicalAskResponse } from "@/lib/clinical-ask/contracts";
@@ -167,6 +168,8 @@ export function ClinicalAskAnswerSurface({
     try {
       await copyTextToClipboard(exportText);
       setCopyState("copied");
+      // The button's label swap is visual only; a failed copy already gets a status line.
+      announce("Answer copied.");
     } catch {
       setCopyState("failed");
     }
@@ -176,6 +179,9 @@ export function ClinicalAskAnswerSurface({
       setFeedbackStatus("Feedback is unavailable for this answer.");
       return;
     }
+    // Pressed straight away for a responsive control, then put back if the save
+    // fails, so a button never reads as chosen beside "Feedback could not be saved."
+    const previousFeedback = feedback;
     setFeedback(selection);
     try {
       const result = await fetch("/api/answer-feedback", {
@@ -191,6 +197,7 @@ export function ClinicalAskAnswerSurface({
       if (!result.ok) throw new Error("feedback rejected");
       setFeedbackStatus("Feedback saved for review.");
     } catch {
+      setFeedback(previousFeedback);
       setFeedbackStatus("Feedback could not be saved.");
     }
   }

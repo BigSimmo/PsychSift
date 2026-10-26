@@ -77,9 +77,41 @@ describe("evaluateMedicationInteractions", () => {
       interactionCount: result.interactions.length,
       unresolvedRowCount: 0,
       unreachableCounterpartyCount: result.unreachableCounterparties.length,
+      unreviewedHighRiskCount: result.unreviewedHighRiskMedications.length,
     });
     expect(verdict.tone).not.toBe("success");
     expect(verdict.incomplete).toBe(true);
+  });
+
+  it("never shows green when an entered medication carries unresolved rows of its own", () => {
+    // Diltiazem's own rows are all resolved and none names clarithromycin, but
+    // clarithromycin's CYP3A4/P-gp row is unresolved, so it may reach diltiazem
+    // without naming it. Counting only the viewed drug's rows composed to green.
+    const result = evaluateMedicationInteractions("diltiazem", ["clarithromycin"]);
+    expect(result.interactions).toHaveLength(0);
+    expect(result.unresolvedRowCount).toBe(0);
+    expect(result.unreachableCounterparties).toEqual([]);
+    expect(result.reverseUnresolvedCounterparties).toEqual(["clarithromycin"]);
+
+    const verdict = composeMedicationVerdict({
+      considerationTone: null,
+      considerationCount: 0,
+      unassessedCount: 0,
+      interactionTone: result.highestTone,
+      interactionCount: result.interactions.length,
+      unresolvedRowCount: result.unresolvedRowCount,
+      unreachableCounterpartyCount: result.unreachableCounterparties.length,
+      reverseUnresolvedCounterpartyCount: result.reverseUnresolvedCounterparties.length,
+      unreviewedHighRiskCount: result.unreviewedHighRiskMedications.length,
+    });
+    expect(verdict.tone).toBe("neutral");
+    expect(verdict.incomplete).toBe(true);
+  });
+
+  it("does not double-report an unreachable medication as carrying unresolved rows", () => {
+    const result = evaluateMedicationInteractions("sertraline", ["zolpidem"]);
+    expect(result.unreachableCounterparties).toEqual(["zolpidem"]);
+    expect(result.reverseUnresolvedCounterparties).toEqual([]);
   });
 
   it("does not call a reachable medication unreachable", () => {
@@ -133,6 +165,7 @@ describe("evaluateMedicationInteractions", () => {
       interactionTone: result.highestTone,
       interactionCount: result.interactions.length,
       unresolvedRowCount: result.unresolvedRowCount,
+      unreviewedHighRiskCount: result.unreviewedHighRiskMedications.length,
     });
     expect(verdict.tone).toBe("neutral");
     expect(verdict.incomplete).toBe(true);
@@ -248,6 +281,7 @@ describe("a documented low-severity interaction is never an all-clear", () => {
       interactionCount: result.interactions.length,
       unresolvedRowCount: result.unresolvedRowCount,
       unreachableCounterpartyCount: result.unreachableCounterparties.length,
+      unreviewedHighRiskCount: result.unreviewedHighRiskMedications.length,
     });
     expect(verdict.incomplete).toBe(false);
     expect(verdict.interactionCount).toBe(1);
@@ -279,6 +313,7 @@ describe("composeMedicationVerdict", () => {
     interactionTone: null,
     interactionCount: 0,
     unresolvedRowCount: 0,
+    unreviewedHighRiskCount: 0,
   };
 
   it("is green only when both engines ran clean", () => {

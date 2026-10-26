@@ -62,7 +62,12 @@ const NOW = new Date("2026-10-21T04:00:00Z");
 const DOCTOR = "11111111-1111-4111-8111-111111111111";
 const OTHER = "22222222-2222-4222-8222-222222222222";
 const input = { epaCode: 2, traineeName: "Dr Trainee Example", supervisorName: "Dr Visiting Example" } as const;
-const answer = { level: "proximal", strengths: "Clear formulation.", improvements: "Tighter risk summary." } as const;
+const answer = {
+  level: "proximal",
+  observed: "direct",
+  strengths: "Clear formulation.",
+  improvements: "Tighter risk summary.",
+} as const;
 
 describe("durable EPA feedback links (#MAAXAX)", () => {
   it("stores only the token's hash, expires in 14 days, and shows the link only to its doctor", async () => {
@@ -96,6 +101,13 @@ describe("durable EPA feedback links (#MAAXAX)", () => {
     const made = await repo.create(DOCTOR, input, NOW);
     const leaked = await repo.submit(made.token, { ...answer, strengths: "Saw Mr John Smith, URN 1234567" }, NOW);
     expect(leaked).toMatchObject({ ok: false, status: 400 });
+    // The assessor's "how you know" declaration is required, never assumed to be "directly observed".
+    const undeclared = { level: answer.level, strengths: answer.strengths, improvements: answer.improvements };
+    expect(await repo.submit(made.token, undeclared, NOW)).toMatchObject({
+      ok: false,
+      status: 400,
+      code: "invalid_submission",
+    });
     expect(await repo.submit(made.token, answer, NOW)).toMatchObject({ ok: true });
     expect(await repo.submit(made.token, answer, NOW)).toMatchObject({ ok: false, code: "magic_link_already_used" });
     const [link] = await repo.listForRegistrar(DOCTOR, NOW);

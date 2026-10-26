@@ -62,6 +62,23 @@ whose date cannot be established is a rejection with a reason, not a guess. The 
 TGA Product Information search, which carries no date by design under
 `dateModel: "live_product_information"` ([owner decision, 2026-10-22](decisions/2026-10-22-tga-pi-live-search-source.md)).
 
+### Rights and licence status
+
+A record may carry an optional `rights` object saying whether the publisher lets us show the
+source publicly and use it with AI (regulatory audit finding R-07). Leaving it out means the
+rights position is unknown, which is where every record started. `status` is one of `unknown`,
+`open_licence` (name it in `licence`), `publisher_terms_allow`, `permission_granted` or
+`restricted`; `publicDisplay` and `aiUse` are each `unknown`, `allowed` or `not_allowed`. Any
+status other than `unknown` must also record `recordedBy`, `checkedAt` and an `evidenceUrl` or
+`note`. The rules are in `src/lib/sources/source-rights.ts`, and
+`npm run check:source-acquisitions` prints how many records are still unknown without failing.
+
+Whether a publisher's terms allow a use is a legal judgement for the owner and their lawyer, so
+an agent never records a status other than `unknown` from its own research. The field is
+record-keeping only: nothing readers see and nothing the answer engine uses reads it. It is
+covered by `attestedAgainstSha256` like any other field, so adding it to a signed-off record
+makes that sign-off stale until it is re-attested.
+
 ### Dispositions
 
 - **`adopted`** — clinical content cites this source. It must be reviewed first.

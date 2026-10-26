@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "8b25b053-160b-4f70-a801-4a86b108ca66",
+  "createdOn": "2026-10-24",
+  "action": "done",
+  "payload": {
+    "id": "#NM9S1V",
+    "outcome": "build:internal now runs scripts/run-next-build.mjs, which sets the NODE_OPTIONS default in Node instead of POSIX shell expansion, so npm run build works in cmd and PowerShell; Linux and CI behaviour unchanged (tests/run-next-build.test.ts). Branch claude/project-thread-q5puw2.",
+    "baseRowFingerprint": "4bb57e4cbdb4d5fcc79082aaa5f290be54ad3601e6cbcaa1ce573ce75efee269",
+    "targetUlid": "01M5F8P0FNNM9S1V3H9AR6DFVC"
+  }
+}

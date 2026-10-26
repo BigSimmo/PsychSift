@@ -116,6 +116,8 @@ type Options = {
   openShifts?: unknown[];
   makerFails?: boolean;
   overviewFails?: boolean;
+  /** A published roster this person has not yet marked seen. */
+  unseenPublicationId?: string;
   refuse?: Set<string>;
   /** The server's answer to swap.approve for a swap id, when it is not "approved". */
   answers?: Record<string, Record<string, unknown>>;
@@ -147,8 +149,16 @@ function mockFetch(options: Options = {}) {
       return Response.json({
         service: { id: TEAM, name: "Example team" },
         me: { role, grade: "registrar", rotationEndsOn: null },
-        latestPublication: null,
-        seenLatest: true,
+        latestPublication: options.unseenPublicationId
+          ? {
+              id: options.unseenPublicationId,
+              version: 2,
+              publishedAt: "2026-10-01T01:00:00.000Z",
+              periodStart: "2026-10-05",
+              periodEnd: "2026-11-01",
+            }
+          : null,
+        seenLatest: !options.unseenPublicationId,
         settings: { swapApproval: "manager", rules: options.rules ?? {}, rulesSource: null, payFortnightAnchor: null },
         sites: [],
       });
@@ -190,6 +200,17 @@ afterEach(() => {
 });
 
 describe("Team calendar, manager layer", () => {
+  it("does not mark a new roster seen just by opening the calendar", async () => {
+    const { posts, reads } = mockFetch({ role: "member", unseenPublicationId: ID(90) });
+    await act(async () => {
+      render(<RosterTeamPage now={NOW} />);
+    });
+    await screen.findByRole("table", { name: "Week roster" });
+    await waitFor(() => expect(reads.some((address) => address.includes("what=assignments"))).toBe(true));
+    // Only "Got it" on Today marks it seen, so Today's change lines stay until read.
+    expect(posts).toEqual([]);
+  });
+
   it("shows a member no strip, no counts and makes no manager reads", async () => {
     const { reads } = mockFetch({ role: "member", needs: [need(1, 4, "night", 2)] });
     await act(async () => {
@@ -623,6 +644,26 @@ describe("Team calendar, manager layer", () => {
     expect((await within(strip).findByRole("alert")).textContent).toBe(
       "This swap wasn't approved because it had expired.",
     );
+  });
+
+  it("keeps the answer when the reload drops the only decided swap", async () => {
+    const options: Options = {
+      swaps: [swap(ID(86), samThursdayNight, null)],
+      answers: { [ID(86)]: { swapId: ID(86), status: "cancelled", cancelReason: "no_longer_fits" } },
+    };
+    options.onPost = () => {
+      options.swaps = [];
+    };
+    mockFetch(options);
+    render(<RosterTeamPage now={NOW} />);
+    const strip = await screen.findByRole("region", { name: "Needs you" });
+    fireEvent.click(within(strip).getByRole("button", { name: "Approve" }));
+    expect((await within(strip).findByRole("alert")).textContent).toBe(
+      "This swap wasn't approved because it no longer fits: a shift clash or a grade change.",
+    );
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Approve" })).toBeNull());
+    const after = screen.getByRole("region", { name: "Needs you" });
+    expect(within(after).getByRole("alert").textContent).toContain("no longer fits");
   });
 
   it("does not list a swap the manager is part of, which the server would refuse", async () => {

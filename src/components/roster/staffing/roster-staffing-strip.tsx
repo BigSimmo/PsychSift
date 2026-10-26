@@ -18,7 +18,9 @@ import {
  * whose height is how many of the team are on. Leave days sit on a soft violet
  * tile and show your own place as a hollow block (you come off). A day the
  * published roster does not reach is hatched with a "?", never drawn as fine.
- * There is no safe line: PsychSift does not hold the team's safe number.
+ * With `needs` that give the team a safe number (a whole-team Day or Evening
+ * need), each day reads "needs N" under its bar and a day below it is tagged
+ * in amber; with none, nothing is judged and no safe number is shown.
  *
  * Only Day and Evening shifts count as people on, and the strip says so under
  * the bars. Every column carries its full sentence for screen readers. With

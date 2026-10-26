@@ -15,6 +15,7 @@ import {
   useWorkUndoToast,
 } from "@/components/mode-kit/work";
 import { useRosterNow } from "@/components/roster/roster-format";
+import { useDirtyStateGuard } from "@/components/ui/use-dirty-state-guard";
 import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 import { ordinal } from "@/lib/roster/rotations/allocate";
 import { roundAcceptsPreferences, rotationById, type MyRound, type RotationRound } from "@/lib/roster/rotations/model";
@@ -262,16 +263,15 @@ function RankEditor({
     setError(null);
   };
 
-  // Leaving with an unsaved order asks first.
-  useEffect(() => {
-    if (!dirty) return;
-    const guard = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-      event.returnValue = "";
-    };
-    window.addEventListener("beforeunload", guard);
-    return () => window.removeEventListener("beforeunload", guard);
-  }, [dirty]);
+  // Leaving with an unsaved order asks first, on unload and on the shell's own navigation.
+  useDirtyStateGuard(dirty);
+  // After a remove or a rank, the rotation whose control takes focus, in whichever list holds it,
+  // so focus never drops to the page when a row (or a whole list) goes away.
+  const followFocusRef = useRef<string | null>(null);
+  useLayoutEffect(() => {
+    // The lists' own effects run first; anything they did not find is dropped.
+    followFocusRef.current = null;
+  }, [ranking]);
 
   async function save(submit: boolean) {
     setBusy(submit ? "send" : "save");
@@ -384,8 +384,11 @@ function RankEditor({
           setOpen={setOpen}
           onChange={change}
           say={say}
+          followFocusRef={followFocusRef}
           onRemove={(id) => {
             const index = ranking.indexOf(id);
+            // The next row, else the one above, else the rotation itself back in "Not ranked yet".
+            followFocusRef.current = ranking[index + 1] ?? ranking[index - 1] ?? id;
             change(ranking.filter((candidate) => candidate !== id));
             setOpen(null);
             say(`${nameOf(id)} removed`);
@@ -415,6 +418,7 @@ function RankEditor({
           <UnrankedList
             round={round}
             ids={unranked.map((rotation) => rotation.id)}
+            followFocusRef={followFocusRef}
             onRank={(id) => {
               change([...ranking, id]);
               say(`${nameOf(id)} added as ${ordinal(ranking.length + 1)}`);
@@ -500,6 +504,7 @@ function RankedList({
   onChange,
   onRemove,
   say,
+  followFocusRef,
 }: {
   readonly round: RotationRound;
   readonly ranking: readonly string[];
@@ -508,6 +513,7 @@ function RankedList({
   readonly onChange: (next: readonly string[]) => void;
   readonly onRemove: (id: string) => void;
   readonly say: (text: string) => void;
+  readonly followFocusRef: { current: string | null };
 }) {
   const rows = useRef(new Map<string, HTMLLIElement>());
   const controls = useRef(new Map<string, HTMLButtonElement>());
@@ -520,6 +526,14 @@ function RankedList({
   useLayoutEffect(() => {
     latest.current = ranking;
   }, [ranking]);
+
+  // A rotation the editor asked to focus, when it is in this list: its name.
+  useLayoutEffect(() => {
+    const target = followFocusRef.current ? controls.current.get(`${followFocusRef.current}:name`) : undefined;
+    if (!target) return;
+    followFocusRef.current = null;
+    target.focus();
+  }, [ranking, followFocusRef]);
 
   // Keep focus on the control that moved, wherever its row went.
   useLayoutEffect(() => {
@@ -755,10 +769,12 @@ function UnrankedList({
   round,
   ids,
   onRank,
+  followFocusRef,
 }: {
   readonly round: RotationRound;
   readonly ids: readonly string[];
   readonly onRank: (id: string) => void;
+  readonly followFocusRef: { current: string | null };
 }) {
   const buttons = useRef(new Map<string, HTMLButtonElement>());
   const focusNext = useRef<string | null>(null);
@@ -769,6 +785,14 @@ function UnrankedList({
     focusNext.current = null;
     buttons.current.get(id)?.focus();
   }, [ids]);
+
+  // A rotation the editor asked to focus, when it is in this list (one just taken off the ranking).
+  useLayoutEffect(() => {
+    const target = followFocusRef.current ? buttons.current.get(followFocusRef.current) : undefined;
+    if (!target) return;
+    followFocusRef.current = null;
+    target.focus();
+  }, [ids, followFocusRef]);
 
   return (
     <WorkCard as="ul" aria-label="Not ranked yet" testId="rotation-unranked">
@@ -788,6 +812,8 @@ function UnrankedList({
                 const after = ids[index + 1] ?? ids[index - 1] ?? null;
                 onRank(id);
                 focusNext.current = after;
+                // Ranking the last one empties this list: focus follows the rotation into the ranking.
+                if (!after) followFocusRef.current = id;
               }}
               data-testid="rotation-unranked-row"
             >

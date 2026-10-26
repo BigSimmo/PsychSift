@@ -97,6 +97,15 @@ describe("interactions block on the medication detail page", () => {
     // The success notice must not be the story here; the review notice is.
     expect(container.textContent).toMatch(/could not be matched automatically/i);
   });
+
+  it("names an entered medication whose own rows could not all be matched", () => {
+    // Diltiazem's rows are all resolved; clarithromycin's CYP3A4/P-gp row is not.
+    seedProfile({ medications: ["clarithromycin"] });
+    renderFor("diltiazem");
+
+    expect(screen.getByText(/No interaction found between this medication/i)).toBeInTheDocument();
+    expect(screen.getByText(/Some interaction rows for Clarithromycin could not be matched/i)).toBeInTheDocument();
+  });
 });
 
 describe("considerations block — an unread gate is never an all-clear", () => {

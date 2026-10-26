@@ -168,6 +168,25 @@ describe("visible document source projection", () => {
     for (const sensitiveTopic of sensitiveTopics) expect(projected).not.toContain(sensitiveTopic);
   });
 
+  it("carries a recorded expiry date so an expired hosted document is not listed as current", () => {
+    const [expired, timestamped, absent] = documentRowsToSourceReferences([
+      { ...indexedDocument, metadata: { ...metadata, expiry_date: "2025-06-30" } },
+      {
+        ...indexedDocument,
+        id: "77777777-7777-4777-8777-777777777777",
+        metadata: { ...metadata, expiry_date: "2999-06-30T00:00:00Z" },
+      },
+      { ...indexedDocument, id: "88888888-8888-4888-8888-888888888888" },
+    ]);
+
+    expect(expired.expiryDate).toBe("2025-06-30");
+    expect(timestamped.expiryDate).toBe("2999-06-30");
+    expect(absent.expiryDate).toBeNull();
+    const [entry] = canonicalizeSourceReferences([expired]);
+    expect(entry.documentStatus).toBe("outdated");
+    expect(entry.rating.dimensions.currency).toBe(0);
+  });
+
   it("excludes registry projections and non-indexed uploads", () => {
     expect(documentRowsToSourceReferences([registryProjection, queuedUpload])).toEqual([]);
   });

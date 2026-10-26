@@ -130,6 +130,17 @@ describe("serviceCallTarget", () => {
     expect(extractFirstDialablePhone("Fax (08) 9442 5001")).toBe("0894425001");
   });
 
+  it("never joins hours or other digits in the same text onto the number", () => {
+    const call = (value: string) =>
+      serviceCallTarget({ slug: "hours", title: "Hours", primaryContact: { label: "Phone", value, kind: "phone" } });
+    expect(call("(08) 9224 8800, 24 hours")).toEqual({ href: "tel:0892248800", display: "(08) 9224 8800" });
+    expect(call("1300 555 788 (9am-5pm)")).toEqual({ href: "tel:1300555788", display: "1300 555 788" });
+    expect(call("13 11 14 (24 hours)")).toEqual({ href: "tel:131114", display: "13 11 14" });
+    expect(extractFirstDialablePhone("1800 555 555 press 1")).toBe("1800555555");
+    // A word number next to its digits is two numbers in one segment: dial neither.
+    expect(extractFirstDialablePhone("1800 RESPECT (1800 737 732)")).toBeUndefined();
+  });
+
   it("returns nothing when the record has no dialable phone", () => {
     expect(serviceCallTarget(withoutPhone)).toBeNull();
     expect(serviceCallTarget({ slug: "bare", title: "Bare" })).toBeNull();

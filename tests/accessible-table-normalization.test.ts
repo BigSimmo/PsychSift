@@ -107,6 +107,17 @@ describe("normalizeAccessibleTable", () => {
     ]);
   });
 
+  it("flags a clinical table with a two-line body cell as low confidence (#180)", () => {
+    const table = normalizeAccessibleTable([
+      ["Parameter", "Threshold", "Action"],
+      ["ANC", "< 1.5\nx10^9/L", "Withhold clozapine"],
+    ]);
+
+    expect(table?.lowConfidence).toBe(true);
+    expect(table?.lowConfidenceReason).toBe("multiline_clinical_cell");
+    expect(table?.body[0]).toEqual(["ANC", "< 1.5 x10^9/L", "Withhold clozapine"]);
+  });
+
   it("keeps the mobile table presentation on one visible semantic table", () => {
     const source = readFileSync(new URL("../src/components/AccessibleTable.tsx", import.meta.url), "utf8");
 

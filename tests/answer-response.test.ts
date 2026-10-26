@@ -115,6 +115,29 @@ describe("governed answer response", () => {
     expect(answerDegradedModeSignal()).toEqual({ active: false, reason: null });
   });
 
+  // Audit NEW-G-04: a search timeout reports provider_timeout with no sources, and the banner used
+  // to say a verified source-backed portion was shown when nothing was.
+  it("does not promise a verified portion when a search timeout returned no sources", async () => {
+    const { retrievalDeadlineExceededAnswer } = await import("../src/lib/rag/rag-route-budget");
+    const timedOut = retrievalDeadlineExceededAnswer({ searchStartedAt: 0, startedAt: 0, budgetMs: 1 });
+    const signal = answerDegradedModeSignal(timedOut);
+    expect(signal.active).toBe(true);
+    expect(signal.reason).toBe(
+      "Source evidence could not be confirmed, so no verified passages are shown. Please try again.",
+    );
+    const governed = buildGovernedAnswerClientResponse(timedOut).payload;
+    expect(governed.degradedMode?.reason).not.toMatch(/verified source-backed portion/);
+    // The browser-side projection reads the same source count, so the governed payload survives a
+    // strict round trip and a restored payload keeps the same wording.
+    expect(projectClientAnswerPayload(JSON.parse(JSON.stringify(governed)), true)).not.toBeNull();
+    expect(projectClientAnswerPayload(JSON.parse(JSON.stringify(governed)))?.degradedMode?.reason).toBe(
+      governed.degradedMode?.reason,
+    );
+    expect(answerDegradedModeSignal({ ...timedOut, sources: [source()] }).reason).toBe(
+      "Answer generation timed out; the verified source-backed portion is shown.",
+    );
+  });
+
   it("normalizes malformed runtime fallback codes and activates valid typed degradation", () => {
     const malformed = buildGovernedAnswerClientResponse(
       answer({ fallbackReasonCode: "provider_timeout\nprivate-host?token=secret" as never }),

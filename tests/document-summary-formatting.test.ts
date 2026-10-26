@@ -73,6 +73,26 @@ describe("dedupeSummarySentences", () => {
     ]);
   });
 
+  it("keeps the later sentence when it extends a kept one with a threshold", () => {
+    const deduped = dedupeSummarySentences([
+      "Serum lithium levels should be checked 12 hours post dose.",
+      "Check renal and thyroid function every six months.",
+      "Serum lithium levels should be checked 12 hours post dose and lithium withheld if the level is above 1.5 mmol/L.",
+    ]);
+    expect(deduped).toEqual([
+      "Serum lithium levels should be checked 12 hours post dose and lithium withheld if the level is above 1.5 mmol/L.",
+      "Check renal and thyroid function every six months.",
+    ]);
+  });
+
+  it("never replaces a complete sentence with a longer one cut off mid-thought", () => {
+    const deduped = dedupeSummarySentences([
+      "Serum lithium levels should be checked 12 hours post dose.",
+      "Serum lithium levels should be checked 12 hours post dose and lithium withh",
+    ]);
+    expect(deduped).toEqual(["Serum lithium levels should be checked 12 hours post dose."]);
+  });
+
   it("keeps short sentences that merely share a prefix", () => {
     const deduped = dedupeSummarySentences(["Monitor sodium.", "Monitor sodium and fluid status closely."]);
     expect(deduped).toHaveLength(2);
@@ -80,6 +100,16 @@ describe("dedupeSummarySentences", () => {
 });
 
 describe("formatDocumentSummary", () => {
+  it("keeps a later section's sentence that extends an earlier one, with its threshold", () => {
+    const formatted = formatDocumentSummary(
+      "Serum lithium levels should be checked 12 hours post dose. Check renal function regularly. " +
+        "2. Monitoring Serum lithium levels should be checked 12 hours post dose and lithium withheld if the level is above 1.5 mmol/L.",
+    );
+    const text = [formatted.lead ?? "", ...formatted.sections.flatMap((section) => section.items)].join(" ");
+    expect(text).toContain("withheld if the level is above 1.5 mmol/L");
+    expect(text.match(/Serum lithium levels should be checked/g)).toHaveLength(1);
+  });
+
   it("turns the messy stored summary into a structured, deduplicated model", () => {
     const formatted = formatDocumentSummary(messyLithiumSummary);
 

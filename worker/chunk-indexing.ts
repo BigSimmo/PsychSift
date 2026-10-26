@@ -25,6 +25,7 @@ import {
   sanitizeJsonbRecord,
 } from "./ingestion-sanitize";
 import type { IngestionStageContext } from "./ingestion-stage-context";
+import { carryTableFactReview, loadPriorTableFactReviews } from "./review-carry-forward";
 import { buildTableFactRows } from "./table-facts";
 import type { JobRow } from "./types";
 
@@ -236,15 +237,26 @@ export async function insertEmbeddedChunks(ctx: IngestionStageContext, job: JobR
     }
   }
 
-  const tableFacts = buildTableFactRows({ job, chunkRows: indexedChunkRows, insertedImages }).map((row) => ({
-    ...row,
-    table_title: row.table_title ? cleanString(row.table_title) : null,
-    row_label: row.row_label ? cleanString(row.row_label) : null,
-    clinical_parameter: row.clinical_parameter ? cleanString(row.clinical_parameter) : null,
-    threshold_value: row.threshold_value ? cleanString(row.threshold_value) : null,
-    action: row.action ? cleanString(row.action) : null,
-    metadata: sanitizeJsonbRecord({ ...row.metadata, index_generation_id: indexGenerationId }),
-  }));
+  const builtTableFacts = buildTableFactRows({ job, chunkRows: indexedChunkRows, insertedImages });
+  // Audit E2E-04: the owner's earlier table reviews survive a re-index.
+  const priorFactReviews =
+    builtTableFacts.length > 0
+      ? await loadPriorTableFactReviews(ctx.supabase, job.document_id, indexGenerationId)
+      : new Map();
+  const tableFacts = builtTableFacts.map((row) =>
+    carryTableFactReview(
+      {
+        ...row,
+        table_title: row.table_title ? cleanString(row.table_title) : null,
+        row_label: row.row_label ? cleanString(row.row_label) : null,
+        clinical_parameter: row.clinical_parameter ? cleanString(row.clinical_parameter) : null,
+        threshold_value: row.threshold_value ? cleanString(row.threshold_value) : null,
+        action: row.action ? cleanString(row.action) : null,
+        metadata: sanitizeJsonbRecord({ ...row.metadata, index_generation_id: indexGenerationId }),
+      },
+      priorFactReviews,
+    ),
+  );
   if (tableFacts.length > 0) {
     const attempt = attemptForJob(job.id);
     await writeIngestionTableFacts(

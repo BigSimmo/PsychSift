@@ -5,6 +5,7 @@ import {
   BookOpenCheck,
   Check,
   FileCheck2,
+  Info,
   Layers,
   ListChecks,
   ShieldAlert,
@@ -46,8 +47,10 @@ const definitionStatusLabel: Record<SpecifierDefinitionStatus, string> = {
   "needs-manual-or-clinician-verification": "Needs manual verification",
 };
 
+// Same wording as the ReviewStatusBadge: a checked source is not a clinician sign-off
+// (audit S6), so this page must not call it "verified" or show it in the success tone.
 const sourceStatusLabel: Record<SpecifierSourceStatus, string> = {
-  "source-verified": "Source verified",
+  "source-verified": "Source checked, not signed off",
   "source-needs-formal-review": "Needs formal source review",
   "source-not-applicable": "Source not applicable",
 };
@@ -133,7 +136,8 @@ export function SpecifierReferencePage({ item }: { item: SpecifierCatalogItem })
   //
   // The clinician sign-off (`npm run clinical:review -- --kind specifier`) exists to clear
   // exactly that: an entry that passes the fail-closed isSpecifierClinicianReviewed test
-  // (status "clinician-reviewed" + named reviewer + parseable timestamp) shows its
+  // (status "clinician-reviewed" + named reviewer + parseable timestamp + nothing changed
+  // since the sign-off) shows its
   // definition, attributed to the reviewer. The sign-off covers the definition and its
   // placement only, not the curated enrichment below, which keeps its own labelling. Every
   // "pending"/"reviewed" statement here reads the same helper, so a signed entry never
@@ -211,10 +215,9 @@ export function SpecifierReferencePage({ item }: { item: SpecifierCatalogItem })
             tone="info"
           />
           <QuickTile
-            icon={item.review.sourceVerificationStatus === "source-verified" ? Check : ShieldAlert}
+            icon={item.review.sourceVerificationStatus === "source-verified" ? Info : ShieldAlert}
             label="Source status"
             body={sourceStatusLabel[item.review.sourceVerificationStatus]}
-            tone={item.review.sourceVerificationStatus === "source-verified" ? "success" : "default"}
           />
         </section>
 

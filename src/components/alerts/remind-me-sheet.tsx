@@ -201,12 +201,24 @@ export function YourRemindersSheet({
                   title={<span className={item.doneAt ? "line-through" : undefined}>{item.text}</span>}
                   subtitle={status}
                   trailing={
+                    // Each name carries the reminder's words, so moving by buttons or speaking
+                    // "Done" reaches one reminder rather than a row of identical names.
                     item.doneAt ? (
-                      <Button variant="ghost" size="sm" onClick={() => remove(item.id)}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label={`Remove: ${item.text}`}
+                        onClick={() => remove(item.id)}
+                      >
                         Remove
                       </Button>
                     ) : (
-                      <Button variant="ghost" size="sm" onClick={() => markDone(item.id)}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label={`Done: ${item.text}`}
+                        onClick={() => markDone(item.id)}
+                      >
                         Done
                       </Button>
                     )

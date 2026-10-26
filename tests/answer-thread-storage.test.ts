@@ -514,8 +514,9 @@ describe("answer thread storage", () => {
 
   it.each([
     [
+      // No sources came back, so the timeout wording must not promise a verified portion (NEW-G-04).
       { fallbackReasonCode: "provider_timeout", degradedMode: { active: true, reason: "private-reason" } },
-      "Answer generation timed out; the verified source-backed portion is shown.",
+      "Source evidence could not be confirmed, so no verified passages are shown. Please try again.",
     ],
     [
       { degradedMode: { active: true, reason: "private-reason" } },

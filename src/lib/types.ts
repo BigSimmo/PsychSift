@@ -1156,6 +1156,8 @@ export type ConflictOrGap = {
   type: "gap" | "conflict";
   message: string;
   source_chunk_ids?: string[];
+  /** "model" when the AI wrote the message text; unset for notes the system builds from sources or checks. */
+  origin?: "model";
 };
 
 export type AnswerSectionKind =

@@ -5,7 +5,7 @@ import { expect, test, type Locator, type Page } from "playwright/test";
 import { demoDocuments, getDemoDocument, getDemoDocumentPayload } from "../src/lib/demo-data";
 import { getDifferentialDetailContext, getDifferentialRecord } from "../src/lib/differentials";
 import { loadMedicationSnapshot } from "../src/lib/medication-snapshot";
-import { expectSingleSettledOwner, visibleByTestId, visibleByText } from "./playwright-settlement";
+import { clickWhenSettled, expectSingleSettledOwner, visibleByTestId, visibleByText } from "./playwright-settlement";
 
 const routeViewports = [
   { name: "desktop", width: 1280, height: 900 },
@@ -547,7 +547,11 @@ test.describe("previously uncovered production routes", () => {
         const swap = currentPage.getByRole("button", { name: "Swap compared specifiers" });
         await expect(swap).toBeEnabled();
         await waitForReactEventHandler(swap);
-        await swap.click();
+        // The jump from 1280px to the phone width reflows the page and moves the chrome for a
+        // few hundred milliseconds. Release WebKit tablet (main run 39941788372) hit-tested the
+        // swap at y=343 while it was sliding to y=282, so the press missed it and no navigation
+        // started. Wait for the control to stop moving, then click it once.
+        await clickWhenSettled(swap);
         await expect(currentPage).toHaveURL(/\/specifiers\/compare\?a=with-anxious-distress&b=with-mixed-features$/);
       },
     );
@@ -565,14 +569,18 @@ test.describe("previously uncovered production routes", () => {
       async (currentPage) => {
         const courseJump = currentPage.getByTestId("specifier-map-jump-course-onset");
         await waitForReactEventHandler(courseJump);
-        await courseJump.click();
+        // Same phone-width reflow as the comparison swap: a plain click missed the moving card
+        // and aria-current never changed (release WebKit tablet, main runs 39545758213 and
+        // 39571252644).
+        await clickWhenSettled(courseJump);
         await expect(courseJump).toHaveAttribute("aria-current", "true");
         await expect(currentPage).toHaveURL(/#course-onset$/);
 
         const mixedFeatures = currentPage.getByRole("button", { name: "Mixed features" });
         await expect(mixedFeatures).toBeEnabled();
         await waitForReactEventHandler(mixedFeatures);
-        await mixedFeatures.click();
+        // The section jump above scrolls the page, which hides or reveals the chrome.
+        await clickWhenSettled(mixedFeatures);
         await expect(mixedFeatures).toHaveAttribute("aria-pressed", "true");
         await expect(currentPage.getByRole("heading", { name: "Mixed features", level: 2 })).toBeVisible();
       },

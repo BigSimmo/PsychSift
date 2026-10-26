@@ -10,7 +10,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
-const PRODUCTION_MARKERS = ["psychiatry.tools", "sjrfecxgysukkwxsowpy"];
+// Production app domains (docs/multi-user-auth-setup.md) and the production Supabase ref.
+const PRODUCTION_MARKERS = ["psychiatry.tools", "database-production-c1c0.up.railway.app", "sjrfecxgysukkwxsowpy"];
 
 export type SoakArgs = {
   target: string;

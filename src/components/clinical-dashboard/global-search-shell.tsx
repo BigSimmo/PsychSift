@@ -25,6 +25,11 @@ import {
   recentQueriesChangeEvent,
 } from "@/lib/recent-query-storage";
 import { PatientProfileProvider } from "@/components/clinical-dashboard/patient-profile-context";
+import {
+  searchTextPatientDetailRefusal,
+  usePreloadSearchPatientCheck,
+} from "@/components/clinical-dashboard/search-patient-detail-guard";
+import { useOptionalToast } from "@/components/ui/toast";
 import { SearchCommandProvider } from "@/components/clinical-dashboard/search-command-context";
 import {
   ClinicalDesktopSidebar,
@@ -461,6 +466,8 @@ function GlobalStandaloneSearchShellBody({
       ? requestedMode
       : initialSearchMode;
   const [query, setQuery] = useState(requestedQuery);
+  usePreloadSearchPatientCheck(query);
+  const toast = useOptionalToast();
   const deferredQuery = useDeferredValue(query);
   const [, setLastAppMode] = useLastAppMode();
   // Previous URL snapshot for during-render sync (React "adjusting state when a
@@ -829,8 +836,19 @@ function GlobalStandaloneSearchShellBody({
     );
   }
 
+  /** Says why text that looks like it holds a patient detail stays out of the page address (D-03). */
+  function warnPatientDetailHeldBack(message: string) {
+    toast?.push({ tone: "warning", title: message });
+  }
+
   function submitSearch(queryOverride?: string) {
     const trimmedQuery = (queryOverride ?? query).trim();
+    // The same check the dashboard's Ask applies before typed text reaches the address bar.
+    const refusal = searchTextPatientDetailRefusal(trimmedQuery);
+    if (refusal) {
+      warnPatientDetailHeldBack(refusal);
+      return;
+    }
     // Psychiatry has no results page, so its box asks the question in Answer,
     // as its old in-page box did.
     navigateToMode(isDockedModeHomePath(pathname) && trimmedQuery ? "answer" : searchMode, {
@@ -854,7 +872,10 @@ function GlobalStandaloneSearchShellBody({
     // return to the shared home. Preserve any current query as an unsubmitted draft,
     // but omit `run=1`; only an explicit submit may open the selected mode's
     // dedicated search/results surface.
-    const carriedQuery = query.trim() || requestedQuery.trim();
+    const draftQuery = query.trim() || requestedQuery.trim();
+    // A draft that looks like it holds a patient detail is not carried into the next address.
+    const draftRefusal = searchTextPatientDetailRefusal(draftQuery);
+    const carriedQuery = draftRefusal ? "" : draftQuery;
     const standaloneHome = standaloneModeHomeHref(mode);
     const href =
       standaloneHome ??
@@ -868,6 +889,7 @@ function GlobalStandaloneSearchShellBody({
     const alreadyOnDestination = pathname === destination.pathname && searchParamString === destinationSearch;
     // A page with unsaved work may ask first; re-selecting the mode already shown never leaves, so never asks.
     if (!alreadyOnDestination && !confirmShellNavigation()) return;
+    if (draftRefusal && !alreadyOnDestination) warnPatientDetailHeldBack(draftRefusal);
     setLastAppMode(mode);
 
     setMobileMenuOpen(false);
@@ -926,6 +948,11 @@ function GlobalStandaloneSearchShellBody({
     }
     setQuery(crossQuery);
     setMobileMenuOpen(false);
+    const refusal = searchTextPatientDetailRefusal(crossQuery);
+    if (refusal) {
+      warnPatientDetailHeldBack(refusal);
+      return;
+    }
     navigateToMode(mode, { query: crossQuery, focus: false, run: true });
   }
 

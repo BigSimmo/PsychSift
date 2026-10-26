@@ -10,6 +10,7 @@ import type {
   SourceUsage,
 } from "@/lib/sources/catalogue-types";
 import { strictSourceDate } from "@/lib/sources/source-date-policy";
+import { type SourceRights, sourceRightsIssues } from "@/lib/sources/source-rights";
 import { isTgaProductInformationSearchUrl } from "@/lib/sources/source-url-policy";
 import acquisitionLedger from "@/data/source-acquisitions.json";
 
@@ -142,6 +143,18 @@ export type SourceAcquisitionRecord = {
   notes: string | null;
   /** Omission means unknown. Adding or changing this invalidates an existing attestation. */
   rights?: SourceRightsMetadata;
+  /**
+   * Publisher licence or permission status (finding R-07). Optional, and absent
+   * means unknown, which is every record's state when the field was introduced.
+   * The rights position is the owner's legal judgement; no agent fills it in from
+   * its own research. It is record-keeping only and is not carried into the
+   * catalogue, so it changes nothing readers see or the answer engine uses.
+   *
+   * Like every other non-attestation field it is covered by
+   * `attestedAgainstSha256`, so adding it to a signed-off record makes that
+   * sign-off stale until it is re-attested. Leaving it out keeps existing digests valid.
+   */
+  rights?: SourceRights;
   /**
    * Structured owner attestation. All three fields are optional, and they are the
    * owner's to write: no agent may record a sign-off on the owner's behalf.
@@ -488,6 +501,8 @@ export function acquisitionLedgerIssues(
         );
       }
     }
+
+    issues.push(...sourceRightsIssues(id, record.rights));
 
     if (record.disposition === "adopted" && record.validationStatus === "unverified") {
       issues.push(`${id}: an adopted source must be reviewed before clinical content cites it`);

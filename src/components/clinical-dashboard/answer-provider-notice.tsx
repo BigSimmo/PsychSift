@@ -2,7 +2,12 @@ import { Globe, TriangleAlert } from "lucide-react";
 
 import { cn, textMuted } from "@/components/ui-primitives";
 import { answerUsesDegradedMode, type AnswerStateInput } from "@/components/ui/answer-state";
-import { isProviderGenerationFallbackCode, publicFallbackReason } from "@/lib/rag/rag-fallback-reason";
+import {
+  isProviderGenerationFallbackCode,
+  NO_CONFIRMED_SOURCES_REASON,
+  publicDegradedReason,
+  publicFallbackReason,
+} from "@/lib/rag/rag-fallback-reason";
 
 /**
  * The overseas-processing line under an answer (audit S3, 2026-10-13). Shortened to one phone line by the
@@ -53,17 +58,14 @@ export function answerSummaryUnavailableReason(answer: AnswerStateInput): string
   return publicFallbackReason(code);
 }
 
-export const ANSWER_NO_CONFIRMED_SOURCES_TEXT =
-  "Source evidence could not be confirmed, so no verified passages are shown. Please try again.";
+export const ANSWER_NO_CONFIRMED_SOURCES_TEXT = NO_CONFIRMED_SOURCES_REASON;
 
 /**
  * The sentence above a degraded answer. A provider code's own wording promises a verified
  * source-backed portion, which is false when no source came back (a retrieval deadline, for one).
  */
 export function answerDegradationNoteText(answer: AnswerStateInput): string {
-  const code = answer.fallbackReasonCode ?? "unknown";
-  if (isProviderGenerationFallbackCode(code) && !answer.sources?.length) return ANSWER_NO_CONFIRMED_SOURCES_TEXT;
-  return publicFallbackReason(code);
+  return publicDegradedReason(answer.fallbackReasonCode ?? "unknown", answer.sources?.length ?? 0);
 }
 
 /**

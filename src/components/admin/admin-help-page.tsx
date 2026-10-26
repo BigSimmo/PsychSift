@@ -11,6 +11,7 @@ import { adminHelpForwardHref } from "@/components/admin/admin-hash-forward";
 import { AdminHelpItemRow } from "@/components/admin/admin-help-item-row";
 import { AdminNote, AdminPage, adminStyles } from "@/components/admin/admin-kit";
 import { AdminLoadFailed } from "@/components/admin/admin-load-failed";
+import { useJuniorNow } from "@/components/admin/junior/junior-shared";
 import { AdminNavHeader } from "@/components/admin/admin-nav-header";
 import { ADMIN_HELP_SECTIONS } from "@/components/admin/admin-page-sections";
 import { AdminPinnedNumbers } from "@/components/admin/admin-pinned-numbers";
@@ -26,7 +27,12 @@ import { buildAdminHelpItems, type AdminHelpItem, type AdminHelpTab } from "@/li
 import { helpQueryAlsoLooksFor, matchesHelpQuery } from "@/lib/admin/help-search";
 import { adminLoadState, selectAdminOwnEntries, selectAdminSharedEntries } from "@/lib/admin/own-entries";
 import { ADMIN_STATEWIDE_SUPPORT } from "@/lib/admin/statewide-support";
-import { cacheOnCallEntries, isOnCallExampleEntry, useOnCallEntries } from "@/lib/on-call/entry-store";
+import {
+  cacheOnCallEntries,
+  isOnCallExampleEntry,
+  readCachedOnCallEntries,
+  useOnCallEntries,
+} from "@/lib/on-call/entry-store";
 import type { OnCallEntry, OnCallSection } from "@/lib/on-call/entry-model";
 import { ON_CALL_IN_HOURS_END_HOUR, isOnCallOutOfHours } from "@/lib/on-call/home-modules";
 import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
@@ -71,8 +77,7 @@ export function AdminHelpPage({ now: nowProp }: { now?: Date } = {}) {
   const { isAuthenticated } = useAccountData();
   const state = useOnCallEntries();
   const { entries, retry } = state;
-  const mountedAt = useMemo(() => new Date(), []);
-  const now = nowProp ?? mountedAt;
+  const now = useJuniorNow(nowProp);
   // The after-hours line depends on the clock, so it is decided on the device
   // only. The server render never shows it, which keeps hydration in step.
   const afterHours = useSyncExternalStore(
@@ -112,14 +117,17 @@ export function AdminHelpPage({ now: nowProp }: { now?: Date } = {}) {
 
   function upsertCachedEntry(entry: OnCallEntry) {
     if (isOnCallExampleEntry(entry)) return;
-    const next = entries.some((existing) => existing.id === entry.id)
-      ? entries.map((existing) => (existing.id === entry.id ? entry : existing))
-      : [...entries, entry];
+    // The latest cache, not this render's list: two saves in flight would otherwise undo each other.
+    const latest = readCachedOnCallEntries()?.entries ?? entries;
+    const next = latest.some((existing) => existing.id === entry.id)
+      ? latest.map((existing) => (existing.id === entry.id ? entry : existing))
+      : [...latest, entry];
     cacheOnCallEntries(next);
   }
 
   function removeCachedEntry(id: string) {
-    cacheOnCallEntries(entries.filter((existing) => existing.id !== id));
+    const latest = readCachedOnCallEntries()?.entries ?? entries;
+    cacheOnCallEntries(latest.filter((existing) => existing.id !== id));
   }
 
   function openNewEntry() {

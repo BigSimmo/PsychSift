@@ -114,6 +114,16 @@ describe("Work profile page", () => {
     expect(nav.replace).toHaveBeenCalledWith("/my-day/profile?tab=privacy", { scroll: false });
   });
 
+  it("says aloud that recent searches were cleared", () => {
+    nav.search = "tab=privacy";
+    render(<WorkProfilePage />);
+    const status = screen.getByTestId("work-profile-clear-searches-status");
+    expect(status.getAttribute("role")).toBe("status");
+    expect(status.textContent).toBe("");
+    fireEvent.click(screen.getByTestId("work-profile-clear-searches"));
+    expect(status.textContent).toMatch(/recent searches/i);
+  });
+
   it("a failed area says Not checked, never Ready", () => {
     data.current = readyData({ teaching: { status: "failed" } });
     render(<WorkProfilePage />);

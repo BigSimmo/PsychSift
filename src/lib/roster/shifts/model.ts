@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { SHIFT_KINDS, type ShiftKind } from "@/lib/roster/shift-kind";
+import { isWorkTimeZone } from "@/lib/work-time/zones";
 
 /**
  * My shifts: the doctor's own roster, private to them.
@@ -130,6 +131,9 @@ export const onCallManualShiftRequestSchema = z
   .object({
     shift: onCallShiftInputSchema,
     repeatWeeks: z.number().int().min(0).max(ON_CALL_MANUAL_SHIFT_REPEAT_MAX_WEEKS),
+    // The work zone the shift was typed in, so weekly repeats keep its wall-clock
+    // time across a daylight-saving change. Perth when left out.
+    timeZone: z.string().refine(isWorkTimeZone, "Choose a supported work time zone.").optional(),
   })
   .strict();
 

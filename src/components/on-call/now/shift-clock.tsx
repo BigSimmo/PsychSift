@@ -8,15 +8,18 @@ import { modeNumberText, modeSecondaryText } from "@/components/mode-kit/type";
 import { cn } from "@/components/ui-primitives";
 import { onCallDurationWords } from "@/lib/on-call/period-window";
 import { ON_CALL_SHIFT_PERIOD_LABELS, type OnCallShiftContext } from "@/lib/on-call/shift-context";
-import { perthTimeOf } from "@/lib/roster/shifts/perth-time";
+import { perthDateOf, perthTimeOf, WEEKDAYS } from "@/lib/roster/shifts/perth-time";
 
 const MINUTE_MS = 60_000;
 
-const perthWeekday = new Intl.DateTimeFormat("en-AU", { weekday: "short", timeZone: "Australia/Perth" });
-
-/** "Tue 21:00", in Perth time. */
+/**
+ * "Tue 21:00", on the work zone's wall clock (Perth by default). The weekday
+ * comes from the same zone as the time, so a Sydney shift ending at 01:00
+ * Wednesday never reads "Tue 01:00".
+ */
 function perthDayTime(iso: string): string {
-  return `${perthWeekday.format(new Date(iso))} ${perthTimeOf(iso)}`;
+  const weekday = WEEKDAYS[new Date(`${perthDateOf(iso)}T00:00:00Z`).getUTCDay()];
+  return `${weekday} ${perthTimeOf(iso)}`;
 }
 
 export type OnCallShiftClock = {

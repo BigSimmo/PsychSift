@@ -558,7 +558,6 @@ export function DsmSearchPage({
                 {selected.length ? (
                   <ol className="mt-3 grid gap-2">
                     {selected.map((slug, index) => {
-                      const item = queryResults.find((result) => result.slug === slug);
                       return (
                         <li
                           key={slug}
@@ -567,7 +566,7 @@ export function DsmSearchPage({
                           <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[color:var(--clinical-accent-soft)] text-2xs text-[color:var(--clinical-accent)]">
                             {index + 1}
                           </span>
-                          <span className="min-w-0 truncate">{item?.title ?? slug}</span>
+                          <span className="min-w-0 truncate">{trayName(slug)}</span>
                         </li>
                       );
                     })}

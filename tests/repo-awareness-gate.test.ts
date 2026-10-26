@@ -105,6 +105,29 @@ describe("checkRepoAwarenessSnapshot", () => {
     expect(errors).toHaveLength(0);
   });
 
+  it("fails, not skips, when a generator input file is missing", () => {
+    const logs: string[] = [];
+    const errors: string[] = [];
+    let exitCode: number | null = null;
+
+    const code = checkRepoAwarenessSnapshot({
+      isGitRepoImpl: () => true,
+      generateImpl: () => {
+        throw new Error("ENOENT: no such file or directory, open 'docs/README.md'");
+      },
+      log: (msg) => logs.push(msg),
+      error: (msg) => errors.push(msg),
+      exit: (c) => {
+        exitCode = c;
+      },
+    });
+
+    expect(code).toBe(1);
+    expect(exitCode).toBe(1);
+    expect(logs.join(" ")).not.toContain("skipped");
+    expect(errors.join(" ")).toContain("generation failed");
+  });
+
   it("skips without generating at all when no git repository is rooted here", () => {
     // The branch that actually fires in a `git archive` export, and the one the
     // existing coverage above misses: it drives the message-sniffing catch by

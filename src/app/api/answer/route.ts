@@ -10,7 +10,7 @@ import {
   consumeSubjectApiRateLimit,
   rateLimitJsonResponse,
 } from "@/lib/api-rate-limit";
-import { requireSignedInClinicalAccess } from "@/lib/clinical-access";
+import { requireHealthProfessionalDeclaration, requireSignedInClinicalAccess } from "@/lib/clinical-access";
 import { publicAccessContext } from "@/lib/public-api-access";
 import { setAgentConversationId } from "@/lib/observability/agent-monitoring";
 import { classifyRagQuery } from "@/lib/clinical-search";
@@ -111,6 +111,7 @@ export async function POST(request: Request) {
     if (rateLimit.limited) {
       return rateLimitJsonResponse("Too many answer requests. Retry shortly.", rateLimit, { bucket: "answer" });
     }
+    await requireHealthProfessionalDeclaration(access, supabase);
 
     const scopeStartedAt = Date.now();
     const scope = await resolveSearchScope({

@@ -9,7 +9,7 @@ import { ModeGroupedList, ModeRow } from "@/components/mode-kit/grouped-list";
 import { RosterSentBar, type SentReceipt } from "@/components/roster/requests/roster-sent-bar";
 import type { SharedManageReload } from "@/components/roster/manage/roster-approve-tab";
 import { SwapFlowSheet } from "@/components/roster/swaps/swap-flow-sheet";
-import { postRosterAction, useRosterRead } from "@/components/roster/use-roster-team";
+import { useRosterRead } from "@/components/roster/use-roster-team";
 import { Button } from "@/components/ui/button";
 import { WorkStateLoading } from "@/components/mode-kit/work-state";
 import { SegmentedControl } from "@/components/ui/segmented-control";
@@ -147,7 +147,6 @@ export function TeamCalendar({
   const params = useSearchParams();
   const today = perthDateOf(now);
   const state = readCalendarState(params, today);
-  const overview = useRosterRead(team.serviceId, "overview");
   const requests = useRosterRead(team.serviceId, "requests");
   const read = useRosterRead(team.serviceId, "assignments", calendarWindow(state));
   const reload = read.reload;
@@ -156,13 +155,8 @@ export function TeamCalendar({
   const [request, setRequest] = useState<RequestSheet>(null);
   const [sent, setSent] = useState<SentReceipt | null>(null);
   const clearSent = useCallback(() => setSent(null), []);
-  const marked = useRef<string | null>(null);
-  const publication = overview.data?.latestPublication;
-  useEffect(() => {
-    if (!publication || overview.data?.seenLatest || marked.current === publication.id) return;
-    marked.current = publication.id;
-    void postRosterAction(team.serviceId, { action: "seen.mark", publicationId: publication.id });
-  }, [publication, overview.data?.seenLatest, team.serviceId]);
+  // The calendar never marks a publication seen: only "Got it" on Today does,
+  // so opening Team or Manage cannot clear Today's change lines unread.
 
   function go(next: CalendarState) {
     router.replace(`${pathname}?${calendarStateQuery(next)}`, { scroll: false });

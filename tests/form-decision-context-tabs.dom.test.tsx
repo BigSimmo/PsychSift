@@ -41,4 +41,23 @@ describe("form decision context tabs", () => {
     fireEvent.keyDown(source, { key: "Home" });
     expect(pathway).toHaveAttribute("aria-selected", "true");
   });
+
+  it("links to the official source when one is recorded", () => {
+    render(<FormDetailPage form={form} />);
+    const card = screen.getByTestId("form-decision-context-desktop");
+    expect(within(card).getByRole("link", { name: /Open official source \/ pathway/ })).toHaveAttribute("href");
+  });
+
+  it("offers a disabled control, never a link without href, when no source URL is recorded", () => {
+    const withoutSource = { ...form, source: form.source ? { ...form.source, url: undefined } : form.source };
+    withoutSource.catalogPayload = undefined;
+    render(<FormDetailPage form={withoutSource} />);
+    const card = screen.getByTestId("form-decision-context-desktop");
+
+    expect(within(card).queryByRole("link", { name: /Open official source/ })).toBeNull();
+    expect(card.querySelector("a:not([href])")).toBeNull();
+    const control = within(card).getByRole("button", { name: /Open official source \/ pathway/ });
+    expect(control).toHaveAttribute("aria-disabled", "true");
+    expect(control).toHaveAccessibleDescription("No official source URL is recorded for this form.");
+  });
 });

@@ -365,6 +365,17 @@ describe("GET /api/search/universal (demo mode)", () => {
     expect(response.status).toBe(400);
   });
 
+  it("refuses a query that looks like it holds a patient detail", async () => {
+    isolateNextModuleImport();
+    vi.stubEnv("NEXT_PUBLIC_DEMO_MODE", "true");
+    const { GET } = await import("../src/app/api/search/universal/route");
+    const response = await GET(
+      new Request(`http://localhost/api/search/universal?q=${encodeURIComponent("Mr Smith lithium level 1.4")}`),
+    );
+    expect(response.status).toBe(400);
+    expect(((await response.json()) as { code?: string }).code).toBe("patient_detail_in_question");
+  });
+
   it("ignores unknown domains in the CSV filter", async () => {
     isolateNextModuleImport();
     vi.stubEnv("NEXT_PUBLIC_DEMO_MODE", "true");

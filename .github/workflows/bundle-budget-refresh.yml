@@ -35,16 +35,24 @@ permissions:
   contents: read
 
 jobs:
+  # Two jobs, the same shape as organisation-weekly.yml: the job that runs `npm ci`,
+  # the full build and repository scripts keeps `contents: read` only, and
+  # `issues: write` sits on a publish job that checks out and runs nothing from the
+  # repository. The measurement crosses between them as the evidence artifact.
   bundle-budget-refresh:
+    # main only: the issue names the comparator as the bundle-budget.json committed
+    # on main, so a manual run from another branch would report that branch as main.
+    if: ${{ github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-24.04
     permissions:
       contents: read
-      # Only for the rolling report issue below. This workflow writes nothing to
-      # the repository itself.
-      issues: write
     # Generous: this is a deliberately COLD full Next.js build (no .next cache
     # restore, see below), which is far slower than ci.yml's incremental Build.
     timeout-minutes: 60
+    outputs:
+      # Read by the publish job, so it can say which step did not complete.
+      refresh_outcome: ${{ steps.refresh.outcome }}
+      artifact_outcome: ${{ steps.evidence.outcome }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -99,23 +107,46 @@ jobs:
           # rather than publish a report with no evidence behind it.
           if-no-files-found: error
 
+  publish:
+    name: Publish the bundle budget measurement
+    needs: bundle-budget-refresh
+    # Runs even when the measurement failed, so a broken run is said in the issue.
+    # Skipped with the measurement job on any branch other than main.
+    if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      # Only for the rolling report issue below. This workflow writes nothing to
+      # the repository itself.
+      issues: write
+    steps:
+      - name: Download refreshed baseline and measurement
+        # A failed measurement leaves no artifact; the next step then says so in the issue.
+        continue-on-error: true
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: bundle-budget-refresh-attempt${{ github.run_attempt }}
+          path: bundle-budget-refresh
+
       - name: Publish to rolling issue
-        if: ${{ !cancelled() }}
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           # Pass step results via env (not inline template expansion) to avoid
           # the GitHub Actions template-injection pattern. The measurement itself
-          # is read from the JSON file on disk for the same reason.
-          REFRESH_OUTCOME: ${{ steps.refresh.outcome }}
-          ARTIFACT_OUTCOME: ${{ steps.evidence.outcome }}
-          MEASUREMENT_FILE: bundle-budget-refresh.json
+          # is read from the JSON file in the artifact for the same reason.
+          REFRESH_OUTCOME: ${{ needs.bundle-budget-refresh.outputs.refresh_outcome }}
+          ARTIFACT_OUTCOME: ${{ needs.bundle-budget-refresh.outputs.artifact_outcome }}
+          # Fallback when the measurement job ended before it could record a step outcome.
+          MEASUREMENT_JOB_RESULT: ${{ needs.bundle-budget-refresh.result }}
+          MEASUREMENT_FILE: bundle-budget-refresh/bundle-budget-refresh.json
         with:
           script: |
             const fs = require("fs");
             const label = "bundle-budget-refresh";
             const title = "Bundle budget baseline measurement";
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
-            const outcome = process.env.REFRESH_OUTCOME || "unknown";
+            const outcome = process.env.REFRESH_OUTCOME || process.env.MEASUREMENT_JOB_RESULT || "unknown";
 
             const pct = (value) => (typeof value === "number" ? `${value >= 0 ? "+" : ""}${value.toFixed(2)}%` : "n/a");
             // KiB, not kB. This divides by 1024, which is binary, and labelling it
@@ -128,9 +159,20 @@ jobs:
             // evidence, not zero bytes and not zero drift.
             const tol = (value) => (typeof value === "number" ? `${value}%` : "unstated");
 
-            let body;
+            // The measurement reaches this job only through the evidence artifact, so
+            // a measured run whose artifact never uploaded or downloaded has no
+            // numbers here; it is reported as incomplete rather than crashing.
+            let measurement = null;
             if (outcome === "success") {
-              const measurement = JSON.parse(fs.readFileSync(process.env.MEASUREMENT_FILE, "utf8"));
+              try {
+                measurement = JSON.parse(fs.readFileSync(process.env.MEASUREMENT_FILE, "utf8"));
+              } catch (error) {
+                core.warning(`Bundle budget measurement file could not be read: ${error.message}`);
+              }
+            }
+
+            let body;
+            if (measurement) {
               const comparator = measurement.comparator ?? {};
               const meta = measurement.measurement ?? {};
               const rows = [
@@ -203,10 +245,14 @@ jobs:
                 `the \`bundle-budget-refresh-attempt${process.env.GITHUB_RUN_ATTEMPT}\` artifact, and is retained for 30 days.`,
               ].join("\n");
             } else {
+              const reason =
+                outcome === "success"
+                  ? `the build measured, but the evidence artifact (upload: \`${process.env.ARTIFACT_OUTCOME || "unknown"}\`) could not be read`
+                  : `\`${outcome}\``;
               body = [
                 `_Updated ${new Date().toISOString()} — [run](${runUrl})._`,
                 "",
-                `⚠ The scheduled measurement did not complete (\`${outcome}\`), so the numbers below are absent`,
+                `⚠ The scheduled measurement did not complete (${reason}), so the numbers below are absent`,
                 "rather than reassuring. This is **not** evidence that the bundle budget is healthy.",
                 "",
                 `Check the build and bundle-budget steps in the [run log](${runUrl}).`,

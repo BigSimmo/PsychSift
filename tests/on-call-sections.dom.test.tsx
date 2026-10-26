@@ -148,6 +148,31 @@ describe("OnCallPlaybookSection", () => {
     expect(secondRow).toHaveAttribute("href", "tel:0499999999");
   });
 
+  it("marks a step that only applies in working hours or after hours, as the Escalate page does", () => {
+    const [consultant, registrar] = (ACUTE_AGITATION.details as { escalationSteps: Record<string, unknown>[] })
+      .escalationSteps;
+    const timed = {
+      ...ACUTE_AGITATION,
+      details: {
+        ...(ACUTE_AGITATION.details as Record<string, unknown>),
+        escalationSteps: [
+          { ...consultant, hours: "in-hours" },
+          { ...registrar, hours: "after-hours" },
+        ],
+      },
+    } as OnCallEntry;
+    render(<OnCallPlaybookSection entries={[timed]} now={NOW} />);
+    expect(screen.getByTestId("on-call-playbook-step-acute-agitation-2")).toHaveTextContent(
+      "If the registrar is unavailable after 10 minutes · Working hours",
+    );
+    expect(screen.getByTestId("on-call-playbook-step-acute-agitation-1")).toHaveTextContent(
+      "First point of contact · After hours",
+    );
+    cleanup();
+    render(<OnCallPlaybookSection entries={[ACUTE_AGITATION]} now={NOW} />);
+    expect(screen.getByTestId("on-call-playbook-step-acute-agitation-1")).not.toHaveTextContent(/hours/i);
+  });
+
   it("shows each linked document's own title and date as the only clinical content", () => {
     render(
       <OnCallPlaybookSection

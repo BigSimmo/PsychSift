@@ -57,8 +57,16 @@ export function CmeRoutinesRoute({
   readonly demoMode: boolean;
 }) {
   const router = useRouter();
-  const oneTap = useCmeOneTapRoutineLog({ demoMode });
   const [routines, setRoutines] = useState<CmeRoutine[]>(() => [...initialRoutines]);
+  // A refresh after a save (a one-tap Log moves a routine's next due date on the
+  // server) sends fresh routines. Take them, or a logged routine stays under "Due
+  // today" and a second tap logs a duplicate activity.
+  const [syncedRoutines, setSyncedRoutines] = useState(initialRoutines);
+  if (syncedRoutines !== initialRoutines) {
+    setSyncedRoutines(initialRoutines);
+    setRoutines([...initialRoutines]);
+  }
+  const oneTap = useCmeOneTapRoutineLog({ demoMode, routines });
   const [editingId, setEditingId] = useState<string | "new" | null>(null);
   const [draft, setDraft] = useState<RoutineDraft>(emptyDraft);
   const [saving, setSaving] = useState(false);

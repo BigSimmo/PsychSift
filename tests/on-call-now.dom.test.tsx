@@ -205,6 +205,26 @@ describe("Now: the safety order", () => {
     expect(pin.querySelector('a[href="tel:000"]')).toBeNull();
   });
 
+  it("shows a recorded instruction as written, never as a number to dial from a ward phone", async () => {
+    handbook.state = readyHandbook(
+      handbookItems([
+        { id: "e1", title: "Emergency: Code A", phone: "Press the wall emergency button", kind: "clinical" },
+      ]),
+    );
+    render(<OnCallHome now={IN_HOURS} />);
+    const pin = screen.getByTestId("on-call-now-emergency");
+    expect(pin).not.toHaveTextContent(/Dial Press|from a ward phone/);
+    expect(screen.queryByTestId("on-call-now-emergency-e1-ward-phone")).toBeNull();
+    expect(pin.querySelector('a[href^="tel:"]')).toBeNull();
+    const details = screen.getByTestId("on-call-now-emergency-e1-dial-details");
+    expect(details.tagName).toBe("BUTTON");
+    expect(details).toHaveTextContent("Press the wall emergency buttonDialling details");
+    expect(details).toHaveAccessibleName("Press the wall emergency button. Dialling details for Code A");
+    expect(details.className).toMatch(/\bmin-h-12\b/);
+    await userEvent.click(details);
+    expect(screen.getByTestId("on-call-now-emergency-e1-sheet")).toBeInTheDocument();
+  });
+
   it("pins nothing when no qualifying row is recorded, and never invents 000 for the hospital", () => {
     handbook.state = readyHandbook(handbookItems([{ id: "sw", title: "Switchboard", phone: "9000 0000" }]), {
       services: [{ id: "svc", name: "Synthetic Hospital Service", role: "editor", clinicalReviewer: false, sites: [] }],

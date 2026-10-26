@@ -416,6 +416,31 @@ describe("/api/search route defensive hardening (Task #342)", () => {
     expect(body).not.toHaveProperty("causeName");
   });
 
+  it("redacts and caps the failure cause message it stores in rag_queries", async () => {
+    const runtime = mockRuntime({ demoMode: false });
+    const { POST } = await import("../src/app/api/search/route");
+    const { searchChunksWithTelemetry } = await import("@/lib/rag/rag");
+    vi.mocked(searchChunksWithTelemetry).mockRejectedValueOnce(
+      new Error(
+        `fetch failed for https://mock.supabase.co/rest/v1/rpc?apikey=sb_secret_abcdef123456 ${"x".repeat(600)}`,
+      ),
+    );
+
+    const response = await POST(jsonRequest("/api/search", { query: "lithium" }, true));
+    expect(response.status).toBe(500);
+
+    await vi.waitFor(() => {
+      expect(runtime.supabase.inserts.some((insert) => insert.table === "rag_queries")).toBe(true);
+    });
+    const insert = runtime.supabase.inserts.find((entry) => entry.table === "rag_queries");
+    const metadata = (insert?.payload as { metadata: Record<string, unknown> }).metadata;
+    const stored = metadata.failure_cause_message as string;
+    expect(stored).toContain("[url]");
+    expect(stored).not.toContain("mock.supabase.co");
+    expect(stored).not.toContain("sb_secret_");
+    expect(stored.length).toBeLessThanOrEqual(300);
+  });
+
   it("handles empty results with 200 OK", async () => {
     mockRuntime({ demoMode: false });
     const { POST } = await import("../src/app/api/search/route");
@@ -468,6 +493,20 @@ describe("/api/search/universal route defensive hardening (Task #342)", () => {
     expect(response.status).toBe(200);
     expect(body.query).toBe("lithium");
     expect(Array.isArray(body.groups)).toBe(true);
+  });
+
+  it("refuses a query that looks like it holds a patient detail before any search runs (audit F-01)", async () => {
+    mockRuntime({ demoMode: false });
+    const { GET } = await import("../src/app/api/search/universal/route");
+    const { runUniversalSearch } = await import("@/lib/universal-search");
+
+    const response = await GET(request(`/api/search/universal?q=${encodeURIComponent("bed 4 Ms Smith lithium")}`));
+    const body = await payload(response);
+
+    expect(response.status).toBe(400);
+    expect(body.code).toBe("patient_detail_in_question");
+    expect(JSON.stringify(body)).not.toContain("Smith");
+    expect(runUniversalSearch).not.toHaveBeenCalled();
   });
 
   it("rejects missing or too short q parameter with structured 400 JSON", async () => {

@@ -19,6 +19,8 @@
       "!/data/outstanding-issues-snapshot.json",
       "/public/**",
       "/src/**",
+      "/supabase/functions/_shared/**",
+      "/docs/governance/privacy-readiness.v1.json",
       "/scripts/check-client-bundle-secrets.mjs",
       "/scripts/check-installed-lock-parity.mjs",
       "/scripts/check-node-engine.cjs",
@@ -26,6 +28,7 @@
       "/scripts/guard-next-build.mjs",
       "/scripts/install-git-hooks.mjs",
       "/scripts/run-heavy.mjs",
+      "/scripts/run-next-build.mjs",
       "/scripts/stamp-service-worker.mjs",
       "/scripts/deploy/**"
     ]

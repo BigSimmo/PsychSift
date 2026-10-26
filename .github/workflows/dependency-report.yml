@@ -19,12 +19,25 @@ concurrency:
 
 permissions:
   contents: read
-  issues: write
 
+# Two jobs, the same shape as organisation-weekly.yml: the job that runs `npm ci` (every
+# dependency's install scripts) and repository code keeps `contents: read` only, and
+# `issues: write` sits on a job that checks out and runs nothing from the repository. The
+# report crosses between them as an artifact, and its step outputs as job outputs.
 jobs:
   dependency-report:
+    # main only: a manual run from another branch would publish that branch's report as main's.
+    if: ${{ github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    permissions:
+      contents: read
+    outputs:
+      outdated: ${{ steps.report.outputs.outdated }}
+      severity: ${{ steps.report.outputs.severity }}
+      evidence_complete: ${{ steps.report.outputs.evidence_complete }}
+      outdated_state: ${{ steps.report.outputs.outdated_state }}
+      audit_state: ${{ steps.report.outputs.audit_state }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -49,22 +62,49 @@ jobs:
         id: report
         run: node scripts/dependency-report.mjs --out dependency-report.md
 
+      - name: Upload the report
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dependency-report
+          path: dependency-report.md
+          if-no-files-found: error
+          retention-days: 30
+          overwrite: true
+
+  publish:
+    name: Publish the dependency report
+    needs: dependency-report
+    # Implicit success(): as before, a failed install or render publishes nothing. The render
+    # step always exits 0, so an incomplete measurement still reaches the issue and the gate below.
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Download the report
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dependency-report
+          path: dependency-report
+
       - name: Publish to rolling issue
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
-          # Pass step outputs via env (not inline template expansion) to avoid the
+          # Pass job outputs via env (not inline template expansion) to avoid the
           # GitHub Actions template-injection pattern, even though both values are
           # currently a fixed enum / plain integer produced by our own script.
-          OUTDATED_COUNT: ${{ steps.report.outputs.outdated }}
-          SEVERITY: ${{ steps.report.outputs.severity }}
-          EVIDENCE_COMPLETE: ${{ steps.report.outputs.evidence_complete }}
-          OUTDATED_STATE: ${{ steps.report.outputs.outdated_state }}
-          AUDIT_STATE: ${{ steps.report.outputs.audit_state }}
+          OUTDATED_COUNT: ${{ needs.dependency-report.outputs.outdated }}
+          SEVERITY: ${{ needs.dependency-report.outputs.severity }}
+          EVIDENCE_COMPLETE: ${{ needs.dependency-report.outputs.evidence_complete }}
+          OUTDATED_STATE: ${{ needs.dependency-report.outputs.outdated_state }}
+          AUDIT_STATE: ${{ needs.dependency-report.outputs.audit_state }}
         with:
           script: |
             const fs = require("fs");
             const label = "dependency-report";
-            const body = fs.readFileSync("dependency-report.md", "utf8");
+            const body = fs.readFileSync("dependency-report/dependency-report.md", "utf8");
             // `outdated` is the string "unknown" when the check never produced a
             // result, so it is deliberately NOT coerced with Number(): that would
             // turn a failed measurement back into 0, which is exactly the erasure
@@ -129,10 +169,10 @@ jobs:
       # sees. Ordinary vulnerability findings do NOT fail this job — they are data
       # for the existing security gates. Only missing evidence does.
       - name: Require a complete measurement
-        if: ${{ steps.report.outputs.evidence_complete != 'true' }}
+        if: ${{ needs.dependency-report.outputs.evidence_complete != 'true' }}
         env:
-          OUTDATED_STATE: ${{ steps.report.outputs.outdated_state }}
-          AUDIT_STATE: ${{ steps.report.outputs.audit_state }}
+          OUTDATED_STATE: ${{ needs.dependency-report.outputs.outdated_state }}
+          AUDIT_STATE: ${{ needs.dependency-report.outputs.audit_state }}
         run: |
           echo "::error::Dependency report could not measure its inputs (outdated=$OUTDATED_STATE, audit=$AUDIT_STATE)."
           echo "The published report says so explicitly. Absent counts are unknown, not zero."

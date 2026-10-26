@@ -144,6 +144,8 @@ export function buildDsmDiagnosisNote(input: DsmNoteInput): string {
  * Projecting on the server keeps the wire shape honest to what the UI reads.
  */
 export type DsmNoteBuilderRecord = {
+  /** Unique per record. Two pairs of records share an ICD code, so drafts key on this. */
+  slug: string;
   title: string;
   icdCode: string;
   /** False when `criteria` are the record's key-feature summary. See DsmNoteInput. */
@@ -157,6 +159,7 @@ export type DsmNoteBuilderRecord = {
 export function dsmNoteBuilderRecord(diagnosis: DsmDiagnosis): DsmNoteBuilderRecord {
   const view = dsmCriteriaView(diagnosis);
   return {
+    slug: diagnosis.slug,
     title: diagnosis.title,
     icdCode: diagnosis.icd_code,
     isDsmCriteria: view.isDsmCriteria,

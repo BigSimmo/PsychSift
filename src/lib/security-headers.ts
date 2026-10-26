@@ -11,6 +11,8 @@
 // app relies on cross-origin isolation (no SharedArrayBuffer / crossOriginIsolated
 // usage), so COEP is omitted rather than reintroducing that failure mode.
 
+import { expectedSupabaseProject } from "./supabase/project";
+
 export type SecurityHeader = { key: string; value: string };
 
 export type SecurityHeaderFlags = {
@@ -37,12 +39,28 @@ export type ContentSecurityPolicyOptions = SecurityHeaderFlags & {
   // Per-request nonce (base64) generated in src/proxy.ts. script-src allow-lists
   // this nonce instead of 'unsafe-inline', so only scripts carrying it execute.
   nonce: string;
+  // Exact Supabase origins the browser may load from; defaults to supabaseBrowserOrigins().
+  supabaseOrigins?: readonly string[];
 };
+
+// This app's own Supabase origins: the production project plus the staging
+// project when SUPABASE_STAGING_PROJECT_REF declares one. These are the same
+// hosts next.config.ts remotePatterns allows. The wildcard *.supabase.co would
+// also let an injected <img> or fetch reach any other (attacker-owned) project.
+export function supabaseBrowserOrigins(
+  stagingRef: string | undefined = process.env.SUPABASE_STAGING_PROJECT_REF,
+): string[] {
+  const refs: string[] = [expectedSupabaseProject.ref];
+  const staging = stagingRef?.trim();
+  if (staging && /^[a-z0-9]{20}$/.test(staging) && !refs.includes(staging)) refs.push(staging);
+  return refs.map((ref) => `https://${ref}.supabase.co`);
+}
 
 export function buildContentSecurityPolicy({
   isDevelopment,
   isLocalHttpRuntime,
   nonce,
+  supabaseOrigins = supabaseBrowserOrigins(),
 }: ContentSecurityPolicyOptions): string {
   // Production: nonce + 'strict-dynamic' is the modern strict-CSP shape. CSP3
   // browsers ignore host allow-lists AND 'unsafe-inline' for scripts, running
@@ -62,6 +80,7 @@ export function buildContentSecurityPolicy({
     ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
     : `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'; `;
   const upgradeInsecureRequests = isLocalHttpRuntime ? "" : "upgrade-insecure-requests; ";
+  const supabase = supabaseOrigins.join(" ");
 
   return (
     "default-src 'self'; " +
@@ -70,23 +89,40 @@ export function buildContentSecurityPolicy({
     "frame-ancestors 'none'; " +
     "form-action 'self'; " +
     upgradeInsecureRequests +
-    // img-src/media-src are scoped to the Supabase Storage origin that serves the
-    // signed-URL images (document pages) — the app loads no other cross-origin
-    // media, so a bare `https:` would needlessly widen the exfil surface. connect-src
-    // must include *.supabase.co for the signed-URL/API fetches. OpenAI calls are
-    // server-side only, so the browser gets no provider origin (2026-07-13 audit).
-    "img-src 'self' data: blob: https://*.supabase.co; " +
-    "media-src 'self' https://*.supabase.co; " +
+    // img-src/media-src are scoped to this app's Supabase Storage origin that serves
+    // the signed-URL images (document pages) — the app loads no other cross-origin
+    // media, so a bare `https:` (or any other Supabase project) would needlessly
+    // widen the exfil surface. connect-src must include that origin for the
+    // signed-URL/API fetches. OpenAI calls are server-side only, so the browser gets
+    // no provider origin (2026-07-13 audit).
+    `img-src 'self' data: blob: ${supabase}; ` +
+    `media-src 'self' ${supabase}; ` +
     // No Sentry ingest origin: error tracking is server/edge only
     // (src/sentry.{server,edge}.config.ts) and docs/error-tracking.md forbids a
     // browser SDK, so the three wildcard `*.ingest*.sentry.io` origins allowed an
     // egress channel from the clinical origin that nothing used (2026-09-02 audit,
     // L34). Re-add them only together with a browser SDK and its privacy review.
-    "connect-src 'self' https://*.supabase.co; " +
+    `connect-src 'self' ${supabase}; ` +
     "worker-src 'self'; " +
     "manifest-src 'self'; " +
     scriptSrc +
     "style-src 'self' 'unsafe-inline'"
+  );
+}
+
+// Fallback policy for the image-suffixed paths src/proxy.ts's matcher skips
+// (wired into next.config.ts `headers()`). Those paths are meant to be static
+// images, but a dynamic page route given such a segment (e.g. /documents/x.png)
+// still renders HTML; without this it would ship with no CSP at all. It has no
+// nonce, so no script runs there, while images (and inline-styled SVG) still load.
+export function buildStaticAssetContentSecurityPolicy(): string {
+  return (
+    "default-src 'none'; " +
+    "img-src 'self' data:; " +
+    "style-src 'unsafe-inline'; " +
+    "base-uri 'none'; " +
+    "form-action 'none'; " +
+    "frame-ancestors 'none'"
   );
 }
 
@@ -104,7 +140,10 @@ export function buildSecurityHeaders(flags: SecurityHeaderFlags): SecurityHeader
     // Microphone stays denied while Clinical Ask dictation has no user entry point
     // (PR #2360 removed the composer controls; CLINICAL_ASK_ENABLED defaults to
     // false). Re-grant `(self)` only together with a governed dictation surface.
-    { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=()" },
+    // Camera is granted to this origin only: the in-app QR check-in scanner
+    // (#ZTDZ4Z) reads a session code with video-only getUserMedia, and `camera=()`
+    // made the browser refuse it without ever asking the user.
+    { key: "Permissions-Policy", value: "camera=(self), microphone=(), geolocation=(), payment=()" },
     { key: "Origin-Agent-Cluster", value: "?1" },
     { key: "X-Permitted-Cross-Domain-Policies", value: "none" },
     ...(flags.isLocalHttpRuntime

@@ -645,6 +645,85 @@ describe("line-noise filter keeps clinical content lines (ING-B-01)", () => {
   });
 });
 
+// Audit 2026-10-24 EXT-01 (chunker 1.3.2): borderless tables arrive one cell per line. Short
+// threshold cells and lone signs must survive, and a number at the page edge is a page number only
+// when it is that page's own label. Synthetic probe strings from the audit (short-probe, CASE3, CASE4).
+describe("short threshold cells and page-edge numbers (EXT-01)", () => {
+  const joinedChunks = (text: string) => chunkTextWithOverlap(text, 2000, 200).join("\n");
+  const page = (pageNumber: number, pageText: string) => ({ documentId: "doc-1", pageNumber, pageText, metadata: {} });
+
+  it("keeps short threshold cells and signs", () => {
+    const lines = joinedChunks(["Cut-offs", "<5", "≥8", ">2", "5%", "-1", "+", "1/", "Review daily."].join("\n")).split(
+      "\n",
+    );
+    expect(lines).toEqual(expect.arrayContaining(["<5", "≥8", ">2", "5%", "-1", "+", "1/"]));
+  });
+
+  it("keeps the direction and sign of a one-cell-per-line threshold table", () => {
+    const content = buildChunks([
+      page(
+        3,
+        [
+          "Clozapine blood monitoring",
+          "ANC",
+          "<",
+          "1.5",
+          "stop clozapine",
+          "ANC",
+          "≥",
+          "2.0",
+          "continue",
+          "Temperature",
+          "−",
+          "1",
+          "change",
+        ].join("\n"),
+      ),
+    ])
+      .map((chunk) => chunk.content)
+      .join("\n")
+      .replace(/\s+/g, " ");
+    expect(content).toContain("ANC < 1.5 stop clozapine ANC ≥ 2.0 continue Temperature − 1 change");
+  });
+
+  it("keeps a dose at the page edge that is not the page's number", () => {
+    const content = buildChunks([
+      page(1, ["Maximum daily dose", "Olanzapine", "20"].join("\n")),
+      page(2, ["30", "Quetiapine maximum daily dose in mg."].join("\n")),
+    ])
+      .map((chunk) => chunk.content)
+      .join("\n");
+    expect(content).toMatch(/Olanzapine\s+20/);
+    expect(content).toMatch(/30\s+Quetiapine/);
+  });
+
+  it("still drops the page's own number, and a printed number that runs in sequence across pages", () => {
+    const own = buildChunks([page(4, ["Monitor lithium levels.", "4"].join("\n"))])
+      .map((chunk) => chunk.content)
+      .join("\n");
+    expect(own).toBe("Monitor lithium levels.");
+    const offset = buildChunks([
+      page(5, ["Check renal function.", "3"].join("\n")),
+      page(6, ["Check thyroid function.", "4"].join("\n")),
+      page(7, ["Check liver function.", "5"].join("\n")),
+    ])
+      .map((chunk) => chunk.content)
+      .join("\n");
+    expect(offset).not.toMatch(/\b[345]\b/);
+  });
+
+  it("keeps threshold cells that happen to run in sequence across only two pages", () => {
+    const content = buildChunks([
+      page(5, ["Missed doses before re-titration", "Clozapine", "1"].join("\n")),
+      page(6, ["Days off before restarting at a low dose", "Clozapine", "2"].join("\n")),
+    ])
+      .map((chunk) => chunk.content)
+      .join("\n");
+    expect(content).toMatch(/Clozapine\s+1/);
+    expect(content).toMatch(/Clozapine\s+2/);
+  });
+});
+
 // Audit 2026-10-20 ING-B-02: the repeated-line filter must remove running
 // headers and footers, not repeated clinical headings or instructions.
 describe("repeated-line filter keeps clinical headings (ING-B-02)", () => {
@@ -975,5 +1054,93 @@ describe("table row groups under chunker 1.3.1 (PR #3716 review follow-ups)", ()
     const joined = chunks.join("\n");
     expect(joined).toContain("| Agent A | Short |");
     expect(joined).toContain("| Agent B | Short |");
+  });
+});
+
+// Audit 2026-10-24, chunker 1.3.3.
+describe("repeated headings and unpunctuated text (EXT-02, EXT-05)", () => {
+  const page = (pageNumber: number, pageText: string) => ({ documentId: "doc-1", pageNumber, pageText, metadata: {} });
+
+  it("keeps a policy heading repeated on two pages of a longer document (EXT-02)", () => {
+    const pages = [
+      page(1, "Mental Health Services escalation\nEscalate deterioration to the treating team."),
+      page(2, "Mental Health Services escalation\nRecord observations hourly."),
+      page(3, "Lithium policy\nTarget level 0.6 to 0.8 mmol/L."),
+      page(4, "Lithium policy\nWithhold if level above 1.5 mmol/L."),
+      page(5, "Discharge planning\nArrange follow-up within seven days."),
+      page(6, "Discharge planning\nSend the summary to the GP."),
+    ];
+    const chunks = buildChunks(pages);
+    const withhold = chunks.find((chunk) => chunk.content.includes("Withhold if level above 1.5"));
+    expect(withhold?.content).toContain("Lithium policy");
+    expect(withhold?.section_path).not.toContain("Mental Health Services escalation");
+  });
+
+  it("keeps the heading of a one-page document (EXT-02)", () => {
+    const chunks = buildChunks([page(1, "Lithium policy\nCheck levels before each adjustment.")]);
+    expect(chunks.map((chunk) => chunk.content).join("\n")).toContain("Lithium policy");
+  });
+
+  it("still removes a keyword running header that repeats on most pages (EXT-02)", () => {
+    const pages = [1, 2, 3, 4].map((number) =>
+      page(number, `Clozapine Prescribing Guideline\nReview step ${number} with the treating team.`),
+    );
+    const content = buildChunks(pages)
+      .map((chunk) => chunk.content)
+      .join("\n");
+    expect(content).not.toContain("Clozapine Prescribing Guideline");
+    expect(content).toContain("Review step 4");
+  });
+
+  it("repeats a prohibition that opens a long unpunctuated list on every piece of it (EXT-05)", () => {
+    const lead = "Do not administer with any of the following";
+    const rows = Array.from({ length: 220 }, (_, index) => `Interacting medicine ${index + 1} at any dose`);
+    const chunks = chunkTextWithOverlap([lead, ...rows].join("\n"), 2000, 200);
+    expect(chunks.length).toBeGreaterThan(3);
+    expect(chunks.every((chunk) => chunk.startsWith(lead))).toBe(true);
+    expect(chunks.at(-1)).toContain("Interacting medicine 220 at any dose");
+  });
+
+  it("splits a long list without full stops near the intended size (EXT-05)", () => {
+    const text = Array.from({ length: 220 }, (_, index) => `Olanzapine step ${index + 1} dose 5 mg to 10 mg`).join(
+      "\n",
+    );
+    const chunks = chunkTextWithOverlap(text, 2000, 200);
+    expect(text.length).toBeGreaterThan(6000);
+    expect(chunks.length).toBeGreaterThan(3);
+    expect(chunks.every((chunk) => chunk.length <= 2000 * 1.35)).toBe(true);
+    expect(chunks.at(-1)).toContain("step 220 dose");
+  });
+});
+
+describe("table notes on split tables (EXT-07, chunker 1.3.3)", () => {
+  const table = (rows: number) =>
+    [
+      "| Drug | Dose | Action |",
+      "| --- | --- | --- |",
+      ...Array.from({ length: rows }, (_, i) => `| Drug ${i} | ${i + 1} mg | Review at week ${i + 1} |`),
+    ].join("\n");
+
+  it("repeats a short note on every piece of a split table", () => {
+    const note = "Note: not recommended in severe renal impairment.";
+    const chunks = chunkTextWithOverlap(`${table(80)}\n${note}`, 600, 60);
+    const tableChunks = chunks.filter((chunk) => chunk.includes("| Drug |"));
+    expect(tableChunks.length).toBeGreaterThan(2);
+    expect(tableChunks.every((chunk) => chunk.includes(note))).toBe(true);
+    expect(chunks.every((chunk) => chunk.length <= 600)).toBe(true);
+    for (let i = 0; i < 80; i += 1) expect(chunks.some((chunk) => chunk.includes(`| Drug ${i} |`))).toBe(true);
+  });
+
+  it("keeps every piece under the size cap when a wide header leaves no room to repeat the note", () => {
+    const columns = Array.from({ length: 20 }, (_, i) => `Column heading ${i + 1}`);
+    const wide = [
+      `| ${columns.join(" | ")} |`,
+      `| ${columns.map(() => "---").join(" | ")} |`,
+      ...Array.from({ length: 30 }, (_, i) => `| ${columns.map((_, c) => `r${i}c${c}`).join(" | ")} |`),
+    ].join("\n");
+    const note = "Note: not recommended in severe renal impairment, or with interacting medicines listed above.";
+    const chunks = chunkTextWithOverlap(`${wide}\n${note}`, 600, 60);
+    expect(chunks.some((chunk) => chunk.includes(note))).toBe(true);
+    expect(chunks.every((chunk) => chunk.length <= 600)).toBe(true);
   });
 });

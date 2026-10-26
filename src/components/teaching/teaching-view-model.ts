@@ -69,6 +69,16 @@ export function teamInCalendar(team: TeamSummaryRead): boolean {
   return team.inCalendar === true;
 }
 
+/**
+ * Each platform's own domains. A host is named only when it is one of these or under one, so a look-alike such as
+ * `teams.example-login.net` is "Join online", not "Join on Teams".
+ */
+const JOIN_PLATFORM_DOMAINS: ReadonlyArray<readonly [string, readonly string[]]> = [
+  ["Microsoft Teams", ["teams.microsoft.com", "teams.cloud.microsoft", "teams.live.com"]],
+  ["Zoom", ["zoom.us", "zoom.com", "zoomgov.com"]],
+  ["Webex", ["webex.com"]],
+];
+
 /** The platform named from the link's host; null when the host says nothing. */
 export function joinPlatform(url: string): string | null {
   let host = "";
@@ -77,9 +87,9 @@ export function joinPlatform(url: string): string | null {
   } catch {
     return null;
   }
-  if (host.includes("teams.")) return "Microsoft Teams";
-  if (host.includes("zoom.")) return "Zoom";
-  if (host.includes("webex.")) return "Webex";
+  for (const [platform, domains] of JOIN_PLATFORM_DOMAINS) {
+    if (domains.some((domain) => host === domain || host.endsWith(`.${domain}`))) return platform;
+  }
   return null;
 }
 

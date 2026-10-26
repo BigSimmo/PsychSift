@@ -25,6 +25,8 @@ export function DsmCompareRemoveLink({
   children: ReactNode;
 }) {
   function onClick(event: MouseEvent<HTMLAnchorElement>) {
+    // A modified or non-primary click opens a new tab or window: leave that to the browser.
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     event.preventDefault();
     event.stopPropagation();
     window.location.assign(href);

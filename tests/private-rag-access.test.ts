@@ -173,6 +173,11 @@ function mockRuntime(options: { demoMode?: boolean } = {}) {
     isDemoMode: () => Boolean(options.demoMode),
     isLocalNoAuthMode: () => false,
   }));
+  // The health professional declaration has its own tests (tests/health-professional-declaration.test.ts).
+  vi.doMock("@/lib/clinical-access", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/clinical-access")>()),
+    requireHealthProfessionalDeclaration: async () => undefined,
+  }));
   vi.doMock("@/lib/supabase/admin", () => ({ createAdminClient }));
   vi.doMock("@/lib/supabase/auth", () => ({
     AuthenticationError: MockAuthenticationError,

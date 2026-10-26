@@ -1223,6 +1223,9 @@ describe("ConfirmDialog", () => {
     );
 
     const confirm = screen.getByRole("button", { name: "Retire guideline" });
+    // Button sets data-testid from its own testId prop after spreading the rest,
+    // so a raw data-testid was overwritten with undefined and never reached the DOM.
+    expect(confirm).toHaveAttribute("data-testid", "confirm-dialog-confirm");
     expect(confirm).toBeDisabled();
 
     await userEvent.type(screen.getByRole("textbox"), "retire");

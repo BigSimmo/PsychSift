@@ -12,7 +12,7 @@ import {
   classifyRagFallbackReason,
   isStrongerGovernanceFallbackReasonCode,
   normalizeRagFallbackReasonCode,
-  publicFallbackReason,
+  publicDegradedReason,
 } from "@/lib/rag/rag-fallback-reason";
 
 /** Owner-signed WA versus national note; absent unless a signed-off WA chunk directly supports the answer. */
@@ -43,7 +43,8 @@ export function answerDegradedModeSignal(
   answer?: Pick<
     RagAnswer,
     "fallbackReasonCode" | "degradedMode" | "answerQualityTier" | "fallbackReason" | "routingReason"
-  >,
+  > &
+    Partial<Pick<RagAnswer, "sources">>,
 ) {
   const fallbackReasonCode = answerFallbackReasonCode(answer);
   const active =
@@ -52,7 +53,7 @@ export function answerDegradedModeSignal(
     answer?.fallbackReasonCode != null;
   return {
     active,
-    reason: active ? publicFallbackReason(fallbackReasonCode ?? "unknown") : null,
+    reason: active ? publicDegradedReason(fallbackReasonCode ?? "unknown", answer?.sources?.length ?? 0) : null,
   };
 }
 
@@ -146,7 +147,10 @@ export function buildGovernedDemoAnswerClientResponse(answer: RagAnswer, fallbac
           fallbackReasonCode,
           degradedMode: {
             active: true,
-            reason: publicFallbackReason(fallbackReasonCode ?? "unknown"),
+            reason: publicDegradedReason(
+              fallbackReasonCode ?? "unknown",
+              governedResponse.payload.sources?.length ?? 0,
+            ),
           },
         }
       : {}),

@@ -1,5 +1,7 @@
 # Governed ingestion audit and reversible targeted re-index — Implementation Plan
 
+> **Status, 24 Oct 2026:** the full library re-index is stopped by owner decision (`docs/decisions/2026-10-17-library-reindex-stopped.md`). Only the approved three-document pilot (`docs/decisions/2026-10-23-reindex-pilot-approved.md`) may run.
+
 **2026-09-07 binding amendment:** Read the package execution-order.md section “Answer-quality amendment — 2026-09-07” (editable owner: docs/superpowers/rag-upgrade/canonical/execution-order.md). It contains the single F01–F21/M01–M07 disposition map and M1–M3 acceptance policy. The task-local amendments below take precedence over superseded examples; unchanged accepted task evidence remains valid. Product implementation is paused pending separate authorization.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development to implement this plan task-by-task. Use one implementer at a time. Each task requires a task-reviewer verdict for specification compliance and code quality before continuing. The existing three-PR edge-ingestion plan is itself executed sequentially, never by concurrent implementers. Steps use checkbox (`- [ ]`) syntax for tracking.

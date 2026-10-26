@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveBboxOverlayStyle } from "@/components/document-viewer/bbox-overlay";
+import { resolveBboxFrameGeometry, resolveBboxOverlayStyle } from "@/components/document-viewer/bbox-overlay";
 
 describe("resolveBboxOverlayStyle", () => {
   it("converts normalized 0..1 ratio bounding box to CSS percentages", () => {
@@ -117,5 +117,33 @@ describe("resolveBboxOverlayStyle", () => {
         pageGeometry: null,
       }),
     ).toBeNull();
+  });
+});
+
+describe("resolveBboxFrameGeometry", () => {
+  it("swaps a quarter-turned page's measured size back to the bbox's own frame", () => {
+    // The viewer measures an A4 page after the reader's turn: 842 wide at 90°.
+    expect(resolveBboxFrameGeometry({ width: 842, height: 595 }, 90)).toEqual({ width: 595, height: 842 });
+    expect(resolveBboxFrameGeometry({ width: 842, height: 595 }, 270)).toEqual({ width: 595, height: 842 });
+    expect(resolveBboxFrameGeometry({ width: 595, height: 842 }, 180)).toEqual({ width: 595, height: 842 });
+    expect(resolveBboxFrameGeometry({ width: 595, height: 842 }, 0)).toEqual({ width: 595, height: 842 });
+    expect(resolveBboxFrameGeometry(null, 90)).toBeNull();
+  });
+
+  it("places a point-space box on a page the reader rotated 90 degrees", () => {
+    // A box at 10%/20% of an A4 page (595 x 842 points), half its width and height.
+    const style = resolveBboxOverlayStyle({
+      bbox: [59.5, 168.4, 357, 589.4],
+      pageGeometry: resolveBboxFrameGeometry({ width: 842, height: 595 }, 90),
+      rotation: 90,
+    });
+
+    // Same placement as the 0..1 ratio box at 90° above.
+    expect(style).toEqual({
+      left: "30%",
+      top: "10%",
+      width: "50%",
+      height: "50%",
+    });
   });
 });

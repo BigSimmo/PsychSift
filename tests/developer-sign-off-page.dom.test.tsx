@@ -119,4 +119,24 @@ describe("clinical sign-off queue page", () => {
       "Showing 51–100 of 134 signed-off records in this domain (page 2 of 3)",
     );
   });
+
+  it("keeps the other section's selection and page when paging one section", () => {
+    render(
+      <SignOffQueuePageContent
+        requestedFamily="dictionary"
+        requestedPage={2}
+        requestedDomain="therapy"
+        requestedSignedPage={2}
+      />,
+    );
+
+    expect(screen.getAllByLabelText("Next page")[0]).toHaveAttribute(
+      "href",
+      "?family=dictionary&page=3&domain=therapy&signedPage=2",
+    );
+    expect(screen.getAllByLabelText("Next signed records page")[0]).toHaveAttribute(
+      "href",
+      "?family=dictionary&page=2&domain=therapy&signedPage=3",
+    );
+  });
 });

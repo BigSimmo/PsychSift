@@ -240,3 +240,39 @@ describe("plan goals migration", () => {
     }
   });
 });
+
+describe("entry goal lookup", () => {
+  it("reads a large year's goal links in batches, so no request URL carries every activity id", async () => {
+    const entryIds = Array.from(
+      { length: 250 },
+      (_, index) => `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`,
+    );
+    const batches: string[][] = [];
+    const client = {
+      from: (table: string) => {
+        expect(table).toBe("cme_entry_goals");
+        let ids: string[] = [];
+        const chain = {
+          select: () => chain,
+          eq: (column: string, value: string) => {
+            expect([column, value]).toEqual(["owner_id", OWNER]);
+            return chain;
+          },
+          in: (column: string, values: string[]) => {
+            expect(column).toBe("entry_id");
+            ids = values;
+            batches.push(values);
+            return chain;
+          },
+          limit: async () => ({ data: ids.slice(0, 1).map((id) => ({ entry_id: id, goal_id: GOAL })), error: null }),
+        };
+        return chain;
+      },
+    };
+    const { fetchOwnerCmeEntryGoals } = await import("@/lib/cme/plan-goals-repository");
+    const links = await fetchOwnerCmeEntryGoals(client as never, OWNER, entryIds);
+    expect(batches.map((batch) => batch.length)).toEqual([100, 100, 50]);
+    expect(batches.flat()).toEqual(entryIds);
+    expect(links).toEqual({ [entryIds[0]]: GOAL, [entryIds[100]]: GOAL, [entryIds[200]]: GOAL });
+  });
+});

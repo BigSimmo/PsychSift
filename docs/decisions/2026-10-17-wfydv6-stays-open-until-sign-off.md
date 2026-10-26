@@ -1,6 +1,6 @@
 # Decision: The WA MHA Form 6A/6B statutory-text issue stays open until owner, legal and clinical sign-off
 
-- **Status:** decided 2026-10-17
+- **Status:** decided 2026-10-17; superseded in part by 2026-10-25-delete-unused-surfaces-from-audit.md
 - **Source:** `docs/outstanding-issues-inbox/a5c25ca4-4fa3-421f-a944-35621169e55e.json`, find "Owner decision 17 Oct 2026 21:37 AWST"
 
 PR #3609 archived ledger issue #WFYDV6 (the unwired `src/components/forms/wa-mha-form-print.tsx` with

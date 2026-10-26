@@ -67996,7 +67996,7 @@
     "slug": "atomoxetine",
     "name": "Atomoxetine",
     "class": "ADHD",
-    "subclass": "SNRI (Non-stimulant)",
+    "subclass": "NRI (Non-stimulant)",
     "category": "Psychiatry - ADHD & Stimulants",
     "accent": "#d97706",
     "tag": "NON-STIMULANT",
@@ -68266,7 +68266,7 @@
     "quick": [
       {
         "label": "Class & Role",
-        "value": "SNRI (Non-stimulant) — Non-stimulant Noradrenaline Reuptake Inhibitor (NRI)."
+        "value": "NRI (Non-stimulant) — Non-stimulant Noradrenaline Reuptake Inhibitor (NRI)."
       },
       {
         "label": "Route / Formulation",

@@ -142,25 +142,51 @@ export function isReconciliationMove(file, landingRef, ref, entryAt, archiveQuar
  * than a clean bill. It orders the reading list so the accidental cases are not
  * buried under the deliberate ones.
  *
+ * Main lands pull requests as two-parent merge commits, so on main's first-parent
+ * chain the first matching commit is usually the "Merge pull request" commit. That
+ * merge only carried the removal in when its side parent (which already contains
+ * the landing) had already reverted the file: `parentsOf` and `isAncestor` let the
+ * walk follow that side to the commit that actually removed it. MERGE-RESOLUTION is
+ * kept for a merge whose own resolution dropped the change.
+ *
  * Pure, with git access injected, so it is testable without a repository.
  *
  * @param {{ file: string, landingSha: string, preEntry: string | null, ref: string,
  *   historyOf: (landingSha: string, ref: string, file: string) => Array<{ sha: string, subject: string }>,
  *   entryAt: (ref: string, file: string) => string | null,
- *   isMergeCommit: (sha: string) => boolean }} options
+ *   isMergeCommit: (sha: string) => boolean,
+ *   parentsOf?: (sha: string) => string[],
+ *   isAncestor?: (ancestor: string, descendant: string) => boolean }} options
+ * @param {number} [depth]
  */
-export function classifyRemoval({ file, landingSha, preEntry, ref, historyOf, entryAt, isMergeCommit }) {
+export function classifyRemoval(options, depth = 0) {
+  const { file, landingSha, preEntry, ref, historyOf, entryAt, isMergeCommit, parentsOf, isAncestor } = options;
   const commits = historyOf(landingSha, ref, file) ?? [];
   for (const commit of commits) {
     if (entryAt(commit.sha, file) !== preEntry) continue;
-    return {
-      mechanism: isMergeCommit(commit.sha) ? "merge-resolution" : "deliberate-commit",
-      sha: commit.sha,
-      subject: commit.subject,
-    };
+    if (!isMergeCommit(commit.sha)) {
+      return { mechanism: "deliberate-commit", sha: commit.sha, subject: commit.subject };
+    }
+    // The first parent is the chain being walked, which still had the change. A later
+    // parent that contains the landing and already matches the pre-landing entry is a
+    // side that removed it before this merge; follow it rather than blame the merge.
+    const carrier =
+      parentsOf && isAncestor && depth < MAX_REMOVAL_SIDE_DEPTH
+        ? (parentsOf(commit.sha) ?? [])
+            .slice(1)
+            .find((parent) => entryAt(parent, file) === preEntry && isAncestor(landingSha, parent))
+        : undefined;
+    if (carrier) {
+      const side = classifyRemoval({ ...options, ref: carrier }, depth + 1);
+      if (side.mechanism !== "unknown") return side;
+    }
+    return { mechanism: "merge-resolution", sha: commit.sha, subject: commit.subject };
   }
   return { mechanism: "unknown", sha: undefined, subject: undefined };
 }
+
+/** How many merges deep classifyRemoval follows a side branch before blaming the merge. */
+const MAX_REMOVAL_SIDE_DEPTH = 8;
 
 const MECHANISMS = ["merge-resolution", "deliberate-commit", "unknown"];
 
@@ -352,15 +378,27 @@ function historyReader() {
   };
 }
 
-function mergeCommitReader() {
+function parentsReader() {
   const cache = new Map();
   return (sha) => {
     if (!cache.has(sha)) {
       const raw = tryGit(["rev-list", "--parents", "-n", "1", sha]);
-      // `<sha> <parent>…` — more than one parent means a merge.
-      cache.set(sha, raw === undefined ? false : raw.trim().split(/\s+/).length - 1 > 1);
+      // `<sha> <parent>…`
+      cache.set(sha, raw === undefined ? [] : raw.trim().split(/\s+/).slice(1));
     }
     return cache.get(sha);
+  };
+}
+
+function ancestorReader() {
+  const cache = new Map();
+  return (ancestor, descendant) => {
+    const key = `${ancestor}..${descendant}`;
+    if (!cache.has(key)) {
+      // `merge-base --is-ancestor` exits non-zero (tryGit returns undefined) when it is not.
+      cache.set(key, tryGit(["merge-base", "--is-ancestor", ancestor, descendant]) !== undefined);
+    }
+    return cache.get(key);
   };
 }
 
@@ -572,7 +610,9 @@ function main() {
   const landings = collectLandings(options.ref, options.since);
   const entryAt = treeEntryReader();
   const historyOf = historyReader();
-  const isMergeCommit = mergeCommitReader();
+  const parentsOf = parentsReader();
+  const isMergeCommit = (sha) => parentsOf(sha).length > 1;
+  const isAncestor = ancestorReader();
   const archiveQuarters = (tryGit(["ls-tree", "--name-only", options.ref, "--", `${INBOX}/applied/archive/`]) ?? "")
     .split(/\r?\n/)
     .map((entry) => path.posix.basename(entry.trim()))
@@ -583,7 +623,17 @@ function main() {
     ref: options.ref,
     archiveQuarters,
     removalOf: ({ file, landingSha, preEntry }) =>
-      classifyRemoval({ file, landingSha, preEntry, ref: options.ref, historyOf, entryAt, isMergeCommit }),
+      classifyRemoval({
+        file,
+        landingSha,
+        preEntry,
+        ref: options.ref,
+        historyOf,
+        entryAt,
+        isMergeCommit,
+        parentsOf,
+        isAncestor,
+      }),
   });
   if (options.json) {
     console.log(JSON.stringify({ ref: options.ref, sinceDays: options.since, ...result }, null, 2));

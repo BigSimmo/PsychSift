@@ -1,4 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import { APP_PREFERENCES_STORAGE_KEY } from "@/lib/account-scoped-browser-state";
 import {
   compareMyDayItems,
   formatMyDayDue,
@@ -141,6 +143,24 @@ describe("formatMyDayDue", () => {
     expect(formatMyDayDue("2026-10-03", lateUtc)).toBe("Yesterday");
     expect(formatMyDayDue("2026-10-03T16:30:00Z", lateUtc)).toBe("Today · 00:30");
     expect(formatMyDayDue("2026-10-04T16:00:00Z", lateUtc)).toBe("Tomorrow · 00:00");
+  });
+
+  describe("in another work zone", () => {
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it("reads the day word and the time in the same zone", () => {
+      vi.stubGlobal("window", {
+        localStorage: {
+          getItem: (key: string) =>
+            key === APP_PREFERENCES_STORAGE_KEY ? JSON.stringify({ timeZone: "Australia/Sydney" }) : null,
+        },
+      });
+      // 13:00 Sat 24 Oct in Sydney; 14:00Z is 01:00 Sun in Sydney (AEDT) but 22:00 Sat in Perth.
+      const saturday = new Date("2026-10-24T02:00:00Z");
+      expect(formatMyDayDue("2026-10-24T14:00:00Z", saturday)).toBe("Tomorrow · 01:00");
+    });
   });
 });
 

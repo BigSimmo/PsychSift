@@ -246,10 +246,14 @@ function StatusDefinitions() {
       intro="Four independent axes. A source can be current and still unverified, or approved and no longer active."
     >
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        {/* Hyphenated: a spaced id ("Content mode") splits in aria-labelledby into references to nothing. */}
         {SOURCE_CATALOGUE_STATUS_GROUPS.map((group) => (
-          <section key={group.heading} aria-labelledby={`method-status-${group.heading.toLowerCase()}`}>
+          <section
+            key={group.heading}
+            aria-labelledby={`method-status-${group.heading.toLowerCase().replace(/\s+/g, "-")}`}
+          >
             <h4
-              id={`method-status-${group.heading.toLowerCase()}`}
+              id={`method-status-${group.heading.toLowerCase().replace(/\s+/g, "-")}`}
               className="text-sm font-semibold text-[color:var(--text-heading)]"
             >
               {group.heading}

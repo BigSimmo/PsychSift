@@ -57,6 +57,38 @@ describe("smart document tags", () => {
     ).toMatchObject({ label: "policy", label_type: "document_type" });
   });
 
+  it("normalises each site's short label back to that same site", () => {
+    // "FH" is the short label shown for Fremantle Hospital; it used to be stored
+    // as Fiona Stanley, filing a Fremantle document under the wrong hospital.
+    const sites = [
+      "armadale kalamunda group",
+      "east metropolitan health service",
+      "fiona stanley hospital",
+      "fremantle hospital",
+      "king edward memorial hospital",
+      "north metropolitan health service",
+      "peel health campus",
+      "rockingham peel group",
+      "royal perth bentley group",
+      "south metropolitan health service",
+    ];
+    for (const site of sites) {
+      const short = formatDocumentLabelDisplay(site, "site");
+      const stored = normalizeDocumentLabelForStorage({
+        label: short,
+        label_type: "site",
+        confidence: 0.9,
+        source: "manual",
+      });
+      // A short label with no alias is stored as itself; one with an alias must
+      // resolve to the site it is displayed for, never a different one.
+      if (stored && stored.label !== short.toLowerCase()) expect(stored.label, short).toBe(site);
+    }
+    expect(
+      normalizeDocumentLabelForStorage({ label: "FH", label_type: "site", confidence: 0.9, source: "manual" }),
+    ).toMatchObject({ label: "fremantle hospital" });
+  });
+
   it("deduplicates near-equivalent tags and preserves useful manual tags", () => {
     const tags = buildSmartDocumentTags(
       [

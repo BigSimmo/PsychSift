@@ -12,6 +12,7 @@ import {
   PAEDIATRIC_AGE_YEARS,
   QTC_PROLONGED_MS,
   RENAL_IMPAIRMENT_EGFR,
+  unassessedGateCount,
   type MedicationConsideration,
   type PatientProfile,
 } from "@/lib/medication-patient-alerts";
@@ -261,24 +262,27 @@ describe("evaluatePatientAlerts — partial / empty profile and unassessed", () 
     expect(firedAdvisory.unassessedAdvisoryCount).toBe(1);
   });
 
-  it("keeps the advisory tier out of the result-row verdict tone", () => {
-    // The workspace feeds only the contraindication tier into the verdict, so an
-    // advisory gap must not degrade a green row to grey. Pinned here because the
-    // partition is exactly what could change that by accident.
+  it("lets an advisory-tier gap block the result-row all-clear, matching the detail page", () => {
+    // Owner decision 25 Oct 2026: the list verdict reads both tiers, exactly as
+    // the detail-page considerations notice does, so an unread eGFR on a
+    // caution row degrades a would-be green row to grey instead of reading clear.
     const record = recordWith({ factors: ["renal"], action: "caution", match: { egfr: { lt: 30 } } });
     const alerts = evaluatePatientAlerts(record, { ageYears: 40 });
+    expect(alerts.unassessed).toHaveLength(0);
     expect(alerts.unassessedAdvisory).toHaveLength(1);
+    expect(unassessedGateCount(alerts)).toBe(1);
     const verdict = composeMedicationVerdict({
       considerationTone: alerts.highestTone,
       considerationCount: alerts.considerations.length,
-      unassessedCount: alerts.unassessed.length,
+      unassessedCount: unassessedGateCount(alerts),
       interactionTone: null,
       interactionCount: 0,
       unresolvedRowCount: 0,
       unreachableCounterpartyCount: 0,
+      unreviewedHighRiskCount: 0,
     });
-    expect(verdict.tone).toBe("success");
-    expect(verdict.incomplete).toBe(false);
+    expect(verdict.tone).toBe("neutral");
+    expect(verdict.incomplete).toBe(true);
   });
 
   it("routes info rows with missing gates to the advisory tier, never contraindication", () => {

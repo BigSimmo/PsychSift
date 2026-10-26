@@ -10,9 +10,10 @@ import { presentedWebhookSecret, verifyWebhookSecret } from "@/lib/webhooks/secr
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Receiver for Railway project deploy webhooks. Railway can only be configured
-// with a target URL (no custom headers or signing), so the shared secret travels
-// as `?token=` on the configured webhook URL and is compared constant-time. The
+// Receiver for Railway project deploy webhooks. Railway payloads are unsigned, but
+// a webhook can carry custom headers, so the shared secret travels in an
+// `x-webhook-secret` (or `Authorization: Bearer`) header and is compared
+// constant-time. A `?token=` URL is refused so the secret stays out of logs. The
 // route forwards notable deploy status changes for the app + worker services to
 // Slack/Discord — the piece GitHub cannot report, since it does not know Railway's
 // deploy outcome. See docs/webhooks.md for setup.

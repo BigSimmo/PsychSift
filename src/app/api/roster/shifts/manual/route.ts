@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     });
     if (rateLimit.limited) return rateLimitJsonResponse("Too many requests. Try again shortly.", rateLimit);
     const body = await parseJsonBody(request, onCallManualShiftRequestSchema, "That shift could not be saved.");
-    const shifts = await addManualShifts(supabase, user.id, [body.shift], body.repeatWeeks);
+    const shifts = await addManualShifts(supabase, user.id, [body.shift], body.repeatWeeks, body.timeZone);
     let conflicts: Awaited<ReturnType<typeof checkManualShiftConflicts>> = [];
     let conflictsUnavailable = false;
     try {

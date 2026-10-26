@@ -136,6 +136,33 @@ describe("rosterWhosOnRows", () => {
     expect(row.next).toEqual({ name: "Dr Patel", startsAt: registrar.startsAt });
   });
 
+  it("names who comes next when both rows are unlinked roster names", () => {
+    const night = shift({
+      name: "Dr Locum",
+      userId: null,
+      kind: "night",
+      start: "2026-10-06T21:00",
+      end: "2026-10-07T08:30",
+    });
+    const morning = shift({
+      name: "Dr Relief",
+      userId: null,
+      kind: "day",
+      start: "2026-10-07T08:00",
+      end: "2026-10-07T16:30",
+    });
+    // The same unlinked name again is the same person, never their own handover.
+    const sameName = shift({
+      name: "Dr Locum",
+      userId: null,
+      kind: "day",
+      start: "2026-10-07T08:30",
+      end: "2026-10-07T16:30",
+    });
+    const [row] = rosterWhosOnRows([night, morning, sameName], { date: "2026-10-06", now: NOW, actorId: null });
+    expect(row.next).toEqual({ name: "Dr Relief", startsAt: morning.startsAt });
+  });
+
   it("names nobody next when only another grade, or a shift that started well before, follows", () => {
     const night = shift({
       name: "Dr Nguyen",

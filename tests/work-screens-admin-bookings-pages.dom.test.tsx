@@ -135,7 +135,10 @@ describe("Bookings with example data on", () => {
     expect(calendarEntry(BLS)).toBeUndefined();
 
     fireEvent.click(screen.getByTestId("admin-bookings-book"));
-    expect(screen.getByTestId("admin-bookings-book-sheet")).toBeTruthy();
+    // Cancel goes from the course day, so the sheet promises no more than that.
+    expect(screen.getByTestId("admin-bookings-book-sheet").textContent).toContain(
+      "You can cancel up to the end of the day before it starts.",
+    );
     fireEvent.click(screen.getByTestId("admin-bookings-book-confirm"));
 
     const after = screen.getByTestId("admin-bookings-detail");

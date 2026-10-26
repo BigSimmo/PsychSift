@@ -16,6 +16,7 @@ import {
   NATIONAL_GUIDE,
   RANZCP_GUIDE,
   readCpdHome,
+  requirementsAfterHomeChange,
   requirementsForCpdHome,
   type CpdHomeKind,
 } from "@/lib/cme/home-choice";
@@ -145,7 +146,7 @@ export function CmeSetupPage({
     setHome(next);
     setDraft((current) => ({
       ...current,
-      ...requirementsForCpdHome(kind, targetYear, current.confirmedOn),
+      ...requirementsAfterHomeChange(current, kind, targetYear, set),
       confirmedSource: confirmedSourceForHome(next),
     }));
     setSavedFingerprint(null);

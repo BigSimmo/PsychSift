@@ -31,13 +31,16 @@ function documentQuery(status = "indexed", ownerId: string | null = userId, meta
   return query;
 }
 
-function mockAuthenticatedUser() {
+function mockAuthenticatedUser(
+  requireRecentAdministratorAssurance: (...args: unknown[]) => Promise<void> = vi.fn(async () => undefined),
+) {
   const requireAuthenticatedUser = vi.fn(async () => ({ id: userId }));
   vi.doMock("@/lib/supabase/auth", () => ({
     AuthenticationError: class AuthenticationError extends Error {},
     requireAuthenticatedUser,
     unauthorizedResponse: vi.fn(),
   }));
+  vi.doMock("@/lib/supabase/admin-assurance", () => ({ requireRecentAdministratorAssurance }));
   return requireAuthenticatedUser;
 }
 
@@ -51,6 +54,34 @@ const bmjMetadata = {
 };
 
 describe("source review route", () => {
+  it("requires recent administrator MFA before reading the document or recording a review", async () => {
+    const rpc = vi.fn();
+    const from = vi.fn(() => documentQuery("indexed", null));
+    const consumeApiRateLimit = vi.fn(async () => ({ limited: false }));
+    const { PublicApiError } = await import("../src/lib/http");
+    const requireRecentAdministratorAssurance = vi.fn(async () => {
+      throw new PublicApiError("Recent multi-factor administrator authentication is required.", 403, {
+        code: "administrator_assurance_required",
+      });
+    });
+    vi.doMock("@/lib/env", () => ({ env: { WORKER_STALE_AFTER_MINUTES: 15 }, isDemoMode: () => false }));
+    const client = { from, rpc };
+    vi.doMock("@/lib/supabase/admin", () => ({ createAdminClient: () => client }));
+    mockAuthenticatedUser(requireRecentAdministratorAssurance);
+    vi.doMock("@/lib/api-rate-limit", () => ({ consumeApiRateLimit, rateLimitJsonResponse: vi.fn() }));
+
+    const { POST } = await import("../src/app/api/documents/[id]/reviews/route");
+    const response = await POST(request({ decision: "decommissioned", reason: "Withdrawn by the publisher" }), {
+      params: Promise.resolve({ id: documentId }),
+    });
+
+    expect(response.status).toBe(403);
+    expect(requireRecentAdministratorAssurance).toHaveBeenCalledWith(expect.any(Request), client, userId);
+    expect(consumeApiRateLimit).not.toHaveBeenCalled();
+    expect(from).not.toHaveBeenCalled();
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
   it("rejects approval without evidence", async () => {
     vi.doMock("@/lib/env", () => ({ env: { WORKER_STALE_AFTER_MINUTES: 15 }, isDemoMode: () => false }));
     vi.doMock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({}) }));

@@ -14,6 +14,7 @@ import {
   type ReferralCoverageFacts,
 } from "@/lib/on-call/referral-coverage";
 import { recordOnCallRecent } from "@/lib/on-call/recent-storage";
+import { isWaPublicHolidayDate } from "@/lib/on-call/wa-public-holidays";
 import { toAwstParts } from "@/lib/caring-contacts/clock";
 
 const VERDICT_LABEL: Record<CoverageVerdict, string> = {
@@ -60,6 +61,10 @@ export function WhoCoversThis({
   const ageValid = age === null || (Number.isInteger(age) && age >= 0 && age <= 120);
   const parts = toAwstParts(now);
   const minutesNow = parts.hour * 60 + parts.minute;
+  const weekday = new Date(Date.UTC(parts.year, parts.month - 1, parts.day)).getUTCDay();
+  const publicHoliday = isWaPublicHolidayDate(
+    `${parts.year}-${String(parts.month).padStart(2, "0")}-${String(parts.day).padStart(2, "0")}`,
+  );
   const active = ageValid && (age !== null || suburb.trim().length > 0);
 
   const ranked = useMemo(() => {
@@ -73,6 +78,8 @@ export function WhoCoversThis({
               age: ageValid ? age : null,
               suburb,
               minutesNow,
+              weekday,
+              publicHoliday,
             })
           : { verdict: "unclear" as const, why: "Referral facts could not be read for this service." };
         return { entry, facts, match };
@@ -83,7 +90,7 @@ export function WhoCoversThis({
           a.entry.sortOrder - b.entry.sortOrder ||
           a.entry.title.localeCompare(b.entry.title),
       );
-  }, [active, age, ageValid, entries, minutesNow, suburb]);
+  }, [active, age, ageValid, entries, minutesNow, publicHoliday, suburb, weekday]);
 
   return (
     <section

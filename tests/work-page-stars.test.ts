@@ -140,6 +140,13 @@ describe("work page stars: changes", () => {
     expect(stars.toggleWorkPageStar("day", "my-day-week")).toEqual({ starred: true, saved: false });
   });
 
+  it("leaves the list unchanged when the write is refused, so the star never shows as saved", () => {
+    storage.failWrites = true;
+    stars.toggleWorkPageStar("day", "my-day-week");
+    expect(stars.isWorkPageStarred("day", "my-day-week")).toBe(false);
+    expect(stars.loadWorkPageStars()).toEqual([]);
+  });
+
   it("pins and unpins only the chosen pages", () => {
     stars.toggleWorkPageStar("day", "my-day-week", 1);
     stars.toggleWorkPageStar("day", "my-day-hours", 2);

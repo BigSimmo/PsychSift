@@ -116,8 +116,8 @@ describe("PatientSafetyPlan — incomplete-plan draft guard", () => {
     for (const remove of within(supportStep).getAllByRole("button", { name: /^Remove/ })) {
       await user.click(remove);
     }
-    await user.type(within(supportStep).getByLabelText("Name & relationship"), "Sam — a friend");
-    await user.click(within(supportStep).getByRole("button", { name: /^Add$/ }));
+    await user.type(within(supportStep).getByPlaceholderText("Name & relationship"), "Sam — a friend");
+    await user.click(within(supportStep).getByRole("button", { name: /^Add to / }));
 
     expect(screen.getByText(examplePattern)).toBeTruthy();
     expect(screen.getByRole("button", { name: /Finalise plan/i })).toHaveAttribute("aria-disabled", "true");
@@ -131,8 +131,8 @@ describe("PatientSafetyPlan — incomplete-plan draft guard", () => {
     await user.click(screen.getByRole("button", { name: /Clear all/ }));
 
     const supportStep = screen.getByRole("region", { name: "Step 4: People I can ask for help" });
-    await user.type(within(supportStep).getByLabelText("Name & relationship"), "Sam — a friend");
-    await user.click(within(supportStep).getByRole("button", { name: /^Add$/ }));
+    await user.type(within(supportStep).getByPlaceholderText("Name & relationship"), "Sam — a friend");
+    await user.click(within(supportStep).getByRole("button", { name: /^Add to / }));
 
     expect(screen.getByText(draftPattern)).toBeTruthy();
     expect(screen.getByRole("button", { name: /Finalise plan/i })).toHaveAttribute("aria-disabled", "true");
@@ -338,10 +338,10 @@ describe("PatientSafetyPlan — Clear all and Copy feedback", () => {
     render(<PatientSafetyPlan />);
 
     const supportStep = screen.getByRole("region", { name: "Step 4: People I can ask for help" });
-    fireEvent.change(within(supportStep).getByLabelText("Name & relationship"), {
+    fireEvent.change(within(supportStep).getByPlaceholderText("Name & relationship"), {
       target: { value: "Sam — a friend" },
     });
-    fireEvent.click(within(supportStep).getByRole("button", { name: /^Add$/ }));
+    fireEvent.click(within(supportStep).getByRole("button", { name: /^Add to / }));
     fireEvent.click(screen.getByRole("button", { name: /Clear all/ }));
 
     expect(confirm).toHaveBeenCalledOnce();
@@ -584,6 +584,59 @@ describe("PatientSafetyPlan — browser Back and shell controls", () => {
     fireEvent.click(screen.getByRole("link", { name: "Mode link" }));
     expect(confirm).toHaveBeenCalledTimes(1);
     confirm.mockRestore();
+    back.mockRestore();
+  });
+});
+
+describe("PatientSafetyPlan — field names and focus after removing an entry", () => {
+  it("names each add field and Add button after its step, not after the example text", () => {
+    render(<PatientSafetyPlan />);
+
+    const warningStep = screen.getByRole("region", { name: "Step 1: Warning signs" });
+    const field = within(warningStep).getByRole("textbox", { name: "Warning signs: new entry" });
+    expect(field).toHaveAttribute("placeholder", "e.g. Not sleeping for a couple of nights");
+    expect(within(warningStep).getByRole("button", { name: "Add to Warning signs" })).toBeTruthy();
+
+    const supportStep = screen.getByRole("region", { name: "Step 4: People I can ask for help" });
+    expect(
+      within(supportStep).getByRole("textbox", { name: "People I can ask for help: Name & relationship" }),
+    ).toBeTruthy();
+    expect(screen.getByRole("textbox", { name: "Reasons for living: new entry" })).toBeTruthy();
+  });
+
+  it("moves focus to the next entry, then the previous, then the add field as entries are removed", () => {
+    const back = vi.spyOn(window.history, "back").mockImplementation(() => undefined);
+    const view = render(<PatientSafetyPlan />);
+    const warningStep = screen.getByRole("region", { name: "Step 1: Warning signs" });
+    const field = within(warningStep).getByRole("textbox", { name: "Warning signs: new entry" });
+    for (const value of ["First sign", "Second sign", "Third sign"]) {
+      fireEvent.change(field, { target: { value } });
+      fireEvent.click(within(warningStep).getByRole("button", { name: "Add to Warning signs" }));
+    }
+    const removeButton = (text: string) => within(warningStep).getByRole("button", { name: `Remove “${text}”` });
+
+    fireEvent.click(removeButton("First sign"));
+    expect(document.activeElement).toBe(removeButton("Second sign"));
+
+    fireEvent.click(removeButton("Third sign"));
+    expect(document.activeElement).toBe(removeButton("Second sign"));
+
+    fireEvent.click(removeButton("Second sign"));
+    expect(document.activeElement).toBe(field);
+    view.unmount();
+    back.mockRestore();
+  });
+
+  it("moves focus to the reasons add field when the last reason is removed", () => {
+    const back = vi.spyOn(window.history, "back").mockImplementation(() => undefined);
+    const view = render(<PatientSafetyPlan />);
+    const field = screen.getByRole("textbox", { name: "Reasons for living: new entry" });
+    fireEvent.change(field, { target: { value: "My dog" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add to Reasons for living" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove “My dog”" }));
+    expect(document.activeElement).toBe(field);
+    view.unmount();
     back.mockRestore();
   });
 });

@@ -157,7 +157,7 @@ export function AnswerSourceDrawer({
    * finds it does not say that is the highest-value moment in the product to
    * catch a bad citation — and until now the surface had no control for it.
    */
-  onReportSource?: (source: AnswerSourceRow) => void;
+  onReportSource?: (source: AnswerSourceRow) => void | Promise<boolean | void>;
 }) {
   /**
    * Resolved late rather than captured on open, so paging to another source
@@ -181,6 +181,9 @@ export function AnswerSourceDrawer({
   const source = open ? sources[openIndex] : null;
   const quoteCard = quoteCardForSource(quoteCards, source);
   const passage = passageForSource(quoteCard, source);
+  // The quote is cut at the display cap upstream; say so, or a dose or threshold
+  // past the cut reads as though the passage ended there.
+  const passageShortened = Boolean(quoteCard?.quote && quoteCard.isTruncated);
   const sourceTables = open ? tablesForSource(tables, sources, openIndex) : [];
   const sourceImages = open ? imagesForSource(visualEvidence, sources, openIndex) : [];
   const stale = source ? sourceRowIsStale(source) : false;
@@ -349,6 +352,11 @@ export function AnswerSourceDrawer({
               >
                 &ldquo;{passage}&rdquo;
               </blockquote>
+              {passageShortened ? (
+                <p data-testid="answer-source-drawer-passage-shortened" className={cn("mt-1.5 text-xs", textMuted)}>
+                  Quote shortened. Open the source for the full passage.
+                </p>
+              ) : null}
               {onFollowUpQuote && quoteCard ? (
                 <button
                   type="button"
@@ -456,7 +464,7 @@ function SourceOverflowMenu({
   quoteCard: QuoteCard | null;
   onFollowUpQuote?: (quote: QuoteCard) => void;
   onScopeDocument?: (documentId: string) => void;
-  onReportSource?: (source: AnswerSourceRow) => void;
+  onReportSource?: (source: AnswerSourceRow) => void | Promise<boolean | void>;
   onCloseDrawer: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -646,8 +654,20 @@ function SourceOverflowMenu({
                   setConfirmingReport(true);
                   return;
                 }
-                reportClaimMismatch(source);
-                setStatus("Reported. Thank you — this page is flagged for review.");
+                // The status waits on the save: the feedback channel can refuse
+                // (demo mode, missing token, signed out, server error), and a
+                // "Reported" line after a refusal tells the clinician a mismatch
+                // is queued when nothing was recorded. The report carries the
+                // answer, not a page id, so the wording names the answer.
+                void Promise.resolve(reportClaimMismatch(source)).then(
+                  (saved) =>
+                    setStatus(
+                      saved === false
+                        ? "Report not sent. Try again."
+                        : "Reported. Thank you — this answer is flagged for review.",
+                    ),
+                  () => setStatus("Report not sent. Try again."),
+                );
                 dismissMenu();
               }}
               className={cn(

@@ -78,6 +78,20 @@ describe("SpecifiersHomePage filters", () => {
     expect(within(catalogue).getAllByRole("listitem")).toHaveLength(48);
   });
 
+  it("names the filters, not an empty search, when filters alone give zero results", async () => {
+    const user = userEvent.setup();
+    // No source-verified entries in the anxiety category, so browsing with these filters is empty.
+    window.history.replaceState(null, "", "/specifiers?scope=catalogue&category=anx&reviewed=1");
+
+    render(<SpecifiersHomePage />);
+
+    const heading = screen.getByRole("heading", { name: "No specifiers match these filters" });
+    expect(screen.queryByText(/No strong match for/)).toBeNull();
+    const emptyState = heading.closest("div")!.parentElement!;
+    await user.click(within(emptyState).getByRole("button", { name: "Clear filters" }));
+    expect(window.location.search).toBe("");
+  });
+
   it("respects an explicit guide scope even when that scope is empty", () => {
     expect(searchSpecifierCatalog("type").length).toBeGreaterThan(0);
     window.history.replaceState(null, "", "/specifiers?q=type&scope=guides");

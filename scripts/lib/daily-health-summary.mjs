@@ -107,6 +107,15 @@ export const SUMMARY_SOURCES = [
     issue: "open",
     onTrouble: "red",
     trouble: "checks on main are failing",
+    // Amber, not red, when the only outstanding checks are the cross-browser legs or the advisory
+    // visual baselines (readMainCiOutstanding). Those legs are continue-on-error on main and
+    // block nothing. Before this, one flaky Safari tablet leg kept the summary red for days
+    // (22-24 Oct 2026) while every required check passed, which teaches the reader to skip red.
+    advisory: {
+      when: (issue) => readMainCiOutstanding(issue).advisoryOnly,
+      onTrouble: "amber",
+      trouble: "only the extra browser tests or the advisory screenshot checks are failing; the required checks pass",
+    },
     maxAgeHours: null,
   },
   {
@@ -169,6 +178,37 @@ function age(ms) {
   return `${Math.round(ms / DAY)} days`;
 }
 
+const MAIN_CI_PENDING_PATTERN = /<!-- main-ci-pending:v1:([^\s]*) -->/;
+// Named matrix legs only, such as "release-browser-matrix (webkit, tablet, 3, 4)". The bare aggregate and
+// "release-browser-matrix (unidentified checks; manual review required)" do not match, so they stay red.
+const ADVISORY_MAIN_CI_JOB = /^(?:release-browser-matrix \([\w-]+(?:, [\w-]+)*\)|Visual baselines \(advisory\))$/;
+
+/**
+ * Reads the outstanding-check list that `ci.yml` writes into the main-failure issue as a
+ * `main-ci-pending:v1` marker, and says whether every outstanding check is advisory: a
+ * cross-browser matrix leg or the advisory visual baselines. Fails closed: an issue the workflow
+ * bot did not write, a missing or unreadable marker, an empty list, or any other job name means
+ * not advisory, so the check stays red. Only job names are read; nothing is copied out.
+ *
+ * @param {LabelledIssue | null | undefined} issue
+ */
+export function readMainCiOutstanding(issue) {
+  if (issue?.user?.login !== WORKFLOW_BOT) return { advisoryOnly: false };
+  const match = MAIN_CI_PENDING_PATTERN.exec(String(issue.body ?? ""));
+  if (!match) return { advisoryOnly: false };
+  let entries;
+  try {
+    entries = JSON.parse(decodeURIComponent(match[1]));
+  } catch {
+    return { advisoryOnly: false };
+  }
+  if (!Array.isArray(entries) || entries.length === 0) return { advisoryOnly: false };
+  const advisoryOnly = entries.every(
+    (entry) => typeof entry?.name === "string" && ADVISORY_MAIN_CI_JOB.test(entry.name.trim()),
+  );
+  return { advisoryOnly };
+}
+
 /** Reads the two status words the ops digest writes into its rolling issue, through allow-lists. */
 export function readDigestState(body) {
   const text = String(body ?? "");
@@ -177,7 +217,10 @@ export function readDigestState(body) {
   const status = DIGEST_STATUS.has(statusMatch?.[1]) ? statusMatch[1] : "unknown";
   const severity = DIGEST_SEVERITY.has(severityMatch?.[1]) ? severityMatch[1] : "unknown";
   const count = severityMatch ? Number(severityMatch[2]) : null;
-  return { status, severity, count };
+  // The digest's low-volume note (scripts/ops-digest.mjs renderAnswerWindow): too few answers for
+  // the rate rules to run.
+  const lowVolume = /Fewer than \d+ answers: [^\n]*not judged/.test(text);
+  return { status, severity, count, lowVolume };
 }
 
 /**
@@ -215,8 +258,9 @@ export function assessSource(
   let detail = "all clear";
 
   if (source.issue === "open" && issue?.state === "open") {
-    status = source.onTrouble;
-    detail = source.trouble;
+    const advisory = source.advisory?.when(issue) === true;
+    status = advisory ? source.advisory.onTrouble : source.onTrouble;
+    detail = advisory ? source.advisory.trouble : source.trouble;
   } else if (source.issue === "recent" && issue) {
     const active = time(botActivityAt);
     const clearedAt = time(clearingRun?.updated_at ?? clearingRun?.run_started_at ?? clearingRun?.created_at);
@@ -246,6 +290,10 @@ export function assessSource(
       detail = `service ${digest.status}, alert state ${digest.severity}`;
     } else if (digest.severity === "unknown") {
       detail = "service ok, no answered queries to judge";
+    } else if (digest.lowVolume) {
+      // Under the minimum count the rate rules do not run, so "within limits" would overstate it
+      // (audit EM-N2, 24 Oct 2026).
+      detail = "service ok, too few answers to judge quality";
     } else {
       detail = "service ok, answers within limits";
     }
@@ -351,7 +399,13 @@ async function newestCompletedRun(github, owner, repo, workflow) {
   }
 }
 
-/** The newest completed run from one of `events`, looking back over the last 20 runs. */
+/**
+ * Run titles that mark a shortened or experimental run (eval-canary.yml's run-name). Such a run
+ * can pass without testing what the weekly run tests, so it never clears an alert (audit EM-N3).
+ */
+const TRIAL_RUN_TITLE = /\btrial run\b/i;
+
+/** The newest completed, non-trial run from one of `events`, looking back over the last 20 runs. */
 async function newestCompletedRunFrom(github, owner, repo, workflow, events) {
   try {
     const { data } = await github.rest.actions.listWorkflowRuns({
@@ -361,10 +415,47 @@ async function newestCompletedRunFrom(github, owner, repo, workflow, events) {
       status: "completed",
       per_page: 20,
     });
-    return data.workflow_runs?.find((run) => events.includes(run.event)) ?? null;
+    return (
+      data.workflow_runs?.find(
+        (run) => events.includes(run.event) && !TRIAL_RUN_TITLE.test(String(run.display_title ?? "")),
+      ) ?? null
+    );
   } catch {
     return null;
   }
+}
+
+/** Open issues carrying `label`, newest first (a workflow may keep more than one alert thread). */
+async function openIssues(github, owner, repo, label) {
+  const { data } = await github.rest.issues.listForRepo({
+    owner,
+    repo,
+    labels: label,
+    state: "open",
+    sort: "updated",
+    direction: "desc",
+    per_page: 10,
+  });
+  return data;
+}
+
+/**
+ * For a `recent` check, the open issue the workflow's bot posted on most recently. The canary
+ * keeps two alert threads (a missed threshold and a run that did not finish), so reading only the
+ * newest-updated one could hide the other (audit EM-N5, 24 Oct 2026). Falls back to the newest
+ * issue, open or closed, when no open one has bot activity in the window.
+ */
+async function mostRecentlyAlertedIssue(github, owner, repo, label, sinceMs) {
+  let best = { issue: null, activity: { botActivityAt: null, markers: null } };
+  for (const candidate of await openIssues(github, owner, repo, label)) {
+    const activity = await botActivitySince(github, owner, repo, candidate, sinceMs);
+    if (activity.botActivityAt !== null && (best.activity.botActivityAt ?? "") < activity.botActivityAt) {
+      best = { issue: candidate, activity };
+    }
+  }
+  if (best.issue) return best;
+  const issue = await newestIssue(github, owner, repo, label);
+  return { issue, activity: await botActivitySince(github, owner, repo, issue, sinceMs) };
 }
 
 async function newestIssue(github, owner, repo, label) {
@@ -424,14 +515,15 @@ export async function collectAssessments({ github, owner, repo, now }) {
   const assessments = [];
   for (const source of SUMMARY_SOURCES) {
     try {
-      const [latestRun, issue] = await Promise.all([
+      const [latestRun, { issue, activity }] = await Promise.all([
         newestCompletedRun(github, owner, repo, source.workflow),
-        newestIssue(github, owner, repo, source.label),
-      ]);
-      const activity =
         source.issue === "recent"
-          ? await botActivitySince(github, owner, repo, issue, nowMs - source.recentHours * HOUR)
-          : { botActivityAt: null, markers: null };
+          ? mostRecentlyAlertedIssue(github, owner, repo, source.label, nowMs - source.recentHours * HOUR)
+          : newestIssue(github, owner, repo, source.label).then((found) => ({
+              issue: found,
+              activity: { botActivityAt: null, markers: null },
+            })),
+      ]);
       const recentMarkers = source.key === "errors" ? activity.markers : null;
       const clearingRun = source.clearedBySuccess
         ? await newestCompletedRunFrom(github, owner, repo, source.workflow, source.clearedBy ?? [])

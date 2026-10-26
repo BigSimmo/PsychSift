@@ -529,6 +529,9 @@ function DocumentIndexRepairPanel({ documents }: { documents: ClinicalDocument[]
   );
 }
 
+/** Rows the document drawer draws per step; "Show more" adds another step. */
+const documentDrawerRowStep = 12;
+
 export function DocumentDrawer({
   documents,
   pagination,
@@ -575,6 +578,7 @@ export function DocumentDrawer({
   const [selectedPopulation, setSelectedPopulation] = useState<string>("all");
   const [selectedDesignation, setSelectedDesignation] = useState<SourceDesignation | "all">("all");
   const [showNeedsReviewOnly, setShowNeedsReviewOnly] = useState<boolean>(false);
+  const [visibleRowLimit, setVisibleRowLimit] = useState(documentDrawerRowStep);
 
   const [collectionDraft, setCollectionDraft] = useState("");
   const [metadataDraft, setMetadataDraft] = useState({
@@ -749,7 +753,6 @@ export function DocumentDrawer({
             value={selectedType}
             onChange={(e) => setSelectedType(e.target.value)}
             className={cn(fieldControlPlain, "mt-1 text-xs")}
-            aria-label="Filter by document type"
           >
             <option value="all">All source types</option>
             {allTypes.map((t) => (
@@ -771,7 +774,6 @@ export function DocumentDrawer({
             value={selectedSite}
             onChange={(e) => setSelectedSite(e.target.value)}
             className={cn(fieldControlPlain, "mt-1 text-xs")}
-            aria-label="Filter by site"
           >
             <option value="all">All Sites</option>
             {allSites.map((s) => (
@@ -793,7 +795,6 @@ export function DocumentDrawer({
             value={selectedTopic}
             onChange={(e) => setSelectedTopic(e.target.value)}
             className={cn(fieldControlPlain, "mt-1 text-xs")}
-            aria-label="Filter by topic"
           >
             <option value="all">All Topics</option>
             {allTopics.map((t) => (
@@ -815,7 +816,6 @@ export function DocumentDrawer({
             value={selectedPopulation}
             onChange={(e) => setSelectedPopulation(e.target.value)}
             className={cn(fieldControlPlain, "mt-1 text-xs")}
-            aria-label="Filter by population"
           >
             <option value="all">All Populations</option>
             {allPopulations.map((p) => (
@@ -837,7 +837,6 @@ export function DocumentDrawer({
             value={selectedDesignation}
             onChange={(e) => setSelectedDesignation(e.target.value as SourceDesignation | "all")}
             className={cn(fieldControlPlain, "mt-1 text-xs")}
-            aria-label="Filter by source provenance designation"
           >
             <option value="all">All provenance</option>
             <option value="official">Official</option>
@@ -859,7 +858,7 @@ export function DocumentDrawer({
       ) : null}
       {pagination && pagination.total > documents.length ? (
         <p className={cn("text-xs", textMuted)}>
-          Showing {documents.length} of {pagination.total} documents. Load more to manage older files.
+          Loaded {documents.length} of {pagination.total} documents. Load more to manage older files.
         </p>
       ) : null}
       {isAdminMode ? (
@@ -1039,7 +1038,7 @@ export function DocumentDrawer({
             live="polite"
           />
         ) : (
-          filtered.slice(0, 12).map((document) => {
+          filtered.slice(0, visibleRowLimit).map((document) => {
             const selected = selectedDocumentIds.includes(document.id);
             return (
               <div key={document.id} className="grid gap-3 p-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
@@ -1103,6 +1102,18 @@ export function DocumentDrawer({
           })
         )}
       </div>
+      {/* The list draws a step of rows at a time, so every loaded document stays
+          reachable for rename, delete, scope and bulk actions without a filter. */}
+      {filtered.length > visibleRowLimit ? (
+        <button
+          type="button"
+          onClick={() => setVisibleRowLimit((limit) => limit + documentDrawerRowStep)}
+          className={cn(floatingControl, "w-full justify-center")}
+        >
+          <ChevronDown aria-hidden="true" className="h-4 w-4" />
+          Show more ({visibleRowLimit} of {filtered.length} shown)
+        </button>
+      ) : null}
       {pagination?.hasMore ? (
         <button
           type="button"

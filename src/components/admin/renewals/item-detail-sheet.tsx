@@ -62,6 +62,17 @@ export function ChecklistItemDetailSheet({
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The sheet stays mounted between items, so one item's failed save is not shown on the next.
+  const subjectKey = subject
+    ? subject.kind === "catalogue"
+      ? `catalogue:${subject.item.id}`
+      : `personal:${subject.entry.id}`
+    : null;
+  const [seenSubjectKey, setSeenSubjectKey] = useState(subjectKey);
+  if (subjectKey !== seenSubjectKey) {
+    setSeenSubjectKey(subjectKey);
+    setError(null);
+  }
   // Example records never leave the app, a calendar file included.
   const { active: adminExample } = useExampleData("admin");
   const open = subject !== null;

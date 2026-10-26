@@ -1873,9 +1873,11 @@ select,
   /* Hairline on the field edge, not an inset accent rectangle. The previous
      inset offset plus solid `--focus` read as a default browser ring and, on
      transparent inputs nested in a rounded search shell, drew a sharp box
-     around the text while the icon sat outside it. */
+     around the text while the icon sat outside it. 70% accent, as for
+     `.field-control` below: 32% measured about 2.2:1 against the light page,
+     under the 3:1 WCAG 1.4.11 floor (design audit D-19). */
   box-shadow: var(--shadow-inset);
-  outline: 1px solid color-mix(in srgb, var(--clinical-accent) 32%, var(--border-strong));
+  outline: 1px solid color-mix(in srgb, var(--clinical-accent) 70%, var(--border-strong));
   outline-offset: 0;
 }
 
@@ -1912,9 +1914,10 @@ select.field-control[aria-invalid="true"]:focus-visible {
    cannot suppress the shared field rule, which is why compare / filter /
    catalogue pickers grew a bright rectangle around the text. Border only —
    do not replace resting elevation on tools / calculator / document pills,
-   the same failure the composer comment forbids. */
+   the same failure the composer comment forbids. 70% accent reaches 3:1
+   against the page in both themes; 34% was about 2.2:1 in light mode. */
 .search-shell:focus-within {
-  border-color: color-mix(in srgb, var(--clinical-accent) 34%, var(--border-strong));
+  border-color: color-mix(in srgb, var(--clinical-accent) 70%, var(--border-strong));
 }
 
 .search-shell-input:focus,

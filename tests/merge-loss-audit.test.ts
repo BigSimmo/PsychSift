@@ -249,6 +249,48 @@ describe("merge-loss removal mechanism", () => {
   it("reports unknown for an empty history", () => {
     expect(classifyRemoval({ ...base, ...walk([]) }).mechanism).toBe("unknown");
   });
+
+  // Main lands every pull request as a two-parent merge, so its first-parent chain blames
+  // "Merge pull request" for every removal unless the walk follows the side that made it.
+  describe("through a pull request merge on main", () => {
+    const histories: Record<string, Array<{ sha: string; subject: string }>> = {
+      "s1..head:lost.ts": [{ sha: "prMerge", subject: "Merge pull request #9 from BigSimmo/branch" }],
+      "s1..branchTip:lost.ts": [
+        { sha: "syncMerge", subject: "Merge remote-tracking branch 'origin/main' into branch" },
+        { sha: "revert", subject: "Revert the landing on purpose" },
+      ],
+    };
+    const parents: Record<string, string[]> = {
+      prMerge: ["mainBefore", "branchTip"],
+      syncMerge: ["branchBase", "s1"],
+    };
+    const options = (entries: Record<string, string>) => ({
+      ...base,
+      historyOf: (landingSha: string, reference: string, file: string) =>
+        histories[`${landingSha}..${reference}:${file}`] ?? [],
+      entryAt: (reference: string) => entries[reference] ?? "landed-entry",
+      isMergeCommit: (sha: string) => (parents[sha] ?? []).length > 1,
+      parentsOf: (sha: string) => parents[sha] ?? [],
+      isAncestor: (ancestor: string, descendant: string) => ancestor === "s1" && descendant === "branchTip",
+    });
+
+    it("attributes a deliberate revert on the side branch to that commit, not the merge", () => {
+      const removal = classifyRemoval(options({ prMerge: "pre-entry", branchTip: "pre-entry", revert: "pre-entry" }));
+      expect(removal).toMatchObject({ mechanism: "deliberate-commit", sha: "revert" });
+    });
+
+    it("blames the side branch's own merge when its conflict resolution dropped the change", () => {
+      const removal = classifyRemoval(
+        options({ prMerge: "pre-entry", branchTip: "pre-entry", syncMerge: "pre-entry", revert: "pre-entry" }),
+      );
+      expect(removal).toMatchObject({ mechanism: "merge-resolution", sha: "syncMerge" });
+    });
+
+    it("keeps MERGE-RESOLUTION when the pull request merge itself dropped the change", () => {
+      const removal = classifyRemoval(options({ prMerge: "pre-entry" }));
+      expect(removal).toMatchObject({ mechanism: "merge-resolution", sha: "prMerge" });
+    });
+  });
 });
 
 describe("merge-loss mechanism reporting", () => {

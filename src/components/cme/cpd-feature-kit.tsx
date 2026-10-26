@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Clock, Copy, TriangleAlert, type LucideIcon } from "lucide-react";
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import { useModeBandHeading } from "@/components/mode-band/mode-band";
@@ -26,6 +26,20 @@ import { WorkPageBack } from "@/components/work-frame/work-page-back";
 export const flatCard = "rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)]";
 export const flatRow =
   "relative flex min-h-12 min-w-0 items-center gap-3 px-3 py-2 before:pointer-events-none before:absolute before:left-3 before:right-0 before:top-0 before:h-px before:bg-[color:var(--border)] before:content-[''] first:before:hidden";
+
+/**
+ * Where a key press moves the choice in a radio group of `count` options, from
+ * `position`: arrows step and wrap, Home and End jump to the ends. Null for any
+ * other key, which the group leaves alone.
+ */
+export function radioKeyTarget(key: string, position: number, count: number): number | null {
+  if (count <= 0) return null;
+  if (key === "ArrowRight" || key === "ArrowDown") return (position + 1) % count;
+  if (key === "ArrowLeft" || key === "ArrowUp") return (position - 1 + count) % count;
+  if (key === "Home") return 0;
+  if (key === "End") return count - 1;
+  return null;
+}
 
 /**
  * A CPD feature page inside the work frame: the band names the page (eyebrow
@@ -284,6 +298,14 @@ export function CopyIconButton({
   readonly testId?: string;
 }) {
   const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
+  // One reset timer at a time: a second press restarts the 2 s, and none fires after unmount.
+  const resetTimer = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (resetTimer.current !== null) window.clearTimeout(resetTimer.current);
+    },
+    [],
+  );
   return (
     <button
       type="button"
@@ -299,7 +321,11 @@ export function CopyIconButton({
           setState("failed");
           announce("Could not copy. Select the text and copy it yourself.");
         }
-        window.setTimeout(() => setState("idle"), 2_000);
+        if (resetTimer.current !== null) window.clearTimeout(resetTimer.current);
+        resetTimer.current = window.setTimeout(() => {
+          resetTimer.current = null;
+          setState("idle");
+        }, 2_000);
       }}
       className={cn(
         focusRing,

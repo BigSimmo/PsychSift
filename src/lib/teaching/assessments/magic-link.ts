@@ -567,7 +567,8 @@ export type EpaMagicLinkValidatedSubmission = Omit<EpaMagicLinkCompletedSubmissi
 
 /**
  * Checks a supervisor's answer before it is stored, in memory or in the database: a supervision
- * level is required, feedback stays under the length limit, and neither the feedback nor the
+ * level and the assessor's "how you know" answer are required (a team member's report needs feedback
+ * naming their role), feedback stays under the length limit, and neither the feedback nor the
  * supervisor's name may carry patient details.
  */
 export function validateEpaMagicLinkSubmission(
@@ -596,8 +597,9 @@ export function validateEpaMagicLinkSubmission(
     };
   }
 
-  const observed = submission.observed ?? "direct";
-  if (!VALID_OBSERVED.has(observed)) {
+  // The assessor's declaration [EPA1p] is theirs to make, as in the in-app inbox: never assumed.
+  const observed = submission.observed ?? null;
+  if (!observed || !VALID_OBSERVED.has(observed)) {
     return {
       ok: false,
       status: "invalid",
@@ -608,6 +610,16 @@ export function validateEpaMagicLinkSubmission(
 
   const strengths = (submission.strengths ?? submission.note ?? "").trim();
   const improvements = (submission.improvements ?? submission.better ?? "").trim();
+
+  if (observed === "team" && !strengths && !improvements) {
+    return {
+      ok: false,
+      status: "invalid",
+      code: "invalid_submission",
+      message: "Name the team member's role in your feedback.",
+    };
+  }
+
   const assessorName = (submission.assessorName ?? supervisorName).trim();
 
   if (strengths.length > EPA_FEEDBACK_MAX || improvements.length > EPA_FEEDBACK_MAX) {

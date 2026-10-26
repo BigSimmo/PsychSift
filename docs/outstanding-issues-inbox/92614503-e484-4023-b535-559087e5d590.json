@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "92614503-e484-4023-b535-559087e5d590",
+  "createdOn": "2026-10-24",
+  "action": "done",
+  "payload": {
+    "id": "#MSJT12",
+    "outcome": "Cause settled: the stalls matched Railway Wait for CI skipping deploys whenever a main workflow failed. The owner turned Wait for CI off on 21 Oct 2026 after it froze deploys again, so deploys no longer stall. Whether and how to gate production deploys again is tracked in #HYSWAF (fix the flaky WebKit leg #9Z197J first).",
+    "baseRowFingerprint": "a4c73abdc7d95bb5ddfb9ce3552bcb6fb0e173ecd9dbe1dd0acf09e682ee1145",
+    "targetUlid": "01M34HDQQKMSJT12GKQ48AM3HF"
+  }
+}

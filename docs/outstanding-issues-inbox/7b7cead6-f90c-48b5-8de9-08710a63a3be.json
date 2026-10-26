@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "7b7cead6-f90c-48b5-8de9-08710a63a3be",
+  "createdOn": "2026-10-24",
+  "action": "done",
+  "payload": {
+    "id": "#SQ2FG9",
+    "outcome": "Optional rights field (status plus separate publicDisplay and aiUse permissions, evidence, checked date, recorder) added to the source acquisition ledger with a validator; check:source-acquisitions reports how many are unknown (188 of 188). No real licence status recorded: that waits on counsel (#HGEC4B). Open owner question: recording rights currently makes a signed source fingerprint stale; exclude it from the fingerprint only on the owner decision.",
+    "baseRowFingerprint": "32d380bb66d906e728f5c8c4049cfd1729559fb75039fbd33021bdd81b62e43b",
+    "targetUlid": "01M5D6CE3PSQ2FG93C7QY68NPF"
+  }
+}

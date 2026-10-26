@@ -1,10 +1,12 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
+import { BARE_NAME_GIVEN_NAMES } from "@/lib/clinical-question-bare-name";
 import {
   clinicalQuestionPatientDetail,
   clinicalQuestionPatientDetailMessage,
 } from "@/lib/clinical-question-patient-check";
+import { medicationEntitiesInText } from "@/lib/medication-entities";
 
 /**
  * The Clinical question check reuses Work's patient-detail check. The decisive risk is the
@@ -109,10 +111,9 @@ describe("clinicalQuestionPatientDetail: patient details are held back", () => {
     expect(clinicalQuestionPatientDetail("70 year old in bed 4, haloperidol dose")).not.toBeNull();
   });
 
-  it("shares Work's known gap: a bare first and last name with no title is not caught", () => {
-    // Recorded, not endorsed: Work's check reads past a bare name too, and the page says the
-    // check catches some details, not all. An age beside it no longer stands in for the name.
-    expect(clinicalQuestionPatientDetail("John Smith on clozapine")).toBeNull();
+  it("holds back a bare first and last name with no title (owner decision, 25 Oct 2026)", () => {
+    // Work's check reads past a bare name; the Clinical question check no longer does.
+    expect(clinicalQuestionPatientDetail("John Smith on clozapine")?.title).toBe("This looks like a name");
   });
 
   it("keeps a place number that looks like a millisecond reading (bed 4 ms smith)", () => {
@@ -139,5 +140,99 @@ describe("clinicalQuestionPatientDetail: patient details are held back", () => {
     expect(message).toMatch(/^This question looks like it holds a patient detail \(.+\)\. Remove it and ask again/);
     expect(message).toContain("overseas AI service");
     expect(message).not.toContain("Smith");
+  });
+});
+
+/**
+ * Owner decision, 25 Oct 2026: a bare first and last name and a street address are held back
+ * too, with eponyms, medicines and capitalised clinical terms left alone.
+ */
+describe("clinicalQuestionPatientDetail: bare names and street addresses", () => {
+  it.each([
+    ["lithium dose for John Smith", "a name"],
+    ["Sarah Jones lithium level 1.4 what next", "a name"],
+    ["lithium toxicity in jane doe", "a name"],
+    ["SARAH JONES lithium level", "a name"],
+    ["Can Emily Nguyen take clozapine with valproate", "a name"],
+    ["olanzapine for Michael O'Brien", "a name"],
+    ["sertraline dose for Fiona McDonald", "a name"],
+    ["John Smith's lithium level", "a name"],
+    ["Sar​ah Jones lithium level", "a name"],
+    ["lithium toxicity 8 Smith St Perth", "an address"],
+    ["clozapine review, lives at 12/4 Ocean View Drive", "an address"],
+    ["8 smith street lithium level", "an address"],
+    ["42 Albany Hwy agitation", "an address"],
+  ])("refuses %s", (question, finding) => {
+    const problem = clinicalQuestionPatientDetail(question);
+    expect(problem, question).not.toBeNull();
+    expect(problem!.title).toContain(finding);
+  });
+
+  it("keeps the existing refusal wording, naming the kind of detail and never the name", () => {
+    const message = clinicalQuestionPatientDetailMessage(clinicalQuestionPatientDetail("Sarah Jones lithium level")!);
+    expect(message).toBe(
+      "This question looks like it holds a patient detail (a name). Remove it and ask again: questions are sent to an overseas AI service. This check catches some details, not all.",
+    );
+    expect(message).not.toContain("Jones");
+  });
+
+  it.each([
+    // Capitalised clinical pairs start with no given name.
+    "Lithium Toxicity",
+    "Bipolar Disorder management",
+    "Clozapine Monitoring Guidelines",
+    "Mental Health Act Form 1A",
+    "Serotonin Syndrome vs NMS",
+    "Treatment Resistant Depression",
+    "Borderline Personality Disorder DBT",
+    // Eponyms (owner's list), with and without the person's given name.
+    "Asperger syndrome in adults",
+    "Hans Asperger",
+    "Tourette syndrome aripiprazole",
+    "Korsakoff syndrome thiamine",
+    "Wernicke encephalopathy thiamine dose",
+    "Wernicke Korsakoff syndrome",
+    "Capgras delusion",
+    "Munchausen syndrome by proxy",
+    "Lewy Body Dementia antipsychotics",
+    "Huntington disease chorea",
+    "Parkinson disease psychosis quetiapine",
+    "Alzheimer disease donepezil",
+    "Cotard delusion",
+    "De Clerambault syndrome",
+    "Ekbom syndrome",
+    "Charles Bonnet syndrome",
+    "Fregoli delusion",
+    // People and places a question names.
+    "Aaron Beck cognitive model",
+    "Fiona Stanley Hospital ED",
+    "Sir Charles Gairdner Hospital",
+    "King Edward Memorial Hospital perinatal",
+    "Princess Margaret Hospital",
+    "Alma Street Centre referral",
+    "Kimberley Adult Mental Health Service",
+    "St Vincent de Paul Society",
+    "St John's wort and sertraline",
+    "300 mg St John's Wort interaction",
+    "Bradley et al. 2007 thresholds",
+    // Numbers before capitalised words that are not streets.
+    "every 4 Hours Close observation",
+    "Na 130 Cl 95",
+    "QTc 480 ms Monitoring",
+    // A given name with no surname is not a bare full name.
+    "Emily lithium",
+  ])("reads %s as safe", (question) => {
+    expect(clinicalQuestionPatientDetail(question)).toBeNull();
+  });
+
+  it("starts no name with a medicine in the medication lexicon", () => {
+    const medicines = BARE_NAME_GIVEN_NAMES.filter((name) => medicationEntitiesInText(name).length > 0);
+    expect(medicines).toEqual([]);
+  });
+
+  it("reads a medicine written after a capitalised word as clinical content", () => {
+    for (const question of ["Starting Clozapine", "Switching Sertraline to Fluoxetine", "Lithium Carbonate dose"]) {
+      expect(clinicalQuestionPatientDetail(question), question).toBeNull();
+    }
   });
 });

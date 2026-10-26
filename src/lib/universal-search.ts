@@ -20,6 +20,7 @@ import { medicationIndication, rankMedicationRecords, type MedicationRecord } fr
 import { catalogueSearchScope, readCatalogueWithSeedFallback } from "@/lib/site-content/catalogue-seed-fallback";
 import { readCanonicalSiteContentRecords } from "@/lib/site-content/site-content-publication";
 import { preferBundledFormRecord, siteContentSnapshotReleaseId } from "@/lib/site-content/prefer-bundled-form-record";
+import { preferBundledMedicationPayload } from "@/lib/site-content/prefer-bundled-medication-record";
 import { bundledServicesMissingFrom, preferBundledServiceRecord } from "@/lib/site-content/bundled-service-catalogue";
 import { searchChunksWithTelemetry } from "@/lib/rag/rag";
 import { registryCorpusDetailHref } from "@/lib/registry-corpus-links";
@@ -262,18 +263,19 @@ async function searchMedicationsDomain(args: ResolvedSearchArgs): Promise<Univer
             scope: catalogueSearchScope,
             seeds: defaultMedicationRecords(),
             signal: args.signal,
-            read: async (signal) =>
-              (
-                await readCanonicalSiteContentRecords({
-                  supabase: args.supabase,
-                  kind: "medication",
-                  slug: null,
-                  cache: true,
-                  renderOnly: true,
-                  seeds: defaultMedicationRecords(),
-                  signal,
-                })
-              ).records,
+            read: async (signal) => {
+              const result = await readCanonicalSiteContentRecords({
+                supabase: args.supabase,
+                kind: "medication",
+                slug: null,
+                cache: true,
+                renderOnly: true,
+                seeds: defaultMedicationRecords(),
+                signal,
+              });
+              const activeReleaseId = siteContentSnapshotReleaseId(result.snapshot);
+              return result.records.map((record) => preferBundledMedicationPayload(record, { activeReleaseId }));
+            },
           }),
         ).records
       : defaultMedicationRecords();

@@ -6,7 +6,9 @@ import { useId, useState } from "react";
 import { ClinicalSignInNotice } from "@/components/mode-kit/clinical-sign-in-notice";
 import { useClinicalToolAccess } from "@/components/mode-kit/use-clinical-tool-access";
 import { cn, controlDisabled, ignoreUnavailableActivation } from "@/components/ui-primitives";
+import { announce } from "@/components/ui/live-announcer";
 import { useCopyToast } from "@/components/ui/toast";
+import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
 import { CLINICAL_SIGN_IN_COPY } from "@/lib/front-door-content";
 
 import type { CalculatorFixture, CalculatorItem, CalculatorTone, ScoreBand } from "./calculator-fixtures";
@@ -340,12 +342,21 @@ export function BandLegend({ calc, activeBand }: { calc: CalculatorFixture; acti
 function CheckboxRow({
   item,
   checked,
+  answered,
   onToggle,
   index,
   dense = false,
 }: {
   item: CalculatorItem;
   checked: boolean;
+  /**
+   * False until the item holds a recorded answer. An unanswered box and an
+   * explicit "No" both look unticked, and a missing answer keeps the scale
+   * incomplete, so the row says which it is — in words, for sighted and
+   * screen-reader users alike — rather than leaving mixed scales such as the MDQ
+   * with no way to see which items still count as unanswered.
+   */
+  answered: boolean;
   onToggle: () => void;
   index?: number;
   dense?: boolean;
@@ -372,6 +383,7 @@ function CheckboxRow({
           checked
             ? "border-[color:var(--clinical-accent)] bg-[color:var(--clinical-accent)] text-[color:var(--clinical-accent-contrast)]"
             : "border-[color:var(--border-strong)] bg-[color:var(--surface)]",
+          !answered && "border-dashed",
         )}
       >
         {checked ? <Check className="size-icon-sm" aria-hidden="true" /> : null}
@@ -394,6 +406,9 @@ function CheckboxRow({
           <span className="mt-0.5 block text-2xs font-medium leading-4 text-[color:var(--text-muted)]">
             {item.detail}
           </span>
+        ) : null}
+        {!answered ? (
+          <span className="mt-0.5 block text-2xs font-bold leading-4 text-[color:var(--text-muted)]">Not answered</span>
         ) : null}
       </span>
     </button>
@@ -558,7 +573,7 @@ export function CopyResultButton({
   label?: string;
   className?: string;
 }) {
-  const [copied, setCopied] = useState(false);
+  const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "failed">("idle");
   const showToast = useCopyToast();
   const copyUnavailableId = useId();
   const isComplete = state.complete;
@@ -572,12 +587,16 @@ export function CopyResultButton({
       return;
     }
     try {
-      await navigator.clipboard.writeText(formatResultSummary(calc, state));
-      setCopied(true);
+      await copyTextToClipboard(formatResultSummary(calc, state));
+      setCopyStatus("copied");
       showToast("Result summary copied to clipboard");
-      window.setTimeout(() => setCopied(false), 1500);
+      window.setTimeout(() => setCopyStatus("idle"), 1500);
     } catch {
-      /* clipboard unavailable in some embeds — mockup-safe no-op */
+      // Silence here meant pasting whatever was on the clipboard before (an older
+      // score) while believing this one was copied, so the failure is shown and said.
+      setCopyStatus("failed");
+      announce("Result not copied. Copy it into the note by hand.");
+      window.setTimeout(() => setCopyStatus("idle"), 4000);
     }
   };
 
@@ -596,12 +615,12 @@ export function CopyResultButton({
           className,
         )}
       >
-        {copied ? (
+        {copyStatus === "copied" ? (
           <CheckCheck className="size-icon-sm text-[color:var(--success)]" aria-hidden="true" />
         ) : (
           <ClipboardCopy className="size-icon-sm" aria-hidden="true" />
         )}
-        {copied ? "Copied" : label}
+        {copyStatus === "copied" ? "Copied" : copyStatus === "failed" ? "Not copied" : label}
       </button>
       {!isComplete ? (
         <span id={copyUnavailableId} className="sr-only">
@@ -743,6 +762,7 @@ export function CalculatorItems({
             item={item}
             index={itemIndex + 1}
             checked={answers[item.id] === 1}
+            answered={answers[item.id] !== undefined}
             onToggle={() => onAnswersChange(toggleCheckboxAnswer(answers, item.id))}
             dense={dense}
           />

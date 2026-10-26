@@ -9,7 +9,7 @@ export const rostTopic: WorkHelpTopic = {
   summary: "Your shifts, team, swaps and leave",
   tabs: [
     { label: "Month", body: "Your month of shifts, with anything that needs you first." },
-    { label: "Team", body: "Who is on with you, and the whole team calendar." },
+    { label: "Open shifts", body: "Extra shifts your teams have posted, with your requests at the top." },
     { label: "Swaps", body: "Swaps to answer, swaps you sent, and open shifts." },
   ],
   questions: [

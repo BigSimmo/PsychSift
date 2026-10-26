@@ -102,6 +102,32 @@ function rowKey(row: readonly string[], leftCount: number): string {
 }
 
 /**
+ * A page with no header after a page that added days is laid out by that
+ * page's columns, so its rows hold only those days: the table's last columns.
+ * Each row joins its person's row when that person has none of those days yet,
+ * or starts a new row, rather than the page being dropped for being narrower.
+ */
+function joinLastDays(table: string[][], page: PageTable): string[][] | null {
+  const header = table[0]!;
+  const leftCount = page.layout.leftStarts.length;
+  const dayCount = page.layout.centres.length;
+  const tableLeftCount = header.findIndex((cell) => countDates([cell]) === 1);
+  if (tableLeftCount !== leftCount || leftCount + dayCount > header.length) return null;
+  const start = header.length - dayCount;
+  const rows = table.map((row) => [...row]);
+  for (const pageRow of page.rows) {
+    const key = rowKey(pageRow, leftCount);
+    const days = pageRow.slice(leftCount);
+    const existing = pageRow.slice(0, leftCount).some(Boolean)
+      ? rows.slice(1).find((row) => rowKey(row, leftCount) === key && row.slice(start).every((cell) => !cell))
+      : undefined;
+    if (existing) existing.splice(start, dayCount, ...days);
+    else rows.push([...pageRow.slice(0, leftCount), ...new Array<string>(start - leftCount).fill(""), ...days]);
+  }
+  return rows;
+}
+
+/**
  * Add a later page to the table read so far, when it continues it; null when
  * it doesn't. A page continues the table when it repeats the same days (more
  * staff: its rows are added below), has no header (more staff, laid out by
@@ -111,7 +137,11 @@ function rowKey(row: readonly string[], leftCount: number): string {
  */
 function continueTable(table: string[][], page: PageTable, today: string): string[][] | null {
   const header = table[0]!;
-  if (!page.header) return page.rows.every((row) => row.length === header.length) ? [...table, ...page.rows] : null;
+  if (!page.header) {
+    const width = page.layout.leftStarts.length + page.layout.centres.length;
+    if (!page.rows.every((row) => row.length === width)) return null;
+    return width === header.length ? [...table, ...page.rows] : joinLastDays(table, page);
+  }
   if (page.header.join("\u0000") === header.join("\u0000")) return [...table, ...page.rows];
 
   const leftCount = page.layout.leftStarts.length;

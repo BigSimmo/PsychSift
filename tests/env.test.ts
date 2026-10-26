@@ -41,3 +41,20 @@ describe("deep-probe secret environment parsing", () => {
     await expect(import("@/lib/env")).rejects.toThrow();
   });
 });
+
+describe("original-document link lifetime", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  it("clamps a configured lifetime above one hour instead of refusing to start (SEC-N7)", async () => {
+    vi.stubEnv("DOCUMENT_SIGNED_URL_TTL_SECONDS", "604800");
+    await expect(import("@/lib/env")).resolves.toMatchObject({ env: { DOCUMENT_SIGNED_URL_TTL_SECONDS: 3600 } });
+  });
+
+  it("keeps a lifetime under the cap as configured", async () => {
+    vi.stubEnv("DOCUMENT_SIGNED_URL_TTL_SECONDS", "300");
+    await expect(import("@/lib/env")).resolves.toMatchObject({ env: { DOCUMENT_SIGNED_URL_TTL_SECONDS: 300 } });
+  });
+});

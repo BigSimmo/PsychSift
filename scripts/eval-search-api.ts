@@ -58,13 +58,10 @@ function ensuredBaseUrl() {
   }).trim();
 }
 
+// Only dedicated eval user tokens. SUPABASE_ACCESS_TOKEN is the Supabase CLI management token
+// here, which never authenticates /api/search and must not be sent to --base-url as a bearer.
 function envAuthToken() {
-  return (
-    process.env.RAG_EVAL_API_AUTH_TOKEN?.trim() ||
-    process.env.RAG_EVAL_AUTH_TOKEN?.trim() ||
-    process.env.SUPABASE_ACCESS_TOKEN?.trim() ||
-    ""
-  );
+  return process.env.RAG_EVAL_API_AUTH_TOKEN?.trim() || process.env.RAG_EVAL_AUTH_TOKEN?.trim() || "";
 }
 
 function isLocalNoAuthEval() {
@@ -128,7 +125,7 @@ async function main() {
   if (args.json) console.log(JSON.stringify({ baseUrl, results, thresholdFailures }, null, 2));
   if (unauthorized && !authToken && !isLocalNoAuthEval()) {
     console.error(
-      "API search eval was rejected by the real-mode auth gate. Pass --auth-token or set RAG_EVAL_API_AUTH_TOKEN, RAG_EVAL_AUTH_TOKEN, or SUPABASE_ACCESS_TOKEN to a Supabase access token, or run the ensured local server with LOCAL_NO_AUTH=true and NEXT_PUBLIC_LOCAL_NO_AUTH=true.",
+      "API search eval was rejected by the real-mode auth gate. Pass --auth-token or set RAG_EVAL_API_AUTH_TOKEN or RAG_EVAL_AUTH_TOKEN to a Supabase user access token, or run the ensured local server with LOCAL_NO_AUTH=true and NEXT_PUBLIC_LOCAL_NO_AUTH=true.",
     );
   }
   if (args.failOnThreshold && thresholdFailures.length > 0) process.exit(1);

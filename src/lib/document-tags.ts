@@ -322,7 +322,7 @@ export const clinicalDocumentTagAliases = [
   { from: "emhs", to: "east metropolitan health service" },
   { from: "emhs policy", to: "east metropolitan health service" },
   { from: "f b c", to: "full blood count" },
-  { from: "fh", to: "fiona stanley hospital" },
+  { from: "fh", to: "fremantle hospital" },
   { from: "fsh", to: "fiona stanley hospital" },
   { from: "haematological monitoring", to: "hematological monitoring" },
   { from: "honos", to: "honos rating scale" },

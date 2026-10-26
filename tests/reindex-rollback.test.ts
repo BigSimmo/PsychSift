@@ -3,9 +3,12 @@ import { describe, expect, it, vi } from "vitest";
 import {
   applyRollbackPlans,
   collectCommittedGenerations,
+  formatRollbackOutcome,
+  mergeLegacyGenerations,
   planReindexRollback,
   parseRollbackArgs,
   runReindexRollback,
+  staleEnrichmentAfterRollback,
   type CommittedGeneration,
   type RollbackScope,
   type RollbackStore,
@@ -118,6 +121,35 @@ describe("reindex rollback", () => {
     expect(repoint).not.toHaveBeenCalled();
   });
 
+  it("refuses when the current generation's commit time is unknown, unless rolling forward", async () => {
+    const document = twoGenerations();
+    document.current = "gen-unstamped";
+    const { store, repoint } = memoryStore({ [DOC_A]: document });
+    const [outcome] = await runReindexRollback(store, { kind: "documents", documentIds: [DOC_A] }, { apply: true });
+    expect(outcome.refusal).toBe("previous_generation_is_newer");
+    expect(repoint).not.toHaveBeenCalled();
+  });
+
+  it("refuses a second run that would move a rolled-back document forward again (ING-S-N2)", async () => {
+    const { store, repoint, documents } = memoryStore({ [DOC_A]: { ...twoGenerations(), current: "gen-old" } });
+    const [outcome] = await runReindexRollback(store, { kind: "documents", documentIds: [DOC_A] }, { apply: true });
+    expect(outcome.refusal).toBe("previous_generation_is_newer");
+    expect(repoint).not.toHaveBeenCalled();
+    expect(documents[DOC_A].current).toBe("gen-old");
+  });
+
+  it("rolls forward only when asked to, and says so", async () => {
+    const { store, repoint } = memoryStore({ [DOC_A]: { ...twoGenerations(), current: "gen-old" } });
+    const [outcome] = await runReindexRollback(
+      store,
+      { kind: "documents", documentIds: [DOC_A] },
+      { apply: true, allowRollForward: true },
+    );
+    expect(repoint).toHaveBeenCalledWith(DOC_A, "gen-old", "gen-new");
+    expect(formatRollbackOutcome(outcome, true)).toContain("ROLLED FORWARD");
+    expect(parseRollbackArgs(["--document-id", DOC_A, "--roll-forward"]).allowRollForward).toBe(true);
+  });
+
   it("reports an RPC refusal as a failed apply", async () => {
     const { store, repoint } = memoryStore({ [DOC_A]: twoGenerations() });
     repoint.mockResolvedValueOnce({ ok: false, reason: "ingestion_in_progress" });
@@ -228,5 +260,71 @@ describe("parseRollbackArgs", () => {
     expect(repoint).toHaveBeenCalledWith(DOC_A, "gen-new", "gen-old");
     expect(outcome).toMatchObject({ applied: false, applyError: "pointer_moved" });
     expect(documents[DOC_A].current).toBe("gen-newer");
+  });
+});
+
+describe("enrichment left stale after a rollback (DB-N1)", () => {
+  const base = { documentId: DOC_A, applied: true, applyError: null } as unknown as Parameters<
+    typeof staleEnrichmentAfterRollback
+  >[0];
+  it("names only the fields the rollback did not restore", () => {
+    expect(staleEnrichmentAfterRollback({ ...base, summaryRestored: true, labelsRestored: true })).toEqual([]);
+    expect(staleEnrichmentAfterRollback({ ...base, summaryRestored: true, labelsRestored: false })).toEqual([
+      "topic labels",
+    ]);
+    expect(staleEnrichmentAfterRollback(base)).toEqual(["summary and clinical specifics", "topic labels"]);
+    expect(staleEnrichmentAfterRollback({ ...base, applied: false })).toEqual([]);
+  });
+});
+
+// Audit DB-N3 (24 Oct 2026): the operator script's candidate selection must not scan whole page or
+// chunk tables by an unindexed column. Every pages or chunks read in the store is document-scoped.
+describe("reindex rollback script queries (DB-N3)", () => {
+  it("selects candidates from documents and scopes every page and chunk read to one document", async () => {
+    const { readFileSync } = await import("node:fs");
+    const source = readFileSync("scripts/reindex-rollback.ts", "utf8");
+    const chains = source.split(/(?=\.from\(")/).slice(1);
+    const pageOrChunk = chains.filter((chain) => /^\.from\("document_(?:pages|chunks)"\)/.test(chain));
+    expect(pageOrChunk.length).toBeGreaterThan(0);
+    for (const chain of pageOrChunk) expect(chain.split(";")[0]).toMatch(/\.eq\("document_id", documentId\)/);
+    expect(source).not.toMatch(/\.gt\("created_at"/);
+    expect(source).not.toMatch(/\.eq\("metadata->>chunker_version"/);
+  });
+});
+
+// Audit E2E-01: a generation committed before the 13 Oct 2026 page stamps shows up only through its
+// chunks, so the planner must still offer it as the previous generation.
+describe("pre-cutover generations (E2E-01)", () => {
+  it("adds a chunk-only generation and keeps a stamped generation's page date", () => {
+    const merged = mergeLegacyGenerations(
+      [{ generationId: "pilot", committedAt: "2026-10-26T01:00:00Z" }],
+      [
+        { generationId: "pilot", committedAt: "2026-10-26T00:59:00Z" },
+        { generationId: "legacy", committedAt: "2026-09-01T00:00:00Z" },
+      ],
+    );
+    expect(merged).toEqual([
+      { generationId: "pilot", committedAt: "2026-10-26T01:00:00Z" },
+      { generationId: "legacy", committedAt: "2026-09-01T00:00:00Z" },
+    ]);
+  });
+
+  it("migration lets the rollback restore unstamped pages, guards the enrichment queue and keeps summaries", async () => {
+    const { readFileSync } = await import("node:fs");
+    const sql = readFileSync("supabase/migrations/20261025170000_rollback_legacy_pages_summary_and_guards.sql", "utf8");
+    // Exercised end to end against a scratch replay of schema.sql (rollback to a legacy generation,
+    // roll forward, enrichment-queue refusal, marker clearing, snapshot refusals).
+    expect(sql).toMatch(/v_page_mode := 'legacy_unqualified'/);
+    expect(sql).toMatch(/page_storage_mode = v_page_mode/);
+    expect(sql).toMatch(
+      /from public\.indexing_v3_agent_jobs a\s+where a\.document_id = p_document_id and a\.status in \('pending', 'processing'\)/,
+    );
+    expect(sql).toMatch(
+      /new\.metadata - array\['index_generation_rolled_back_from', 'index_generation_rolled_back_at'\]/,
+    );
+    expect(sql).toMatch(/'summary_restored', v_summary_restored, 'labels_restored', v_labels_restored/);
+    // Snapshot refusal and target checks from #3732 stay in place.
+    expect(sql).toMatch(/'reason', 'target_snapshot_missing'/);
+    expect(sql).toMatch(/'reason', 'target_not_committed'/);
   });
 });

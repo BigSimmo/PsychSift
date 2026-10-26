@@ -1587,7 +1587,6 @@
           "severity": "critical",
           "counterparties": [
             "amitriptyline",
-            "atomoxetine",
             "citalopram",
             "clomipramine",
             "desvenlafaxine",
@@ -1612,7 +1611,6 @@
           "rowIndex": 1,
           "severity": "high",
           "counterparties": [
-            "atomoxetine",
             "buprenorphine-naloxone",
             "buprenorphine-patch",
             "buprenorphine-sl-depot",
@@ -6908,7 +6906,6 @@
           "rowIndex": 0,
           "severity": "caution",
           "counterparties": [
-            "atomoxetine",
             "citalopram",
             "desvenlafaxine",
             "duloxetine",
@@ -7386,7 +7383,6 @@
           "severity": "high",
           "counterparties": [
             "amitriptyline",
-            "atomoxetine",
             "clomipramine",
             "desvenlafaxine",
             "dosulepin",

@@ -35,6 +35,7 @@ import { guardExampleAction } from "@/lib/example-data/guards";
 import {
   BLANK_COURSE_DRAFT,
   bookedFor,
+  bookingDay,
   courseBookingsCsv,
   courseBookingsFileName,
   COURSE_ABOUT_MAX,
@@ -364,7 +365,11 @@ function OrganiserCourse({
 
   const exportBooked = () => {
     if (!guardExampleAction(bookings.examples, "export")) return;
-    downloadTextFile(courseBookingsCsv(state, course.id), courseBookingsFileName(course), "text/csv;charset=utf-8");
+    downloadTextFile(
+      courseBookingsCsv(state, course.id, bookings.zone),
+      courseBookingsFileName(course),
+      "text/csv;charset=utf-8",
+    );
   };
 
   return (
@@ -403,7 +408,7 @@ function OrganiserCourse({
         people={booked.map((booking) => ({
           id: booking.id,
           name: booking.self ? `${booking.person} (you)` : booking.person,
-          sub: booking.status === "attended" ? "Attended" : `Booked ${shortDate(booking.at)}`,
+          sub: booking.status === "attended" ? "Attended" : `Booked ${shortDate(booking.at, bookings.zone)}`,
         }))}
         empty="No one has booked yet."
         testId="admin-courses-booked"
@@ -415,7 +420,7 @@ function OrganiserCourse({
             people={waiting.map((booking, index) => ({
               id: booking.id,
               name: booking.self ? `${booking.person} (you)` : booking.person,
-              sub: `${index + 1} in line, joined ${shortDate(booking.at)}`,
+              sub: `${index + 1} in line, joined ${shortDate(booking.at, bookings.zone)}`,
             }))}
             empty="No one waiting."
             testId="admin-courses-waitlist"
@@ -953,8 +958,8 @@ function initials(name: string): string {
     .toUpperCase();
 }
 
-function shortDate(iso: string): string {
-  return formatCourseDay(iso.slice(0, 10)).split(" ").slice(1).join(" ");
+function shortDate(iso: string, zone: string): string {
+  return formatCourseDay(bookingDay(iso, zone)).split(" ").slice(1).join(" ");
 }
 
 interface AudienceChoice {

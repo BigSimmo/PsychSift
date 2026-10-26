@@ -27,6 +27,7 @@ import { RenewNextCard } from "@/components/admin/renewals/renew-next-card";
 import { PersonalRenewalsList } from "@/components/admin/renewals/personal-list";
 import { RecordDatesSheet, type RecordDatesReadOnly } from "@/components/admin/renewals/record-dates-sheet";
 import { RenewalsShowFilterList } from "@/components/admin/renewals/show-filter-list";
+import { useJuniorNow } from "@/components/admin/junior/junior-shared";
 import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
 import { PageTitleUnderBand, useModeBandHeading } from "@/components/mode-band/mode-band";
 import { WorkButton, WorkCard, WorkDock, WorkGlassButton, WorkIconCircle } from "@/components/mode-kit/work";
@@ -56,7 +57,7 @@ import { adminLoadState, selectAdminOwnEntries } from "@/lib/admin/own-entries";
 import { parseRenewalsShow, RENEWALS_SHOW_LABELS, renewalsShowMatches } from "@/lib/admin/renewals-filters";
 import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
 import { onCallEntrySchema, type OnCallEntry } from "@/lib/on-call/entry-model";
-import { cacheOnCallEntries, useOnCallEntries } from "@/lib/on-call/entry-store";
+import { cacheOnCallEntries, readCachedOnCallEntries, useOnCallEntries } from "@/lib/on-call/entry-store";
 import { parseApiErrorResponse } from "@/lib/api-client-error";
 import { guardExampleAction } from "@/lib/example-data/guards";
 
@@ -128,8 +129,7 @@ function keepViewFor(kind: "catalogue" | "personal", current: RenewalsView): Ren
 
 export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
   const state = useOnCallEntries();
-  const mountedAt = useMemo(() => new Date(), []);
-  const now = nowProp ?? mountedAt;
+  const now = useJuniorNow(nowProp);
   // `cacheOnCallEntries` (called from `upsert` below) writes through to the
   // shared store; this counter forces a fresh read of `state.entries` right
   // after it does, so a save is reflected on this page immediately rather
@@ -227,7 +227,9 @@ export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
   }
 
   function upsert(entry: OnCallEntry) {
-    cacheOnCallEntries([...state.entries.filter((existing) => existing.id !== entry.id), entry]);
+    // The latest cache, not this render's list: two saves in flight would otherwise undo each other.
+    const latest = readCachedOnCallEntries()?.entries ?? state.entries;
+    cacheOnCallEntries([...latest.filter((existing) => existing.id !== entry.id), entry]);
     setEntryVersion((version) => version + 1);
     setDetailSubject((current) => {
       if (!current || !current.entry || current.entry.id !== entry.id) return current;
@@ -238,7 +240,8 @@ export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
   }
 
   function removeEntry(id: string) {
-    cacheOnCallEntries(state.entries.filter((existing) => existing.id !== id));
+    const latest = readCachedOnCallEntries()?.entries ?? state.entries;
+    cacheOnCallEntries(latest.filter((existing) => existing.id !== id));
     setEntryVersion((version) => version + 1);
   }
 

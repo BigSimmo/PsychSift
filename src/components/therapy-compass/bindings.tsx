@@ -13,6 +13,12 @@ import {
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import {
+  searchTextPatientDetailRefusal,
+  usePreloadSearchPatientCheck,
+} from "@/components/clinical-dashboard/search-patient-detail-guard";
+import { useOptionalToast } from "@/components/ui/toast";
+
+import {
   THERAPY_KNOWN_SCREENS,
   THERAPY_MAX_COMPARE,
   readTherapyWorkspaceState,
@@ -230,6 +236,9 @@ export function TcProvider({ children }: { children: ReactNode }) {
     sheetOnly: workspaceFromUrl.sheetOnly,
     reviewedOnly: workspaceFromUrl.reviewedOnly,
   }));
+  usePreloadSearchPatientCheck(search.query);
+  // `push` is stable, unlike the object `useOptionalToast` returns, so it can sit in the bindings deps.
+  const pushToast = useOptionalToast()?.push;
   const [recQuery, setRecQuery] = useState("What therapy for anxiety in outpatient care?");
   const [recConstraints, setRecConstraints] = useState<string[]>(workspaceFromUrl.constraints);
   const [dismissedConstraintKeys, setDismissedConstraintKeys] = useState<string[]>([]);
@@ -447,6 +456,12 @@ export function TcProvider({ children }: { children: ReactNode }) {
       submitQuery: (q) => {
         patchSearch({ query: q });
         const trimmed = q.trim();
+        // Text that looks like it holds a patient detail stays in the box, not the address (D-03).
+        const refusal = searchTextPatientDetailRefusal(trimmed);
+        if (refusal) {
+          pushToast?.({ tone: "warning", title: refusal });
+          return;
+        }
         const params = workspaceParams();
         if (trimmed) {
           params.set("q", trimmed);
@@ -643,6 +658,7 @@ export function TcProvider({ children }: { children: ReactNode }) {
     router,
     pathname,
     searchParams,
+    pushToast,
     loading,
     error,
     retry,

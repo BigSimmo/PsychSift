@@ -101,6 +101,23 @@ describe("services scope segment vs the query-empty state", () => {
     expect(screen.getByRole("button", { name: "Remove Search in: All services filter" })).toBeVisible();
   });
 
+  it("makes the zero-results 'Show all services' escape clear the filters that caused the zero", () => {
+    // Home-based + AOD lens matches nothing in the committed catalogue (see the
+    // next test). The escape used to clear only `group`, so it reloaded the
+    // same empty list.
+    paramsState.search = `q=${encodeURIComponent("mental health")}&housing_flags=home_based&substance=aod`;
+    render(<ServicesNavigatorPage />);
+
+    expect(screen.getByText(/no services match/i)).toBeInTheDocument();
+    const href = screen.getByRole("link", { name: "Show all services" }).getAttribute("href")!;
+    const params = new URLSearchParams(href.split("?")[1]);
+    expect(params.get("housing_flags")).toBeNull();
+    expect(params.get("substance")).toBeNull();
+    expect(params.get("group")).toBeNull();
+    expect(params.get("scope")).toBe("all");
+    expect(params.get("q")).toBe("mental health");
+  });
+
   it("marks a zero-count care lens as unavailable from the active facet set", () => {
     // The committed catalogue has home-based services but none of them are
     // AOD-specific. The AOD lens would therefore be a dead end.

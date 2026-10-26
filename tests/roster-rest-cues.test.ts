@@ -86,6 +86,17 @@ describe("restCues", () => {
     expect(cueFor(cues, first)?.warning).toBeUndefined();
   });
 
+  it("keeps two crossed rules apart on one shift", () => {
+    const first = shift("night", "2026-10-05", "21:30", "2026-10-06", "08:00");
+    const second = shift("night", "2026-10-06", "21:30", "2026-10-07", "08:00");
+    const rules = { minBreakHours: 14, maxNightsInRow: 1 };
+    const words = ruleFlags(myShiftsAsAssignments([first, second]), rules)
+      .filter((flag) => flag.assignmentId === second.id)
+      .map((flag) => flag.words);
+    expect(words).toHaveLength(2);
+    expect(cueFor(restCues([first, second], rules), second)?.warning).toBe(words.join("; "));
+  });
+
   it("infers a missing kind the way the screens do", () => {
     const night = { ...shift(null, "2026-10-05", "21:30", "2026-10-06", "08:00"), title: "Nights" };
     expect(myShiftsAsAssignments([night])[0]!.kind).toBe("night");

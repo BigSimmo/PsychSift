@@ -445,6 +445,25 @@ describe("MhaClockPage", () => {
     );
   });
 
+  it("moves focus to Undo when a clock is removed from the keyboard, not on a pointer click", () => {
+    addMhaClock("2", new Date("2026-10-05T09:00:00Z"));
+    addMhaClock("3A", new Date("2026-10-05T09:10:00Z"));
+    render(<MhaClockPage forms={forms} now={now} />);
+    const [first, second] = screen.getAllByTestId("mha-clock-remove");
+    first.focus();
+    act(() => {
+      fireEvent.click(first, { detail: 1 });
+    });
+    expect(document.activeElement).not.toBe(screen.getByTestId("mha-clock-undo-button"));
+
+    second.focus();
+    act(() => {
+      // A keyboard press activates a focused button with a click whose detail is 0.
+      fireEvent.click(second, { detail: 0 });
+    });
+    expect(document.activeElement).toBe(screen.getByTestId("mha-clock-undo-button"));
+  });
+
   it("keeps Undo on screen while it has focus, and starts the countdown again when focus leaves", () => {
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
     try {

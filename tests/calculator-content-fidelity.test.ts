@@ -1,10 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { calculators as mockupCalculators } from "@/components/calculator-mockups/calculator-fixtures";
 import { calculators as productionCalculators } from "@/components/calculators/calculator-fixtures";
 
 /*
- * Content-fidelity guard for the administered PHQ-9 wording, across BOTH trees.
+ * Content-fidelity guard for the administered PHQ-9 wording.
  *
  * `calculator-fixtures.ts` carries a self-consistent wording fingerprint
  * (`wordingSetId`) and `tests/calculators-governance-hardening.test.ts`
@@ -14,10 +13,9 @@ import { calculators as productionCalculators } from "@/components/calculators/c
  * against the approved instrument text so any future paraphrase — even one
  * that also regenerates the fingerprint — goes red.
  *
- * The production fixture (`src/lib/calculators`, re-exported through
- * `src/components/calculators`) and the mockup fixture
- * (`src/components/calculator-mockups`) are two separate copies that have
- * drifted silently before (Ledger #0JGJTK), so both are pinned here.
+ * The production fixture lives in `src/lib/calculators`, re-exported through
+ * `src/components/calculators`. A separate mockup copy drifted from it before
+ * (Ledger #0JGJTK); that copy was deleted as unused on 25 Oct 2026.
  *
  * Source: PHQ-9, Kroenke, Spitzer & Williams (2001). Wording as standardised
  * in LOINC (PHQ-9 items 44249-1 … 44261-6) and reproduced in the instrument
@@ -56,10 +54,7 @@ function findPhq9(collection: readonly Phq9Fixture[]): Phq9Fixture {
   return calc;
 }
 
-const trees = [
-  ["production", productionCalculators],
-  ["mockup", mockupCalculators],
-] as const;
+const trees = [["production", productionCalculators]] as const;
 
 describe("PHQ-9 content fidelity (approved source wording)", () => {
   it.each(trees)("pins the question stem in the %s tree", (_label, collection) => {

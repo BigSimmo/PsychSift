@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { cardSurface } from "@/components/card-recipes";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FormField } from "@/components/ui/form-field";
 import { TextField } from "@/components/ui/text-field";
 import { InlineNotice, cn, fieldControlPlain, textMuted } from "@/components/ui-primitives";
@@ -27,11 +28,21 @@ function invitationStatus(invitation: ServiceInvitation, now = new Date()): stri
   return "Open";
 }
 
-function MemberRow({ member, onAction }: { readonly member: ServiceMember; readonly onAction: ActionRunner }) {
+function MemberRow({
+  member,
+  isSelf,
+  onAction,
+}: {
+  readonly member: ServiceMember;
+  readonly isSelf: boolean;
+  readonly onAction: ActionRunner;
+}) {
   const [role, setRole] = useState<ServiceRole>(member.role);
   const [clinicalReviewer, setClinicalReviewer] = useState(member.clinicalReviewer);
   const [busy, setBusy] = useState<"save" | "remove" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
+  const memberName = member.displayName || `Member ${member.id.slice(-8)}`;
 
   async function update() {
     setBusy("save");
@@ -46,6 +57,7 @@ function MemberRow({ member, onAction }: { readonly member: ServiceMember; reado
   }
 
   async function remove() {
+    if (busy) return;
     setBusy("remove");
     setError(null);
     try {
@@ -54,15 +66,14 @@ function MemberRow({ member, onAction }: { readonly member: ServiceMember; reado
       setError(cause instanceof Error ? cause.message : "This member could not be removed.");
     } finally {
       setBusy(null);
+      setConfirmRemoveOpen(false);
     }
   }
 
   return (
     <article className={cn(cardSurface, "grid gap-3 p-4")}>
       <div className="min-w-0">
-        <p className="break-all text-sm font-semibold text-[color:var(--text-heading)]">
-          {member.displayName || `Member ${member.id.slice(-8)}`}
-        </p>
+        <p className="break-all text-sm font-semibold text-[color:var(--text-heading)]">{memberName}</p>
         <p className={cn(textMuted, "mt-0.5 text-xs")}>Joined {formatOnCallDate(member.joinedAt)}</p>
       </div>
       <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
@@ -108,20 +119,38 @@ function MemberRow({ member, onAction }: { readonly member: ServiceMember; reado
           busy={busy === "remove"}
           busyLabel="Removing…"
           disabled={busy !== null}
-          onClick={() => void remove()}
+          onClick={() => setConfirmRemoveOpen(true)}
         >
           Remove member
         </Button>
       </div>
+      {/* Removal takes handbook access away at once, so a mis-tap must not do it. */}
+      <ConfirmDialog
+        open={confirmRemoveOpen}
+        onCancel={() => setConfirmRemoveOpen(false)}
+        onConfirm={() => void remove()}
+        title={isSelf ? "Remove yourself" : "Remove member"}
+        description={
+          isSelf
+            ? "You will lose access to this service handbook at once, including the admin controls. Another admin would need to invite you again."
+            : `${memberName} will lose access to this service handbook at once. To restore it, invite them again.`
+        }
+        confirmLabel={isSelf ? "Remove yourself" : "Remove member"}
+        busy={busy === "remove"}
+        busyLabel="Removing…"
+      />
     </article>
   );
 }
 
 export function ServiceAdminPanel({
   detail,
+  actorId = null,
   onAction,
 }: {
   readonly detail: ServiceDetail;
+  /** The signed-in user, so removing your own membership says so. */
+  readonly actorId?: string | null;
   readonly onAction: ActionRunner;
 }) {
   const [siteName, setSiteName] = useState("");
@@ -356,7 +385,13 @@ export function ServiceAdminPanel({
           </h3>
           <div className="grid gap-3 lg:grid-cols-2">
             {detail.members.map((member) => (
-              <MemberRow key={member.id} member={member} onAction={onAction} />
+              // Keyed on the saved role too, so a reload that changes it resyncs the row's controls.
+              <MemberRow
+                key={`${member.id}:${member.role}:${member.clinicalReviewer}`}
+                member={member}
+                isSelf={actorId !== null && member.id === actorId}
+                onAction={onAction}
+              />
             ))}
           </div>
         </section>

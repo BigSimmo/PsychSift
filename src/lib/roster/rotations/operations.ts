@@ -185,6 +185,8 @@ export function openRound(managed: ManagedRound, now: Date): ManagedRound {
   return {
     ...managed,
     round: { ...managed.round, status: "open", openedAt: managed.round.openedAt ?? now.toISOString() },
+    // Doctors can change their rankings again, so an earlier run no longer fits and must not be published.
+    allocation: null,
   };
 }
 
@@ -362,10 +364,10 @@ export function setPlacementLock(managed: ManagedRound, personId: string, termId
 }
 
 export function publishRound(managed: ManagedRound, now: Date): ManagedRound {
-  if (!managed.allocation) fail("Run the allocation before publishing.", "no_allocation");
   if (managed.round.status === "published") fail("This round is already published.", "published");
   // Doctors can still change their preferences while it is open, so the allocation may no longer fit.
   if (managed.round.status === "open") fail("Close the round and run the allocation again first.", "not_closed");
+  if (!managed.allocation) fail("Run the allocation before publishing.", "no_allocation");
   return {
     ...managed,
     round: {

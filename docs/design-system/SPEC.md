@@ -540,7 +540,8 @@ handling. Policy:
 compensates — this affects every navigation in a 26-mode app (`src/lib/app-modes.ts`). Preserve focus where navigation
 is inside an overlay or controlled workflow; otherwise move focus to the new `<h1>` or main
 landmark with `tabIndex={-1}` and announce the title once. Owned by `RouteAnnouncer`
-(COMPONENTS §5).
+(COMPONENTS §5); the one title announcement comes from Next's built-in route announcer, so
+`RouteAnnouncer` does not add a second.
 
 **9.2 Live regions are never visible content.** The shipped counterexample — a visible
 low-contrast `<p>` with `aria-live="polite"` in `document-search-results.tsx` — is two

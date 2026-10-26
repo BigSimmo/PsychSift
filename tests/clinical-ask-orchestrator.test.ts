@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+const logs = vi.hoisted(() => ({ warn: vi.fn(), error: vi.fn() }));
+vi.mock("@/lib/logger", () => ({ logger: { debug: vi.fn(), info: vi.fn(), warn: logs.warn, error: logs.error } }));
+
 import type {
   ClinicalAskDependencies,
   ClinicalAskDraft,
@@ -153,12 +156,96 @@ describe("runClinicalAsk", () => {
     expect(disabled.retrieveExternal).not.toHaveBeenCalled();
   });
 
+  it("adds no evidence notice when the orchestrator finds the evidence sufficient", async () => {
+    const dependencies = fakes();
+    const response = await runClinicalAsk(request(), scope, dependencies, new AbortController().signal, vi.fn());
+    expect(response.state).toBe("answered");
+    if (response.state === "answered") {
+      expect(response.conflicts).toEqual([]);
+      expect(response.missingInformation).toEqual([]);
+    }
+  });
+
+  // Owner decision 25 Oct 2026: the orchestrator's own conflict analysis reaches
+  // the answer even when the model's draft lists no conflict and external
+  // corroboration is off, so one value is never shown as settled.
+  it("attaches a source-conflict notice when retrieved sources disagree and the draft omits it", async () => {
+    const conflictQuestion = "Does the example service accept adult referrals within 2 weeks?";
+    const base = evidence();
+    const agreeing: ClinicalAskEvidence = {
+      ...base,
+      id: "catalogue:two-weeks",
+      extract: `${base.extract} The example service accepts referrals for adults within 2 weeks.`,
+    };
+    const disagreeing: ClinicalAskEvidence = {
+      ...base,
+      id: "catalogue:four-weeks",
+      extract: `${base.extract} The example service accepts referrals for adults within 4 weeks.`,
+    };
+    const dependencies = fakes([agreeing, disagreeing]);
+    const response = await runClinicalAsk(
+      request({ question: conflictQuestion, allowExternalFallback: false }),
+      scope,
+      dependencies,
+      new AbortController().signal,
+      vi.fn(),
+    );
+    expect(dependencies.retrieveExternal).not.toHaveBeenCalled();
+    expect(response.state).toBe("answered");
+    if (response.state === "answered") {
+      expect(response.conflicts).toHaveLength(1);
+      expect(response.conflicts[0]).toMatchObject({
+        id: "evidence-sufficiency-conflict",
+        text: "Current sources contain a material difference that requires review.",
+      });
+      expect(response.conflicts[0]?.evidenceIds.length).toBeGreaterThan(0);
+      const evidenceIds = new Set(response.evidence.map((item) => item.id));
+      for (const id of response.conflicts[0]?.evidenceIds ?? []) expect(evidenceIds.has(id)).toBe(true);
+    }
+  });
+
+  it("notes that the answer is not fully supported when no reviewed source backs it", async () => {
+    const dependencies = fakes([evidence("needs_review")]);
+    const response = await runClinicalAsk(
+      request({ allowExternalFallback: false }),
+      scope,
+      dependencies,
+      new AbortController().signal,
+      vi.fn(),
+    );
+    expect(response.state).toBe("answered");
+    if (response.state === "answered") {
+      expect(response.conflicts).toEqual([]);
+      expect(response.missingInformation[0]).toBe(
+        "The requested conclusion is not fully supported by the available evidence.",
+      );
+    }
+  });
+
   it("degrades safely when external retrieval fails", async () => {
     const local = evidence("needs_review");
     const dependencies = fakes([local]);
     dependencies.retrieveExternal.mockRejectedValue(new Error("synthetic external failure"));
     const response = await runClinicalAsk(request(), scope, dependencies, new AbortController().signal, vi.fn());
     expect(["answered", "evidence_gap"]).toContain(response.state);
+    expect(logs.warn).toHaveBeenCalledWith(
+      "Clinical Ask external search failed",
+      expect.objectContaining({ mode: "services", name: "Error", message: "synthetic external failure" }),
+    );
+  });
+
+  it("logs a failed request without the question, and still answers safely", async () => {
+    logs.error.mockClear();
+    const dependencies = fakes();
+    dependencies.retrieveIndexed.mockRejectedValue(new Error("synthetic retrieval failure"));
+    const response = await runClinicalAsk(request(), scope, dependencies, new AbortController().signal, vi.fn());
+    expect(response).toMatchObject({ state: "failed", code: "provider_unavailable", retryable: true });
+    expect(logs.error).toHaveBeenCalledOnce();
+    expect(logs.error).toHaveBeenCalledWith(
+      "Clinical Ask failed",
+      expect.objectContaining({ mode: "services", name: "Error", message: "synthetic retrieval failure" }),
+    );
+    expect(JSON.stringify(logs.error.mock.calls)).not.toContain(question);
   });
 
   it("retries invalid synthesis at most once and reruns governance", async () => {

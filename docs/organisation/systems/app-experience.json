@@ -81,7 +81,6 @@
     "src/components/document-viewer-lazy.tsx",
     "src/components/document-viewer/**",
     "src/components/dsm/**",
-    "src/components/error-boundary.tsx",
     "src/components/example-data/**",
     "src/components/factsheets/**",
     "src/components/first-nations/**",

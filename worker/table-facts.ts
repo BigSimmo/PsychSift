@@ -215,7 +215,11 @@ export function buildTableFactRows(args: {
         continue;
       }
       const rowLabel = tableFactValue(cells, labelColumn);
-      const inheritedLabel = !rowLabel && confirmedMergedRows.has(rowIndex) ? lastRowLabel : null;
+      // Audit EXT-06 (24 Oct 2026): the extractor records a merged cell without its direction. When
+      // the cell to the left has text, the label cell is covered by a span from the left (a drug
+      // name across two columns), not from above, so it must not take the previous row's label.
+      const spannedFromLeft = labelColumn > 0 && Boolean(cells[labelColumn - 1]);
+      const inheritedLabel = !rowLabel && !spannedFromLeft && confirmedMergedRows.has(rowIndex) ? lastRowLabel : null;
       // A section heading row (its label spans every other column) is a section break:
       // it is never a carry-down source for the rows below it.
       const sectionHeading =
@@ -262,7 +266,9 @@ export function buildTableFactRows(args: {
         page_number: image.pageNumber ?? sourceChunk?.page_number ?? null,
         table_title: image.tableTitle ?? image.tableLabel,
         row_label: rowLabel,
-        clinical_parameter: rowLabel ?? inheritedLabel?.label ?? image.tableTitle ?? image.tableLabel,
+        // An unlabelled row has no parameter of its own; the table title stays in table_title
+        // rather than posing as the row's clinical parameter (EXT-06).
+        clinical_parameter: rowLabel ?? inheritedLabel?.label ?? null,
         threshold_value: threshold,
         action,
         normalized_terms: normalizedTerms(`${image.tableTitle ?? ""} ${image.tableLabel ?? ""} ${rowText}`),

@@ -41,6 +41,25 @@ const corpus = [
     "2",
     "3",
   ].join("\n"),
+  // A borderless table that arrives one cell per line, with short threshold cells and signs
+  // (short threshold-cell path, chunker 1.3.2).
+  [
+    "ANC",
+    "<",
+    "1.5",
+    "stop clozapine",
+    "ANC",
+    "≥",
+    "2.0",
+    "continue",
+    "Temperature",
+    "−",
+    "1",
+    "<5",
+    "≥8",
+    "5%",
+    "-1",
+  ].join("\n"),
 ];
 
 const recorded: Record<string, string> = {
@@ -51,6 +70,11 @@ const recorded: Record<string, string> = {
   // From 1.3.1 the corpus also includes the titled-table sample above; earlier
   // entries were recorded on the first three samples only.
   "1.3.1-page|1.3.1-document": "c43e36dc4ebcabc19b0fac45b7d97ee3883a79dd533dc188ad759b3652f52922",
+  // From 1.3.2 the corpus also includes the borderless threshold-table sample above.
+  "1.3.2-page|1.3.2-document": "47277460228666ebf09c844a3e2d4325e671ded066332c6a1d6c816e94ad21b5",
+  // 1.3.3 splits the no-sentence-boundary sample above near the intended size (EXT-05) and
+  // repeats the table sample's short footnote on every piece (EXT-07).
+  "1.3.3-page|1.3.3-document": "b5498957bb9b6745a948fb402a420c48f3f9d4da723bb06b2c735535da0d4980",
 };
 
 function fingerprint() {

@@ -15,12 +15,15 @@ import { createAdminClient } from "../src/lib/supabase/admin";
 import { probeSupabaseHealth } from "../src/lib/supabase/health";
 import { resolveDeploymentCommitSha } from "../src/lib/observability/sentry-release";
 import { safeErrorLogDetails } from "../src/lib/privacy";
+import { resolveWorkerClaimScopeFilter } from "./claim-scope";
 
 export interface HealthResponse {
   status: "ok" | "degraded" | "error";
   timestamp: string;
   deploymentCommitSha: string | null;
   claimLoopPaused?: boolean;
+  /** What the claim allowlist restricts this worker to, so an operator can confirm its scope. */
+  claimScope?: WorkerClaimScopeSummary;
   checks: {
     supabase: {
       status: "ok" | "error";
@@ -36,16 +39,40 @@ export interface HealthResponse {
 
 export type WorkerHealthSnapshot = HealthResponse;
 
+export type WorkerClaimScopeSummary = {
+  restricted: boolean;
+  documentIds: number;
+  fileTypes: string[];
+  error: string | null;
+};
+
+export function summarizeWorkerClaimScope(
+  env: Record<string, string | undefined> = process.env,
+): WorkerClaimScopeSummary {
+  const scope = resolveWorkerClaimScopeFilter(env);
+  return {
+    restricted: scope.active,
+    documentIds: scope.allowedDocumentIds.size,
+    fileTypes: [...scope.allowedFileTypes],
+    error: scope.configurationError,
+  };
+}
+
+const PAUSE_OFF_VALUES = new Set(["", "false", "0", "no", "off"]);
+const CLAIM_LOOP_ON_VALUES = new Set(["", "true", "1", "yes", "on"]);
+
+/**
+ * Fails closed: only a recognised "off" value leaves WORKER_PAUSED unpaused, and only a
+ * recognised "on" value leaves WORKER_CLAIM_LOOP_ENABLED claiming. A typo such as
+ * WORKER_PAUSED=yes or =paused used to read as "not paused" (audit ING-S-N4, 24 Oct 2026).
+ */
 export function isWorkerClaimLoopPaused(env: Record<string, string | undefined> = process.env): boolean {
-  const pausedRaw = env.WORKER_PAUSED?.trim().toLowerCase();
-  if (pausedRaw === "true" || pausedRaw === "1") {
+  const pausedRaw = (env.WORKER_PAUSED ?? "").trim().toLowerCase();
+  if (!PAUSE_OFF_VALUES.has(pausedRaw)) {
     return true;
   }
-  const enabledRaw = env.WORKER_CLAIM_LOOP_ENABLED?.trim().toLowerCase();
-  if (enabledRaw === "false" || enabledRaw === "0") {
-    return true;
-  }
-  return false;
+  const enabledRaw = (env.WORKER_CLAIM_LOOP_ENABLED ?? "").trim().toLowerCase();
+  return !CLAIM_LOOP_ON_VALUES.has(enabledRaw);
 }
 
 // Global state: track last successful claim processing for staleness detection.
@@ -170,6 +197,7 @@ export async function performHealthCheck(): Promise<WorkerHealthSnapshot> {
     timestamp: new Date().toISOString(),
     deploymentCommitSha: resolveDeploymentCommitSha(),
     claimLoopPaused,
+    claimScope: summarizeWorkerClaimScope(process.env),
     checks,
   };
 }

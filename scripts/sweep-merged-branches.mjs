@@ -41,10 +41,14 @@ function main() {
   }
 
   const currentBranch = runGit(["rev-parse", "--abbrev-ref", "HEAD"]);
-  const mergedBranches = runGit(["branch", "--merged", "main"])
+  // A format string instead of the human listing, which prefixes "* " (this worktree) and
+  // "+ " (another worktree) to branch names. A branch checked out in any worktree cannot be
+  // deleted with -d, so it is not a candidate.
+  const mergedBranches = runGit(["branch", "--merged", "main", "--format=%(refname:short)\t%(worktreepath)"])
     .split("\n")
-    .map((line) => line.trim().replace(/^\*\s+/, ""))
-    .filter(Boolean);
+    .map((line) => line.split("\t"))
+    .filter(([branch, worktreePath]) => branch && !worktreePath)
+    .map(([branch]) => branch);
 
   const protectedBranches = new Set(["main", "master", "develop", currentBranch]);
   const branchesToDelete = mergedBranches.filter(
@@ -63,15 +67,22 @@ function main() {
     return;
   }
 
+  const failed = [];
   for (const branch of branchesToDelete) {
     console.log(`Deleting merged branch: ${branch}`);
     try {
       runGit(["branch", "-d", branch]);
     } catch (error) {
+      failed.push(branch);
       console.warn(`Failed to delete branch ${branch}: ${error.message}`);
     }
   }
 
+  if (failed.length > 0) {
+    console.error(`Branch cleanup incomplete: ${failed.length} branch(es) could not be deleted.`);
+    process.exitCode = 1;
+    return;
+  }
   console.log("Branch cleanup complete.");
 }
 

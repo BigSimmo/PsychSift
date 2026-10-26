@@ -230,6 +230,31 @@ describe("file readers agree on the same roster", () => {
     ]);
   });
 
+  it("joins a page with no header that continues the staff of a page that added days", async () => {
+    const pdf = rosterPdf([
+      {
+        table: [
+          ["Name", "Grade", "Mon 5/10", "Tue 6/10", "Wed 7/10"],
+          ["Dr Alex Example", "Registrar", "D", "E", "N"],
+          ["Sam Sample", "Resident", "N", "N", ""],
+        ],
+      },
+      {
+        table: [
+          ["Name", "Grade", "Thu 8/10", "Fri 9/10", "Sat 10/10"],
+          ["Dr Alex Example", "Registrar", "OFF", "D", "D"],
+        ],
+      },
+      { title: "Page 3 of 3", table: [["Sam Sample", "Resident", "D", "", "E"]] },
+    ]);
+    const grid = await readRosterPdf(pdf, TODAY);
+    const days = (cells: readonly string[]) => cells.filter((_, column) => grid.dates[column] !== null).join(",");
+    expect(grid.rows.map((row) => [row.name, days(row.cells)])).toEqual([
+      ["Dr Alex Example", "D,E,N,OFF,D,D"],
+      ["Sam Sample", "N,N,,D,,E"],
+    ]);
+  });
+
   it("does not join a later page whose days go backwards or repeat", async () => {
     const pdf = rosterPdf([
       { table: [SAMPLE_ROSTER.header, ...SAMPLE_ROSTER.rows] },

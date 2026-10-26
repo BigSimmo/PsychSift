@@ -38,7 +38,8 @@ function parseArgs(argv: string[]) {
 
 function runWorkerOnce(): Promise<void> {
   return new Promise((resolve, reject) => {
-    const child = spawn("npx", ["tsx", "worker/index.ts", "--once"], {
+    // Run tsx through the current Node binary: a bare "npx" spawn fails on Windows, where it is npx.cmd.
+    const child = spawn(process.execPath, ["scripts/run-tsx.mjs", "worker/index.ts", "--once"], {
       stdio: "inherit",
       shell: false,
     });

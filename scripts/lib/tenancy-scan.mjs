@@ -230,6 +230,10 @@ function isStringLiteral(node) {
   return Boolean(node) && ts.isStringLiteralLike(node);
 }
 
+function isNullLiteral(node) {
+  return Boolean(node) && node.kind === ts.SyntaxKind.NullKeyword;
+}
+
 /* --------------------------------------------- PostgREST `or=` disjunctions (P1-2) */
 
 /**
@@ -269,7 +273,9 @@ function termConstrainsColumn(term, column) {
       ? inner.some((part) => termConstrainsColumn(part, column))
       : inner.every((part) => termConstrainsColumn(part, column));
   }
-  return new RegExp(`^${column}\\.(eq|is)\\.`).test(term);
+  // `is.` restricts the column only as `is.null` (the shared-corpus rows):
+  // `owner_id.is.not_null` matches every tenant's owned rows, so any other value fails closed.
+  return new RegExp(`^${column}\\.(?:eq\\.|is\\.null$)`).test(term);
 }
 
 /**
@@ -366,9 +372,9 @@ function containsOwnerPredicate(node) {
     if (found || !current) return;
     if (ts.isCallExpression(current) && ts.isPropertyAccessExpression(current.expression)) {
       const method = current.expression.name.text;
-      const [first] = current.arguments;
+      const [first, second] = current.arguments;
       if (
-        (method === "eq" || method === "in" || method === "is") &&
+        (method === "eq" || method === "in" || (method === "is" && isNullLiteral(second))) &&
         isStringLiteral(first) &&
         OWNER_COLUMNS.has(first.text)
       ) {
@@ -573,12 +579,16 @@ function expressionStampsColumn(node, columns) {
   const expression = unwrapExpression(node);
   if (!expression) return false;
   if (ts.isObjectLiteralExpression(expression)) {
-    return expression.properties.some((property) => {
+    const properties = expression.properties;
+    const lastStamp = properties.findLastIndex((property) => {
       if (!ts.isPropertyAssignment(property) && !ts.isShorthandPropertyAssignment(property)) return false;
       const name = property.name;
       const text = ts.isIdentifier(name) ? name.text : ts.isStringLiteralLike(name) ? name.text : null;
       return Boolean(text && columns.has(text));
     });
+    // A spread AFTER the stamp can overwrite it at runtime — `{ owner_id: user.id, ...body }`
+    // lets a client-supplied `owner_id` win — so it voids the stamp.
+    return lastStamp !== -1 && !properties.slice(lastStamp + 1).some((property) => ts.isSpreadAssignment(property));
   }
   if (ts.isArrayLiteralExpression(expression)) {
     return (
@@ -746,7 +756,10 @@ function collectChainMethodFacts(call, chain) {
       collectComparisonFilters(call, chain);
       break;
     case "is":
-      if (isStringLiteral(first) && OWNER_COLUMNS.has(first.text)) chain.proofs.push(`is:${first.text}`);
+      // Only `.is(column, null)` scopes rows (to the shared corpus); any other value proves nothing.
+      if (isStringLiteral(first) && OWNER_COLUMNS.has(first.text) && isNullLiteral(call.args[1])) {
+        chain.proofs.push(`is:${first.text}`);
+      }
       break;
     case "or":
       collectDisjunctionProofs(first, chain.proofs);
@@ -801,6 +814,17 @@ function analyzeChain(sourceFile, fromCall, context) {
 const OWNER_PROOF = /^(eq|in|is):(owner_id|documents\.owner_id)$|^(insert|upsert):owner_id$|^or:owner_id$|^wrapper:/;
 const USER_PROOF = /^(eq|in):user_id$|^(insert|upsert):user_id$|^or:user_id$/;
 
+/**
+ * Does the chain carry an owner proof? A `documents.owner_id` filter on an embedded
+ * resource restricts the PARENT rows only when the embed is `documents!inner`; without it
+ * PostgREST filters the embedded rows and still returns every parent row.
+ */
+function chainIsOwnerScoped(chain) {
+  return chain.proofs.some(
+    (proof) => OWNER_PROOF.test(proof) && (!proof.endsWith(":documents.owner_id") || chain.innerJoinsDocuments),
+  );
+}
+
 /* --------------------------------------------------------- scope-level facts */
 
 function collectOwnerScopedDocumentFacts(sourceFile, node, context, facts) {
@@ -813,7 +837,7 @@ function collectOwnerScopedDocumentFacts(sourceFile, node, context, facts) {
     node.arguments[0].text === "documents"
   ) {
     const chain = analyzeChain(sourceFile, node, context);
-    if (!chain.proofs.some((proof) => OWNER_PROOF.test(proof))) return;
+    if (!chainIsOwnerScoped(chain)) return;
     facts.hasOwnerScopedDocumentsQuery = true;
     if (chain.idFilter?.argument) facts.ownerScopedDocumentIds.add(chain.idFilter.argument);
   }
@@ -1022,7 +1046,7 @@ export function analyzeSource({ relativePath, source, tiers }) {
           scope: enclosingNamedScope(node),
           line: sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line + 1,
           proofs: chain.proofs,
-          ownerScopedChain: chain.proofs.some((proof) => OWNER_PROOF.test(proof)),
+          ownerScopedChain: chainIsOwnerScoped(chain),
           userScopedChain: chain.proofs.some((proof) => USER_PROOF.test(proof)),
           documentFilter: chain.documentFilter,
           innerJoinsDocuments: chain.innerJoinsDocuments,
@@ -1479,11 +1503,11 @@ export const DERIVED_QUERY_INVENTORY = [
   {
     file: "src/app/api/eval-cases/route.ts",
     table: "document_chunks",
-    fn: "ownedChunkIdSet",
+    fn: "readableChunkIdSet",
     queries: 1,
     proof: PROOF_KINDS.PARENT_DOCUMENT_VERIFIED,
     reason:
-      'Audit L23. The capture body supplies candidate chunk ids, so this read is deliberately unscoped: it looks up only `id,document_id` for the ids the caller named. Nothing is returned from it directly. The parent documents are then read in the same function with `.eq("owner_id", args.ownerId)`, and the returned Set keeps only chunk ids whose document appears in that owner-scoped result — so a chunk the caller does not own can never leave this helper. Rejected ids are counted and reported, matching the existing malformed-id tally.',
+      "Audit L23. The capture body supplies candidate chunk ids, so this read is deliberately unscoped: it looks up only `id,document_id` for the ids the caller named. Nothing is returned from it directly. The parent documents are then read in the same function through `withOwnerReadScope(..., args.ownerId)` (the caller's owned rows plus the published public corpus, which most answers cite), and the returned Set keeps only chunk ids whose document appears in that read-scoped result — so a chunk the caller cannot read can never leave this helper. Rejected ids are counted and reported, matching the existing malformed-id tally.",
   },
   {
     file: "src/app/api/clinical-quality/route.ts",
@@ -1561,11 +1585,11 @@ export const DERIVED_QUERY_INVENTORY = [
   {
     file: "src/app/api/eval-cases/route.ts",
     table: "document_chunks",
-    fn: "ownedChunkReference",
+    fn: "readableChunkReference",
     queries: 1,
     proof: PROOF_KINDS.REVIEWED_INDIRECT,
     reason:
-      "Read-then-verify: selects only `id,document_id` for a caller-supplied chunk id, then calls ownedDocumentId on the returned document_id and returns null unless it belongs to the requester. No chunk content is selected and nothing is returned for a chunk the caller does not own.",
+      "Read-then-verify: selects only `id,document_id` for a caller-supplied chunk id, then calls readableDocumentId on the returned document_id and returns null unless the requester can read it (owned, or published public corpus, via withOwnerReadScope). No chunk content is selected and nothing is returned for a chunk the caller cannot read.",
   },
   {
     file: "src/app/api/images/[id]/signed-url/route.ts",
@@ -1590,18 +1614,18 @@ export const DERIVED_QUERY_INVENTORY = [
     table: "ingestion_jobs",
     fn: "GET",
     queries: 3,
-    proof: PROOF_KINDS.DOCUMENTS_INNER_JOIN,
+    proof: PROOF_KINDS.REVIEWED_INDIRECT,
     reason:
-      'The page query, the active-count query and the failed-count query each join `documents!inner` and filter `.eq("documents.owner_id", user.id)`, so ownership rides on every one of the three query chains itself. 2 -> 3 on 2026-09-04 when #L15 added the pre-pagination failed-job head count, built as a copy of the active-count chain precisely so it would carry the same on-chain filter rather than need a weaker proof.',
+      "Administrator-only (`requireAuthenticatedUser(..., { administrator: true })`). The page query, the active-count query and the failed-count query each join `documents!inner` and filter the joined document to the administrator's own documents or a shared public-library document (`owner_id.eq.<user>,owner_id.is.null` on the `documents` reference), so no other user's private document is ever listed. Widened from the owner-only `documents-inner-join` proof on 2026-10-25 (audit ING-S-N7): jobs for owner-less library documents were invisible here, so a failed one could not be seen or retried from the panel.",
   },
   {
     file: "src/app/api/ingestion/jobs/[id]/retry/route.ts",
     table: "ingestion_jobs",
     fn: "POST",
     queries: 2,
-    proof: PROOF_KINDS.DOCUMENTS_INNER_JOIN,
+    proof: PROOF_KINDS.REVIEWED_INDIRECT,
     reason:
-      'Admin Retry (audit 2026-10-20 DB-01): the pre-recovery state read and the post-recovery re-read both join `documents!inner` and filter `.eq("documents.owner_id", user.id)` on the chain itself.',
+      "Admin Retry (audit 2026-10-20 DB-01), administrator-only. The pre-recovery state read and the post-recovery re-read both join `documents!inner` and allow only the administrator's own document or a shared public-library document (`owner_id.eq.<user>,owner_id.is.null` on the `documents` reference); the handler re-checks that the joined owner is null or the requester before recovering. Widened on 2026-10-25 (audit ING-S-N7) so failed library-document jobs can be retried.",
   },
   {
     file: "src/app/api/ingestion/quality/route.ts",

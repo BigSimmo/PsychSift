@@ -257,8 +257,9 @@ async function main() {
         }
 
         if (duplicate && args.force) {
-          await supabase.rpc("reset_document_index", { p_document_id: duplicate.id });
-          await supabase
+          const { error: resetError } = await supabase.rpc("reset_document_index", { p_document_id: duplicate.id });
+          if (resetError) throw new Error(resetError.message);
+          const { error: requeueError } = await supabase
             .from("documents")
             .update({
               status: "queued",
@@ -270,6 +271,7 @@ async function main() {
               import_batch_id: batch.id,
             })
             .eq("id", duplicate.id);
+          if (requeueError) throw new Error(requeueError.message);
           const { error: jobError } = await supabase.from("ingestion_jobs").insert({
             document_id: duplicate.id,
             batch_id: batch.id,
@@ -378,7 +380,7 @@ async function main() {
       }
     }
 
-    await supabase
+    const { error: progressError } = await supabase
       .from("import_batches")
       .update({
         queued_files: queued,
@@ -386,10 +388,11 @@ async function main() {
         failed_files: failed,
       })
       .eq("id", batch.id);
+    if (progressError) console.warn(`WARN import batch ${batch.id} progress not recorded: ${progressError.message}`);
   }
 
   const status = failed > 0 ? "completed_with_errors" : "completed";
-  await supabase
+  const { error: completionError } = await supabase
     .from("import_batches")
     .update({
       status,
@@ -399,10 +402,16 @@ async function main() {
       completed_at: new Date().toISOString(),
     })
     .eq("id", batch.id);
+  if (completionError) {
+    console.error(`FAIL import batch ${batch.id} completion not recorded: ${completionError.message}`);
+    process.exitCode = 1;
+  }
 
   console.log(
     `Import batch ${batch.id}: queued=${queued}, exact_copies_skipped=${skipped}, failed=${failed}, total=${files.length}`,
   );
+  // A FAIL line must not look like success to a wrapping script or `&&` chain.
+  if (failed > 0) process.exitCode = 1;
   console.log(
     "Indexing quality path unchanged: run npm run worker until jobs complete, then npm run check:indexing to verify detailed chunks, embeddings, summaries, labels, memory, index units, and quality rows.",
   );

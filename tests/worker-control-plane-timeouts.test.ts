@@ -41,6 +41,14 @@ describe("worker pause and finite control-plane deadlines (R01, R18, R34)", () =
     expect(isWorkerClaimLoopPaused({ WORKER_CLAIM_LOOP_ENABLED: "true" })).toBe(false);
   });
 
+  it("fails closed on unrecognised pause values (ING-S-N4)", () => {
+    expect(isWorkerClaimLoopPaused({ WORKER_PAUSED: "yes" })).toBe(true);
+    expect(isWorkerClaimLoopPaused({ WORKER_PAUSED: "paused" })).toBe(true);
+    expect(isWorkerClaimLoopPaused({ WORKER_PAUSED: " off " })).toBe(false);
+    expect(isWorkerClaimLoopPaused({ WORKER_PAUSED: "" })).toBe(false);
+    expect(isWorkerClaimLoopPaused({ WORKER_CLAIM_LOOP_ENABLED: "disabled" })).toBe(true);
+  });
+
   it("skips claiming jobs when paused while logging pause state and respecting --once / sleep", async () => {
     const controller = new WorkerRuntimeControl();
     const claim = vi.fn(async () => []);
@@ -77,6 +85,7 @@ describe("worker pause and finite control-plane deadlines (R01, R18, R34)", () =
     const snapshot = await getWorkerHealthSnapshot();
 
     expect(snapshot.claimLoopPaused).toBe(true);
+    expect(snapshot.claimScope).toMatchObject({ restricted: expect.any(Boolean), error: null });
     expect("deploymentCommitSha" in snapshot).toBe(true);
     expect(snapshot.deploymentCommitSha === null || /^[a-f0-9]{40}$/.test(snapshot.deploymentCommitSha)).toBe(true);
   });

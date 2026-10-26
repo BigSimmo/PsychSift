@@ -8,6 +8,7 @@ import { ruleLookbackDays } from "@/components/roster/team/calendar/use-manager-
 import { ruleFlags, swapRuleFlags } from "@/lib/roster/team/rule-flags";
 import { RosterSwapTicket } from "@/components/roster/requests/roster-swap-ticket";
 import { fetchRosterRead, postRosterAction } from "@/components/roster/use-roster-team";
+import { SHIFT_KIND_LABEL } from "@/lib/roster/shift-kind";
 import { addDaysToDate, perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 import type {
   RosterAction,
@@ -250,12 +251,12 @@ export function RosterDecisionSheet({
           </>
         ) : current ? (
           <p>
-            {current.item.shiftCode} · {current.item.kind} · {perthTimeOf(current.item.startsAt)}–
+            {current.item.shiftCode} · {SHIFT_KIND_LABEL[current.item.kind]} · {perthTimeOf(current.item.startsAt)}–
             {perthTimeOf(current.item.endsAt)}
           </p>
         ) : null}
         {checked ? (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-[color:var(--text-muted)]">
             Rechecked {perthTimeOf(checked.toISOString())}. Eligibility is checked again when you decide.
           </p>
         ) : error ? null : (

@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { useJuniorNow } from "@/components/admin/junior/junior-shared";
 import { PageTitleUnderBand } from "@/components/mode-band/mode-band";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import {
@@ -101,7 +102,7 @@ export function AdminPayPage({ now: pinned }: { now?: Date } = {}) {
   const page = usePaperworkPage("admin.pay");
   const { store, online } = page;
   const say = usePaperworkSay();
-  const now = useMemo(() => pinned ?? new Date(), [pinned]);
+  const now = useJuniorNow(pinned);
   const today = perthDateOf(now);
   const [checking, setChecking] = useState(false);
   const [failed, setFailed] = useState(false);

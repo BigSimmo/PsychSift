@@ -1065,6 +1065,33 @@ export function DictionaryTopicDetailPage({ topicSlug }: { topicSlug: string }) 
                   </div>
                 </section>
               ))}
+              {/* Reachable from typing in the topic search or a `?kind=`/`?q=`
+                  deep link. Without this the list collapsed to nothing. */}
+              {grouped.length ? null : (
+                <div
+                  data-testid="dictionary-topic-detail-empty"
+                  className={cn(dictionaryGroupCard, "px-4 py-12 text-center")}
+                >
+                  <Search className="mx-auto size-icon-xl text-[color:var(--decoration-soft)]" aria-hidden="true" />
+                  <h2 className="mt-3 text-lg font-extrabold text-[color:var(--text-heading)]">
+                    No matching dictionary entries
+                  </h2>
+                  <p className="mx-auto mt-1 max-w-md text-sm text-[color:var(--text-muted)]">
+                    {kinds.length
+                      ? "Keep the search term and remove a filter, or try a broader term."
+                      : "Try a broader term, check the spelling, or clear the search to browse the catalogue."}
+                  </p>
+                  {kinds.length ? (
+                    <button
+                      type="button"
+                      onClick={() => replace((next) => next.delete("kind"))}
+                      className="mt-4 min-h-tap rounded-lg px-4 text-sm font-semibold text-[color:var(--clinical-accent)]"
+                    >
+                      Clear filters
+                    </button>
+                  ) : null}
+                </div>
+              )}
             </div>
             <div
               id="dictionary-topic-details-phone"
@@ -1077,7 +1104,10 @@ export function DictionaryTopicDetailPage({ topicSlug }: { topicSlug: string }) 
                 </summary>
                 <div className="pb-4 text-sm leading-6 text-[color:var(--text-muted)]">
                   <p>{topic.description}</p>
-                  <p className="mt-2">Australian terminology · Updated 18 Aug 2026</p>
+                  {/* No collection-level review date is recorded, so none is shown
+                      (owner decision, 25 Oct 2026). A hard-coded stamp claimed a
+                      currency no data backed. */}
+                  <p className="mt-2">Australian terminology</p>
                 </div>
               </details>
               <details className="border-b border-[color:var(--border)]">
@@ -1131,10 +1161,6 @@ export function DictionaryTopicDetailPage({ topicSlug }: { topicSlug: string }) 
               <div>
                 <dt className="text-xs font-bold text-[color:var(--text-muted)]">Region</dt>
                 <dd className="mt-1 text-[color:var(--text)]">Australian terminology</dd>
-              </div>
-              <div>
-                <dt className="text-xs font-bold text-[color:var(--text-muted)]">Updated</dt>
-                <dd className="mt-1 text-[color:var(--text)]">18 Aug 2026</dd>
               </div>
             </dl>
             <h2 className="mt-8 text-sm font-extrabold text-[color:var(--text-heading)]">Related topics</h2>

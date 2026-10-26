@@ -27,7 +27,7 @@ import { modeModuleSurface, modePressable } from "@/components/mode-kit/recipes"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Sheet } from "@/components/ui/sheet";
 import { cn, textMuted } from "@/components/ui-primitives";
-import type { CalendarEvent } from "@/lib/calendar/calendar-event";
+import { CALENDAR_TIME_ZONE, type CalendarEvent } from "@/lib/calendar/calendar-event";
 import { monthGridRange, monthKeyOf } from "@/lib/calendar/month-grid";
 import { fortnightFor, summariseHours } from "@/lib/roster/hours";
 import { restCuesByTeam } from "@/lib/roster/rest-cues";
@@ -175,15 +175,19 @@ function hoursOf(shift: OnCallShift): number {
   return (Date.parse(shift.endsAt) - Date.parse(shift.startsAt)) / (60 * 60 * 1000);
 }
 
-/** Shifts as calendar events: the letter and kind as the title, no place. */
-function toCalendarEvents(shifts: readonly OnCallShift[]): CalendarEvent[] {
+/**
+ * Shifts as calendar events: the letter and kind as the title, no place.
+ * Leaving out `zone` reads the work zone's clock, for the month on screen; a
+ * calendar file is on Perth's clock, so its events pass `CALENDAR_TIME_ZONE`.
+ */
+function toCalendarEvents(shifts: readonly OnCallShift[], zone?: string): CalendarEvent[] {
   return shifts.map((shift) => {
     const kind = kindOf(shift);
     return {
       id: `roster-${shift.id}`,
       title: `${SHIFT_LETTER[kind]} · ${SHIFT_KIND_LABEL[kind]}`,
-      date: perthDateOf(shift.startsAt),
-      startTime: perthTimeOf(shift.startsAt),
+      date: perthDateOf(shift.startsAt, zone),
+      startTime: perthTimeOf(shift.startsAt, zone),
       durationMinutes: Math.round(hoursOf(shift) * 60),
       kind: "other",
     };
@@ -409,6 +413,7 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
   }, [overview, zone]);
   const cues = useCues(shifts.shifts, rulesByTeam);
   const events = useMemo(() => toCalendarEvents(shifts.shifts), [shifts.shifts]);
+  const exportEvents = useMemo(() => toCalendarEvents(shifts.shifts, CALENDAR_TIME_ZONE), [shifts.shifts]);
   const holidayEvents = useMemo<CalendarEvent[]>(
     () =>
       [...WA_PUBLIC_HOLIDAYS]
@@ -540,7 +545,7 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
           <div className={shifts.teamLoading ? "hidden" : undefined}>
             <CalendarView
               events={[...events, ...holidayEvents]}
-              exportEvents={events}
+              exportEvents={exportEvents}
               today={today}
               exportName="Roster"
               testId="roster-shifts-month"

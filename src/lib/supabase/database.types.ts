@@ -1022,22 +1022,28 @@ export type Database = {
           captured_at: string;
           document_id: string;
           index_generation_id: string;
+          labels: Json | null;
           metadata: Json | null;
           quality: Json | null;
+          summary: Json | null;
         };
         Insert: {
           captured_at?: string;
           document_id: string;
           index_generation_id: string;
+          labels?: Json | null;
           metadata?: Json | null;
           quality?: Json | null;
+          summary?: Json | null;
         };
         Update: {
           captured_at?: string;
           document_id?: string;
           index_generation_id?: string;
+          labels?: Json | null;
           metadata?: Json | null;
           quality?: Json | null;
+          summary?: Json | null;
         };
         Relationships: [
           {
@@ -1369,6 +1375,7 @@ export type Database = {
           created_at: string;
           document_id: string;
           id: string;
+          index_generation_id: string | null;
           metadata: Json;
           ocr_used: boolean;
           page_number: number;
@@ -1378,6 +1385,7 @@ export type Database = {
           created_at?: string;
           document_id: string;
           id?: string;
+          index_generation_id?: string | null;
           metadata?: Json;
           ocr_used?: boolean;
           page_number: number;
@@ -1387,6 +1395,7 @@ export type Database = {
           created_at?: string;
           document_id?: string;
           id?: string;
+          index_generation_id?: string | null;
           metadata?: Json;
           ocr_used?: boolean;
           page_number?: number;
@@ -2084,6 +2093,7 @@ export type Database = {
           metadata: Json;
           owner_id: string | null;
           page_count: number;
+          page_storage_mode: string;
           search_tsv: unknown;
           source_path: string | null;
           status: string;
@@ -2108,6 +2118,7 @@ export type Database = {
           metadata?: Json;
           owner_id?: string | null;
           page_count?: number;
+          page_storage_mode?: string;
           search_tsv?: unknown;
           source_path?: string | null;
           status?: string;
@@ -2132,6 +2143,7 @@ export type Database = {
           metadata?: Json;
           owner_id?: string | null;
           page_count?: number;
+          page_storage_mode?: string;
           search_tsv?: unknown;
           source_path?: string | null;
           status?: string;
@@ -6249,6 +6261,10 @@ export type Database = {
         Returns: number;
       };
       purge_expired_rag_query_misses: {
+        Args: { p_retention_days?: number };
+        Returns: number;
+      };
+      purge_stale_teaching_epa_magic_links: {
         Args: { p_retention_days?: number };
         Returns: number;
       };

@@ -75,4 +75,21 @@ describe("retrieveIndexedEvidence", () => {
     ]);
     expect(JSON.stringify(evidence)).not.toMatch(/similarity|telemetry|document-private.*document-private/);
   });
+
+  it("never uses a superseded (outdated) source as evidence (#BFCTST, E2E-06)", async () => {
+    const outdated = {
+      ...result,
+      id: "chunk-outdated",
+      source_metadata: { ...result.source_metadata, document_status: "outdated" },
+    };
+    searchChunksWithTelemetry.mockResolvedValue({ results: [outdated, result], telemetry: {} });
+
+    const evidence = await retrieveIndexedEvidence(
+      clinicalAskCases[0],
+      { includePublic: true },
+      new AbortController().signal,
+    );
+
+    expect(evidence.map((item) => item.id)).toEqual(["indexed:chunk-private"]);
+  });
 });

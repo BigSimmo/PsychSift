@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { redactLogContext } from "../src/lib/logger";
 
 describe("redactLogContext", () => {
@@ -87,5 +87,32 @@ describe("redactLogContext", () => {
     expect(out.extra).toBe("[redacted]");
     expect(out.notes).toBe("[redacted]");
     expect(out.normal).toBe("Standard operational log line");
+  });
+});
+
+describe("logger stdout lines", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.resetModules();
+    vi.unstubAllEnvs();
+  });
+
+  it("keeps the event name and level when the context carries the same keys", async () => {
+    // The logger is silent under NODE_ENV=test, so stub it the way the Sentry bridge test does.
+    vi.resetModules();
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("LOG_LEVEL", "debug");
+    const { logger } = await import("../src/lib/logger");
+    const lines: string[] = [];
+    vi.spyOn(console, "error").mockImplementation((line: string) => lines.push(line));
+
+    logger.error("API request failed", { message: "relation does not exist", level: "info", status: 500 });
+
+    const parsed = JSON.parse(lines[0] ?? "{}") as Record<string, unknown>;
+    expect(parsed.message).toBe("API request failed");
+    expect(parsed.level).toBe("error");
+    expect(parsed.contextMessage).toBe("relation does not exist");
+    expect(parsed.contextLevel).toBe("info");
+    expect(parsed.status).toBe(500);
   });
 });

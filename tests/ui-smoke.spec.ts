@@ -1595,7 +1595,7 @@ test.describe("PsychSift UI smoke coverage", () => {
     // Regression guard for the "all images fail to render" incident: document
     // page images load cross-origin from Supabase Storage signed URLs. A
     // Cross-Origin-Embedder-Policy: require-corp header (or a CSP that drops
-    // the *.supabase.co image origin) silently breaks every image
+    // this app's Supabase image origin) silently breaks every image
     // while all other tests still pass. Assert the actual served headers.
     const response = await page.request.get("/");
     expect(response.status()).toBe(200);
@@ -1606,9 +1606,9 @@ test.describe("PsychSift UI smoke coverage", () => {
     const csp = headers["content-security-policy"] ?? "";
     expect(csp).toContain("img-src");
     const imgSrc = csp.split(";").find((directive) => directive.trim().startsWith("img-src"));
-    expect(imgSrc).toContain("https://*.supabase.co");
+    expect(imgSrc).toContain("https://sjrfecxgysukkwxsowpy.supabase.co");
     expect(imgSrc?.trim().split(/\s+/)).not.toContain("https:");
-    expect(csp).toContain("https://*.supabase.co");
+    expect(csp).not.toContain("*.supabase.co");
   });
 
   /*

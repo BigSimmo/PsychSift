@@ -111,6 +111,12 @@ vi.mock("@/app/api/setup-status/route", () => ({ GET: warmSetupStatus }));
 // The timed alert sender would otherwise start a once-a-minute timer in every production case.
 const startTimedAlertSender = vi.hoisted(() => vi.fn<(createClient: () => unknown) => boolean>(() => true));
 vi.mock("@/lib/alerts/timed-sender", () => ({ startTimedAlertSender }));
+// The rag_aliases and catalogue boot warms would otherwise read the live project named by
+// MATCHING_URL, and their late fire-and-forget warnings land inside later cases' console spies.
+const warmEnabledRagAliasCache = vi.hoisted(() => vi.fn<() => Promise<void>>(async () => undefined));
+vi.mock("@/lib/rag/rag-retrieval-variants", () => ({ warmEnabledRagAliasCache }));
+const warmCanonicalCatalogueSearchCaches = vi.hoisted(() => vi.fn<() => Promise<void>>(async () => undefined));
+vi.mock("@/lib/site-content/warm-catalogue-caches", () => ({ warmCanonicalCatalogueSearchCaches }));
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -225,6 +231,13 @@ describe("instrumentation boot guard", () => {
     const [request] = warmSetupStatus.mock.calls[0]!;
     // A loopback host on an unmanaged port would be refused by the local-origin guard.
     expect(new URL(request.url).hostname).toBe("startup-warm.invalid");
+  });
+
+  it("warms the rag_aliases and catalogue caches once at boot", async () => {
+    const register = await loadRegister(FULLY_CONFIGURED);
+    await register();
+    expect(warmEnabledRagAliasCache).toHaveBeenCalledTimes(1);
+    expect(warmCanonicalCatalogueSearchCaches).toHaveBeenCalledTimes(1);
   });
 
   it("starts the timed alert sender once at boot with the service client", async () => {

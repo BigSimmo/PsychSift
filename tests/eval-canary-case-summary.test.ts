@@ -36,6 +36,13 @@ describe("eval canary per-case summary", () => {
     expect(renderCaseSummary(report(0))).toContain("Every answer case passed individually.");
   });
 
+  it("says a section with no cases was not run, rather than that every case passed", () => {
+    const ragOnly = { rag: report(0).rag, retrieval: { summary: { case_count: 0, failed_cases: [] } } };
+    expect(renderCaseSummary(ragOnly)).toContain("No retrieval cases were run in this report.");
+    expect(renderCaseSummary({ rag: report(0).rag })).toContain("No retrieval cases were run in this report.");
+    expect(renderCaseSummary({ rag: report(0).rag })).not.toContain("Every retrieval case passed");
+  });
+
   it("says the evaluation did not produce a report rather than implying a pass", () => {
     expect(renderCaseSummary(null)).toContain("No per-case report was produced");
   });

@@ -46,3 +46,30 @@ export function requirementsForCpdHome(
     ? preset
     : { ...preset, requirements: preset.requirements.filter((requirement) => requirement.source === "national") };
 }
+
+/**
+ * The targets after the owner picks another CPD home while editing a year. Going back
+ * to the home the year was confirmed under brings back its confirmed targets (total
+ * and any college extras), not a fresh preset. And a task already recorded as done
+ * (plan written, self-evaluation) keeps its date across every switch, so looking at
+ * another home and coming back never quietly reopens it.
+ */
+export function requirementsAfterHomeChange(
+  current: Pick<CmeRequirementSet, "confirmedOn" | "requirements">,
+  kind: CpdHomeKind,
+  year: number,
+  saved: CmeRequirementSet | null,
+): Pick<CmeRequirementSet, "year" | "confirmedOn" | "totalHours" | "requirements"> {
+  const base =
+    saved && saved.year === year && readCpdHome(saved.confirmedSource).kind === kind
+      ? { year, confirmedOn: current.confirmedOn, totalHours: saved.totalHours, requirements: saved.requirements }
+      : requirementsForCpdHome(kind, year, current.confirmedOn);
+  return {
+    ...base,
+    requirements: base.requirements.map((requirement) => {
+      if (requirement.spec.shape !== "task") return requirement;
+      const before = current.requirements.find((item) => item.id === requirement.id && item.spec.shape === "task");
+      return before ? { ...requirement, completedOn: before.completedOn } : requirement;
+    }),
+  };
+}

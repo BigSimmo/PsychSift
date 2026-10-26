@@ -116,7 +116,10 @@ first.
   (`RAG_INCREMENTAL_EVIDENCE_PREVIEW`, default on; `docs/verified-answer-incremental-delivery-design.md`)
   sends verified source cards before the final answer, so the panel is no longer blank for the whole
   wait. The answer prose itself still arrives in one `final` frame, and the timing measurement that
-  would show how much earlier the first content now appears was never built. The refutation below
+  would show how much earlier the first content now appears was not yet built. (Updated 24 Oct 2026:
+  it has existed since commit `3145db839`, 21 Oct 2026. Answer logs now record
+  `first_verified_content_ms` beside `total_latency_ms` when a preview was sent, and the SLO snapshot
+  reports `timeToFirstContent` p50/p95. It is display only; no alert reads it.) The refutation below
   stands: the preview sends verified units, never raw tokens. Line numbers below were replaced with
   symbol names on 2026-10-20 because they had drifted.
 - **The real defect.** Generation is fully buffered (`src/lib/openai.ts`, the comment _"Buffered

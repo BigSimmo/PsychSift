@@ -417,6 +417,8 @@ function NumbersSection({
 function ItemWorkspace({
   item,
   sets,
+  canMove,
+  canMutate,
   onClose,
   onMove,
   onRemove,
@@ -425,6 +427,10 @@ function ItemWorkspace({
 }: {
   item: FavouriteItem;
   sets: AccountFavouriteSet[];
+  /** Whether the account holds this item, so it can be moved and reordered (the page's `canMove`). */
+  canMove: boolean;
+  /** Whether this item can be removed (the page's `canMutate`); false for sample and example items. */
+  canMutate: boolean;
   onClose: () => void;
   onMove: (item: FavouriteItem, setId: string | null) => Promise<boolean>;
   onRemove: (item: FavouriteItem) => Promise<boolean>;
@@ -585,91 +591,97 @@ function ItemWorkspace({
                   ? "Unable to copy citation"
                   : ""}
             </span>
-            {item.contentType && item.contentKey ? (
+            {item.contentType && item.contentKey && (canMove || canMutate) ? (
               <>
-                <label className="grid gap-1 text-2xs font-semibold text-[color:var(--text-muted)]">
-                  Move to set
-                  <select
-                    value={item.setId ?? ""}
-                    disabled={mutationPending}
-                    onChange={async (event) => {
-                      setMutationPending(true);
-                      try {
-                        const moved = await onMove(item, event.target.value || null);
-                        setMutationStatus(moved ? "Favourite moved." : "Favourite could not be moved.");
-                      } catch {
-                        setMutationStatus("Favourite could not be moved.");
-                      } finally {
-                        setMutationPending(false);
-                      }
-                    }}
-                    className="min-h-tap rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-3 text-sm font-semibold text-[color:var(--text)] sm:min-h-10"
-                  >
-                    <option value="">Unsorted</option>
-                    {sets.map((set) => (
-                      <option key={set.id} value={set.id}>
-                        {set.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {([-1, 1] as const).map((direction) => {
-                    const DirectionIcon = direction === -1 ? ArrowUp : ArrowDown;
-                    return (
-                      <button
-                        key={direction}
-                        type="button"
+                {canMove ? (
+                  <>
+                    <label className="grid gap-1 text-2xs font-semibold text-[color:var(--text-muted)]">
+                      Move to set
+                      <select
+                        value={item.setId ?? ""}
                         disabled={mutationPending}
-                        onClick={async () => {
+                        onChange={async (event) => {
                           setMutationPending(true);
                           try {
-                            const reordered = await onReorder(item, direction);
-                            setMutationStatus(
-                              reordered ? "Favourite order updated." : "Favourite order could not be updated.",
-                            );
+                            const moved = await onMove(item, event.target.value || null);
+                            setMutationStatus(moved ? "Favourite moved." : "Favourite could not be moved.");
                           } catch {
-                            setMutationStatus("Favourite order could not be updated.");
+                            setMutationStatus("Favourite could not be moved.");
                           } finally {
                             setMutationPending(false);
                           }
                         }}
-                        className={cn(
-                          controlDisabled,
-                          "inline-flex min-h-tap items-center justify-center gap-2 rounded-lg border border-[color:var(--border)] px-3 text-sm font-bold text-[color:var(--text)]",
-                          focusRing,
-                        )}
+                        className="min-h-tap rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-3 text-sm font-semibold text-[color:var(--text)] sm:min-h-10"
                       >
-                        <DirectionIcon className="h-4 w-4" aria-hidden />
-                        {direction === -1 ? "Move up" : "Move down"}
-                      </button>
-                    );
-                  })}
-                </div>
-                <button
-                  type="button"
-                  disabled={mutationPending}
-                  onClick={async () => {
-                    setMutationPending(true);
-                    try {
-                      const removed = await onRemove(item);
-                      setMutationStatus(removed ? "Favourite removed." : "Favourite could not be removed.");
-                      if (removed) onClose();
-                    } catch {
-                      setMutationStatus("Favourite could not be removed.");
-                    } finally {
-                      setMutationPending(false);
-                    }
-                  }}
-                  className={cn(
-                    controlDisabled,
-                    "inline-flex min-h-tap items-center justify-start gap-2 rounded-lg border border-[color:var(--danger-border)] bg-transparent px-3 text-sm font-bold text-[color:var(--danger)]",
-                    focusRing,
-                  )}
-                >
-                  <Trash2 className="h-4 w-4" aria-hidden />
-                  {mutationPending ? "Updating…" : "Remove favourite"}
-                </button>
+                        <option value="">Unsorted</option>
+                        {sets.map((set) => (
+                          <option key={set.id} value={set.id}>
+                            {set.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {([-1, 1] as const).map((direction) => {
+                        const DirectionIcon = direction === -1 ? ArrowUp : ArrowDown;
+                        return (
+                          <button
+                            key={direction}
+                            type="button"
+                            disabled={mutationPending}
+                            onClick={async () => {
+                              setMutationPending(true);
+                              try {
+                                const reordered = await onReorder(item, direction);
+                                setMutationStatus(
+                                  reordered ? "Favourite order updated." : "Favourite order could not be updated.",
+                                );
+                              } catch {
+                                setMutationStatus("Favourite order could not be updated.");
+                              } finally {
+                                setMutationPending(false);
+                              }
+                            }}
+                            className={cn(
+                              controlDisabled,
+                              "inline-flex min-h-tap items-center justify-center gap-2 rounded-lg border border-[color:var(--border)] px-3 text-sm font-bold text-[color:var(--text)]",
+                              focusRing,
+                            )}
+                          >
+                            <DirectionIcon className="h-4 w-4" aria-hidden />
+                            {direction === -1 ? "Move up" : "Move down"}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                ) : null}
+                {canMutate ? (
+                  <button
+                    type="button"
+                    disabled={mutationPending}
+                    onClick={async () => {
+                      setMutationPending(true);
+                      try {
+                        const removed = await onRemove(item);
+                        setMutationStatus(removed ? "Favourite removed." : "Favourite could not be removed.");
+                        if (removed) onClose();
+                      } catch {
+                        setMutationStatus("Favourite could not be removed.");
+                      } finally {
+                        setMutationPending(false);
+                      }
+                    }}
+                    className={cn(
+                      controlDisabled,
+                      "inline-flex min-h-tap items-center justify-start gap-2 rounded-lg border border-[color:var(--danger-border)] bg-transparent px-3 text-sm font-bold text-[color:var(--danger)]",
+                      focusRing,
+                    )}
+                  >
+                    <Trash2 className="h-4 w-4" aria-hidden />
+                    {mutationPending ? "Updating…" : "Remove favourite"}
+                  </button>
+                ) : null}
                 <p role="status" aria-live="polite" className="text-xs font-semibold text-[color:var(--text-muted)]">
                   {mutationStatus}
                 </p>
@@ -1305,9 +1317,10 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
     });
   }
 
+  /** Queues the removal of every mutable target; returns false when none could be removed. */
   function removeItems(targets: FavouriteItem[]) {
     const mutable = targets.filter(canMutate);
-    if (mutable.length === 0) return;
+    if (mutable.length === 0) return false;
     // Account items are held back until the Undo message closes. A work page or
     // a number is on this phone, so it leaves at once and Undo puts it back as it was.
     const accountItems = mutable.filter((item) => !isWorkItem(item));
@@ -1335,6 +1348,7 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
     });
     const entry = pendingRemovalsRef.current.get(key);
     if (entry) entry.toastId = toastId;
+    return true;
   }
 
   async function reorderItem(item: FavouriteItem, direction: -1 | 1) {
@@ -2226,16 +2240,15 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
             key={selectedItem.id}
             item={selectedItem}
             sets={accountSets}
+            canMove={canMove(selectedItem)}
+            canMutate={canMutate(selectedItem)}
             onClose={() => {
               setSelectedItemId(null);
               setSelectedItemSnapshot(null);
             }}
             onMove={handleMoveNow}
             // Same held-back removal with Undo as everywhere else on the page.
-            onRemove={async (item) => {
-              removeItems([item]);
-              return true;
-            }}
+            onRemove={async (item) => removeItems([item])}
             onReorder={handleReorder}
             onOpen={handleOpen}
           />

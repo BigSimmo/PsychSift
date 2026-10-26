@@ -99,5 +99,28 @@ class MathProducerIntegrationTests(unittest.TestCase):
         self.assertNotIn("--psm", calls[1].kwargs["config"])
 
 
+    def test_decimal_free_comparison_that_the_unchanged_cell_reads_with_a_decimal_is_refused(self):
+        # Audit EXT-03: an italic decimal point can share the digit's x-interval, so "15" aligned.
+        self.plan.restore.return_value = "< 15"
+        self.engine.image_to_string.side_effect = ["15", "< 1.5", "Original full-page source."]
+        observations = {}
+        with self.patches(), patch.dict("sys.modules", {"pytesseract": self.engine}):
+            text, warning = extractor.maybe_ocr_page(self.page, extractor.ExtractionBudget(), observations)
+        self.assertEqual(text, "Original full-page source.")
+        self.assertIn("raster_table_ocr_refused", warning)
+        calls = self.engine.image_to_string.call_args_list
+        self.assertIs(calls[0].args[0], self.input_bitmap)
+        self.assertIsNot(calls[1].args[0], self.input_bitmap)
+
+    def test_decimal_free_comparison_confirmed_by_the_unchanged_cell_is_kept(self):
+        self.plan.restore.return_value = "< 15"
+        self.engine.image_to_string.side_effect = ["15", "< 15"]
+        observations = {}
+        with self.patches():
+            text = extractor.maybe_raster_table_ocr(self.page, Image.new("RGB", (100, 100)), 1,
+                extractor.ExtractionBudget(), self.engine, time.monotonic() + 30, observations)
+        self.assertEqual(text, "< 15")
+        self.assertEqual(self.engine.image_to_string.call_count, 2)
+
 if __name__ == "__main__":
     unittest.main()

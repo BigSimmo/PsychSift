@@ -12,6 +12,7 @@ import { CmeEntryForm, type CmeEntryDraft } from "@/components/cme/cme-entry-for
 import { cn, eyebrowText, fieldControlPlain, InlineNotice, textMuted } from "@/components/ui-primitives";
 import { CME_NEW_ENTRY_DRAFT_KEY } from "@/lib/account-scoped-browser-state";
 import type { CmeDraft, CmeDraftPayload } from "@/lib/cme/drafts";
+import { formatCalendarDateLong } from "@/lib/cme/cpd-year";
 import { recentRepeatableActivities } from "@/lib/cme/recent-activities";
 import type { CmeRoutine } from "@/lib/cme/routines";
 import type { CmeEntry, CmeRequirementSet } from "@/lib/cme/types";
@@ -207,8 +208,9 @@ export function CmeNewEntryRoute({
 
         {repeatOf ? (
           <p data-testid="cme-entry-repeat-notice" className={cn(textMuted, "mt-3 text-sm")}>
-            Copied from an earlier entry and dated today. Check the date and hours, and write this occasion&apos;s own
-            reflection, before saving.
+            Copied from an earlier entry and dated{" "}
+            {initialDate === today ? "today" : formatCalendarDateLong(initialDate)}. Check the date and hours, and write
+            this occasion&apos;s own reflection, before saving.
           </p>
         ) : null}
         {routine ? (
@@ -286,7 +288,7 @@ export function CmeNewEntryRoute({
                       htmlFor="cme-missed-session-input"
                       className="block text-xs font-semibold uppercase tracking-wider text-[color:var(--text-muted)]"
                     >
-                      Missed session ID or reason
+                      Missed session ID
                     </label>
                     <input
                       id="cme-missed-session-input"

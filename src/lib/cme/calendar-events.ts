@@ -22,7 +22,15 @@ const CADENCE_RECURRENCE: Record<CmeRoutineCadence, CalendarRecurrence> = {
 
 /** RANZCP's 2026 program guide keeps each year's claim open until 1 March of the following year. */
 export function cmeReportingCloseDate(set: CmeRequirementSet): string | null {
-  return isRanzcpHome(set.confirmedSource) ? `${set.year + 1}-03-01` : null;
+  return isRanzcpHome(set.confirmedSource) ? cmeReportingWindowClose(set.year) : null;
+}
+
+/**
+ * The latest date any reporting window for `year` can close, without needing
+ * the year's records: lets a caller skip loading last year once it has passed.
+ */
+export function cmeReportingWindowClose(year: number): string {
+  return `${year + 1}-03-01`;
 }
 
 export function cmeDeadlineEvents(set: CmeRequirementSet): CalendarEvent[] {

@@ -116,8 +116,11 @@ export function QrCheckInHelper({
   const streamRef = useRef<MediaStream | null>(null);
   const scanIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const mountedRef = useRef(true);
+  // Counts camera requests, so a stream that arrives after a newer request or a stop is let go, not kept.
+  const requestRef = useRef(0);
 
   const stopCamera = useCallback(() => {
+    requestRef.current += 1;
     if (scanIntervalRef.current) {
       clearInterval(scanIntervalRef.current);
       scanIntervalRef.current = null;
@@ -139,9 +142,11 @@ export function QrCheckInHelper({
   const startCamera = useCallback(async () => {
     stopCamera();
     setErrorMessage(null);
+    const request = requestRef.current;
 
     const result = await requestMobileCameraStream();
-    if (!mountedRef.current) {
+    // A second tap, a stop, or closing while the camera was being asked for: this answer is no longer wanted.
+    if (!mountedRef.current || request !== requestRef.current) {
       if (result.stream) {
         result.stream.getTracks().forEach((track) => track.stop());
       }

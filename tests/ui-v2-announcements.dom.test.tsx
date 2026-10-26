@@ -194,7 +194,7 @@ describe("RouteAnnouncer", () => {
     expect(screen.getByRole("heading", { level: 1 })).not.toHaveFocus();
   });
 
-  it("moves focus to the new h1 and announces the page title on navigation", async () => {
+  it("moves focus to the new h1 on navigation and leaves the title to Next's own announcer", () => {
     document.title = "Answer · PsychSift";
     const { rerender } = render(
       <>
@@ -217,7 +217,11 @@ describe("RouteAnnouncer", () => {
     const heading = screen.getByRole("heading", { level: 1 });
     expect(heading).toHaveAttribute("tabindex", "-1");
     expect(heading).toHaveFocus();
-    await waitFor(() => expect(screen.getByTestId("live-announcer-polite")).toHaveTextContent("Documents · PsychSift"));
+    // Next's App Router already reads the changed document.title through its
+    // assertive next-route-announcer. A second copy here made each navigation
+    // read the page name twice, so neither of our regions may carry it.
+    expect(screen.getByTestId("live-announcer-polite")).toHaveTextContent("");
+    expect(screen.getByTestId("live-announcer-assertive")).toHaveTextContent("");
   });
 
   it("leaves focus alone when the navigation happened inside a dialog", () => {

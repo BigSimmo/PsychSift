@@ -58,4 +58,10 @@ describe("enrich:documents guards", () => {
     expect(firstWrite).toBeGreaterThan(dryRunGate);
     expect(main.indexOf("upsertDocumentEnrichment(")).toBeGreaterThan(dryRunGate);
   });
+
+  it("checks every update's error and exits non-zero when any document fails", () => {
+    expect(source).not.toMatch(/\n\s*await (?:args\.)?supabase\s*\n\s*\.from\([^)]*\)\s*\n\s*\.update\(/);
+    expect(source).toContain("failed += 1;");
+    expect(source).toContain("if (failed > 0) process.exitCode = 1;");
+  });
 });

@@ -11,7 +11,15 @@ import { useCopyDiagnostics } from "@/lib/use-copy-diagnostics";
  * is NOT applied — it must supply its own <html>/<body> and inline styles so it
  * still renders correctly when the styling/theming system is exactly what failed.
  */
-export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+export default function GlobalError({
+  error,
+  retry,
+}: {
+  error: Error & { digest?: string };
+  /** `retry()` re-fetches and re-renders; `reset()` only re-renders the same failed server payload,
+   *  so a root layout server failure would show this screen again. "Try again" must be `retry`. */
+  retry: () => void;
+}) {
   const headingRef = useRef<HTMLHeadingElement>(null);
   const { copied, copyFailed, copyDiagnostics } = useCopyDiagnostics(error);
 
@@ -89,7 +97,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
           <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
             <button
               type="button"
-              onClick={() => reset()}
+              onClick={() => retry()}
               style={{
                 cursor: "pointer",
                 borderRadius: "0.5rem",

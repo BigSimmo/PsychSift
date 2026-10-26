@@ -1,4 +1,4 @@
-import { perthDateOf } from "@/lib/roster/shifts/perth-time";
+import { PERTH_TIME_ZONE, perthDateOf } from "@/lib/roster/shifts/perth-time";
 import type { RosterAssignment, RosterChanges } from "@/lib/roster/team/model";
 
 import type { PublishPeriod, RosterPublishRow } from "./build";
@@ -107,7 +107,8 @@ export function compareWithLive({
   openChoices?: Readonly<Record<string, "keep" | "file">>;
 }): PublishComparison {
   const inPeriod = live.filter((row) => {
-    const date = perthDateOf(row.startsAt);
+    // In Perth, as the database counts the period it replaces (see `build.ts`).
+    const date = perthDateOf(row.startsAt, PERTH_TIME_ZONE);
     return date >= period.start && date <= period.end;
   });
   let rows = [...fileRows];

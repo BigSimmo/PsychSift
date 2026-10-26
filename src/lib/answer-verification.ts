@@ -75,8 +75,128 @@ function foldMarkdownEmphasis(text: string): string {
   return /[*`#_]/.test(text) ? text.replace(/[*`#]+|_{2,}/g, "") : text;
 }
 
+// A comma followed by groups of exactly three digits is a thousands separator ("1,000 mg",
+// "12,500 units"), not a decimal comma. Folding it to a decimal point turned "1,000 mg" into
+// "1 mg", so a 1000-fold dose error in an answer matched the source and passed as verified.
+// Decimal commas ("0,5 mg", "2,25 mg") keep their existing decimal-point folding.
+const THOUSANDS_GROUPED_NUMBER_PATTERN = /(?<![\d.,])([1-9]\d{0,2})((?:,\d{3})+)(?!\d|,\d)/g;
+
+function foldThousandsSeparators(text: string): string {
+  return text.includes(",")
+    ? text.replace(
+        THOUSANDS_GROUPED_NUMBER_PATTERN,
+        (_match, head: string, groups: string) => head + groups.replace(/,/g, ""),
+      )
+    : text;
+}
+
+// Doses written in words ("ten milligrams") carried no atom at all, so the figure check could not
+// see them (NEW-G-02). Only a number phrase directly before a dose unit is converted, which keeps
+// ordinary prose ("one of the options", "two weeks") out of the check.
+const NUMBER_WORD_VALUES: Record<string, number> = {
+  zero: 0,
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+  seven: 7,
+  eight: 8,
+  nine: 9,
+  ten: 10,
+  eleven: 11,
+  twelve: 12,
+  thirteen: 13,
+  fourteen: 14,
+  fifteen: 15,
+  sixteen: 16,
+  seventeen: 17,
+  eighteen: 18,
+  nineteen: 19,
+  twenty: 20,
+  thirty: 30,
+  forty: 40,
+  fifty: 50,
+  sixty: 60,
+  seventy: 70,
+  eighty: 80,
+  ninety: 90,
+};
+const NUMBER_WORD = `(?:${Object.keys(NUMBER_WORD_VALUES).join("|")})`;
+const NUMBER_WORD_PHRASE = `${NUMBER_WORD}(?:[\\s-]+(?:${NUMBER_WORD}|hundred|thousand|and))*`;
+const DOSE_UNIT_WORD =
+  "(?:mg|milligrams?|milligrammes?|g|grams?|grammes?|mcg|micrograms?|ml|millilit(?:re|er)s?|mmol|units?)";
+const numberWordDosePattern = new RegExp(
+  `\\b(${NUMBER_WORD_PHRASE})(?:\\s+(?:to|-)\\s+(${NUMBER_WORD_PHRASE}))?\\s+(?=${DOSE_UNIT_WORD}\\b)`,
+  "gi",
+);
+const doseUnitWordPattern = /(\d)\s*(milligrammes?|milligrams?|grammes?|grams?|millilit(?:re|er)s?)\b/gi;
+
+type NumberWordKind = "start" | "unit" | "teen" | "tens" | "hundred" | "thousand" | "and";
+
+function numberWordKind(word: string): Exclude<NumberWordKind, "start"> | null {
+  if (word === "hundred" || word === "thousand" || word === "and") return word;
+  if (!(word in NUMBER_WORD_VALUES)) return null;
+  const value = NUMBER_WORD_VALUES[word];
+  return value < 10 ? "unit" : value < 20 ? "teen" : "tens";
+}
+
+// Which word may follow which in one written number. Anything else ("two four", "two and four",
+// "ten five") is a range or a list, not one number, so the phrase is left unconverted rather than
+// added up: "between two and four milligrams" must never become 6 mg (Codex review, 25 Oct 2026).
+const NUMBER_WORD_FOLLOWS: Record<Exclude<NumberWordKind, "start">, ReadonlySet<NumberWordKind>> = {
+  unit: new Set(["start", "tens", "hundred", "thousand", "and"]),
+  teen: new Set(["start", "hundred", "thousand", "and"]),
+  tens: new Set(["start", "hundred", "thousand", "and"]),
+  hundred: new Set(["start", "unit"]),
+  thousand: new Set(["start", "unit", "teen", "tens", "hundred"]),
+  and: new Set(["hundred", "thousand"]),
+};
+
+function numberPhraseValue(phrase: string): number | null {
+  let total = 0;
+  let current = 0;
+  let previous: NumberWordKind = "start";
+  for (const word of phrase.toLowerCase().split(/[\s-]+/)) {
+    if (word === "") continue;
+    const kind = numberWordKind(word);
+    if (!kind || !NUMBER_WORD_FOLLOWS[kind].has(previous)) return null;
+    previous = kind;
+    if (kind === "and") continue;
+    if (kind === "hundred") current = (current || 1) * 100;
+    else if (kind === "thousand") {
+      total += (current || 1) * 1000;
+      current = 0;
+    } else current += NUMBER_WORD_VALUES[word];
+  }
+  return previous === "and" ? null : total + current;
+}
+
+function canonicalDoseUnitWord(unit: string) {
+  const lower = unit.toLowerCase();
+  if (lower.startsWith("milligram")) return "mg";
+  if (lower.startsWith("millilit")) return "ml";
+  return "g";
+}
+
+function foldClinicalNumberWriting(text: string): string {
+  const worded = /[a-z]/i.test(text)
+    ? text.replace(numberWordDosePattern, (whole, first: string, second: string | undefined) => {
+        const low = numberPhraseValue(first);
+        const high = second ? numberPhraseValue(second) : null;
+        if (low === null || (second && high === null)) return whole;
+        return high === null ? `${low} ` : `${low}-${high} `;
+      })
+    : text;
+  return worded.replace(
+    doseUnitWordPattern,
+    (_whole, digit: string, unit: string) => `${digit} ${canonicalDoseUnitWord(unit)}`,
+  );
+}
+
 function normalizeNumericToken(raw: string): string {
-  return foldSuperscripts(raw)
+  return foldThousandsSeparators(foldSuperscripts(raw))
     .toLowerCase()
     .replace(/\s+/g, "")
     .replace(/[–—]/g, "-")
@@ -111,12 +231,15 @@ export type LabelledNumericBandConflict = {
   text: string;
 };
 
+// The comparator may be a word ("less than 5 mg") or a sign ("<5 mg"). Before signs were
+// captured here, "<5 mg" yielded a bare 5 mg atom, so an answer that dropped the "<" still
+// matched the source (RAG and ingestion audit 2026-10-24, NEW-G-02).
 const clinicalQuantityPattern =
-  /\b(?:(below|under|less\s+than|above|over|greater\s+than|at\s+least|at\s+most|no\s+more\s+than)\s+)?(\d+(?:[.,]\d+)?)(?:\s*[-–—]\s*(\d+(?:[.,]\d+)?))?\s*(ug|µg|μg|mcg|micrograms?|mg|g|kg|ml|l|mmol|mol|umol|µmol|ng|units?|iu|milliseconds?|msecs?|ms|tablets?|puffs?|hours?|hrs?|h|days?|weeks?|wk|months?|minutes?|mins?|years?|°c|mmhg|bpm|%)\b((?:\s*\/\s*(?:kg|m2|dose|seconds?|secs?|minutes?|mins?|hours?|hrs?|h|days?|weeks?|wk|ml|l)){0,3})/giu;
+  /(?:\b(below|under|less\s+than|above|over|greater\s+than|at\s+least|at\s+most|no\s+more\s+than)\s+|(<=|>=|<|>|≤|≥)\s*)?\b(\d{1,3}(?:,\d{3}){2,}(?:\.\d+)?|\d+(?:[.,]\d+)?)(?:\s*[-–—]\s*(\d{1,3}(?:,\d{3}){2,}(?:\.\d+)?|\d+(?:[.,]\d+)?))?\s*(ug|µg|μg|mcg|micrograms?|mg|g|kg|ml|l|mmol|mol|umol|µmol|ng|units?|iu|milliseconds?|msecs?|ms|tablets?|puffs?|hours?|hrs?|h|days?|weeks?|wk|months?|minutes?|mins?|years?|°c|mmhg|bpm|%)\b((?:\s*\/\s*(?:kg|m2|dose|seconds?|secs?|minutes?|mins?|hours?|hrs?|h|days?|weeks?|wk|ml|l)){0,3})/giu;
 const scientificQuantityPattern =
   /(?:(below|under|less\s+than|above|over|greater\s+than|at\s+least|at\s+most|no\s+more\s+than|<=|>=|<|>|≤|≥)\s*)?(\d+(?:[.,]\d+)?)\s*[×x]\s*10\^?(\d+)\s*\/\s*([a-z])/giu;
 const unitlessThresholdPattern =
-  /(?:\b(below|under|less\s+than|above|over|greater\s+than|at\s+least|at\s+most|no\s+more\s+than)\s+|(<=|>=|<|>|≤|≥)\s*)(\d+(?:[.,]\d+)?)(?:\s*[-–—]\s*(\d+(?:[.,]\d+)?))?/giu;
+  /(?:\b(below|under|less\s+than|above|over|greater\s+than|at\s+least|at\s+most|no\s+more\s+than)\s+|(<=|>=|<|>|≤|≥)\s*)(\d{1,3}(?:,\d{3}){2,}(?:\.\d+)?|\d+(?:[.,]\d+)?)(?:\s*[-–—]\s*(\d{1,3}(?:,\d{3}){2,}(?:\.\d+)?|\d+(?:[.,]\d+)?))?/giu;
 // Infer omitted years only inside explicit adjacent population-age grammar.
 // Closed continuations exclude an unknown measurement/category noun after the value.
 const populationAgePrefixPattern = /\b(?:children|adolescents|adults|people|young[ \t]+people)(?:[ \t]+aged?)?[ \t]+$/i;
@@ -130,7 +253,7 @@ const frequencyPattern =
 const everyNFrequencyPattern = /\bevery\s+(\d+)\s+(seconds?|minutes?|hours?|days?|weeks?)\b/giu;
 
 function canonicalNumber(value: string) {
-  const normalized = value.replace(",", ".");
+  const normalized = foldThousandsSeparators(value).replace(",", ".");
   const [integerPart, fractionPart] = normalized.split(".");
   const integer = integerPart.replace(/^0+(?=\d)/, "") || "0";
   const fraction = fractionPart?.replace(/0+$/, "") ?? "";
@@ -212,7 +335,7 @@ function canonicalFrequency(count: string | undefined, phrase: string) {
 /** Extract meaning-preserving clinical value atoms for exact evidence matching. */
 export function extractClinicalValueAtoms(text: string): ClinicalValueAtom[] {
   if (!text) return [];
-  const normalized = foldSuperscripts(foldMarkdownEmphasis(text)).normalize("NFKC");
+  const normalized = foldClinicalNumberWriting(foldSuperscripts(foldMarkdownEmphasis(text)).normalize("NFKC"));
   const atoms: ClinicalValueAtom[] = [];
   const occupied: Array<[number, number]> = [];
 
@@ -235,10 +358,10 @@ export function extractClinicalValueAtoms(text: string): ClinicalValueAtom[] {
     const rawText = match[0];
     const start = match.index;
     occupied.push([start, start + rawText.length]);
-    const value = canonicalNumber(match[2]);
-    const rangeEnd = match[3] ? canonicalNumber(match[3]) : undefined;
-    const unit = canonicalUnit(match[4]);
-    const denominator = denominatorSemantics(match[5] ?? "");
+    const value = canonicalNumber(match[3]);
+    const rangeEnd = match[4] ? canonicalNumber(match[4]) : undefined;
+    const unit = canonicalUnit(match[5]);
+    const denominator = denominatorSemantics(match[6] ?? "");
     const nearby = normalized.slice(start + rawText.length, start + rawText.length + 45).split(/[.!?;\n]/, 1)[0];
     const nearbyRoute = [...nearby.matchAll(routePattern)][0];
     const nearbyFrequency = [...nearby.matchAll(frequencyPattern)][0];
@@ -246,7 +369,7 @@ export function extractClinicalValueAtoms(text: string): ClinicalValueAtom[] {
       rawText,
       kind: "quantity",
       canonicalValue: rangeEnd ? `${value}-${rangeEnd}` : value,
-      comparator: canonicalComparator(match[1]),
+      comparator: canonicalComparator(match[1] ?? match[2]),
       range: rangeEnd ? [value, rangeEnd] : undefined,
       canonicalUnit: unit,
       numeratorUnit: unit,
@@ -1296,7 +1419,7 @@ function clinicalValueAtomDisplay(atom: ClinicalValueAtom) {
 
 export function extractNumericTokens(text: string): string[] {
   if (!text) return [];
-  const folded = foldSuperscripts(foldMarkdownEmphasis(text));
+  const folded = foldClinicalNumberWriting(foldSuperscripts(foldMarkdownEmphasis(text)));
   const tokens = new Set<string>();
   for (const match of folded.matchAll(NUMERIC_TOKEN_PATTERN)) {
     const normalized = normalizeNumericToken(match[0]);
@@ -1626,7 +1749,14 @@ export function applyNumericVerification(
 // verification could not confirm, leaving the text intact (just un-emphasised). Verified bold stays.
 export function unboldUnverifiedNumbers(text: string, unverified: Set<string>): string {
   if (!unverified.size || !text.includes("**")) return text;
+  // Unverified tokens are clinicalValueAtomDisplay() strings, which keep symbol comparators
+  // ("<1.5"); extractNumericTokens folds those to "below:1.5", so match on both forms or a
+  // bold "**ANC < 1.5**" threshold stays emphasised after verification fails.
   return text.replace(/\*\*([^*]+)\*\*/g, (full, inner: string) =>
-    extractNumericTokens(inner).some((token) => unverified.has(token)) ? inner : full,
+    [...extractNumericTokens(inner), ...extractClinicalValueAtoms(inner).map(clinicalValueAtomDisplay)].some((token) =>
+      unverified.has(token),
+    )
+      ? inner
+      : full,
   );
 }

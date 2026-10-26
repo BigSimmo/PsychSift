@@ -121,6 +121,47 @@ export function isCommittedGenerationMetadata(args: { rowMetadata?: unknown; com
   return rowGeneration === args.committedGeneration;
 }
 
+/**
+ * Which stored page rows a reader should see. Mirrors the SQL predicate
+ * `public.is_visible_document_page` (behind the `document_current_pages` view):
+ *
+ *   (mode = 'legacy_unqualified' and page_generation is null)
+ *   or (mode = 'typed_exact' and page_generation = document_generation)
+ *
+ * Page rows are stamped only by the typed commit, which also switches the document to
+ * 'typed_exact' and writes the generation into `documents.metadata.index_generation_id`. So a
+ * document with any stamped page row is typed, and only its committed generation's pages are
+ * current; a document with no stamped rows is legacy, and its unstamped rows are current.
+ *
+ * Page metadata never carries `index_generation_id`, so `isCommittedGenerationMetadata` kept every
+ * stored copy of a page after a re-index, and the viewer showed whichever copy came back last
+ * (RAG and ingestion audit 2026-10-24, E2E-02). When a document names a committed generation that
+ * has no rows in the set, nothing is returned: the unstamped rows are older text, and showing them
+ * as current is the hazard this guards against. Only a document naming no generation reads its
+ * unstamped rows.
+ *
+ * Pass the document's `page_storage_mode` whenever the reader has it, because the inference above
+ * fails in one case: rolling back to pre-cutover pages sets the mode back to legacy while the
+ * metadata still names the restored generation, whose pages carry no stamp. Without the mode that
+ * document would show no pages at all.
+ */
+export function currentDocumentPageRows<T extends { index_generation_id?: string | null }>(
+  rows: T[],
+  documentMetadata: unknown,
+  pageStorageMode?: string | null,
+): T[] {
+  if (pageStorageMode === "legacy_unqualified") return rows.filter((row) => !row.index_generation_id);
+  if (pageStorageMode === "typed_exact") {
+    const generation = committedIndexGeneration(documentMetadata);
+    return generation ? rows.filter((row) => row.index_generation_id === generation) : [];
+  }
+  if (!rows.some((row) => row.index_generation_id)) return rows;
+  const committedGeneration = committedIndexGeneration(documentMetadata);
+  return committedGeneration
+    ? rows.filter((row) => row.index_generation_id === committedGeneration)
+    : rows.filter((row) => !row.index_generation_id);
+}
+
 export function imageRowNeedsGenerationRestamp(args: {
   indexGenerationId: string | null;
   metadata: unknown;

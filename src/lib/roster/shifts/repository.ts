@@ -14,7 +14,8 @@ import {
   type OnCallShiftInput,
   type OnCallShiftSource,
 } from "@/lib/roster/shifts/model";
-import { addDaysToDate, perthWallToIso } from "@/lib/roster/shifts/perth-time";
+import { addDaysToDate, perthDateOf, perthTimeOf, perthWallToIso } from "@/lib/roster/shifts/perth-time";
+import { DEFAULT_WORK_TIME_ZONE } from "@/lib/work-time/zones";
 
 export { detectOwnConflicts, type OwnShiftConflict };
 
@@ -234,8 +235,15 @@ export async function markShiftImportSeen(supabase: AdminClient, ownerId: string
   return (data ?? []).length > 0;
 }
 
-function addWeeks(instant: string, weeks: number): string {
-  return new Date(Date.parse(instant) + weeks * 7 * 24 * 60 * 60 * 1000).toISOString();
+/**
+ * The same wall-clock time `weeks` weeks on, in the zone the shift was typed in.
+ * A fixed 7 x 24 h would move a Sydney 08:00 shift to 09:00 once daylight saving
+ * starts. A time the clock skips that day falls back to the fixed span.
+ */
+function addWeeks(instant: string, weeks: number, zone: string): string {
+  const fixed = new Date(Date.parse(instant) + weeks * 7 * 24 * 60 * 60 * 1000).toISOString();
+  const date = perthDateOf(instant, zone);
+  return perthWallToIso(addDaysToDate(date, weeks * 7), perthTimeOf(instant, zone), zone) ?? fixed;
 }
 
 /**
@@ -250,6 +258,7 @@ export async function addManualShifts(
   ownerId: string,
   shifts: readonly OnCallShiftInput[],
   repeatWeeks: number,
+  zone: string = DEFAULT_WORK_TIME_ZONE,
 ): Promise<OnCallShift[]> {
   requireOwner(ownerId);
   const weeks = Math.max(0, Math.min(Math.trunc(repeatWeeks), ON_CALL_MANUAL_SHIFT_REPEAT_MAX_WEEKS));
@@ -257,8 +266,8 @@ export async function addManualShifts(
   const rows = shifts.flatMap((input) =>
     Array.from({ length: weeks + 1 }, (_unused, occurrence) => ({
       owner_id: ownerId,
-      starts_at: addWeeks(input.startsAt, occurrence),
-      ends_at: addWeeks(input.endsAt, occurrence),
+      starts_at: addWeeks(input.startsAt, occurrence, zone),
+      ends_at: addWeeks(input.endsAt, occurrence, zone),
       title: input.title,
       location: input.location,
       source_uid: null,

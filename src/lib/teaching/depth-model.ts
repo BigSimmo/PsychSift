@@ -104,19 +104,22 @@ export const CPD_REVIEW_MAX_ROWS = 20;
 /**
  * Headers that look like patient identifiers. Matching any of these refuses the
  * whole import before a row is accepted. Ordinary extra columns that are not
- * patient-shaped stay ignored.
+ * patient-shaped stay ignored. Headers are normalised with hyphens turned into underscores, and an
+ * underscore is a word character, so each pattern also accepts `_` on either side ("mrn_no",
+ * "medicare_number", "pt_dob").
  */
 export const IMPORT_FORBIDDEN_HEADER_PATTERNS: readonly RegExp[] = [
   /\bpatient(?:s)?(?:_|\b|$)/,
-  /\bmrn\b/,
-  /\bumrn\b/,
-  /\bmedicare\b/,
-  /\bdob\b/,
-  /\bdate[_\s-]?of[_\s-]?birth\b/,
-  /\bsurname\b/,
-  /\bfirst[_\s-]?name\b/,
-  /\blast[_\s-]?name\b/,
-  /\bgiven[_\s-]?name\b/,
+  /(?:\b|_)mrn(?:_|\b|$)/,
+  /(?:\b|_)umrn(?:_|\b|$)/,
+  /(?:\b|_)urn(?:_|\b|$)/,
+  /(?:\b|_)medicare(?:_|\b|$)/,
+  /(?:\b|_)dob(?:_|\b|$)/,
+  /(?:\b|_)date[_\s-]?of[_\s-]?birth(?:_|\b|$)/,
+  /(?:\b|_)surname(?:_|\b|$)/,
+  /(?:\b|_)first[_\s-]?name(?:_|\b|$)/,
+  /(?:\b|_)last[_\s-]?name(?:_|\b|$)/,
+  /(?:\b|_)given[_\s-]?name(?:_|\b|$)/,
 ];
 
 export const teachingDepthActions = [

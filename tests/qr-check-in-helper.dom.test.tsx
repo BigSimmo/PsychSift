@@ -70,6 +70,31 @@ describe("QrCheckInHelper (#ZTDZ4Z)", () => {
     expect(screen.getByTestId("qr-viewfinder-reticle")).toBeInTheDocument();
   });
 
+  it("lets go of the first camera stream when Open is tapped twice before the camera answers", async () => {
+    const firstTracks = [{ stop: vi.fn() }];
+    const secondTracks = [{ stop: vi.fn() }];
+    let answerFirst: (stream: unknown) => void = () => undefined;
+    let answerSecond: (stream: unknown) => void = () => undefined;
+    vi.mocked(navigator.mediaDevices.getUserMedia)
+      .mockImplementationOnce(() => new Promise((resolve) => (answerFirst = resolve as (stream: unknown) => void)))
+      .mockImplementationOnce(() => new Promise((resolve) => (answerSecond = resolve as (stream: unknown) => void)));
+
+    render(<QrCheckInHelper onScanCode={vi.fn()} />);
+    const startBtn = screen.getByTestId("start-camera-scan-btn");
+    fireEvent.click(startBtn);
+    fireEvent.click(startBtn);
+    expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      answerFirst({ getTracks: () => firstTracks });
+      answerSecond({ getTracks: () => secondTracks });
+    });
+
+    expect(firstTracks[0].stop).toHaveBeenCalled();
+    expect(secondTracks[0].stop).not.toHaveBeenCalled();
+    expect(screen.getByTestId("qr-camera-video")).toBeInTheDocument();
+  });
+
   it("handles camera permission denial gracefully with clear feedback", async () => {
     const permError = new Error("Permission denied");
     permError.name = "NotAllowedError";

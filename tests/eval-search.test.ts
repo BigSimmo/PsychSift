@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { expectedFileCoverage, expectedFileHit } from "../scripts/eval-utils";
-import { summarizeFailures, type SearchEvalResult } from "../scripts/eval-search";
+import { parseArgs, summarizeFailures, type SearchEvalResult } from "../scripts/eval-search";
 
 function result(overrides: Partial<SearchEvalResult> = {}): SearchEvalResult {
   return {
@@ -142,5 +142,18 @@ describe("search eval thresholds", () => {
         }),
       ]),
     ).toContain("supported case-level search failure(s)");
+  });
+});
+
+describe("search eval arguments", () => {
+  it("parses the known options", () => {
+    const args = parseArgs(["--limit", "5", "--question", "lithium", "--json"]);
+    expect(args.limit).toBe(5);
+    expect(args.question).toBe("lithium");
+    expect(args.json).toBe(true);
+  });
+
+  it("rejects an unknown or misspelled option instead of silently using defaults", () => {
+    expect(() => parseArgs(["--limt", "5"])).toThrow("Unknown option --limt");
   });
 });

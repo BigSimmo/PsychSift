@@ -24,6 +24,43 @@ const workflow = readFileSync(workflowPath, "utf8").replace(/\r\n/g, "\n");
 const triggers = sourceSegment(workflow, "\non:\n", "\nconcurrency:\n", { label: "bundle-budget-refresh triggers" });
 const job = sourceFrom(workflow, "  bundle-budget-refresh:\n", { label: "bundle-budget-refresh job" });
 
+type WorkflowStep = {
+  name?: string;
+  uses?: string;
+  run?: string;
+  env?: Record<string, string>;
+  with?: { name?: string; path?: string; script?: string };
+};
+type WorkflowJob = { if?: string; needs?: string; permissions?: Record<string, string>; steps: WorkflowStep[] };
+
+function parsedWorkflow() {
+  return createRequire(import.meta.url)("js-yaml").load(workflow) as { jobs: Record<string, WorkflowJob> };
+}
+
+/** Runs the publish job's github-script body against stubbed GitHub, returning the issue body it wrote. */
+async function runPublishScript(env: Record<string, string>, readFileSync: () => string) {
+  const publish = parsedWorkflow().jobs.publish.steps.find((step) => step.name === "Publish to rolling issue")!;
+  let body = "";
+  const warnings: string[] = [];
+  await runInNewContext(`(async () => { ${publish.with!.script} })()`, {
+    require: () => ({ readFileSync }),
+    process: { env },
+    context: { serverUrl: "https://github.com", repo: { owner: "BigSimmo", repo: "PsychSift" }, runId: 123 },
+    core: { info: () => undefined, warning: (message: string) => warnings.push(message) },
+    github: {
+      rest: {
+        issues: {
+          listForRepo: async () => ({ data: [{ number: 1 }] }),
+          update: async (input: { body: string }) => {
+            body = input.body;
+          },
+        },
+      },
+    },
+  });
+  return { body, warnings };
+}
+
 describe("bundle-budget refresh workflow triggers and privileges", () => {
   it("runs on a weekly schedule and on manual dispatch", () => {
     expect(triggers).toContain("workflow_dispatch: {}");
@@ -54,6 +91,36 @@ describe("bundle-budget refresh workflow triggers and privileges", () => {
       "issues:",
     );
     expect(job).toMatch(/^ {4}permissions:\n {6}contents: read\n(?: {6}#[^\n]*\n)* {6}issues: write$/m);
+  });
+
+  it("never gives issues: write to the job that installs dependencies, builds and runs repository code", () => {
+    const { jobs } = parsedWorkflow();
+    expect(jobs["bundle-budget-refresh"].permissions).toEqual({ contents: "read" });
+    const publish = jobs.publish;
+    expect(publish.needs).toBe("bundle-budget-refresh");
+    expect(publish.permissions).toEqual({ contents: "read", issues: "write" });
+    // The publish job checks out and runs nothing from the repository.
+    expect(publish.steps.some((step) => step.uses?.startsWith("actions/checkout@"))).toBe(false);
+    expect(publish.steps.some((step) => step.uses?.startsWith("./"))).toBe(false);
+    expect(publish.steps.some((step) => step.run !== undefined)).toBe(false);
+  });
+
+  it("measures and publishes only on main, so a branch dispatch is never reported as main", () => {
+    // The issue calls its comparator the bundle-budget.json committed on main.
+    const { jobs } = parsedWorkflow();
+    expect(jobs["bundle-budget-refresh"].if).toBe("${{ github.ref == 'refs/heads/main' }}");
+    expect(jobs.publish.if).toBe("${{ !cancelled() && github.ref == 'refs/heads/main' }}");
+  });
+
+  it("downloads exactly the artifact the measurement job uploads", () => {
+    const { jobs } = parsedWorkflow();
+    const upload = jobs["bundle-budget-refresh"].steps.find((step) =>
+      step.uses?.startsWith("actions/upload-artifact@"),
+    );
+    const download = jobs.publish.steps.find((step) => step.uses?.startsWith("actions/download-artifact@"));
+    expect(download?.with?.name).toBe(upload?.with?.name);
+    const publish = jobs.publish.steps.find((step) => step.name === "Publish to rolling issue");
+    expect(publish?.env?.MEASUREMENT_FILE).toBe(`${download?.with?.path}/bundle-budget-refresh.json`);
   });
 
   it("pins the runner and sets an explicit generous timeout for the cold build", () => {
@@ -150,7 +217,8 @@ describe("bundle-budget refresh stays report-only", () => {
     // template-injection pattern; dependency-report.yml uses the same env shape.
     const publishStep = sourceFrom(job, "      - name: Publish to rolling issue", { label: "publish step" });
     const scriptBody = sourceFrom(publishStep, "          script: |\n", { label: "github-script body" });
-    expect(publishStep).toContain("REFRESH_OUTCOME: ${{ steps.refresh.outcome }}");
+    expect(publishStep).toContain("REFRESH_OUTCOME: ${{ needs.bundle-budget-refresh.outputs.refresh_outcome }}");
+    expect(job).toContain("refresh_outcome: ${{ steps.refresh.outcome }}");
     expect(scriptBody).toContain("process.env.REFRESH_OUTCOME");
     expect(scriptBody).not.toContain("${{");
   });
@@ -202,7 +270,8 @@ describe("bundle-budget refresh report provenance", () => {
     // A successful measurement whose artifact failed to upload is not a durable
     // evidence package, and must not read as though it were.
     expect(job).toContain("id: evidence");
-    expect(publishStep).toContain("ARTIFACT_OUTCOME: ${{ steps.evidence.outcome }}");
+    expect(publishStep).toContain("ARTIFACT_OUTCOME: ${{ needs.bundle-budget-refresh.outputs.artifact_outcome }}");
+    expect(job).toContain("artifact_outcome: ${{ steps.evidence.outcome }}");
     expect(publishStep).toContain("Evidence artifact upload:");
   });
 
@@ -228,38 +297,38 @@ describe("bundle-budget refresh report provenance", () => {
   });
 
   it.each([1, 2])("documents the exact uploaded artifact name on attempt %s", async (attempt) => {
-    const parsed = createRequire(import.meta.url)("js-yaml").load(workflow);
-    const steps = parsed.jobs["bundle-budget-refresh"].steps as {
-      name: string;
-      uses?: string;
-      with?: { name?: string; script?: string };
-    }[];
-    const upload = steps.find((step) => step.uses?.startsWith("actions/upload-artifact@"))!;
-    const publish = steps.find((step) => step.name === "Publish to rolling issue")!;
+    const { jobs } = parsedWorkflow();
+    const upload = jobs["bundle-budget-refresh"].steps.find((step) =>
+      step.uses?.startsWith("actions/upload-artifact@"),
+    )!;
     const expectedArtifact = upload.with!.name!.replaceAll("${{ github.run_attempt }}", String(attempt));
-    let body = "";
-    await runInNewContext(`(async () => { ${publish.with!.script} })()`, {
-      require: () => ({
-        readFileSync: () => JSON.stringify({ updatedAt: "2026-10-20T00:00:00Z", totalGzipBytes: 0, files: 0 }),
-      }),
-      process: {
-        env: { REFRESH_OUTCOME: "success", ARTIFACT_OUTCOME: "success", GITHUB_RUN_ATTEMPT: String(attempt) },
-      },
-      context: { serverUrl: "https://github.com", repo: { owner: "BigSimmo", repo: "PsychSift" }, runId: 123 },
-      core: { info: () => undefined },
-      github: {
-        rest: {
-          issues: {
-            listForRepo: async () => ({ data: [{ number: 1 }] }),
-            update: async (input: { body: string }) => {
-              body = input.body;
-            },
-          },
-        },
-      },
-    });
+    const { body } = await runPublishScript(
+      { REFRESH_OUTCOME: "success", ARTIFACT_OUTCOME: "success", GITHUB_RUN_ATTEMPT: String(attempt) },
+      () => JSON.stringify({ updatedAt: "2026-10-20T00:00:00Z", totalGzipBytes: 0, files: 0 }),
+    );
     expect(body.match(/--name (\S+) --dir/)?.[1]).toBe(expectedArtifact);
     expect(body).toContain(`the \`${expectedArtifact}\` artifact`);
+  });
+
+  it("reports a measured run whose artifact cannot be read as incomplete instead of crashing", async () => {
+    // The measurement reaches the publish job only through the artifact, so a missing file must
+    // land in the issue as absent evidence, never as a thrown error that leaves last week's numbers.
+    const { body, warnings } = await runPublishScript(
+      { REFRESH_OUTCOME: "success", ARTIFACT_OUTCOME: "failure", GITHUB_RUN_ATTEMPT: "1" },
+      () => {
+        throw new Error("ENOENT: no such file");
+      },
+    );
+    expect(body).toContain("did not complete (the build measured, but the evidence artifact (upload: `failure`)");
+    expect(body).toContain("This is **not** evidence that the bundle budget is healthy.");
+    expect(warnings.join("\n")).toContain("could not be read");
+  });
+
+  it("falls back to the measurement job result when no step outcome was recorded", async () => {
+    const { body } = await runPublishScript({ MEASUREMENT_JOB_RESULT: "failure", GITHUB_RUN_ATTEMPT: "1" }, () => {
+      throw new Error("should not read the file for a failed measurement");
+    });
+    expect(body).toContain("did not complete (`failure`)");
   });
 
   it("still refuses to commit, push or open a PR for the refreshed baseline", () => {

@@ -304,6 +304,21 @@ describe("source authority metadata tooling", () => {
     ).toEqual({ code: null, authority: null, codes: [], authorityKeys: [], conflict: false });
   });
 
+  it("does not infer NICE from the ordinary word nice, but still reads the capitalised code", () => {
+    expect(
+      inferSourceAuthorityFromIdentity(
+        document({ file_name: "sleep.pdf", title: "Nice and easy guide to sleep hygiene" }),
+      ),
+    ).toEqual({ code: null, authority: null, codes: [], authorityKeys: [], conflict: false });
+    expect(
+      inferSourceAuthorityFromIdentity(document({ file_name: "nice-and-easy-sleep.pdf", title: "Sleep hygiene" })),
+    ).toEqual({ code: null, authority: null, codes: [], authorityKeys: [], conflict: false });
+    expect(inferSourceAuthorityFromIdentity(document({ file_name: "Depression in adults (NICE).pdf" }))).toMatchObject({
+      code: "NICE",
+      conflict: false,
+    });
+  });
+
   it("does not require locality metadata for unknown or international documents", () => {
     const report = auditSourceAuthorityDocuments([
       document({ file_name: "unknown-clinical-reference.pdf" }),

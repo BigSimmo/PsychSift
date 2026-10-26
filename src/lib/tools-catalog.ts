@@ -254,7 +254,7 @@ export const toolCatalogRecords: ToolCatalogRecord[] = [
     mobileTitle: "Safety",
     description: "Check risks, contraindications, alerts, and safety guidance.",
     bestFor: "Preventing harm",
-    detail: "Check risks, contraindications, and safety alerts before making clinical decisions.",
+    detail: "Find what the guidelines say about risks, contraindications and safety alerts, with the source to check.",
     href: "/?mode=answer&q=safety%20check&focus=1",
     area: "care",
     status: "review_due",
@@ -269,12 +269,11 @@ export const toolCatalogRecords: ToolCatalogRecord[] = [
       "Safety alerts and warnings",
     ],
     neededInput: [
-      "Patient context and problem list",
-      "Current medications and doses",
-      "Allergies and prior reactions",
-      "Renal/hepatic function if relevant",
+      "The medicine, condition or situation",
+      "Interactions or cautions to look up",
+      "Renal or hepatic considerations, if relevant",
     ],
-    output: "Prioritized risks, alerts, and actionable recommendations with source links.",
+    output: "Guideline passages on risks, contraindications and alerts, each linked to its source.",
   },
   {
     id: "medication-prescribing",
@@ -331,10 +330,10 @@ export const toolCatalogRecords: ToolCatalogRecord[] = [
   {
     id: "care-plans",
     title: "Care plans",
-    description: "Generate care-plan guidance with monitoring and follow-up prompts.",
+    description: "Find guideline content on care planning, monitoring and follow-up.",
     bestFor: "Care-planning guidance and MBS 291/293 management plans",
     detail:
-      "Generate care-plan structure, review milestones, monitoring needs, and follow-up tasks. Covers MBS psychiatric management plans: Item 291 (GP referral required, 12-month restriction, billing condition that the referring GP provides ongoing management, not a treatment ban) and Item 293 (GP-referred review of Item 291 management plan, 12-month restriction).",
+      "Look up what the guidelines say about care-plan structure, review milestones, monitoring and follow-up. Covers MBS psychiatric management plans: Item 291 (GP referral required, 12-month restriction, billing condition that the referring GP provides ongoing management, not a treatment ban) and Item 293 (GP-referred review of Item 291 management plan, 12-month restriction).",
     href: "/?mode=answer&q=care%20plan&focus=1",
     area: "care",
     status: "ready",
@@ -370,7 +369,7 @@ export const toolCatalogRecords: ToolCatalogRecord[] = [
       "Follow-up timeframe",
       "GP referral details and prior 291/293 billing dates",
     ],
-    output: "Care-plan structure, review points, monitoring prompts, and MBS 291/293 compliance guidance.",
+    output: "Guideline content on care planning, review points and MBS 291/293 rules, each linked to its source.",
   },
   {
     id: "safety-plan",
@@ -442,9 +441,10 @@ export const toolCatalogRecords: ToolCatalogRecord[] = [
   {
     id: "monitoring",
     title: "Monitoring",
-    description: "Generate monitoring guidance with thresholds and review prompts.",
+    description: "Find guideline monitoring intervals, thresholds and review points.",
     bestFor: "Monitoring guidance",
-    detail: "Generate monitoring intervals, parameters, alerts, and follow-up actions.",
+    detail:
+      "Look up the monitoring intervals, parameters and thresholds the guidelines set out, with the source to check.",
     href: "/?mode=answer&q=monitoring%20schedule&focus=1",
     area: "care",
     status: "ready",
@@ -454,7 +454,7 @@ export const toolCatalogRecords: ToolCatalogRecord[] = [
     keywords: ["monitoring", "results", "parameters", "schedule", "labs"],
     checkFirst: ["Monitoring indication", "Last result date", "Thresholds and alerts"],
     neededInput: ["Medication or condition", "Recent results", "Monitoring timeframe"],
-    output: "Monitoring schedule, thresholds, and review prompts.",
+    output: "Guideline monitoring schedules and thresholds, each linked to its source.",
   },
   {
     id: "favourites",

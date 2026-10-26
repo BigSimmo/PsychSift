@@ -59,7 +59,7 @@ export function CmeDashboardRoute({
   const router = useRouter();
   const { preferences, setPreference } = useAppPreferences();
   const now = useMemo(() => new Date(nowIso), [nowIso]);
-  const oneTap = useCmeOneTapRoutineLog({ demoMode });
+  const oneTap = useCmeOneTapRoutineLog({ demoMode, routines });
 
   return (
     <>

@@ -44,6 +44,7 @@ import { firstAdminPatientProblem } from "@/lib/work-screens/admin/patient-check
 import {
   dropRecord,
   EXPENSE_KINDS,
+  MAX_TAX_YEAR_EXPENSES,
   newPaperworkId,
   putBack,
   type AdminExpense,
@@ -116,7 +117,21 @@ export function AdminTaxPage({ now: pinned }: { now?: Date } = {}) {
   }
   // Each Undo touches its own expense only, never a change made since.
   function addExpense(expense: AdminExpense) {
-    if (!changeYear((current) => ({ ...current, expenses: [expense, ...current.expenses].slice(0, 500) }))) return;
+    // A full year refuses the new one, so no saved expense is ever dropped to make room.
+    if (year.expenses.length >= MAX_TAX_YEAR_EXPENSES) {
+      say(
+        `This year already holds ${MAX_TAX_YEAR_EXPENSES} expenses, the most it keeps. Save a tax pack, then remove some to add more.`,
+        undefined,
+        "warning",
+      );
+      return;
+    }
+    const added = changeYear((current) =>
+      current.expenses.length >= MAX_TAX_YEAR_EXPENSES
+        ? current
+        : { ...current, expenses: [expense, ...current.expenses] },
+    );
+    if (!added) return;
     setAdding(false);
     say(`${formatCents(expense.cents)} added`, () =>
       changeYear((current) => ({ ...current, expenses: dropRecord(current.expenses, expense.id) })),

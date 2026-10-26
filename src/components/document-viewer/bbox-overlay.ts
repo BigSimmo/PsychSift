@@ -17,6 +17,26 @@ export type BboxOverlayStyle = {
   height: string;
 };
 
+/**
+ * The page's size in the frame a stored point-space bbox is measured in.
+ *
+ * The viewer measures each page after the reader's rotation, so at 90° or 270°
+ * its width and height are swapped. Stored bboxes are in the page's own frame,
+ * before the reader rotated it, so dividing them by the swapped size would
+ * misplace the box before the rotation transform below is even applied. Swap
+ * the size back for quarter turns; half turns keep their dimensions.
+ */
+export function resolveBboxFrameGeometry(
+  displayedGeometry: PageGeometry | null | undefined,
+  rotation = 0,
+): PageGeometry | null {
+  if (!displayedGeometry) return null;
+  const normalizedRotation = ((rotation % 360) + 360) % 360;
+  return normalizedRotation === 90 || normalizedRotation === 270
+    ? { width: displayedGeometry.height, height: displayedGeometry.width }
+    : displayedGeometry;
+}
+
 export function resolveBboxOverlayStyle({
   bbox,
   pageGeometry,

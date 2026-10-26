@@ -85,10 +85,23 @@ export async function loadDocumentSummaryContext(documentId: string, ownerId?: s
   return { document, chunks: committedChunks };
 }
 
+// Wording approved by the owner on 25 Oct 2026; change it only with the owner's sign-off.
+export const UNSUPPORTED_SUMMARY_TEXT =
+  "This summary could not be matched to the document's passages, so it is not shown. Read the document directly.";
+
+/**
+ * Audit NEW-G-01: the Summarise path skips the final answer gate, so a summary the model itself
+ * marked as unsupported was shown as a clean "Clinical summary", wrong figures included. An
+ * ungrounded or unsupported summary keeps no text, sections or model-written notes (exact source
+ * quotes stay).
+ */
 export function sanitizeUnsupportedSummaryAnswer<
   T extends {
+    answer?: string;
     grounded?: boolean;
     confidence?: string;
+    answerSections?: unknown[];
+    conflictsOrGaps?: Array<{ origin?: string }>;
     bestSource?: unknown;
     supportedClaims?: unknown;
     evidenceAssessments?: unknown;
@@ -96,6 +109,11 @@ export function sanitizeUnsupportedSummaryAnswer<
   },
 >(answer: T): T {
   if (!answer.grounded || answer.confidence === "unsupported") {
+    answer.answer = UNSUPPORTED_SUMMARY_TEXT;
+    answer.grounded = false;
+    answer.confidence = "unsupported";
+    answer.answerSections = [];
+    answer.conflictsOrGaps = (answer.conflictsOrGaps ?? []).filter((item) => item.origin !== "model");
     answer.bestSource = null;
     answer.supportedClaims = undefined;
     answer.evidenceAssessments = undefined;

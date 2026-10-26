@@ -164,12 +164,15 @@ describe("OnCallOfflineBanner", () => {
     expect(banner).not.toHaveAttribute("role");
   });
 
-  it("announces through a separate sr-only live region instead", () => {
+  it("announces through a separate sr-only live region instead", async () => {
     render(<OnCallOfflineBanner savedAt="2026-08-20T00:00:00.000Z" />);
     const announcement = screen.getByTestId("on-call-offline-banner-announcement");
     expect(announcement).toHaveAttribute("aria-live", "polite");
     expect(announcement.className).toMatch(/\bsr-only\b/);
-    expect(announcement).toHaveTextContent(/Thu 20 Aug/);
+    // Mounted empty and filled a frame later, so the text arrives as a change
+    // that screen readers announce rather than as content already present.
+    expect(announcement).toBeEmptyDOMElement();
+    await waitFor(() => expect(announcement).toHaveTextContent(/Thu 20 Aug/));
   });
 });
 

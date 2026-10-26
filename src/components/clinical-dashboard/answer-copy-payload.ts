@@ -24,7 +24,7 @@ import {
 import { isPreformattedGroundedAnswer, primaryAnswerDisplayText } from "@/components/clinical-dashboard/answer-content";
 import { projectAnswerForMainSurface } from "@/components/clinical-dashboard/answer-section-projector";
 import { composeAnswerClipboardText } from "@/lib/answer-clipboard";
-import { publicFallbackReason } from "@/lib/rag/rag-fallback-reason";
+import { publicDegradedReason } from "@/lib/rag/rag-fallback-reason";
 import { guidanceDifferenceSentence } from "@/lib/rag/guidance-difference-note";
 import type { AnswerPayload } from "@/components/clinical-dashboard/search-utils";
 import type { ClientRagAnswerPayload, ClientSearchResult } from "@/lib/answer-client-payload";
@@ -228,7 +228,7 @@ export function buildAnswerClipboardText({
     state,
     degradedReason: degraded
       ? answer.fallbackReasonCode
-        ? publicFallbackReason(answer.fallbackReasonCode)
+        ? publicDegradedReason(answer.fallbackReasonCode, resolvedSources?.length ?? 0)
         : (answer.degradedMode?.reason ?? null)
       : null,
     // Cited set, not every candidate: an uncited candidate from another document

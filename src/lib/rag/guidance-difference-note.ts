@@ -14,6 +14,14 @@ export type ReviewedGuidanceDifference = {
   topic: string;
   waDocumentId: string;
   waChunkIds: string[];
+  /**
+   * Audit E2E-05/RET-N7 (24 Oct 2026): a re-index gives every passage a new id, so an entry keyed
+   * only on chunk ids silently stopped showing. These fingerprints of the signed WA passages'
+   * text (see `guidancePassageFingerprint`) keep the entry matching after a re-index as long as the
+   * passage text is unchanged. Changed text stops matching, which is the safe outcome: the owner
+   * re-reviews it.
+   */
+  waPassageFingerprints?: string[];
   national: {
     documentId: string;
     chunkId: string;
@@ -37,6 +45,24 @@ export type GuidanceDifferenceNote = {
 };
 
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+const fingerprintPattern = /^[0-9a-f]{16}$/;
+
+/**
+ * A stable fingerprint of a passage's text, ignoring case, spacing and markdown emphasis. Not a
+ * security hash: it only has to tell the same signed passage apart from other text in the same
+ * WA document, and it runs in the browser bundle too, so it avoids node:crypto.
+ */
+export function guidancePassageFingerprint(content: string) {
+  const text = content.replace(/\*\*/g, "").replace(/\s+/g, " ").trim().toLowerCase();
+  let first = 0x811c9dc5;
+  let second = 0x01000193;
+  for (let index = 0; index < text.length; index += 1) {
+    const code = text.charCodeAt(index);
+    first = Math.imul(first ^ code, 0x01000193) >>> 0;
+    second = Math.imul(second ^ code, 0x5bd1e995) >>> 0;
+  }
+  return `${first.toString(16).padStart(8, "0")}${second.toString(16).padStart(8, "0")}`;
+}
 
 function isReviewedDifference(value: unknown): value is ReviewedGuidanceDifference {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
@@ -49,6 +75,9 @@ function isReviewedDifference(value: unknown): value is ReviewedGuidanceDifferen
     Array.isArray(entry.waChunkIds) &&
     entry.waChunkIds.length > 0 &&
     entry.waChunkIds.every((chunkId) => typeof chunkId === "string" && chunkId.length > 0) &&
+    (entry.waPassageFingerprints === undefined ||
+      (Array.isArray(entry.waPassageFingerprints) &&
+        entry.waPassageFingerprints.every((value) => typeof value === "string" && fingerprintPattern.test(value)))) &&
     entry.signedOffBy === "owner" &&
     datePattern.test(entry.signedOffAt) &&
     datePattern.test(entry.reviewBy) &&
@@ -113,7 +142,19 @@ export function guidanceDifferenceNoteForAnswer(
       .flatMap((claim) => claim.supportingChunkIds)
       .filter((chunkId) => servedChunkIds.has(chunkId)),
   );
-  const match = differences.find((entry) => entry.waChunkIds.some((chunkId) => directChunkIds.has(chunkId)));
+  const directSources = answer.sources.filter((source) => directChunkIds.has(source.id));
+  const match = differences.find(
+    (entry) =>
+      entry.waChunkIds.some((chunkId) => directChunkIds.has(chunkId)) ||
+      Boolean(
+        entry.waPassageFingerprints?.length &&
+        directSources.some(
+          (source) =>
+            source.document_id === entry.waDocumentId &&
+            entry.waPassageFingerprints?.includes(guidancePassageFingerprint(source.content ?? "")),
+        ),
+      ),
+  );
   return match ? noteFor(match) : undefined;
 }
 

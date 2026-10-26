@@ -1,4 +1,3 @@
-import { extractClinicalValueAtoms } from "@/lib/answer-verification";
 import { identifierShapeWarning } from "@/lib/clinical-ask/context";
 import type {
   ClinicalAskClaim,
@@ -93,7 +92,6 @@ function governedClaim(
     sourceDirectlySupportsAnswerText(text, minimalSearchResult(item as ClinicalAskEvidence)),
   );
   if (!hasDirectSupport) return null;
-  if (extractClinicalValueAtoms(text).length > 0 && !hasDirectSupport) return null;
   return { ...claim, text, evidenceIds: [...new Set(claim.evidenceIds)] };
 }
 

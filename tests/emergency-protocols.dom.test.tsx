@@ -317,6 +317,21 @@ describe("EmergencyProtocolBanner DOM rendering", () => {
     expect(html).toContain('data-testid="emergency-protocol-banner"');
   });
 
+  it("keeps the expanded protocol detail outside the alert so expanding does not re-announce the card", () => {
+    const container = document.createElement("div");
+    container.innerHTML = renderToStaticMarkup(
+      <EmergencyProtocolBanner protocol={nmsProtocol} defaultExpanded={true} />,
+    );
+    const banner = container.querySelector('[data-testid="emergency-protocol-banner"]')!;
+    // The aside keeps its complementary landmark; only a short inner wrapper is the alert.
+    expect(banner.getAttribute("role")).toBeNull();
+    const alert = banner.querySelector('[role="alert"]')!;
+    expect(alert.textContent).toContain(nmsProtocol.name);
+    expect(alert.textContent).toContain(nmsProtocol.firstLineAction);
+    expect(alert.textContent).not.toContain("Urgent Investigations");
+    expect(banner.textContent).toContain("Urgent Investigations");
+  });
+
   it("renders first-line action and poisons phone link in collapsed view", () => {
     const html = renderToStaticMarkup(<EmergencyProtocolBanner protocol={nmsProtocol} />);
     expect(html).toContain("Cease all dopamine antagonists and antipsychotics immediately.");

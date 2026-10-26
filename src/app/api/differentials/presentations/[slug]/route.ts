@@ -116,6 +116,7 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
               },
             ]
           : [],
+        signal: request.signal,
         mapRecord: ({ canonicalRecord, finalRenderPayload }) => ({
           workflow: scopePresentationWorkflow(finalRenderPayload as unknown as DifferentialPresentationWorkflow),
           governance: canonicalSiteContentGovernance(canonicalRecord),
@@ -133,6 +134,13 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
       kind: "differential",
       slug: null,
       seeds: snapshot.diagnoses.map((record) => ({ record })),
+      signal: request.signal,
+      // A LIST read: the whole differential catalogue, filtered in memory to this workflow's
+      // candidates. It is the same shared, public read the list route caches, and the cache's
+      // single flight and deadline bound it; uncached, every presentation open paid a full
+      // catalogue query with nothing to stop it. The per-slug presentation read above stays
+      // uncached on purpose, so an operator publishing it sees the change at once.
+      cache: true,
       mapRecord: ({ finalRenderPayload }) => ({
         record: scopeDifferentialRecord(finalRenderPayload as unknown as DifferentialRecord),
       }),
@@ -153,6 +161,10 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
       },
     );
   } catch (error) {
+    // A cancelled request is not a fault: answer 499, exactly as the differentials list route does.
+    if ((error instanceof DOMException && error.name === "AbortError") || request.signal?.aborted) {
+      return new Response(null, { status: 499 });
+    }
     if (error instanceof AuthenticationError) {
       return unauthorizedResponse();
     }

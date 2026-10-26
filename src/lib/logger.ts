@@ -101,6 +101,23 @@ export function registerSentryLogForwarder(forwarder: SentryLogForwarder | null)
   (globalThis as ForwarderHost)[SENTRY_LOG_FORWARDER_KEY] = forwarder;
 }
 
+// The line's own fields. A context key with one of these names (every `safeErrorLogDetails`
+// spread carries `message`) is kept under its renamed key instead, so it can neither replace the
+// event name operators search by nor relabel the line's level.
+const RESERVED_LINE_KEYS: Readonly<Record<string, string>> = {
+  level: "contextLevel",
+  message: "contextMessage",
+  timestamp: "contextTimestamp",
+};
+
+function lineContext(context: Record<string, unknown> | undefined): Record<string, unknown> {
+  const fields: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(context ?? {})) {
+    fields[Object.hasOwn(RESERVED_LINE_KEYS, key) ? RESERVED_LINE_KEYS[key] : key] = value;
+  }
+  return fields;
+}
+
 function emit(level: LogLevel, message: string, context?: Record<string, unknown>) {
   // Keep tests quiet; they assert on responses, not log output.
   if (env().NODE_ENV === "test") return;
@@ -111,7 +128,7 @@ function emit(level: LogLevel, message: string, context?: Record<string, unknown
     level,
     message: safeMessage,
     timestamp: new Date().toISOString(),
-    ...(redacted ?? {}),
+    ...lineContext(redacted),
   });
   if (level === "error") console.error(line);
   else if (level === "warn") console.warn(line);

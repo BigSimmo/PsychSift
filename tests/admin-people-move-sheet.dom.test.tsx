@@ -104,6 +104,26 @@ describe("MoveTeamSheet", () => {
     expect(run).not.toHaveBeenCalled();
   });
 
+  it("makes the hospital list one Tab stop, moved through with the arrow keys", () => {
+    const { sheet } = open();
+    const [campus, unit] = sheet.getAllByRole("radio");
+    expect(campus).toHaveAttribute("tabindex", "0");
+    expect(unit).toHaveAttribute("tabindex", "-1");
+
+    campus!.focus();
+    fireEvent.keyDown(campus!, { key: "ArrowDown" });
+    expect(unit).toHaveFocus();
+    expect(unit).toHaveAttribute("tabindex", "0");
+    expect(campus).toHaveAttribute("tabindex", "-1");
+    fireEvent.keyDown(unit!, { key: "ArrowDown" });
+    expect(campus).toHaveFocus();
+
+    fireEvent.click(unit!);
+    expect(unit).toHaveAttribute("aria-checked", "true");
+    expect(unit).toHaveAttribute("tabindex", "0");
+    expect(campus).toHaveAttribute("tabindex", "-1");
+  });
+
   it("says to add the right hospital first when there is no other one", () => {
     const { onClose, sheet } = open({ hospitals: [FROM] });
     expect(sheet.getByTestId("admin-people-move-empty")).toHaveTextContent("No other hospital yet");

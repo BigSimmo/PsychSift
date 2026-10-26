@@ -240,8 +240,10 @@ function splitInlineBullets(value: string) {
     return [...lead, ...mergeBulletContinuations(newlineParts.slice(Math.max(0, bulletLineIndex)))];
   }
 
+  // A spaced hyphen between two numbers is a range ("0.6 - 0.8 mmol/L"), not a bullet break;
+  // splitting it left the Bottom line lead with the lower bound only and no unit.
   const inlineParts = trimmed
-    .split(/(?:^|\s)-\s+(?=(?:\*\*)?[A-Z0-9])/)
+    .split(/(?:^|\s)-\s+(?=(?:\*\*)?[A-Z])|(?:^|(?<!\d(?:\*\*)?)\s)-\s+(?=(?:\*\*)?\d)/)
     .map((part) => part.trim())
     .filter(Boolean);
   if (inlineParts.length >= 2) return inlineParts;

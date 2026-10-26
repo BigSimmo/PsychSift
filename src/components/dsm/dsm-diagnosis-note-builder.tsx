@@ -1,7 +1,7 @@
 "use client";
 
 import { MessageSquareText, RotateCcw } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useDirtyStateGuard } from "@/components/ui/use-dirty-state-guard";
 import { subscribeAccountTransition } from "@/lib/account-scoped-browser-state";
 
@@ -34,27 +34,127 @@ const STATUS_OPTIONS: ReadonlyArray<{ value: DsmCriterionStatus; label: string }
 
 const COPY_RESET_MS = 2200;
 
-export function DsmDiagnosisNoteBuilder({ record }: { record: DsmNoteBuilderRecord }) {
-  return <DsmDiagnosisNoteBuilderInner key={record.icdCode} record={record} />;
+const criterionKey = (label: string, index: number) => label || String(index + 1);
+
+const subscribeNothing = () => () => undefined;
+function useHydrated(): boolean {
+  return useSyncExternalStore(
+    subscribeNothing,
+    () => true,
+    () => false,
+  );
 }
 
-function DsmDiagnosisNoteBuilderInner({ record }: { record: DsmNoteBuilderRecord }) {
+type DsmNoteDraft = {
+  statuses: Record<string, DsmCriterionStatus>;
+  specifiers: string[];
+  specifierText: string;
+  excluded: string[];
+  includeCriterionText: boolean;
+};
+
+/**
+ * Keyed by slug, not ICD code: F65.81 and G24.09 each cover two records, and an
+ * ICD-keyed draft restored one diagnosis's answers onto the other.
+ */
+function dsmNoteDraftStorageKey(slug: string) {
+  return `psychsift_dsm_draft_${slug}`;
+}
+
+/**
+ * Drafts saved before the slug key were keyed by ICD code. One with a code no other record
+ * shares is read once and moved to the slug key, so a draft open across a deploy is not
+ * lost. The shared codes are never read: their legacy draft cannot be told apart.
+ * tests/dsm-diagnosis-note-builder.dom.test.tsx checks this set against the catalogue.
+ */
+export const DSM_SHARED_ICD_CODES: ReadonlySet<string> = new Set(["F65.81", "G24.09"]);
+
+function legacyDsmNoteDraftStorageKey(record: DsmNoteBuilderRecord): string | null {
+  return DSM_SHARED_ICD_CODES.has(record.icdCode) ? null : `psychsift_dsm_draft_${record.icdCode}`;
+}
+
+function readDsmNoteDraftWithLegacy(storageKey: string, record: DsmNoteBuilderRecord): DsmNoteDraft | null {
+  const current = readDsmNoteDraft(storageKey, record);
+  if (current) return current;
+  const legacyKey = legacyDsmNoteDraftStorageKey(record);
+  if (!legacyKey) return null;
+  const legacy = readDsmNoteDraft(legacyKey, record);
+  if (!legacy) return null;
+  try {
+    sessionStorage.setItem(storageKey, JSON.stringify(legacy));
+    sessionStorage.removeItem(legacyKey);
+  } catch {
+    // Storage refused the move; the draft still restores for this visit.
+  }
+  return legacy;
+}
+
+const STATUS_VALUES = new Set<string>(STATUS_OPTIONS.map((option) => option.value));
+
+/**
+ * Reads a saved draft and keeps only the answers this record can show, so nothing
+ * the clinician cannot see on this page reaches the copied note.
+ */
+function readDsmNoteDraft(storageKey: string, record: DsmNoteBuilderRecord): DsmNoteDraft | null {
+  let parsed: Partial<Record<keyof DsmNoteDraft, unknown>> | null;
+  try {
+    const draft = sessionStorage.getItem(storageKey);
+    parsed = draft ? JSON.parse(draft) : null;
+  } catch {
+    return null;
+  }
+  if (!parsed || typeof parsed !== "object") return null;
+
+  const criterionKeys = new Set(record.criteria.map((criterion, index) => criterionKey(criterion.label, index)));
+  const allowedIn = (value: unknown, allowed: ReadonlySet<string>) =>
+    Array.isArray(value)
+      ? value.filter((entry): entry is string => typeof entry === "string" && allowed.has(entry))
+      : [];
+  const savedStatuses = parsed.statuses && typeof parsed.statuses === "object" ? parsed.statuses : {};
+
+  return {
+    statuses: Object.fromEntries(
+      Object.entries(savedStatuses).filter(
+        (entry): entry is [string, DsmCriterionStatus] =>
+          criterionKeys.has(entry[0]) && typeof entry[1] === "string" && STATUS_VALUES.has(entry[1]),
+      ),
+    ),
+    specifiers: allowedIn(parsed.specifiers, new Set(record.specifiers.map((specifier) => specifier.name))),
+    specifierText: typeof parsed.specifierText === "string" ? parsed.specifierText : "",
+    excluded: allowedIn(parsed.excluded, new Set(record.differentials)),
+    includeCriterionText: typeof parsed.includeCriterionText === "boolean" ? parsed.includeCriterionText : true,
+  };
+}
+
+export function DsmDiagnosisNoteBuilder({ record }: { record: DsmNoteBuilderRecord }) {
+  // The server cannot see sessionStorage, so its HTML is always the empty builder.
+  // Reading the draft only after hydration, in a fresh mount, keeps the client's
+  // first render identical to that HTML.
+  const hydrated = useHydrated();
+  return (
+    <DsmDiagnosisNoteBuilderInner
+      key={`${record.slug}:${hydrated ? "client" : "server"}`}
+      record={record}
+      restoreDraft={hydrated}
+    />
+  );
+}
+
+function DsmDiagnosisNoteBuilderInner({
+  record,
+  restoreDraft,
+}: {
+  record: DsmNoteBuilderRecord;
+  restoreDraft: boolean;
+}) {
   const { criteria, differentials, specifiers: selectableSpecifiers, isDsmCriteria } = record;
   // On 145 of the 146 records these rows are the key-feature summary, not DSM-5-TR
   // criteria. The controls say which one the clinician is actually ticking, so the
   // wording on screen matches the wording the note will carry.
   const rowNoun = isDsmCriteria ? "criterion" : "key feature";
-  const storageKey = `psychsift_dsm_draft_${record.icdCode}`;
+  const storageKey = dsmNoteDraftStorageKey(record.slug);
 
-  const initialDraft = useMemo(() => {
-    if (typeof window === "undefined") return null;
-    try {
-      const draft = sessionStorage.getItem(storageKey);
-      return draft ? JSON.parse(draft) : null;
-    } catch {
-      return null;
-    }
-  }, [storageKey]);
+  const [initialDraft] = useState(() => (restoreDraft ? readDsmNoteDraftWithLegacy(storageKey, record) : null));
 
   const [statuses, setStatuses] = useState<Record<string, DsmCriterionStatus>>(() => initialDraft?.statuses ?? {});
   const [specifiers, setSpecifiers] = useState<string[]>(() => initialDraft?.specifiers ?? []);
@@ -64,13 +164,13 @@ function DsmDiagnosisNoteBuilderInner({ record }: { record: DsmNoteBuilderRecord
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const copyTimer = useRef<number | null>(null);
 
-  const criterionKey = (label: string, index: number) => label || String(index + 1);
-
   const isDirty =
     Object.keys(statuses).length > 0 || specifiers.length > 0 || specifierText.trim().length > 0 || excluded.length > 0;
   useDirtyStateGuard(isDirty);
 
   useEffect(() => {
+    // The pre-hydration mount never read the draft, so it must not overwrite it.
+    if (!restoreDraft) return;
     try {
       if (isDirty || !includeCriterionText) {
         sessionStorage.setItem(
@@ -83,7 +183,7 @@ function DsmDiagnosisNoteBuilderInner({ record }: { record: DsmNoteBuilderRecord
     } catch {
       // Ignore storage errors
     }
-  }, [storageKey, isDirty, statuses, specifiers, specifierText, excluded, includeCriterionText]);
+  }, [restoreDraft, storageKey, isDirty, statuses, specifiers, specifierText, excluded, includeCriterionText]);
 
   const note = useMemo(
     () =>

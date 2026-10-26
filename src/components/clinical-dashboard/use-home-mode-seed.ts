@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import type { ReadonlyURLSearchParams } from "next/navigation";
 import { appModeSelectionHref, isAppModeId, isAppModeVisible } from "@/lib/app-modes";
@@ -9,6 +9,20 @@ import { readSearchNavigationContext } from "@/lib/search-navigation-context";
 import type { AppModeId } from "@/lib/app-modes";
 import type { SearchScopeFilters } from "@/lib/search-scope";
 import type { ClinicalQueryMode } from "@/lib/types";
+
+const subscribeNothing = () => () => undefined;
+
+/**
+ * Whether this render has the browser's stored values. False only while React
+ * hydrates server HTML, when every browser store reads its server snapshot.
+ */
+function useHydrated(): boolean {
+  return useSyncExternalStore(
+    subscribeNothing,
+    () => true,
+    () => false,
+  );
+}
 
 /**
  * Everything that maps the URL onto the dashboard's mode state, in one place:
@@ -56,6 +70,7 @@ export function useHomeModeSeed({
   lastSyncedSearchParamsRef: MutableRefObject<string>;
 }) {
   const homeModeSeededRef = useRef(false);
+  const hydrated = useHydrated();
   // `stopSearch` is redeclared every render, so it is read through a ref rather
   // than taken as an effect dependency — the arrival reset must not re-fire just
   // because an unrelated render produced a new function identity.
@@ -183,12 +198,18 @@ export function useHomeModeSeed({
    * Settings landing view also wins over last-mode: when landing is Documents or
    * Tools the shell navigates to those homes, and seeding `?mode=` here would
    * race that redirect and leave the landing preference ignored.
+   *
+   * Waits for hydration before it decides. On a server-rendered cold load the
+   * hydration commit still sees the store's server snapshot (the default mode),
+   * and deciding then marked the seed done before the stored mode arrived on
+   * the next render, so a hard load of `/` never restored it.
    */
   useEffect(() => {
     if (pathname !== "/") {
       homeModeSeededRef.current = false;
       return;
     }
+    if (!hydrated) return;
     if (homeModeSeededRef.current) return;
     if (searchParams.has("mode") || searchParams.has("q") || searchParams.has("query")) return;
     homeModeSeededRef.current = true;
@@ -214,5 +235,5 @@ export function useHomeModeSeed({
         scopeRef: navigationContext.scopeRef,
       }),
     );
-  }, [pathname, searchParams, lastAppMode]);
+  }, [hydrated, pathname, searchParams, lastAppMode]);
 }

@@ -10,6 +10,8 @@
 # (AGENTS.md "RAG ranking protection"), so a person still reviews and merges it.
 # The PR is opened with secrets.GH_TOKEN, not GITHUB_TOKEN, because a PR opened
 # by GITHUB_TOKEN never triggers CI and would sit with its required checks unrun.
+# The job runs in the main-only production-secrets environment, and git pushes
+# through `gh auth setup-git`, so the token is never written into a push URL.
 #
 # Before 2026-10-07 nothing did this, so the snapshot expired on 7 Oct and turned
 # every open PR red until it was rebuilt by hand (PR #3357).
@@ -44,6 +46,11 @@ jobs:
     # half fails on its own), so conclusion is not filtered here; the pick step
     # checks the golden step itself.
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.head_branch == 'main'
+    # Reads the owner's GH_TOKEN in the last step. The environment restricts it to main and has
+    # no required reviewers; it is NOT an approval gate. A manual run from another branch is
+    # refused by the environment. See docs/deployment-architecture.md,
+    # "The production-secrets environment" (audit CC-12).
+    environment: production-secrets
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
@@ -201,9 +208,16 @@ jobs:
           git switch -c "$branch"
           git add scripts/fixtures/rag-ranking-candidate-snapshot.v1.json scripts/fixtures/rag-ranking-candidate-snapshot.v1.provenance.json
           git commit -m "Refresh the ranking snapshot from Eval Canary run $RUN_ID"
-          # gh supplies credentials through Git's helper; the token never enters argv or the remote URL.
+          # Authenticate through gh's git credential helper (it reads GH_TOKEN) so the token never
+          # appears in a push URL, the remote config or the logs. checkout used
+          # persist-credentials: false, so this is the only credential git has.
           gh auth setup-git --hostname github.com
-          git push "https://github.com/${REPOSITORY}.git" "HEAD:refs/heads/$branch"
+          origin_url=$(git remote get-url origin)
+          if [ "$origin_url" != "$SERVER_URL/$REPOSITORY" ] && [ "$origin_url" != "$SERVER_URL/$REPOSITORY.git" ]; then
+            echo "::error::origin is $origin_url, not $SERVER_URL/$REPOSITORY; refusing to push."
+            exit 1
+          fi
+          git push origin "HEAD:refs/heads/$branch"
           gh pr create --repo "$REPOSITORY" --base main --head "$branch" \
             --title "Refresh the ranking snapshot from Eval Canary run $RUN_ID" \
             --body "$(printf '%s\n' \

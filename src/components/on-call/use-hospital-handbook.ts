@@ -34,8 +34,12 @@ import { useAuthSession } from "@/lib/supabase/client";
  * Rules:
  *  - a 401 while the session looks live is `expired`, not signed out;
  *  - an empty service list is `no-service`;
- *  - requests are cancelled by `AbortController`, and an answer is ignored when
- *    the auth epoch, service or site has moved on (the `ServicePage` pattern);
+ *  - a read is shared by every hook waiting on it, so an unmounting hook only
+ *    stops listening (its `AbortController`); an answer is ignored when the
+ *    auth epoch, service or site has moved on (the `ServicePage` pattern). The
+ *    shared read itself gives up after `READ_TIMEOUT_MS`, so a request that
+ *    stalls on poor Wi-Fi ends as "unavailable" with a Try again, never as
+ *    skeletons until the browser's own timeout, and Try again sends a new read;
  *  - one read is held for 60 s per `${authEpoch}:${serviceId}:${siteId}`, since
  *    every service call shares one per-user rate-limit bucket (C14). The memo is
  *    dropped on the sign-out wipe and whenever the auth epoch changes;
@@ -97,6 +101,8 @@ export type HospitalHandbookState = {
 };
 
 const MEMO_MS = 60_000;
+/** How long one shared read may take before it is treated as failed. */
+const READ_TIMEOUT_MS = 15_000;
 const REMOVED_KEEP_MS = 24 * 60 * 60 * 1000;
 
 type Memo<T> = { readonly at: number; readonly value: T };
@@ -125,12 +131,20 @@ function dropMemo(): void {
 function readOnce<K>(pending: Map<K, Pending>, key: K, url: string): Pending {
   const existing = pending.get(key);
   if (existing) return existing;
-  const request: Pending = fetch(url, { cache: "no-store" }).then(async (response) => ({
+  // A deadline on the shared read, not on any one caller: it rejects with a
+  // TimeoutError (not an AbortError), which every caller reports as unavailable.
+  const deadline = new AbortController();
+  const timer = setTimeout(
+    () => deadline.abort(new DOMException("The hospital handbook took too long to load.", "TimeoutError")),
+    READ_TIMEOUT_MS,
+  );
+  const request: Pending = fetch(url, { cache: "no-store", signal: deadline.signal }).then(async (response) => ({
     status: response.status,
     payload: response.ok ? ((await response.json()) as unknown) : null,
   }));
   pending.set(key, request);
   const settle = () => {
+    clearTimeout(timer);
     if (pending.get(key) === request) pending.delete(key);
   };
   request.then(settle, settle);
@@ -419,8 +433,13 @@ export function useHospitalHandbook({ enabled = true }: { readonly enabled?: boo
   );
 
   const retry = useCallback(() => {
-    if (detailKey) detailMemo.delete(detailKey);
+    if (detailKey) {
+      detailMemo.delete(detailKey);
+      // A retry is a new read, never a wait on the one still stalled.
+      detailPending.delete(detailKey);
+    }
     servicesMemo.delete(epoch);
+    servicesPending.delete(epoch);
     setServicesState((current) => (current?.status === "ready" ? current : null));
     setDetailState(null);
     setReloadToken((token) => token + 1);

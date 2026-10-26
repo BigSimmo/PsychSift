@@ -61,7 +61,7 @@ describe("segment error.tsx wrappers", () => {
 
 describe("global-error boundary", () => {
   it("renders a self-contained document that does not depend on CSS variables", () => {
-    const markup = renderToStaticMarkup(createElement(GlobalError, { error: new Error("fatal"), reset: noop }));
+    const markup = renderToStaticMarkup(createElement(GlobalError, { error: new Error("fatal"), retry: noop }));
 
     // Replaces the root layout, so it must supply its own <html>/<body>.
     expect(markup).toContain("<html");

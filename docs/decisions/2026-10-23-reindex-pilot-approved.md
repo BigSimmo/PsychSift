@@ -49,5 +49,23 @@ on the live database. So the pilot relies on that rollback and the daily backup.
   document once by hand, up to US$1.00. Any further failure ends the pilot.
 - **After canary:** the answer subset of run 39759615452 cost US$0.13. Allow up to US$0.50.
 - **Total ceiling:** US$4.50.
+- **Revised 24 Oct 2026:** the owner approved the pilot and its after canary again in chat, with a
+  hard cap of US$7 for the two together. The plan above is unchanged.
+
+**Caution added 24 Oct 2026** (an audit note, not part of the owner's decision; full text in
+[the re-index runbook](../reindex-runbook.md), "Rolling back a reindex"):
+
+- The no-go rollback may not work for every pilot document. Pages saved before 13 Oct 2026 carry
+  no generation stamp (migration `20261013075944` added the column with no backfill), so for a
+  document whose previous index is that old the planner reports `no_previous_generation`. Run the
+  read-only rollback dry run for the three documents before the pilot and treat a refusal as "no
+  quick undo right now", then run it again after the pilot commits and before any no-go decision,
+  because the committed pilot makes the generation it replaced the rollback target. A database fix
+  is drafted separately and needs the owner's yes.
+- A generation replaced before 21 Oct 2026 has no snapshot and is refused with
+  `target_snapshot_missing`.
+- Do not re-queue a pilot document whose current index is already a pilot generation before the
+  go/no-go check. Each commit keeps only the new generation and the one it replaced, so the
+  pre-pilot generation would be lost to rollback.
 
 If this summary and the source ever differ, the source wins.

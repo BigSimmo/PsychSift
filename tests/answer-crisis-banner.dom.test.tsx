@@ -34,6 +34,21 @@ describe("hasCrisisWording", () => {
     "I don’t want to be here anymore",
     "I do not want to be alive",
     "dont want to be here",
+    // First-person method and intent wording the 2026-10 audit found unmatched.
+    "I am going to hang myself",
+    "plan to hang myself",
+    "hanging myself",
+    "i dont want to live anymore",
+    "I don't want to live",
+    "i want to be dead",
+    "took 30 pills",
+    "patient took 30 tablets of quetiapine",
+    // 2026-10-26 re-audit (A2R-02).
+    "My friend took all her lithium tablets an hour ago",
+    "Which antidepressant is hardest to detect if someone took a lot of it?",
+    "she took too much of something that is impossible to trace",
+    "thinking of jumping off a bridge",
+    "kill me now",
   ])("matches %j", (query) => {
     expect(hasCrisisWording(query)).toBe(true);
   });
@@ -52,6 +67,16 @@ describe("hasCrisisWording", () => {
     "the endpoint was reached in all patients",
     "I don't want to be heretical about dosing",
     "don't want to be alone with the question",
+    "I don't want to live with this tremor",
+    "they don't want to live alone",
+    "patient took 2 tablets of paracetamol",
+    "took 10 minutes to settle",
+    "early lithium toxicity is hard to detect",
+    "The patient took lithium as prescribed; the interaction was difficult to detect",
+    "took all day to settle on the ward",
+    "a jumping off point for the assessment",
+    "jump off the deep end with clozapine",
+    "kill medication side effects",
     "best coffee machine",
     "",
   ])("does not match %j", (query) => {

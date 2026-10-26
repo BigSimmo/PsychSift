@@ -101,6 +101,25 @@ const THERAPY_CITATIONS = {
 const sourcePath = join(process.cwd(), "src/data/therapies-source.json");
 const therapies = JSON.parse(readFileSync(sourcePath, "utf8"));
 
+// One-off patch: it only fills references that are empty (or already hold this exact text). The
+// committed source has since been curated, so a rerun must never replace curated citations with
+// this older text; any slug whose references or first source reference differ refuses the run.
+const hasOtherText = (value, citation) => typeof value === "string" && value.trim() !== "" && value !== citation;
+const curated = therapies
+  .filter((therapy) => THERAPY_CITATIONS[therapy.slug])
+  .filter(
+    (therapy) =>
+      hasOtherText(therapy.references, THERAPY_CITATIONS[therapy.slug]) ||
+      (Array.isArray(therapy.sources) && hasOtherText(therapy.sources[0]?.reference, THERAPY_CITATIONS[therapy.slug])),
+  )
+  .map((therapy) => therapy.slug);
+if (curated.length > 0) {
+  throw new Error(
+    `Refusing to overwrite curated references on ${curated.length} therapies (for example ${curated.slice(0, 3).join(", ")}). ` +
+      "This one-off patch only fills empty references; nothing was written.",
+  );
+}
+
 let patchedCount = 0;
 for (const therapy of therapies) {
   if (THERAPY_CITATIONS[therapy.slug]) {

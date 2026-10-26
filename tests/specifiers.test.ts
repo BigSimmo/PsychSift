@@ -70,6 +70,17 @@ describe("psychiatric specifier catalogue", () => {
     expect(normalizeSpecifierSelection(["with-psychotic-features", "mild-severity"])).toEqual(["mild-severity"]);
   });
 
+  it("never keeps 'severe with psychotic features' alongside a remission descriptor", () => {
+    for (const remission of ["in-partial-remission", "in-full-remission"]) {
+      expect(normalizeSpecifierSelection(["with-psychotic-features", remission])).toEqual([remission]);
+      expect(normalizeSpecifierSelection([remission, "with-psychotic-features"])).toEqual(["with-psychotic-features"]);
+      expect(normalizeSpecifierSelection(["with-anxious-distress", "with-psychotic-features", remission])).toEqual([
+        "with-anxious-distress",
+        remission,
+      ]);
+    }
+  });
+
   it("matches builder specifiers to the selected diagnosis and episode", () => {
     const rapidCycling = findSpecifier("with-rapid-cycling");
     const melancholic = findSpecifier("with-melancholic-features");

@@ -1,7 +1,7 @@
 {
   "version": "repo-awareness-snapshot-v3",
   "captured_revision": {
-    "committed_at": "2026-10-23"
+    "committed_at": "2026-10-26"
   },
   "routes": {
     "modes": [
@@ -1957,6 +1957,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-24-honest-alerts-and-medication-import-guard.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/decisions/2026-10-17-overseas-line-centred-on-answer-home.md",
         "section": "decisions",
         "catalogued": true
@@ -2379,6 +2384,11 @@
       {
         "path": "docs/superpowers/rag-upgrade/local/plans/2026-08-21-rag-repository-content-sync.md",
         "section": "superpowers",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-26-ai-answers-need-the-declaration.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -2867,6 +2877,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-25-audit-check-rules-and-clinical-sign-off.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/redesign/04-deferred.md",
         "section": "redesign",
         "catalogued": true
@@ -3172,6 +3187,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-24-superseded-sources-stay-out-of-answers.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/prompts/codex-architecture-maintainability-ultra-review.md",
         "section": "prompts",
         "catalogued": true
@@ -3464,6 +3484,11 @@
       {
         "path": "docs/codex/documentation-ownership/README.md",
         "section": "codex",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-25-clinical-displays-show-gaps-honestly.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -3912,6 +3937,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/rag-behaviour/canary-ledger.md",
+        "section": "rag-behaviour",
+        "catalogued": true
+      },
+      {
         "path": "docs/superpowers/specs/2026-09-01-sources-mode-design.md",
         "section": "superpowers",
         "catalogued": true
@@ -4019,6 +4049,11 @@
       {
         "path": "docs/codex/architecture-maintainability/README.md",
         "section": "codex",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-25-delete-unused-surfaces-from-audit.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -4254,6 +4289,11 @@
       {
         "path": "docs/branch-cleanup-guide.md",
         "section": "root",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-25-clinical-question-holds-back-bare-names-and-addresses.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -4512,6 +4552,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-24-worker-scan-advisory-until-2-dec.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/design-system/GATES.md",
         "section": "design-system",
         "catalogued": true
@@ -4587,6 +4632,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-25-audit-database-fixes.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/agents/wiring-and-bundle-budget.md",
         "section": "agents",
         "catalogued": true
@@ -4600,6 +4650,11 @@
         "path": "docs/decisions/2026-09-26-leave-extended-rag-telemetry-off.md",
         "section": "decisions",
         "catalogued": true
+      },
+      {
+        "path": "docs/skipped-tests-inventory.md",
+        "section": "root",
+        "catalogued": false
       },
       {
         "path": "docs/wiring-conventions.md",
@@ -4642,6 +4697,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-26-answer-safety-reaudit-fixes.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/superpowers/rag-upgrade/local/plans/2026-08-21-trusted-admin-document-ingestion.md",
         "section": "superpowers",
         "catalogued": true
@@ -4649,6 +4709,11 @@
       {
         "path": "docs/superpowers/plans/2026-07-04-public-anonymous-access-rate-limits.md",
         "section": "superpowers",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-25-signed-in-daily-answer-cap.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -4699,6 +4764,11 @@
       {
         "path": "docs/archive/search-rag-phase-4-canonical-render-policy.md",
         "section": "archive",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-25-only-administrators-share-on-call-entries.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -4868,6 +4938,11 @@
       },
       {
         "path": "docs/decisions/2026-10-15-no-default-ai-coding-tool.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-25-unsupported-summary-wording.md",
         "section": "decisions",
         "catalogued": true
       },
@@ -5263,6 +5338,11 @@
       },
       {
         "path": "docs/decisions/2026-08-22-developer-hub-review-state-panel.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-25-licence-withdrawal-leaves-answers.md",
         "section": "decisions",
         "catalogued": true
       },

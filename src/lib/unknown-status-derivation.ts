@@ -11,7 +11,38 @@
  * derived. See `scripts/derive-unknown-status.ts` for the live backfill driver.
  */
 
+import {
+  sourceAuthorityIdentityForPublisher,
+  sourceAuthorityIdentityForPublisherCode,
+} from "@/lib/source-authority-registry";
+
 export const DEFAULT_REVIEW_CYCLE_YEARS = 3;
+
+/**
+ * Registry keys of the publishers whose documents carry the standard review cycle this
+ * derivation assumes. Only WA Health is documented as doing so; any other publisher, or a
+ * document with no recognised publisher, stays "unknown" rather than being read as current.
+ * Widening this list is a clinical policy decision for the owner.
+ */
+const REVIEW_CYCLE_AUTHORITY_KEYS: ReadonlySet<string> = new Set(["wa-health"]);
+
+/** Whether a document's recorded publisher is one whose standard review cycle may be assumed. */
+export function reviewCycleAppliesTo(metadata: { publisher_code?: unknown; publisher?: unknown }): boolean {
+  const identities = [
+    typeof metadata.publisher_code === "string" && metadata.publisher_code.trim()
+      ? sourceAuthorityIdentityForPublisherCode(metadata.publisher_code)
+      : undefined,
+    typeof metadata.publisher === "string" && metadata.publisher.trim()
+      ? sourceAuthorityIdentityForPublisher(metadata.publisher)
+      : undefined,
+  ].filter((identity) => identity !== undefined);
+  // Every recorded identity must resolve, and to a cycle publisher: a WA Health code beside
+  // a different named publisher is a conflict, not evidence.
+  return (
+    identities.length > 0 &&
+    identities.every((identity) => identity !== null && REVIEW_CYCLE_AUTHORITY_KEYS.has(identity.key))
+  );
+}
 
 /** Metadata version stamp written when a status is derived from the review cycle. */
 export const UNKNOWN_STATUS_DERIVATION_VERSION = "unknown_status_cycle_v1";
@@ -68,7 +99,11 @@ export function deriveUnknownStatus(
   const pubDate = new Date(`${pub.year}-${pad(pub.month)}-${pad(pub.day)}T00:00:00+08:00`);
   if (pubDate > now) return { kind: "skip", reason: "future_publication_date" };
 
-  const reviewDate = `${pub.year + reviewCycleYears}-${pad(pub.month)}-${pad(pub.day)}`;
+  // A 29 February publication lands on 28 February in a non-leap review year, so the inferred
+  // date is always a real calendar date and never later than one full cycle.
+  const reviewYear = pub.year + reviewCycleYears;
+  const daysInReviewMonth = new Date(Date.UTC(reviewYear, pub.month, 0)).getUTCDate();
+  const reviewDate = `${reviewYear}-${pad(pub.month)}-${pad(Math.min(pub.day, daysInReviewMonth))}`;
   const status = new Date(`${reviewDate}T23:59:59+08:00`) >= now ? "current" : "review_due";
   return { kind: "derived", reviewDate, status };
 }

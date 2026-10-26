@@ -546,6 +546,37 @@ describe("Therapy clinician-input workflow", () => {
     expect(readdirSync(directory)).toEqual(["therapies-source.json"]);
   });
 
+  it("keeps a pretty-printed source pretty-printed, so one sign-off is not a whole-file reflow", () => {
+    const directory = mkdtempSync(join(tmpdir(), "therapy-review-layout-"));
+    temporaryDirectories.push(directory);
+    const path = join(directory, "therapies-source.json");
+    const expectedRaw = `${JSON.stringify([pendingRecord()], null, 2)}\n`;
+    writeFileSync(path, expectedRaw, "utf8");
+    const records = [reviewedRecord()];
+    writeTherapySourceAtomically(path, records, { expectedRaw });
+    expect(readFileSync(path, "utf8")).toBe(`${JSON.stringify(records, null, 2)}\n`);
+  });
+
+  it("commits a pretty-printed source in its own layout through the review transaction", () => {
+    const fixture = transactionFixture();
+    const prettyRaw = `${JSON.stringify([pendingRecord()], null, 2)}\n`;
+    writeFileSync(fixture.sourcePath, prettyRaw, "utf8");
+    const reviewed = reviewedRecord();
+
+    expect(() =>
+      persistTherapyReviewTransaction({
+        sourcePath: fixture.sourcePath,
+        records: [reviewed],
+        expectedRaw: prettyRaw,
+        fixedGeneratedPaths: fixture.fixedGeneratedPaths,
+        listGeneratedPaths: fixture.listGeneratedPaths,
+        runGenerator: () => undefined,
+      }),
+    ).not.toThrow();
+
+    expect(readFileSync(fixture.sourcePath, "utf8")).toBe(`${JSON.stringify([reviewed], null, 2)}\n`);
+  });
+
   it("refuses to overwrite source bytes that changed after review began", () => {
     const directory = mkdtempSync(join(tmpdir(), "therapy-review-race-"));
     temporaryDirectories.push(directory);
@@ -601,6 +632,53 @@ describe("Therapy clinician-input workflow", () => {
     expect(readdirSync(fixture.directory).some((name) => name.endsWith(".tmp") || name.endsWith(".review.lock"))).toBe(
       false,
     );
+  });
+
+  it("recovers a lock left by a killed sign-off whose process is gone, and says so", () => {
+    const fixture = transactionFixture();
+    const reviewed = reviewedRecord();
+    writeFileSync(`${fixture.sourcePath}.review.lock`, "2147483647\n", "utf8");
+    const notices: string[] = [];
+
+    expect(() =>
+      persistTherapyReviewTransaction({
+        sourcePath: fixture.sourcePath,
+        records: [reviewed],
+        expectedRaw: fixture.expectedRaw,
+        fixedGeneratedPaths: fixture.fixedGeneratedPaths,
+        listGeneratedPaths: fixture.listGeneratedPaths,
+        runGenerator: () => undefined,
+        notice: (message: string) => {
+          notices.push(message);
+          return true;
+        },
+      }),
+    ).not.toThrow();
+
+    expect(readFileSync(fixture.sourcePath, "utf8")).toBe(JSON.stringify([reviewed]));
+    expect(notices).toEqual([expect.stringContaining("Removed a leftover lock")]);
+    expect(readdirSync(fixture.directory).some((name) => name.endsWith(".review.lock"))).toBe(false);
+  });
+
+  it("refuses a lock held by a running sign-off and names the lock file", () => {
+    const fixture = transactionFixture();
+    const lockPath = `${fixture.sourcePath}.review.lock`;
+    writeFileSync(lockPath, `${process.pid}\n`, "utf8");
+
+    expect(() =>
+      persistTherapyReviewTransaction({
+        sourcePath: fixture.sourcePath,
+        records: [reviewedRecord()],
+        expectedRaw: fixture.expectedRaw,
+        fixedGeneratedPaths: fixture.fixedGeneratedPaths,
+        listGeneratedPaths: fixture.listGeneratedPaths,
+        runGenerator: () => undefined,
+        notice: () => true,
+      }),
+    ).toThrow(lockPath);
+
+    expect(readFileSync(fixture.sourcePath, "utf8")).toBe(fixture.expectedRaw);
+    expect(readFileSync(lockPath, "utf8")).toBe(`${process.pid}\n`);
   });
 
   it("preserves concurrent source bytes and restores generated assets when generation otherwise succeeds", () => {

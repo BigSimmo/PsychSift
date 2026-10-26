@@ -260,10 +260,11 @@ async function classifyExistingImages(supabase: SupabaseAdmin, documentId: strin
 
     const download = await supabase.storage.from(env.SUPABASE_IMAGE_BUCKET).download(image.storage_path);
     if (download.error || !download.data) {
-      await supabase
+      const { error: skipError } = await supabase
         .from("document_images")
         .update({ searchable: false, skip_reason: download.error?.message ?? "image unavailable in storage" })
         .eq("id", image.id);
+      if (skipError) throw new Error(skipError.message);
       skipped += 1;
       continue;
     }
@@ -287,7 +288,7 @@ async function classifyExistingImages(supabase: SupabaseAdmin, documentId: strin
     });
 
     if (cheapSkip) {
-      await supabase
+      const { error: cheapSkipError } = await supabase
         .from("document_images")
         .update({
           searchable: false,
@@ -297,6 +298,7 @@ async function classifyExistingImages(supabase: SupabaseAdmin, documentId: strin
           clinical_relevance_score: 0,
         })
         .eq("id", image.id);
+      if (cheapSkipError) throw new Error(cheapSkipError.message);
       skipped += 1;
       continue;
     }
@@ -372,7 +374,7 @@ async function classifyExistingImages(supabase: SupabaseAdmin, documentId: strin
       classification.image_type !== "logo_decorative";
     const nextSearchable = finalAssessment.searchable;
 
-    await supabase
+    const { error: imageUpdateError } = await supabase
       .from("document_images")
       .update({
         caption: classification.caption || image.caption,
@@ -395,6 +397,7 @@ async function classifyExistingImages(supabase: SupabaseAdmin, documentId: strin
         },
       })
       .eq("id", image.id);
+    if (imageUpdateError) throw new Error(imageUpdateError.message);
 
     if (!nextSearchable) skipped += 1;
     else searchable += 1;
@@ -511,6 +514,7 @@ async function main() {
   }
 
   let completed = 0;
+  let failed = 0;
   const CONCURRENCY = 1;
   const activeTasks = new Set<Promise<void>>();
 
@@ -549,13 +553,14 @@ async function main() {
               skipped_image_count: imageStats.skipped,
               image_enriched_at: new Date().toISOString(),
             };
-            await supabase
+            const { error: imageCountError } = await supabase
               .from("documents")
               .update({
                 image_count: imageStats.searchable,
                 metadata: imageMetadata as Json,
               })
               .eq("id", document.id);
+            if (imageCountError) throw new Error(imageCountError.message);
           }
 
           const evidence = await loadEvidence(supabase, document.id);
@@ -590,13 +595,16 @@ async function main() {
             images: evidence.images as unknown as Parameters<typeof upsertDocumentDeepMemory>[0]["images"],
             summary: enrichmentSummary,
           });
-          const { data: latestDoc } = await supabase
+          // A failed read would leave latestMetadata empty, and the write below would then replace
+          // the document's whole metadata with only the status fields.
+          const { data: latestDoc, error: latestDocError } = await supabase
             .from("documents")
             .select("metadata")
             .eq("id", document.id)
             .single();
+          if (latestDocError) throw new Error(latestDocError.message);
           const latestMetadata = metadataRecord(latestDoc?.metadata);
-          await supabase
+          const { error: statusError } = await supabase
             .from("documents")
             .update({
               metadata: {
@@ -606,6 +614,7 @@ async function main() {
               },
             })
             .eq("id", document.id);
+          if (statusError) throw new Error(statusError.message);
 
           completed += 1;
           console.log(
@@ -628,6 +637,7 @@ async function main() {
             await new Promise((resolve) => setTimeout(resolve, delayMs));
           } else {
             console.error(`ERROR enriching ${document.file_name}:`, errorMessage);
+            failed += 1;
             break; // Break the retry loop for non-rate-limit errors
           }
         }
@@ -643,7 +653,10 @@ async function main() {
 
   await Promise.all(activeTasks);
 
-  console.log(`Enrichment complete. completed=${completed} skipped=${documents.length - completed}`);
+  console.log(
+    `Enrichment complete. completed=${completed} failed=${failed} skipped=${documents.length - completed - failed}`,
+  );
+  if (failed > 0) process.exitCode = 1;
 }
 
 main().catch((error) => {

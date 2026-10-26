@@ -7,14 +7,24 @@ import type {
   ClinicalAskRequest,
   ClinicalAskResponse,
 } from "@/lib/clinical-ask/contracts";
-import { annotateEvidenceCoverage, assessEvidenceSufficiency } from "@/lib/clinical-ask/evidence-sufficiency";
+import {
+  annotateEvidenceCoverage,
+  assessEvidenceSufficiency,
+  type EvidenceSufficiencyDecision,
+} from "@/lib/clinical-ask/evidence-sufficiency";
 import { clinicalAskModeProfile } from "@/lib/clinical-ask/mode-profiles";
 import { governClinicalAskDraft, publicClinicalAskEvidence } from "@/lib/clinical-ask/response-governance";
 import { clinicalAskRequestPatientDetail } from "@/lib/clinical-question-patient-check-server";
+import { logger } from "@/lib/logger";
 import type { RetrievalAccessScope } from "@/lib/owner-scope";
+import { safeErrorLogDetails } from "@/lib/privacy";
+import { publicFallbackReason } from "@/lib/rag/rag-fallback-reason";
 import { clinicalAskRequestSchema } from "@/lib/validation/clinical-ask-request";
 
 const DEADLINE_MS = 45_000;
+
+const EVIDENCE_CONFLICT_NOTICE_ID = "evidence-sufficiency-conflict";
+const NOT_FULLY_SUPPORTED_NOTICE = "The requested conclusion is not fully supported by the available evidence.";
 
 function failed(
   request: Pick<ClinicalAskRequest, "mode">,
@@ -31,9 +41,45 @@ function evidenceGap(request: ClinicalAskRequest, evidence: readonly ClinicalAsk
     mode: request.mode,
     explanation,
     evidence: publicClinicalAskEvidence(evidence),
-    missingInformation: ["The requested conclusion is not fully supported by the available evidence."],
+    missingInformation: [NOT_FULLY_SUPPORTED_NOTICE],
     nextActions: ["Review the linked evidence", "Clarify the unsupported details"],
   };
+}
+
+/**
+ * The orchestrator's own evidence analysis, attached to an answer whatever the
+ * model's draft said. `sufficiency` used to decide only whether to try external
+ * fallback, so when two sources disagreed and external search was off or failed,
+ * an answer could reach "answered" with one value and no conflict shown unless
+ * the model chose to list it (owner decision, 25 Oct 2026). The wording is the
+ * answer pipeline's existing source-conflict and coverage-gap text.
+ */
+function withSufficiencyNotice(
+  response: ClinicalAskResponse,
+  sufficiency: EvidenceSufficiencyDecision,
+  evidence: readonly ClinicalAskEvidence[],
+): ClinicalAskResponse {
+  if (response.state !== "answered" || sufficiency.sufficient) return response;
+  const evidenceIds = new Set(evidence.map((item) => item.id));
+  const conflictIds = sufficiency.unresolvedConflictIds.filter((id) => evidenceIds.has(id));
+  const conflicts =
+    conflictIds.length > 0 && !response.conflicts.some((claim) => claim.id === EVIDENCE_CONFLICT_NOTICE_ID)
+      ? [
+          { id: EVIDENCE_CONFLICT_NOTICE_ID, text: publicFallbackReason("source_conflict"), evidenceIds: conflictIds },
+          ...response.conflicts,
+        ]
+      : response.conflicts;
+  const gapNotice =
+    sufficiency.missingSectionIds.length > 0 || sufficiency.uncoveredRequestAtoms.length > 0
+      ? publicFallbackReason("coverage_gap")
+      : conflictIds.length > 0
+        ? null
+        : NOT_FULLY_SUPPORTED_NOTICE;
+  const missingInformation =
+    gapNotice && !response.missingInformation.includes(gapNotice)
+      ? [gapNotice, ...response.missingInformation]
+      : response.missingInformation;
+  return { ...response, conflicts, missingInformation };
 }
 
 function abortReason(signal: AbortSignal) {
@@ -151,6 +197,8 @@ export async function runClinicalAsk(
         sufficiency = assessEvidenceSufficiency({ profile, request: projectedRequest, evidence, coverage });
       } catch (error) {
         if (operationSignal.aborted) throw error;
+        // The answer carries on without external evidence; the log is the operator's only signal.
+        logger.warn("Clinical Ask external search failed", { mode: request.mode, ...safeErrorLogDetails(error) });
       }
     }
 
@@ -164,6 +212,7 @@ export async function runClinicalAsk(
       draft = await retryOnce(() => dependencies.synthesize(projectedRequest, evidence, operationSignal));
     } catch (error) {
       if (operationSignal.aborted) throw error;
+      logger.warn("Clinical Ask synthesis failed", { mode: request.mode, ...safeErrorLogDetails(error) });
       return finish(
         evidenceGap(projectedRequest, evidence, "Synthesis was unavailable; no uncited answer was produced."),
       );
@@ -177,9 +226,10 @@ export async function runClinicalAsk(
         governed = governClinicalAskDraft(profile, draft, evidence);
       } catch (error) {
         if (operationSignal.aborted) throw error;
+        logger.warn("Clinical Ask synthesis retry failed", { mode: request.mode, ...safeErrorLogDetails(error) });
       }
     }
-    return finish(governed);
+    return finish(withSufficiencyNotice(governed, sufficiency, evidence));
   } catch (error) {
     if (deadlineController.signal.aborted) {
       return finish(
@@ -191,6 +241,8 @@ export async function runClinicalAsk(
     if (signal.aborted || (error as { name?: string }).name === "AbortError") {
       return finish(failed(request, "aborted", "Clinical Ask was cancelled."));
     }
+    // Error name and redacted message only; the question and evidence never reach the log.
+    logger.error("Clinical Ask failed", { mode: request.mode, ...safeErrorLogDetails(error) });
     return finish(failed(request, "provider_unavailable", "Clinical Ask is temporarily unavailable.", true));
   } finally {
     clearTimeout(deadline);

@@ -1289,12 +1289,15 @@ async function markJobFailure(job: ClaimedJob, message: string, error?: unknown)
     error,
   });
   const refusal = edgeProviderEgressFailure(error);
+  // Audit 2026-10-24 CR-02: update_indexing_v3_agent_job_status accepts only its four completion
+  // keys in p_metadata, so a refusal record sent there made the RPC raise and the job sat in
+  // 'processing' until its lease ran out. The refusal codes travel in the error text instead.
   await updateAgentJobStatus(
     job,
     decision.shouldRetry ? "deferred" : "failed",
-    refusal?.code ?? message,
+    refusal ? `${refusal.code}${refusal.codes.length > 0 ? ` (${refusal.codes.join(", ")})` : ""}` : message,
     decision.nextRunAt,
-    refusal ? { document_ingress_safety: { verdict: "quarantine", ...refusal } } : {},
+    {},
   );
 
   return decision.shouldRetry;

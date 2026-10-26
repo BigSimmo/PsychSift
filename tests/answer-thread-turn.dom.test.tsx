@@ -266,3 +266,22 @@ describe("prior adaptive answer turn", () => {
     ).toContainElement(screen.getByRole("button", { name: /Source \d+, Section-only source, p\. 9/i }));
   });
 });
+
+describe("collapsed prior answer turn", () => {
+  it("previews the lead without literal bold markers", () => {
+    const priorTurn = turn(false);
+    priorTurn.answer = { ...priorTurn.answer, answer: "**Lithium** levels should be checked after a dose change." };
+    render(
+      <PriorAnswerTurnSurface
+        turn={priorTurn}
+        copied={false}
+        collapsed
+        onToggleCollapsed={() => {}}
+        onCopy={() => {}}
+      />,
+    );
+
+    expect(screen.getByText("Lithium levels should be checked after a dose change.")).toBeInTheDocument();
+    expect(screen.queryByText(/\*\*/)).toBeNull();
+  });
+});

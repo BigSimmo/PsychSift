@@ -167,3 +167,57 @@ describe("developerLinkAccessGranted", () => {
     await expect(developerLinkAccessGranted()).resolves.toBe(false);
   });
 });
+
+describe("developerAreaRequestAuthorized", () => {
+  // The check each developer-hub page repeats for itself, because the App Router
+  // can skip the shared layout (and so `DeveloperAreaGate`) on a client-side
+  // navigation. It must refuse exactly what the gate refuses.
+  const KEY = "developer-area-test-key".padEnd(32, "-");
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  async function load({
+    cookie,
+    user,
+  }: {
+    cookie?: string;
+    user: { id: string; app_metadata?: Record<string, unknown> } | null;
+  }) {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("PLAYWRIGHT_OFFLINE_MODE", "");
+    vi.doMock("server-only", () => ({}));
+    vi.doMock("next/headers", () => ({
+      cookies: vi.fn(async () => ({
+        get: (name: string) => (cookie === undefined ? undefined : { name, value: cookie }),
+      })),
+    }));
+    vi.doMock("@/lib/supabase/server", () => ({
+      createSupabaseServerClient: vi.fn(async () => ({
+        auth: { getUser: vi.fn(async () => ({ data: { user } })) },
+      })),
+    }));
+    return import("../src/lib/developer-area/access");
+  }
+
+  it("refuses a signed-out request and a signed-in non-administrator in production", async () => {
+    const signedOut = await load({ user: null });
+    await expect(signedOut.developerAreaRequestAuthorized()).resolves.toBe(false);
+
+    vi.resetModules();
+    const ordinary = await load({ user: { id: "user-1", app_metadata: {} } });
+    await expect(ordinary.developerAreaRequestAuthorized()).resolves.toBe(false);
+  });
+
+  it("admits an administrator, or a holder of a valid access cookie", async () => {
+    const admin = await load({ user: { id: "admin-1", app_metadata: { site_role: "administrator" } } });
+    await expect(admin.developerAreaRequestAuthorized()).resolves.toBe(true);
+
+    vi.resetModules();
+    process.env.DEVELOPER_AREA_ACCESS_KEY = KEY;
+    const token = issueDeveloperAccessToken({ DEVELOPER_AREA_ACCESS_KEY: KEY }) as string;
+    const linkHolder = await load({ cookie: token, user: null });
+    await expect(linkHolder.developerAreaRequestAuthorized()).resolves.toBe(true);
+  });
+});

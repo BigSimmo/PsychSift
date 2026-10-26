@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useState, useSyncExternalStore, type ReactNode } from "react";
 import {
   ArrowRight,
   BookOpen,
@@ -42,6 +42,29 @@ const sections = [
   { id: "dictionary-sources", label: "Sources and review", icon: FileText },
   { id: "dictionary-related", label: "Related entries", icon: Link2 },
 ] as const satisfies readonly PageSection[];
+
+/* Tailwind's `sm`: from here up every section's content is always shown. */
+const sectionsAlwaysOpenQuery = "(min-width: 40rem)";
+
+function subscribeSectionsAlwaysOpen(callback: () => void) {
+  if (typeof window.matchMedia !== "function") return () => {};
+  const media = window.matchMedia(sectionsAlwaysOpenQuery);
+  media.addEventListener("change", callback);
+  return () => media.removeEventListener("change", callback);
+}
+
+/**
+ * True where the section toggles are inert. The content is `sm:block` there, so
+ * a toggle still announcing "collapsed", and still flipping that state on Enter,
+ * told desktop screen-reader users the visible text was hidden.
+ */
+function useSectionsAlwaysOpen(): boolean {
+  return useSyncExternalStore(
+    subscribeSectionsAlwaysOpen,
+    () => typeof window.matchMedia === "function" && window.matchMedia(sectionsAlwaysOpenQuery).matches,
+    () => false,
+  );
+}
 
 export function DictionaryTermPage({ entry }: { entry: DictionaryEntry }) {
   const router = useRouter();
@@ -359,12 +382,16 @@ function EntrySection({
   onToggle: () => void;
   children: ReactNode;
 }) {
+  const alwaysOpen = useSectionsAlwaysOpen();
   return (
     <section id={id} className="break-inside-avoid border-b border-[color:var(--border)] py-1 sm:py-5">
       <button
         type="button"
-        onClick={onToggle}
-        aria-expanded={open}
+        onClick={alwaysOpen ? undefined : onToggle}
+        // Out of the tab order where it cannot change anything, and reporting
+        // the content as shown, because there it always is.
+        tabIndex={alwaysOpen ? -1 : undefined}
+        aria-expanded={open || alwaysOpen}
         aria-controls={`${id}-content`}
         className="grid min-h-tap w-full grid-cols-[1.5rem_minmax(0,1fr)_auto] items-center gap-2 py-2 text-left sm:pointer-events-none sm:min-h-0 sm:py-0"
       >

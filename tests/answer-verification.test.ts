@@ -5,6 +5,7 @@ import {
   detectLabelledNumericBandConflicts,
   extractClinicalValueAtoms,
   extractNumericTokens,
+  unboldUnverifiedNumbers,
   verifyAnswerNumbers,
 } from "../src/lib/answer-verification";
 import { citationFromResult } from "../src/lib/citations";
@@ -369,6 +370,63 @@ describe("answer-verification (GEN-C2 / GEN-H2)", () => {
       [source({ content: "Give 4 times daily." })],
     );
     expect(verification.hasUnverifiedNumbers).toBe(true);
+  });
+
+  it("reads a three-digit comma group as thousands, not a decimal (audit NEW-G-02)", () => {
+    expect(extractClinicalValueAtoms("Maximum 1,500 mg per day")[0]).toMatchObject({
+      canonicalValue: "1500",
+      canonicalUnit: "mg",
+    });
+    expect(extractClinicalValueAtoms("1,5 mg")[0]).toMatchObject({ canonicalValue: "1.5" });
+    const verifies = (answer: string, evidence: string) =>
+      verifyAnswerNumbers(answer, [{ chunk_id: "chunk-1" }], [source({ content: evidence })]);
+    expect(verifies("Maximum 1.5 mg per day.", "Maximum 1,500 mg per day.").hasUnverifiedNumbers).toBe(true);
+    expect(verifies("Maximum 1,500 mg per day.", "Maximum 1.5 mg per day.").hasUnverifiedNumbers).toBe(true);
+    expect(verifies("Maximum 1200 mg per day.", "Maximum 1,200 mg per day.").hasUnverifiedNumbers).toBe(false);
+    expect(verifies("Maximum 1,200 mg per day.", "Maximum 1200 mg per day.").hasUnverifiedNumbers).toBe(false);
+  });
+
+  it("checks doses written in words (audit NEW-G-02)", () => {
+    expect(extractClinicalValueAtoms("give ten milligrams")[0]).toMatchObject({
+      canonicalValue: "10",
+      canonicalUnit: "mg",
+    });
+    expect(extractClinicalValueAtoms("twenty-five mg at night")[0]).toMatchObject({ canonicalValue: "25" });
+    expect(extractClinicalValueAtoms("one hundred and fifty milligrams")[0]).toMatchObject({ canonicalValue: "150" });
+    expect(extractClinicalValueAtoms("two to four milligrams")[0]).toMatchObject({ range: ["2", "4"] });
+    expect(extractClinicalValueAtoms("one of the options for two weeks")).toEqual([]);
+    const verifies = (answer: string, evidence: string) =>
+      verifyAnswerNumbers(answer, [{ chunk_id: "chunk-1" }], [source({ content: evidence })]);
+    expect(verifies("Give ten milligrams at night.", "Give 1 mg at night.").hasUnverifiedNumbers).toBe(true);
+    expect(verifies("Give ten milligrams at night.", "Give 10 mg at night.").hasUnverifiedNumbers).toBe(false);
+  });
+
+  it("never adds the two ends of a worded range into one dose", () => {
+    const verifies = (answer: string, evidence: string) =>
+      verifyAnswerNumbers(answer, [{ chunk_id: "chunk-1" }], [source({ content: evidence })]);
+    expect(verifies("Give 6 mg.", "Give between two and four milligrams.").hasUnverifiedNumbers).toBe(true);
+    expect(verifies("Give 3 mg.", "Give one-two milligrams.").hasUnverifiedNumbers).toBe(true);
+    expect(extractClinicalValueAtoms("twenty-five milligrams")[0]).toMatchObject({ canonicalValue: "25" });
+    expect(verifies("Give 6 mg.", "Give two - four milligrams.").hasUnverifiedNumbers).toBe(true);
+    expect(extractClinicalValueAtoms("two four milligrams")).toEqual([]);
+    expect(extractClinicalValueAtoms("ten five milligrams")).toEqual([]);
+    expect(extractClinicalValueAtoms("two thousand five hundred milligrams")[0]).toMatchObject({
+      canonicalValue: "2500",
+    });
+  });
+
+  it("keeps a symbolic comparator attached to a unit quantity (audit NEW-G-02)", () => {
+    expect(extractClinicalValueAtoms("<5 mg")[0]).toMatchObject({
+      comparator: "below",
+      canonicalValue: "5",
+      canonicalUnit: "mg",
+    });
+    expect(extractClinicalValueAtoms("≥ 8 mmol")[0]).toMatchObject({ comparator: "at_least", canonicalValue: "8" });
+    const verifies = (answer: string, evidence: string) =>
+      verifyAnswerNumbers(answer, [{ chunk_id: "chunk-1" }], [source({ content: evidence })]);
+    expect(verifies("Use 5 mg.", "Use <5 mg.").hasUnverifiedNumbers).toBe(true);
+    expect(verifies("Use less than 5 mg.", "Use <5 mg.").hasUnverifiedNumbers).toBe(false);
+    expect(verifies("Use <5 mg.", "Use less than 5 mg.").hasUnverifiedNumbers).toBe(false);
   });
 
   it("preserves word and symbolic comparators on unitless thresholds", () => {
@@ -1754,5 +1812,40 @@ describe("upper-limit comparator with clinical units", () => {
         verifyAnswerNumbers(`Use at least ${quantity}.`, [{ chunk_id: evidence.id }], [evidence]).hasUnverifiedNumbers,
       ).toBe(true);
     }
+  });
+});
+
+describe("thousands separators are not decimal commas (#177)", () => {
+  const verify = (sourceText: string, answerText: string) => {
+    const evidence = source({ content: sourceText });
+    return verifyAnswerNumbers(answerText, [{ chunk_id: evidence.id }], [evidence]);
+  };
+
+  it.each([
+    ["Give 1,000 mg daily.", "Give 1 mg daily."],
+    ["Give 5,000 units.", "Give 5 units."],
+    ["Give 1,500 mg daily.", "Give 1.5 mg daily."],
+    ["Give 5,000,000 units.", "Give 1,000,000 units."],
+  ])("flags a dose that drops the thousands: source %s, answer %s", (sourceText, answerText) => {
+    expect(verify(sourceText, answerText).hasUnverifiedNumbers).toBe(true);
+  });
+
+  it.each([
+    ["Give 1,000 mg daily.", "Give 1,000 mg daily."],
+    ["Give 1,000 mg daily.", "Give 1000 mg daily."],
+    ["Give 1,000,000 units.", "Give 1,000,000 units."],
+    ["Give 0,5 mg daily.", "Give 0.5 mg daily."],
+  ])("verifies the same figure however it is grouped: source %s, answer %s", (sourceText, answerText) => {
+    expect(verify(sourceText, answerText).unverifiedTokens).toEqual([]);
+  });
+});
+
+describe("unverified symbol-comparator thresholds lose their bold (#179)", () => {
+  it("un-bolds **ANC < 1.5** when <1.5 could not be verified", () => {
+    expect(unboldUnverifiedNumbers("Withhold if **ANC < 1.5**.", new Set(["<1.5"]))).toBe("Withhold if ANC < 1.5.");
+  });
+
+  it("keeps the bold on a verified threshold", () => {
+    expect(unboldUnverifiedNumbers("Withhold if **ANC < 1.5**.", new Set(["<2.0"]))).toBe("Withhold if **ANC < 1.5**.");
   });
 });
