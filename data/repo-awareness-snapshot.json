@@ -4697,6 +4697,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-26-answer-safety-reaudit-fixes.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/superpowers/rag-upgrade/local/plans/2026-08-21-trusted-admin-document-ingestion.md",
         "section": "superpowers",
         "catalogued": true
