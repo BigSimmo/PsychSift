@@ -20,6 +20,51 @@ describe("API tenancy predicates AST guard (#J43Z6B)", () => {
     expect(violations).toEqual([]);
   });
 
+  it("tiers tables written as GeneratedTable<...> or with a one-line Row, and never a Functions entry", () => {
+    const tiers = tableTiersFromDatabaseTypes(`
+type GeneratedTable<Row> = { Row: Row; Insert: Partial<Row>; Update: Partial<Row>; Relationships: [] };
+export type Database = {
+  public: {
+    Tables: {
+      plain: {
+        Row: {
+          id: string;
+          owner_id: string;
+        };
+        Insert: { id?: string };
+      };
+      one_line: {
+        Row: { service_id: string; user_id: string };
+        Insert: { service_id: string; user_id: string };
+      };
+      wrapped: GeneratedTable<{
+        id: string;
+        document_id: string;
+      }>;
+      untiered: GeneratedTable<{ id: string; name: string }>;
+    };
+    Functions: {
+      not_a_table: { Args: { owner_id: string }; Returns: undefined };
+    };
+  };
+};`);
+    expect([...tiers.direct]).toEqual(["plain"]);
+    expect([...tiers.userKeyed]).toEqual(["one_line"]);
+    expect([...tiers.derived]).toEqual(["wrapped"]);
+    expect([...tiers.all].sort()).toEqual(["one_line", "plain", "untiered", "wrapped"]);
+  });
+
+  it("reads the real generated types, including every GeneratedTable<...> table", () => {
+    const schemaTypes = readFileSync(join(process.cwd(), "src", "lib", "supabase", "database.types.ts"), "utf8");
+    const tiers = tableTiersFromDatabaseTypes(schemaTypes);
+    expect(tiers.userKeyed.has("work_role_grants")).toBe(true);
+    expect(tiers.userKeyed.has("teaching_calendar_optins")).toBe(true);
+    expect(tiers.direct.has("cme_plan_goal_carries")).toBe(true);
+    expect(tiers.direct.has("work_backups")).toBe(true);
+    expect(tiers.all.has("work_hospitals")).toBe(true);
+    expect(tiers.all.has("roster_rotation_rounds")).toBe(true);
+  });
+
   it("asserts emptyTierNames(counts) is empty (guaranteeing AST parser is intact and reading schema types)", () => {
     const schemaTypes = readFileSync(join(process.cwd(), "src", "lib", "supabase", "database.types.ts"), "utf8");
     const tiers = tableTiersFromDatabaseTypes(schemaTypes);

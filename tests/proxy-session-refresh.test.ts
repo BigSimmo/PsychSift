@@ -7,6 +7,9 @@ import { NextRequest } from "next/server";
 // rotated Set-Cookie headers to the browser.
 
 const getClaims = vi.fn(async () => ({ data: { claims: null }, error: null }));
+// When set, the next getClaims stalls like an unresponsive Supabase auth server and only
+// writes (cleared) cookies long after the proxy's deadline has passed.
+const stall = { next: false };
 
 vi.mock("@supabase/ssr", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@supabase/ssr")>();
@@ -16,6 +19,15 @@ vi.mock("@supabase/ssr", async (importOriginal) => {
       (_url, _key, options: { cookies: { setAll: (cookies: never[], headers: Record<string, string>) => void } }) => ({
         auth: {
           getClaims: async () => {
+            if (stall.next) {
+              stall.next = false;
+              await new Promise((resolve) => setTimeout(resolve, 100_000));
+              options.cookies.setAll(
+                [{ name: "sb-unit-test-auth-token", value: "", options: { path: "/", maxAge: 0 } }] as never[],
+                {},
+              );
+              return { data: { claims: { sub: "late-user" } }, error: null };
+            }
             options.cookies.setAll(
               [
                 {
@@ -58,6 +70,8 @@ function requestWithSessionCookie(path: string): NextRequest {
 
 beforeEach(() => {
   getClaims.mockClear();
+  stall.next = false;
+  vi.useRealTimers();
 });
 
 describe("proxy session refresh scoping", () => {
@@ -80,6 +94,26 @@ describe("proxy session refresh scoping", () => {
     expect(getClaims).toHaveBeenCalledTimes(1);
     expect(response.cookies.get("sb-unit-test-auth-token")?.value).toBe("rotated-session");
     expect(response.headers.get("content-security-policy")).toBeTruthy();
+  });
+
+  it("lets a signed-in page load as signed out when the sign-in check stalls (performance audit H1)", async () => {
+    vi.useFakeTimers();
+    const { proxy, PROXY_AUTH_USER_HEADER } = await import("../src/proxy");
+    const { SERVER_AUTH_DEADLINE_MS } = await import("../src/lib/supabase/auth-deadline");
+    stall.next = true;
+
+    const pending = proxy(requestWithSessionCookie("/mha-clock"));
+    await vi.advanceTimersByTimeAsync(SERVER_AUTH_DEADLINE_MS);
+    const response = await pending;
+
+    expect(response.headers.get("content-security-policy")).toBeTruthy();
+    const overridden = (response.headers.get("x-middleware-override-headers") ?? "").split(",");
+    expect(overridden).not.toContain(PROXY_AUTH_USER_HEADER);
+    expect(response.cookies.get("sb-unit-test-auth-token")).toBeUndefined();
+
+    // The stalled refresh finishing later must not clear the browser's session cookie.
+    await vi.advanceTimersByTimeAsync(100_000);
+    expect(response.cookies.get("sb-unit-test-auth-token")).toBeUndefined();
   });
 
   it("never calls getClaims without an sb- cookie", async () => {
