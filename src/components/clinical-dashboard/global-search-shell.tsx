@@ -1,6 +1,11 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
+import {
+  useAnswerSearchParams,
+  useMoveAnswerQuestionOutOfAddress,
+  usePrivateAnswerRouter,
+} from "@/components/clinical-dashboard/use-private-answer-url";
 import {
   Suspense,
   type CSSProperties,
@@ -243,8 +248,9 @@ function GlobalSearchShellRoute(props: GlobalSearchShellProps & { pathname: stri
 
 function GlobalSearchShellDashboardGate(props: GlobalSearchShellProps) {
   const pathname = usePathname() ?? "/";
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const router = usePrivateAnswerRouter();
+  const searchParams = useAnswerSearchParams();
+  useMoveAnswerQuestionOutOfAddress(searchParams.toString());
   const landingPreferenceAppliedRef = useRef(false);
   useEffect(() => {
     if (landingPreferenceAppliedRef.current) return;
@@ -402,7 +408,7 @@ function GlobalStandaloneSearchShellBody({
   mobileChromeVisible = true,
   searchParamString,
 }: GlobalSearchShellProps & { searchParamString: string }) {
-  const router = useRouter();
+  const router = usePrivateAnswerRouter();
   const pathname = usePathname() ?? "/";
   const searchParams = useMemo(() => new URLSearchParams(searchParamString), [searchParamString]);
   const inputRef = useRef<HTMLInputElement>(null);
