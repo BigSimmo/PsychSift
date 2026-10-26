@@ -111,11 +111,16 @@ export function DegradedNoticeFrame({
   reserveSpace?: boolean;
 }) {
   // The live region stays mounted (empty when no notice) so screen readers
-  // announce the text when it is inserted; sr-only keeps it out of layout.
+  // announce the text when it is inserted; sr-only keeps it out of layout. The
+  // `contents` wrapper has no box of its own, so sibling-geometry checks (e.g.
+  // the desktop page-search slot clearing the content that follows it) never
+  // see the 1px sr-only node as page content.
   const liveRegion = (
-    <span role="alert" className="sr-only">
-      {visible ? (!isOnline ? "Offline" : "Service unavailable") : null}
-    </span>
+    <div className="contents" data-testid="dashboard-degraded-notice-live-region">
+      <span role="alert" className="sr-only">
+        {visible ? (!isOnline ? "Offline" : "Service unavailable") : null}
+      </span>
+    </div>
   );
 
   if (!visible && !reserveSpace) {
