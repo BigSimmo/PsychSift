@@ -1,12 +1,13 @@
 -- Disposable database only (`npm run test:sql`). Proves the 26 Oct 2026 privacy database changes
--- (20261026081000_privacy_cpd_files_and_calendar_links.sql and
--- 20261026081500_delete_question_logs_with_account.sql):
+-- (20261026081000_privacy_cpd_files_and_calendar_links.sql,
+-- 20261026081500_delete_question_logs_with_account.sql and
+-- 20261026092000_drop_calendar_link_plain_url.sql):
 --   SB-05  deleting an account queues its CPD evidence files for the storage cleaner, once each,
 --          without the owner on the job, and leaves another doctor's evidence alone;
---   DB-04  a calendar address is kept encrypted in Vault, the list column holds only the host,
---          only the owner gets the address back, a changed address re-seals the same secret, the
---          app cannot repoint a link at another secret, and removing a link or the account
---          removes its encrypted copy;
+--   DB-04  a calendar address is kept only encrypted in Vault (no plain-text column), the list
+--          column holds only the host, only the owner gets the address back, the app cannot
+--          repoint or share a link's secret, the add function keeps the https, workplace and
+--          3-link rules, and removing a link or the account removes its encrypted copy;
 --   DB-05  deleting an account deletes its questions, answers and search logs, keeps its answer
 --          feedback as an unnamed report with the free-text note emptied, keeps its audit-log rows
 --          with the owner cleared, and leaves another doctor's rows alone.
@@ -52,65 +53,80 @@ select public.cme_remove_evidence('d0000000-0000-4000-8000-000000000001',
   'd3000000-0000-4000-8000-000000000012', 'Wrong certificate');
 
 -- DB-04 --------------------------------------------------------------------------------------
-insert into public.roster_calendar_links(id, owner_id, url, workplace) values
-  ('d4000000-0000-4000-8000-000000000011', 'd0000000-0000-4000-8000-000000000001',
+-- Links are added only through roster_calendar_link_add; the table has no plain-text column.
+create temp table links on commit drop as
+select v.k, a.id from (values
+  ('one', 'd0000000-0000-4000-8000-000000000001'::uuid,
    'https://roster.example.org/feed/secret-token-one.ics', 'Example Hospital'),
-  ('d4000000-0000-4000-8000-000000000012', 'd0000000-0000-4000-8000-000000000001',
+  ('two', 'd0000000-0000-4000-8000-000000000001'::uuid,
    'https://Calendar.Example.net:443/x?token=two', 'Example Clinic'),
-  ('d4000000-0000-4000-8000-000000000021', 'd0000000-0000-4000-8000-000000000002',
+  ('stayer', 'd0000000-0000-4000-8000-000000000002'::uuid,
    'https://roster.example.org/feed/stayer.ics', null),
-  ('d4000000-0000-4000-8000-000000000022', 'd0000000-0000-4000-8000-000000000002',
-   'https://[2001:DB8::1]/feed.ics?token=three', 'Example IPv6');
+  ('ipv6', 'd0000000-0000-4000-8000-000000000002'::uuid,
+   'https://[2001:DB8::1]/feed.ics?token=three', 'Example IPv6')
+) v(k, owner_id, url, workplace)
+cross join lateral public.roster_calendar_link_add(v.owner_id, v.url, v.workplace) a;
+create function pg_temp.link(p_k text) returns uuid language sql stable as $$
+  select id from links where k = p_k
+$$;
+grant select on links to service_role;
+grant execute on function pg_temp.link(text) to service_role;
 
+select pg_temp.assert_true(not exists (select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'roster_calendar_links' and column_name = 'url'),
+  'the plain-text address column must be gone');
 select pg_temp.assert_true((select url_host from public.roster_calendar_links
-    where id = 'd4000000-0000-4000-8000-000000000011') = 'roster.example.org',
+    where id = pg_temp.link('one')) = 'roster.example.org',
   'the list column must hold the host only');
 select pg_temp.assert_true((select url_host from public.roster_calendar_links
-    where id = 'd4000000-0000-4000-8000-000000000012') = 'calendar.example.net',
+    where id = pg_temp.link('two')) = 'calendar.example.net',
   'the host must drop the port and be lower case');
 select pg_temp.assert_true((select url_host from public.roster_calendar_links
-    where id = 'd4000000-0000-4000-8000-000000000022') = '[2001:db8::1]',
+    where id = pg_temp.link('ipv6')) = '[2001:db8::1]',
   'an IPv6 host must keep its brackets and drop the path and token');
-select pg_temp.assert_true((select s.secret <> l.url and s.decrypted_secret = l.url
+select pg_temp.assert_true((select s.secret <> s.decrypted_secret
+    and s.decrypted_secret = 'https://roster.example.org/feed/secret-token-one.ics'
     from public.roster_calendar_links l join vault.decrypted_secrets s on s.id = l.url_secret_id
-    where l.id = 'd4000000-0000-4000-8000-000000000011'),
+    where l.id = pg_temp.link('one')),
   'the stored secret must be encrypted and decrypt to the address');
 
 set local role service_role;
 select pg_temp.assert_true((select count(*) = 2 and bool_and(url like 'https://%')
     from public.roster_calendar_link_urls('d0000000-0000-4000-8000-000000000001',
-      array['d4000000-0000-4000-8000-000000000011', 'd4000000-0000-4000-8000-000000000012',
-            'd4000000-0000-4000-8000-000000000021']::uuid[])),
+      array[pg_temp.link('one'), pg_temp.link('two'), pg_temp.link('stayer')])),
   'the owner must get back only their own two addresses');
 select pg_temp.assert_true((select count(*) = 0 from public.roster_calendar_link_urls(
-    'd0000000-0000-4000-8000-000000000002', array['d4000000-0000-4000-8000-000000000011']::uuid[])),
+    'd0000000-0000-4000-8000-000000000002', array[pg_temp.link('one')])),
   'another doctor must get nothing back for a link that is not theirs');
 select pg_temp.assert_true((select count(*) = 0 from public.roster_calendar_link_urls(
-    null, array['d4000000-0000-4000-8000-000000000011']::uuid[])), 'a missing owner must get nothing');
+    null, array[pg_temp.link('one')])), 'a missing owner must get nothing');
 -- The app cannot repoint a link at someone else's secret or forge the host.
 update public.roster_calendar_links
-set url_secret_id = (select url_secret_id from public.roster_calendar_links
-                     where id = 'd4000000-0000-4000-8000-000000000021'),
+set url_secret_id = (select url_secret_id from public.roster_calendar_links where id = pg_temp.link('stayer')),
     url_host = 'forged.example.com', last_fetched_at = now()
-where id = 'd4000000-0000-4000-8000-000000000011';
--- A changed address re-seals the same secret.
-update public.roster_calendar_links set url = 'https://new.example.org/feed.ics'
-where id = 'd4000000-0000-4000-8000-000000000012';
+where id = pg_temp.link('one');
 reset role;
-
 select pg_temp.assert_true((select u.url = 'https://roster.example.org/feed/secret-token-one.ics'
-    and l.url_host = 'roster.example.org'
+    and l.url_host = 'roster.example.org' and l.last_fetched_at is not null
     from public.roster_calendar_links l cross join lateral public.roster_calendar_link_urls(
       'd0000000-0000-4000-8000-000000000001', array[l.id]) u
-    where l.id = 'd4000000-0000-4000-8000-000000000011'),
+    where l.id = pg_temp.link('one')),
   'a write must not repoint a link at another secret or change its host');
-select pg_temp.assert_true((select u.url = 'https://new.example.org/feed.ics' and l.url_host = 'new.example.org'
-    from public.roster_calendar_links l cross join lateral public.roster_calendar_link_urls(
-      'd0000000-0000-4000-8000-000000000001', array[l.id]) u
-    where l.id = 'd4000000-0000-4000-8000-000000000012'),
-  'a changed address must be re-sealed');
--- Adding a link through roster_calendar_link_add keeps the same rules as a direct insert, and
--- stores no plain text, only the sealed copy.
+do $$ begin
+  insert into public.roster_calendar_links(owner_id, workplace, url_secret_id, url_host)
+  select 'd0000000-0000-4000-8000-000000000002', 'Example Copy', url_secret_id, 'copy.example.org'
+  from public.roster_calendar_links where id = pg_temp.link('one');
+  raise exception 'a second link must not share another link''s secret';
+exception when unique_violation then null;
+end $$;
+
+-- The add function keeps the old rules: https only, one link per workplace, three per doctor.
+do $$ begin
+  perform public.roster_calendar_link_add('d0000000-0000-4000-8000-000000000002',
+    'http://plain.example.org/x.ics', 'Example Plain');
+  raise exception 'a non-https address must be refused';
+exception when check_violation then null;
+end $$;
 do $$ begin
   perform public.roster_calendar_link_add('d0000000-0000-4000-8000-000000000002',
     'https://another.example.org/x.ics', 'Example IPv6');
@@ -122,11 +138,11 @@ create temp table added_link on commit drop as
 select * from public.roster_calendar_link_add('d0000000-0000-4000-8000-000000000002',
   'https://added.example.org/feed.ics?token=four', 'Example Added');
 reset role;
-select pg_temp.assert_true((select a.url_host = 'added.example.org' and l.url is null
+select pg_temp.assert_true((select a.url_host = 'added.example.org'
     and u.url = 'https://added.example.org/feed.ics?token=four'
-    from added_link a join public.roster_calendar_links l on l.id = a.id
+    from added_link a
     cross join lateral public.roster_calendar_link_urls('d0000000-0000-4000-8000-000000000002', array[a.id]) u),
-  'an added link must be stored sealed, with no plain-text copy');
+  'an added link must be stored sealed');
 do $$ begin
   perform public.roster_calendar_link_add('d0000000-0000-4000-8000-000000000002',
     'https://fourth.example.org/x.ics', 'Example Fourth');
@@ -137,12 +153,14 @@ end $$;
 delete from public.roster_calendar_links where id = (select id from added_link);
 
 select pg_temp.assert_true((select count(*) = 4 from vault.secrets s
-    join public.roster_calendar_links l on l.url_secret_id = s.id), 'one secret per link');
+    join public.roster_calendar_links l on l.url_secret_id = s.id)
+    and (select count(*) = 4 from vault.secrets where name is null and description = 'roster calendar link'),
+  'one secret per link, and refused or removed links leave no secret behind');
 
 create temp table leaver_secrets on commit drop as
 select url_secret_id as id from public.roster_calendar_links
 where owner_id = 'd0000000-0000-4000-8000-000000000001';
-delete from public.roster_calendar_links where id = 'd4000000-0000-4000-8000-000000000011';
+delete from public.roster_calendar_links where id = pg_temp.link('one');
 select pg_temp.assert_true((select count(*) = 1 from vault.secrets where id in (select id from leaver_secrets)),
   'removing a link must remove its encrypted copy');
 
@@ -151,7 +169,7 @@ select pg_temp.assert_true(not has_function_privilege(r.role, f.fn::regprocedure
   r.role || ' can call ' || f.fn)
 from (values ('anon'), ('authenticated')) r(role)
 cross join (values ('public.roster_calendar_link_urls(uuid,uuid[])'),
-  ('public.roster_calendar_links_seal_url()'), ('public.roster_calendar_links_drop_secret()'),
+  ('public.roster_calendar_links_pin_secret()'), ('public.roster_calendar_links_drop_secret()'),
   ('public.roster_calendar_link_add(uuid,text,text)'),
   ('public.cme_evidence_queue_file_cleanup()')) f(fn);
 
