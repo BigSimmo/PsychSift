@@ -15,6 +15,7 @@ import {
 } from "../src/lib/rag/rag-eval-cases";
 import { ragProgrammeFixture } from "../src/lib/rag/rag-programme-eval";
 import type { RagAnswer } from "../src/lib/types";
+import { validateRagAnswer } from "../scripts/eval-utils";
 
 describe("P12C fixed delivery expectations in the canonical registry", () => {
   const byId = (id: string) => ragEvalCases.find((testCase) => testCase.id === id)!;
@@ -1069,12 +1070,34 @@ describe("retrieval-and-citation-only cases", () => {
     expect(new Set(ragEvalCases.map((testCase) => testCase.id)).size).toBe(ragEvalCases.length);
     for (const testCase of retrievalOnly) {
       expect(testCase.supported).toBe(true);
+      expect(testCase.acceptSourceOnly).toBe(true);
       expect(testCase.requireExpectedFileCitation).toBe(true);
       expect(testCase.minCitations).toBeGreaterThanOrEqual(1);
       expect(testCase.expectedFiles.length).toBeGreaterThan(0);
       expect(testCase.requiredDirectClaim).toBeUndefined();
       expect(testCase.deliveryExpectation).toBeUndefined();
       for (const file of testCase.expectedFiles) expect(corpusRecords).toContain(file);
+    }
+  });
+
+  it("pass a source-only answer that retrieves and cites the expected document", () => {
+    for (const testCase of retrievalOnly) {
+      const sources = testCase.expectedFiles.map((file) => ({ title: file.replace(/\.pdf$/, ""), file_name: file }));
+      const sourceOnly = {
+        answer: "The following indexed documents are available.",
+        grounded: false,
+        confidence: "high",
+        citations: sources.map((source, index) => ({ chunk_id: `c${index}`, document_id: `d${index}`, ...source })),
+        sources,
+        routingMode: "extractive",
+        visualEvidence: [],
+        latencyTimings: { total_latency_ms: 800 },
+      } as unknown as RagAnswer;
+
+      const validation = validateRagAnswer(testCase, sourceOnly);
+
+      expect(validation.expectedHit).toBe(true);
+      expect(validation.failures).toEqual([]);
     }
   });
 });

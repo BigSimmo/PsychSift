@@ -2044,7 +2044,8 @@ export const ragEvalCases: RagEvalCase[] = [
     latencyTargetMs: 4000,
   },
   // Retrieval-and-citation-only cases (owner decision 2026-10-26): each checks only that the named
-  // corpus document is retrieved and cited. No answer text, clinical claims or numeric expectations;
+  // corpus document is retrieved and cited, so a source-only answer (grounded=false) that cites it
+  // passes (acceptSourceOnly). No answer text, clinical claims or numeric expectations;
   // full cases for the highest-risk areas come later. Expected files are corpus documents already
   // named in docs/source-review-priority-2026-07-02.md and docs/source-governance-refresh-worklist-2026-07-22.md.
   {
@@ -2054,6 +2055,7 @@ export const ragEvalCases: RagEvalCase[] = [
     suite: "core",
     relevanceGrade: "direct",
     supported: true,
+    acceptSourceOnly: true,
     expectedFiles: ["NS IPWU Transfer from Methadone to Buprenorphine OST SOP (RPBG).pdf"],
     allowedRoutes: ["extractive", "fast", "strong"],
     minCitations: 1,
@@ -2068,6 +2070,7 @@ export const ragEvalCases: RagEvalCase[] = [
     suite: "core",
     relevanceGrade: "direct",
     supported: true,
+    acceptSourceOnly: true,
     expectedFiles: ["NS IPWU Transfer from Methadone to Buprenorphine OST SOP (RPBG).pdf"],
     allowedRoutes: ["extractive", "fast", "strong"],
     minCitations: 1,
@@ -2081,6 +2084,7 @@ export const ragEvalCases: RagEvalCase[] = [
     suite: "core",
     relevanceGrade: "direct",
     supported: true,
+    acceptSourceOnly: true,
     expectedFiles: ["Opioid use disorder.pdf"],
     allowedRoutes: ["extractive", "fast", "strong"],
     minCitations: 1,
@@ -2094,6 +2098,7 @@ export const ragEvalCases: RagEvalCase[] = [
     suite: "core",
     relevanceGrade: "direct",
     supported: true,
+    acceptSourceOnly: true,
     expectedFiles: ["Alcohol withdrawal.pdf"],
     allowedRoutes: ["extractive", "fast", "strong"],
     minCitations: 1,
@@ -2107,6 +2112,7 @@ export const ragEvalCases: RagEvalCase[] = [
     suite: "core",
     relevanceGrade: "direct",
     supported: true,
+    acceptSourceOnly: true,
     expectedFiles: ["Alcohol and Other Drugs - Addiction, Toxicity and Withdrawal (FSH).pdf"],
     allowedRoutes: ["extractive", "fast", "strong"],
     minCitations: 1,
