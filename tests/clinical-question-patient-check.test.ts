@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-import { BARE_NAME_GIVEN_NAMES } from "@/lib/clinical-question-bare-name";
+import { BARE_NAME_GIVEN_NAMES, BARE_NAME_SURNAMES } from "@/lib/clinical-question-bare-name";
 import {
   clinicalQuestionPatientDetail,
   clinicalQuestionPatientDetailMessage,
@@ -226,7 +226,9 @@ describe("clinicalQuestionPatientDetail: bare names and street addresses", () =>
   });
 
   it("starts no name with a medicine in the medication lexicon", () => {
-    const medicines = BARE_NAME_GIVEN_NAMES.filter((name) => medicationEntitiesInText(name).length > 0);
+    const medicines = [...BARE_NAME_GIVEN_NAMES, ...BARE_NAME_SURNAMES].filter(
+      (name) => medicationEntitiesInText(name).length > 0,
+    );
     expect(medicines).toEqual([]);
   });
 
@@ -234,5 +236,88 @@ describe("clinicalQuestionPatientDetail: bare names and street addresses", () =>
     for (const question of ["Starting Clozapine", "Switching Sertraline to Fluoxetine", "Lithium Carbonate dose"]) {
       expect(clinicalQuestionPatientDetail(question), question).toBeNull();
     }
+  });
+});
+
+// Privacy audit PD-01 and PD-02 (2026-10-26). Every name, number and date here is invented.
+describe("clinicalQuestionPatientDetail: wider names (PD-01)", () => {
+  it.each([
+    // Given names beyond the English list.
+    "Minh Pham lithium level",
+    "Arjun Patel olanzapine weight",
+    "Ngozi Okafor clozapine",
+    "Aroha Ngata risk assessment",
+    "Kirra Hill depot overdue",
+    "Fatima Haddad postpartum",
+    "Mary Walker lithium",
+    "mary walker lithium",
+    // A listed surname on either side, including surname first.
+    "Nguyen Thi Lan clozapine",
+    "Chen Wei olanzapine",
+    "Xiaoling Chen lithium",
+    // A surname then a given name.
+    "Testpatient Jane clozapine",
+    // A given name in a shape that holds only a person.
+    "Jane T. olanzapine",
+    "Jane (Testpatient) lithium",
+    "Jane's lithium is 1.4",
+    // Senior titles and a lower-case title with one letter.
+    "Prof Testpatient lithium",
+    "Sr Testpatient clozapine",
+    "mrs t on lithium",
+  ])("refuses %s", (question) => {
+    const problem = clinicalQuestionPatientDetail(question);
+    expect(problem, question).not.toBeNull();
+    expect(problem!.title).toContain("a name");
+  });
+
+  it.each([
+    "Mary Jane cannabis slang",
+    "Sally Anne test theory of mind",
+    "John Cade lithium discovery",
+    "Lee Silverman voice treatment",
+    "Miller Fisher syndrome",
+    "Marsha Linehan DBT",
+    "Kurt Schneider first rank symptoms",
+    "Royal Alexandra Hospital",
+    "Wilson disease copper psychosis",
+    "Williams syndrome anxiety",
+    "Young Mania Rating Scale",
+    "Hamilton Depression Rating Scale",
+    "Smith-Magenis syndrome behaviour",
+    "Stevens-Johnson syndrome lamotrigine",
+    "Edwards Syndrome",
+    "Chen et al. 2019 meta-analysis",
+    "Can Clozapine Cause Myocarditis",
+    "What Is The Starting Dose Of Lithium",
+    "QTc 480 ms a concern",
+    "Prof Kraepelin dementia praecox",
+  ])("reads %s as safe", (question) => {
+    expect(clinicalQuestionPatientDetail(question)).toBeNull();
+  });
+});
+
+describe("clinicalQuestionPatientDetail: public numbers and document dates (PD-02)", () => {
+  it.each([
+    "Mental Health Emergency Response Line 1300 555 788",
+    "Kids Helpline 1800 55 1800",
+    "Lifeline 13 11 14",
+    "clozapine protocol updated 01/03/2024",
+    "Chief Psychiatrist guideline 15/06/2023",
+    "clozapine guideline version 2.1 dated 03/04/2025",
+    "lithium policy reviewed 12/08/2022",
+  ])("reads %s as safe", (question) => {
+    expect(clinicalQuestionPatientDetail(question)).toBeNull();
+  });
+
+  it.each([
+    "call her on 0412 345 678 about lithium",
+    "landline 08 9123 4567 clozapine",
+    "protocol DOB 01/02/1990 lithium",
+    "guideline born 01/02/1990",
+    "DOB: 01/02/1990 lithium",
+    "seen 01/02/2024 lithium level",
+  ])("still refuses %s", (question) => {
+    expect(clinicalQuestionPatientDetail(question), question).not.toBeNull();
   });
 });
