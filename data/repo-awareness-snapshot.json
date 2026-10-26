@@ -2982,6 +2982,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-26-accept-agitation-dose-review.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/superpowers/plans/2026-08-21-trusted-admin-document-ingestion.md",
         "section": "superpowers",
         "catalogued": true
