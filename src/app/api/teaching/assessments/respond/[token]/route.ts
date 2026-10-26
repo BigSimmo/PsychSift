@@ -6,7 +6,14 @@ import { jsonError, publicErrorResponse } from "@/lib/http";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError, requireAuthenticatedUser, unauthorizedResponse } from "@/lib/supabase/auth";
 import {
-  consumePublicApiRateLimit,
+  allowRateLimitInMemoryFallbackOnUnavailable,
+  type ApiRateLimitBucket,
+  consumeSubjectApiRateLimit,
+} from "@/lib/api-rate-limit";
+import { anonymousApiSubjectKey } from "@/lib/public-api-access";
+import {
+  consumePublicApiRateLimit as consumeInProcessPublicApiRateLimit,
+  type PublicMagicLinkRateLimitBucket,
   demoEpaMagicLinkRecord,
   EPA_MAGIC_LINK_DEMO_TOKEN,
   EpaMagicLinkError,
@@ -22,14 +29,43 @@ import { parseJsonBody } from "@/lib/validation/body";
 
 export const runtime = "nodejs";
 
+const DURABLE_MAGIC_LINK_BUCKETS: Record<PublicMagicLinkRateLimitBucket, ApiRateLimitBucket> = {
+  "teaching-epa-magic-link-read": "teaching_magic_link_read",
+  "teaching-epa-magic-link-write": "teaching_magic_link_write",
+};
+
+/**
+ * 60 reads / 20 writes per minute per caller. With an admin client this uses the shared
+ * database-backed limiter (consume_api_subject_rate_limit), so it holds across every app
+ * instance. Without one (synthetic demo mode only, never production) it uses the per-process store.
+ */
+async function consumePublicApiRateLimit(
+  request: Request,
+  bucket: PublicMagicLinkRateLimitBucket,
+  supabase: ReturnType<typeof createAdminClient> | null,
+) {
+  if (!supabase) return consumeInProcessPublicApiRateLimit(request, bucket);
+  return consumeSubjectApiRateLimit({
+    supabase,
+    subject: { kind: "anonymous", subjectKey: anonymousApiSubjectKey(request) },
+    bucket: DURABLE_MAGIC_LINK_BUCKETS[bucket],
+    allowInMemoryFallbackOnUnavailable: allowRateLimitInMemoryFallbackOnUnavailable(),
+  });
+}
+
 const noStore = { "Cache-Control": "private, no-store, max-age=0" };
 
 /**
  * Outside synthetic demo mode a supervisor's link lives in public.teaching_epa_magic_links
  * (#MAAXAX). Demo mode keeps the process-memory story store, which is never used in production.
  */
-function durableMagicLinks(): DurableEpaMagicLinkRepository | null {
-  return isDemoMode() ? null : new DurableEpaMagicLinkRepository(createAdminClient());
+function durableMagicLinks(): {
+  client: ReturnType<typeof createAdminClient>;
+  repo: DurableEpaMagicLinkRepository;
+} | null {
+  if (isDemoMode()) return null;
+  const client = createAdminClient();
+  return { client, repo: new DurableEpaMagicLinkRepository(client) };
 }
 
 function refuseEphemeralMagicLinkStore(): void {
@@ -81,7 +117,8 @@ const registrationSchema = z
 
 export async function GET(request: Request, { params }: { params: Promise<{ token: string }> }) {
   try {
-    const rate = consumePublicApiRateLimit(request, "teaching-epa-magic-link-read");
+    const durable = durableMagicLinks();
+    const rate = await consumePublicApiRateLimit(request, "teaching-epa-magic-link-read", durable?.client ?? null);
     if (rate.limited) {
       return errorWithHeaders("Too many requests. Wait a minute and try again.", 429, "rate_limited", {
         ...noStore,
@@ -93,9 +130,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
     if (token === EPA_MAGIC_LINK_DEMO_TOKEN) {
       return NextResponse.json({ request: demoEpaMagicLinkRecord() }, { headers: noStore });
     }
-    const durable = durableMagicLinks();
     if (durable) {
-      const found = await durable.lookup(token);
+      const found = await durable.repo.lookup(token);
       if (!found.ok) return errorWithHeaders(found.message, found.status, found.code);
       return NextResponse.json({ request: found.request }, { headers: noStore });
     }
@@ -118,14 +154,14 @@ export async function PUT(request: Request, { params }: { params: Promise<{ toke
   try {
     refuseEphemeralMagicLinkStore();
     // Rate limit before the sign-in lookup, so bad tokens cannot hammer the auth check.
-    const rate = consumePublicApiRateLimit(request, "teaching-epa-magic-link-write");
+    const client = createAdminClient();
+    const rate = await consumePublicApiRateLimit(request, "teaching-epa-magic-link-write", client);
     if (rate.limited) {
       return errorWithHeaders("Too many requests. Wait a minute and try again.", 429, "rate_limited", {
         ...noStore,
         "Retry-After": String(rate.retryAfterSeconds),
       });
     }
-    const client = createAdminClient();
     await requireAuthenticatedUser(request, client);
     const { token } = await params;
     const body = (await parseJsonBody(
@@ -148,7 +184,8 @@ export async function PUT(request: Request, { params }: { params: Promise<{ toke
 
 export async function POST(request: Request, { params }: { params: Promise<{ token: string }> }) {
   try {
-    const rate = consumePublicApiRateLimit(request, "teaching-epa-magic-link-write");
+    const durable = durableMagicLinks();
+    const rate = await consumePublicApiRateLimit(request, "teaching-epa-magic-link-write", durable?.client ?? null);
     if (rate.limited) {
       return errorWithHeaders("Too many requests. Wait a minute and try again.", 429, "rate_limited", {
         ...noStore,
@@ -180,9 +217,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
         { headers: noStore },
       );
     }
-    const durable = durableMagicLinks();
     if (durable) {
-      const stored = await durable.submit(token, body);
+      const stored = await durable.repo.submit(token, body);
       if (!stored.ok) return errorWithHeaders(stored.message, stored.status, stored.code);
       return NextResponse.json({ ok: true, request: stored.request }, { headers: noStore });
     }

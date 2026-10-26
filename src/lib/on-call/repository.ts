@@ -6,6 +6,7 @@ import {
   type OnCallSection,
 } from "@/lib/on-call/entry-model";
 import { onCallViewForEntry, type OnCallPageView } from "@/lib/on-call/view";
+import { sharedOnCallPublisherIds } from "@/lib/on-call/shared-entry-publisher";
 import { PublicApiError } from "@/lib/http";
 import { withOwnerReadScope } from "@/lib/public-api-access";
 
@@ -293,11 +294,17 @@ export function rowMayBeComplianceRequirement(row: Record<string, unknown>): boo
  * Writes are unchanged: creating or editing still requires an account and still stamps owner_id.
  */
 export async function fetchSharedOnCallEntries(supabase: AdminClient, options: { section?: OnCallSection } = {}) {
+  // Only a site administrator's shared rows reach other readers (owner decision, 26 Oct 2026). A
+  // shared row an ordinary account posted before the 25 Oct publishing rule stays with its owner,
+  // who still reads it through fetchOwnerOnCallEntries.
+  const publishers = await sharedOnCallPublisherIds(supabase);
+  if (publishers.length === 0) return [];
   let query = supabase
     .from("on_call_entries")
     .select(ROW_COLUMNS)
     .eq("is_personal", false)
-    .in("section", [...PUBLIC_ON_CALL_SECTIONS]);
+    .in("section", [...PUBLIC_ON_CALL_SECTIONS])
+    .in("owner_id", [...publishers]);
   if (options.section) query = query.eq("section", options.section);
   const { data, error } = await query.order("sort_order").limit(ON_CALL_MAX_ENTRIES);
   if (error) throw new Error(error.message);

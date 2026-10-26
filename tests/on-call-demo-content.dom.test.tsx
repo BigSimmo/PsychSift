@@ -48,12 +48,16 @@ vi.mock("@/lib/on-call/entry-store", () => ({ cacheOnCallEntries: cacheEntriesMo
  * then sends the mutation. Both go through the same mock, so a test says what
  * the account holds and then reads the mutation off the second call.
  */
-function mockFetch(owned: number, mutation: { ok?: boolean; payload?: unknown } = { ok: true }) {
+function mockFetch(
+  owned: number,
+  mutation: { ok?: boolean; payload?: unknown } = { ok: true },
+  options: { mayLoad?: boolean } = {},
+) {
   const fetchMock = vi.fn().mockImplementation((_url: string, init?: { method?: string }) => {
     if (!init?.method) {
       return Promise.resolve({
         ok: true,
-        json: async () => ({ loaded: owned, total: ON_CALL_DEMO_ENTRY_COUNT }),
+        json: async () => ({ loaded: owned, total: ON_CALL_DEMO_ENTRY_COUNT, mayLoad: options.mayLoad ?? true }),
       } as Response);
     }
     return Promise.resolve({
@@ -137,6 +141,19 @@ describe("the example-content control", () => {
     render(<Harness signedOut={false} demoMode={false} />);
     expect(await screen.findByTestId("on-call-demo-content-remove")).toBeVisible();
     expect(screen.queryByTestId("on-call-demo-content-load")).toBeNull();
+  });
+
+  it("offers Load only to an account the server says may publish, and Remove to anyone holding a copy", async () => {
+    // Loading publishes shared rows, which only an administrator may do (owner decision, 26 Oct 2026).
+    const fetchMock = mockFetch(0, { ok: true }, { mayLoad: false });
+    const ordinary = render(<Harness signedOut={false} demoMode={false} />);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    expect(screen.queryByTestId("on-call-demo-content-load")).toBeNull();
+    ordinary.unmount();
+
+    mockFetch(ON_CALL_DEMO_ENTRY_COUNT, { ok: true }, { mayLoad: false });
+    render(<Harness signedOut={false} demoMode={false} />);
+    expect(await screen.findByTestId("on-call-demo-content-remove")).toBeVisible();
   });
 
   it("says that loading publishes, before it loads", async () => {

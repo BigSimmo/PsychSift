@@ -27,8 +27,15 @@ const safetyPatterns: Array<{ kind: SafetyFindingKind; label: string; pattern: R
     // tier means. A bare mention ("hypersensitivity reactions have been reported")
     // is an adverse-effect statement, so it is caught one tier down rather than
     // promoted to the top severity and the danger colour.
+    //
+    // Negation guards (audit 26 Oct 2026): "not contraindicated", "no (known)
+    // contraindications", "non-contraindicated" and "no need to avoid" state that
+    // nothing forbids the drug, so they must not take the danger colour on that word
+    // alone. Only the word immediately negated is skipped: any other danger token in
+    // the same passage ("not contraindicated, but must not be stopped abruptly")
+    // still matches, so no true-positive wording is lost.
     pattern:
-      /\b(contraindicat\w*|do not use|avoid|not recommended|must not|known hypersensitivity|hypersensitivity to)\b/i,
+      /\b((?<!\b(?:not|no|non)(?:\s+known)?[\s-]+)contraindicat\w*|do not use|(?<!\b(?:no need to|need not|not necessary to|do not need to|don't need to|not required to)\s+)avoid|not recommended|must not|known hypersensitivity|hypersensitivity to)\b/i,
   },
   {
     kind: "red_flag",
@@ -137,7 +144,11 @@ const safetyPatterns: Array<{ kind: SafetyFindingKind; label: string; pattern: R
   {
     kind: "exclusion",
     label: "Exclusion",
-    pattern: /\b(exclusion|exclude|not applicable|unless|except|avoid if)\b/i,
+    // `avoid if` used to be listed here, but it could never fire: `avoid` in the
+    // Contraindication tier above always matches first. It is not moved up the
+    // array, because that would demote "Avoid if eGFR < 30" from the danger colour
+    // to Exclusion, which weakens a true-positive instruction. Dropped as dead.
+    pattern: /\b(exclusion|exclude|not applicable|unless|except)\b/i,
   },
   {
     kind: "caveat",
