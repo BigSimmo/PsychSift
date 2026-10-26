@@ -2964,7 +2964,7 @@ async function answerQuestionWithScopeUncoalesced(
       : compactCitations(finalizedAnswer.sources, 5, "deterministic_support");
     // A2R-01: a high-confidence quoted dose with no medicine named is shown for review.
     const extractiveRiskReason = finalizedAnswer.grounded
-      ? doseWithoutNamedMedicationReason(finalizedAnswer.answer ?? "", queryClass)
+      ? doseWithoutNamedMedicationReason(finalizedAnswer.answer ?? "", queryClass, args.query)
       : null;
     const extractiveNeedsReviewFallback =
       (!finalizedAnswer.grounded || extractiveRiskReason !== null) &&

@@ -80,13 +80,26 @@ describe("doseWithoutNamedMedicationReason", () => {
       doseWithoutNamedMedicationReason(
         "For recommended, second Choice Less than 40 kg is 2.5 – 10 mg IM (max dose 10 mg in 24 hours).",
         "medication_dose_risk",
+        "What IM medication doses are recommended for agitation?",
       ),
     ).toBe("dose_without_named_medication");
   });
 
   it("keeps a dose quote that names the medicine, and non-dose classes", () => {
-    expect(doseWithoutNamedMedicationReason("Olanzapine 10 mg IM.", "medication_dose_risk")).toBeNull();
-    expect(doseWithoutNamedMedicationReason("Give 10 mg IM.", "document_lookup")).toBeNull();
+    expect(
+      doseWithoutNamedMedicationReason("Olanzapine 10 mg IM.", "medication_dose_risk", "IM doses for agitation?"),
+    ).toBeNull();
+    expect(doseWithoutNamedMedicationReason("Give 10 mg IM.", "document_lookup", "IM doses for agitation?")).toBeNull();
+  });
+
+  it("keeps a dose quote that repeats an unrecognised medicine named in the question", () => {
+    expect(
+      doseWithoutNamedMedicationReason(
+        "Adults commence zolinapine 25 mg nocte.",
+        "medication_dose_risk",
+        "What is the recommended starting dose of zolinapine for adults?",
+      ),
+    ).toBeNull();
   });
 });
 

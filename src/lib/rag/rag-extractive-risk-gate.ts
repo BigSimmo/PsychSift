@@ -17,11 +17,43 @@ const doseFigurePattern = /\b\d+(?:\.\d+)?\s*(?:mg|mcg|micrograms?|g|mL|units?)\
 const queryAcronymPattern = /\b[A-Z][A-Z0-9]{1,5}\b/g;
 const ignoredQueryAcronyms = new Set(["IM", "IV", "PO", "SC", "UK", "US", "AU", "WA", "NSW", "OK", "PRN", "MG"]);
 
-/** A dose-risk quoted answer that gives a dose figure without naming any medicine. */
-export function doseWithoutNamedMedicationReason(answerText: string, queryClass: RagQueryClass) {
+const genericDoseQueryWords = new Set([
+  "about",
+  "adult",
+  "adults",
+  "advised",
+  "children",
+  "commence",
+  "doses",
+  "dosing",
+  "given",
+  "maximum",
+  "medication",
+  "medications",
+  "medicine",
+  "medicines",
+  "recommended",
+  "should",
+  "starting",
+  "there",
+  "these",
+  "which",
+]);
+
+/**
+ * A dose-risk quoted answer that gives a dose figure, names no recognised medicine and shares no
+ * subject word with the question (child agitation doses quoted for "IM doses for agitation"). An
+ * answer that repeats the asked-for name is kept, because the medicine list is not complete.
+ */
+export function doseWithoutNamedMedicationReason(answerText: string, queryClass: RagQueryClass, query: string) {
   if (queryClass !== "medication_dose_risk") return null;
   if (!doseFigurePattern.test(answerText)) return null;
-  return medicationSafetyEntitiesInText(answerText).length === 0 ? "dose_without_named_medication" : null;
+  if (medicationSafetyEntitiesInText(answerText).length) return null;
+  const answerLower = answerText.toLowerCase();
+  const subjectWords = (query.toLowerCase().match(/[a-z]{5,}/g) ?? []).filter(
+    (word) => !genericDoseQueryWords.has(word),
+  );
+  return subjectWords.some((word) => answerLower.includes(word)) ? null : "dose_without_named_medication";
 }
 
 /**
@@ -68,7 +100,7 @@ export function extractiveFallbackRiskReason(args: {
   }
   if (weakRetrievalRouteReason.test(args.routeReason)) return "weak_retrieval_extractive_after_failed_generation";
   return (
-    doseWithoutNamedMedicationReason(args.answerText, args.queryClass) ??
+    doseWithoutNamedMedicationReason(args.answerText, args.queryClass, args.query) ??
     querySubjectNotInAnswerReason(args.query, args.answerText)
   );
 }
