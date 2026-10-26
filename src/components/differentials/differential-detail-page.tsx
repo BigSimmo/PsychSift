@@ -420,8 +420,8 @@ function ClinicalHinge({ record }: { record: DifferentialRecord }) {
           className="mt-1.5 text-xs leading-5 text-[color:var(--text-muted)]"
         >
           {group
-            ? `Separates the ${group} group. It is not specific to ${record.title}.`
-            : `Separates the presentation group. It is not specific to ${record.title}.`}
+            ? `Shared by every diagnosis in the ${group} group, so it may describe another condition in it. It is not specific to ${record.title}.`
+            : `Shared by every diagnosis in this presentation group, so it may describe another condition in it. It is not specific to ${record.title}.`}
         </p>
       ) : null}
     </RecordSection>

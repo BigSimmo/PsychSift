@@ -137,13 +137,17 @@ describe("the real queue", () => {
     // rows remain signable.
     // Later on 22 Oct 2026 the owner adopted the 73 sources the medication pages link to, which
     // voided those signatures, so they are signable again.
+    // 26 Oct 2026: the re-audit edited Form 3B and the acute dystonia overlay, so both are
+    // signable again.
     expect(signable.map((item) => item.family)).toEqual([
-      ...Array<string>(8).fill("wa-mha-forms"),
+      ...Array<string>(9).fill("wa-mha-forms"),
+      "differentials",
       ...Array<string>(71).fill("therapy"),
       ...Array<string>(73).fill("sources"),
     ]);
     expect(signable.map((item) => item.id)).toEqual([
       "form-1a",
+      "form-3b",
       "form-3d",
       "form-4b",
       "form-5a",
@@ -151,6 +155,7 @@ describe("the real queue", () => {
       "form-5c",
       "form-11d",
       "form-12c",
+      "acute-dystonia",
       "adolescent-focused-psychotherapy-for-anorexia-nervosa",
       "advocacy-informed-therapeutic-work",
       "applied-relaxation-relaxation-based-therapy",

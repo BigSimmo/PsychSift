@@ -54,23 +54,33 @@ type DsmNoteDraft = {
 };
 
 /**
- * Keyed by slug, not ICD code: F65.81 and G24.09 each cover two records, and an
- * ICD-keyed draft restored one diagnosis's answers onto the other.
+ * Keyed by slug, not ICD code: before the 26 Oct 2026 code corrections F65.81 and G24.09
+ * each covered two records, and an ICD-keyed draft restored one diagnosis's answers onto
+ * the other.
  */
 function dsmNoteDraftStorageKey(slug: string) {
   return `psychsift_dsm_draft_${slug}`;
 }
 
 /**
- * Drafts saved before the slug key were keyed by ICD code. One with a code no other record
- * shares is read once and moved to the slug key, so a draft open across a deploy is not
- * lost. The shared codes are never read: their legacy draft cannot be told apart.
+ * Drafts saved before the slug key were keyed by ICD code. One whose code has only ever
+ * belonged to this record is read once and moved to the slug key, so a draft open across a
+ * deploy is not lost. These codes are never read, because their legacy draft may belong to
+ * another diagnosis: F65.81 and G24.09 were shared by two records, and the 26 Oct 2026
+ * corrections moved F94.1, F94.2, G24.01 and G25.71 from one record to another.
  * tests/dsm-diagnosis-note-builder.dom.test.tsx checks this set against the catalogue.
  */
-export const DSM_SHARED_ICD_CODES: ReadonlySet<string> = new Set(["F65.81", "G24.09"]);
+export const DSM_UNSAFE_LEGACY_DRAFT_CODES: ReadonlySet<string> = new Set([
+  "F65.81",
+  "G24.09",
+  "F94.1",
+  "F94.2",
+  "G24.01",
+  "G25.71",
+]);
 
 function legacyDsmNoteDraftStorageKey(record: DsmNoteBuilderRecord): string | null {
-  return DSM_SHARED_ICD_CODES.has(record.icdCode) ? null : `psychsift_dsm_draft_${record.icdCode}`;
+  return DSM_UNSAFE_LEGACY_DRAFT_CODES.has(record.icdCode) ? null : `psychsift_dsm_draft_${record.icdCode}`;
 }
 
 function readDsmNoteDraftWithLegacy(storageKey: string, record: DsmNoteBuilderRecord): DsmNoteDraft | null {

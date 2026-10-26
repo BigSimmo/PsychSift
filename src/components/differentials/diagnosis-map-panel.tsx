@@ -830,7 +830,8 @@ function NodeInspector({
                   <p className="mt-1 text-sm leading-6 text-[color:var(--text-muted)]">{clinicalHinge}</p>
                   {hingeIsGroupScoped ? (
                     <p className="mt-1 text-xs leading-5 text-[color:var(--text-muted)]">
-                      Separates the presentation group. It is not specific to {title}.
+                      Shared by every diagnosis in this presentation group, so it may describe another condition in it.
+                      It is not specific to {title}.
                     </p>
                   ) : null}
                 </div>

@@ -4,7 +4,7 @@ import { hydrateRoot, type Root } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { DSM_SHARED_ICD_CODES, DsmDiagnosisNoteBuilder } from "@/components/dsm/dsm-diagnosis-note-builder";
+import { DSM_UNSAFE_LEGACY_DRAFT_CODES, DsmDiagnosisNoteBuilder } from "@/components/dsm/dsm-diagnosis-note-builder";
 import { dsmDiagnoses } from "@/lib/dsm";
 import { dsmNoteBuilderRecord } from "@/lib/dsm-note";
 
@@ -120,38 +120,40 @@ describe("DsmDiagnosisNoteBuilder", () => {
 describe("DsmDiagnosisNoteBuilder saved drafts", () => {
   const record = (slug: string) => dsmNoteBuilderRecord(dsmDiagnoses.find((diagnosis) => diagnosis.slug === slug)!);
 
-  // The catalogue gives each of these pairs one ICD code. A draft keyed by that
-  // code restored one diagnosis's answers onto the other.
-  const sharedCodePairs = [
+  // Before the 26 Oct 2026 code corrections the catalogue gave each of these pairs one
+  // ICD code, and a draft keyed by that code restored one diagnosis's answers onto the other.
+  const formerlySharedCodePairs = [
     ["voyeuristic-disorder", "frotteuristic-disorder"],
     ["tardive-dyskinesia", "tardive-dystonia-tardive-akathisia"],
   ] as const;
 
-  it.each(sharedCodePairs)(
-    "keeps %s and %s drafts apart although they share an ICD code",
-    async (firstSlug, secondSlug) => {
-      const first = record(firstSlug);
-      const second = record(secondSlug);
-      expect(first.icdCode).toBe(second.icdCode);
+  it.each(formerlySharedCodePairs)("keeps %s and %s drafts apart", async (firstSlug, secondSlug) => {
+    const first = record(firstSlug);
+    const second = record(secondSlug);
 
-      const user = userEvent.setup();
-      render(<DsmDiagnosisNoteBuilder record={first} />);
-      await user.click(markCriterion("A", "Met"));
-      await user.click(screen.getByRole("checkbox", { name: first.differentials[0] }));
-      expect(screen.getByTestId("dsm-note-output")).toBeTruthy();
-      cleanup();
+    const user = userEvent.setup();
+    render(<DsmDiagnosisNoteBuilder record={first} />);
+    await user.click(markCriterion("A", "Met"));
+    await user.click(screen.getByRole("checkbox", { name: first.differentials[0] }));
+    expect(screen.getByTestId("dsm-note-output")).toBeTruthy();
+    cleanup();
 
-      render(<DsmDiagnosisNoteBuilder record={second} />);
-      expect(screen.queryByTestId("dsm-note-output")).toBeNull();
-      expect(markCriterion("A", "Met").getAttribute("aria-checked")).toBe("false");
-    },
-  );
+    render(<DsmDiagnosisNoteBuilder record={second} />);
+    expect(screen.queryByTestId("dsm-note-output")).toBeNull();
+    expect(markCriterion("A", "Met").getAttribute("aria-checked")).toBe("false");
+  });
 
-  it("lists exactly the ICD codes more than one catalogue record shares", () => {
+  it("never migrates a legacy draft under a code more than one catalogue record shares", () => {
     const counts = new Map<string, number>();
     for (const diagnosis of dsmDiagnoses) counts.set(diagnosis.icd_code, (counts.get(diagnosis.icd_code) ?? 0) + 1);
     const shared = [...counts].filter(([, count]) => count > 1).map(([code]) => code);
-    expect([...DSM_SHARED_ICD_CODES].sort()).toEqual(shared.sort());
+    for (const code of shared) expect(DSM_UNSAFE_LEGACY_DRAFT_CODES.has(code)).toBe(true);
+  });
+
+  it("never migrates a legacy draft under a code that was shared or moved between records", () => {
+    expect([...DSM_UNSAFE_LEGACY_DRAFT_CODES].sort()).toEqual(
+      ["F65.81", "G24.09", "F94.1", "F94.2", "G24.01", "G25.71"].sort(),
+    );
   });
 
   it("moves a draft saved under the old ICD key to the slug key", () => {

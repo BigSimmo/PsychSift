@@ -3677,7 +3677,9 @@ test.describe("PsychSift UI smoke coverage", () => {
       (url) =>
         url.pathname === "/" &&
         url.searchParams.get("mode") === "answer" &&
-        url.searchParams.get("q") === question &&
+        // The question stays out of the address (FE-01): an `ask` id stands for it.
+        !url.searchParams.has("q") &&
+        Boolean(url.searchParams.get("ask")) &&
         url.searchParams.get("run") === "1",
       { timeout: 45_000 },
     );
@@ -3722,7 +3724,15 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(page.getByTestId("plain-answer-response")).toHaveCount(1);
     await expect(page.locator('[data-dashboard-stage="answer-thread-turn"][data-collapsed="true"]')).toHaveCount(1);
     await expect(composer).toHaveValue("");
-    await expect(page).toHaveURL(/\?mode=answer&q=what\+about\+renal\+impairment\%3F&run=1/);
+    // Only the latest question is named, by an `ask` id rather than the question itself (FE-01).
+    await expect(page).toHaveURL(
+      (url) =>
+        url.searchParams.get("mode") === "answer" &&
+        url.searchParams.get("run") === "1" &&
+        /^[0-9a-f-]{36}$/.test(url.searchParams.get("ask") ?? "") &&
+        !url.searchParams.has("q"),
+    );
+    expect(page.url()).not.toContain("renal");
     await expectNoPageHorizontalOverflow(page);
 
     await waitForPersistedAnswerThread(page, 1);
@@ -3734,6 +3744,68 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(page.getByTestId("user-question-bubble").first()).toContainText(firstQuestion);
     await expect(page.getByTestId("user-question-bubble").last()).toContainText(followUp);
     await expect(page.locator('[data-dashboard-stage="answer-thread-turn"][data-collapsed="true"]')).toHaveCount(1);
+  });
+
+  test("an answered question stays out of the address bar and history (FE-01)", async ({ page, browser }) => {
+    const answerRequests: string[] = [];
+    await mockDemoApi(page, { onAnswerRequest: (query) => answerRequests.push(query) });
+    // Synthetic question. An older-style link still carries it in `q`.
+    const question = "lithium monitoring after a dose change";
+    await gotoApp(page, `/?mode=answer&q=${encodeURIComponent(question)}&run=1`);
+    await expect(page.getByTestId("plain-answer-response")).toBeVisible({ timeout: uiAssertionTimeoutMs });
+    const noQuestionInAddress = (url: URL) =>
+      url.pathname === "/" &&
+      url.searchParams.get("mode") === "answer" &&
+      url.searchParams.get("run") === "1" &&
+      Boolean(url.searchParams.get("ask")) &&
+      !url.searchParams.has("q") &&
+      !url.href.includes("lithium");
+    await expect(page).toHaveURL(noQuestionInAddress);
+    const answeredUrl = page.url();
+    expect(answerRequests).toEqual([question]);
+
+    // A new question from the composer never writes its text into the address either.
+    const followUp = "what about renal impairment?";
+    await fillVisibleQuestionInput(page, followUp);
+    await visibleAnswerSubmitButton(page).click();
+    await expect(page.getByTestId("user-question-bubble")).toHaveCount(2, { timeout: uiAssertionTimeoutMs });
+    await expect(page).toHaveURL((url) => noQuestionInAddress(url) && !url.href.includes("renal"));
+    // A follow-up is sent with its earlier question as context.
+    expect(answerRequests).toHaveLength(2);
+    expect(answerRequests[1]).toContain(followUp);
+
+    // Refresh in the same tab keeps the answer and does not ask again.
+    await waitForPersistedAnswerThread(page, 1);
+    await page.reload();
+    await waitForDemoDashboardReady(page);
+    await expect(page.getByTestId("user-question-bubble").last()).toContainText(followUp, {
+      timeout: uiAssertionTimeoutMs,
+    });
+    expect(answerRequests).toHaveLength(2);
+
+    // Back from another page returns to the answer without asking again.
+    await gotoApp(page, "/?mode=documents");
+    await page.goBack();
+    await expect(page).toHaveURL(noQuestionInAddress);
+    await expect(page.getByTestId("user-question-bubble").last()).toContainText(followUp, {
+      timeout: uiAssertionTimeoutMs,
+    });
+    expect(answerRequests).toHaveLength(2);
+
+    // The same address opened somewhere without this tab's storage (a copied link)
+    // lands on the Answer home and sends nothing.
+    const otherContext = await browser.newContext({ baseURL: new URL(answeredUrl).origin });
+    try {
+      const otherPage = await otherContext.newPage();
+      const otherRequests: string[] = [];
+      await mockDemoApi(otherPage, { onAnswerRequest: (query) => otherRequests.push(query) });
+      await otherPage.goto(answeredUrl);
+      await waitForDemoDashboardReady(otherPage);
+      await expect(otherPage.getByTestId("plain-answer-response")).toHaveCount(0);
+      expect(otherRequests).toEqual([]);
+    } finally {
+      await otherContext.close();
+    }
   });
 
   test("answer follow-up suggestions run the next question", async ({ page }) => {
