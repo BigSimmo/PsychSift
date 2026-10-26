@@ -3937,6 +3937,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-26-health-professional-declaration-at-first-open.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/rag-behaviour/canary-ledger.md",
         "section": "rag-behaviour",
         "catalogued": true
