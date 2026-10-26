@@ -312,6 +312,23 @@ async function main() {
  */
 async function invalidateEvidenceCaches(supabase: unknown, documentIds: string[]) {
   const cacheClient = supabase as CacheInvalidationClient;
+  let revisionError: unknown = null;
+  try {
+    await bumpEvidenceRevisions(cacheClient, documentIds);
+  } catch (error) {
+    // Still clear the shared cache below, then report the failed bump.
+    revisionError = error;
+  }
+  const { error: cacheError } = await cacheClient
+    .from("rag_response_cache")
+    .delete()
+    .in("cache_kind", ["search", "answer"]);
+  if (cacheError) throw new Error(`Clearing the shared answer cache failed: ${cacheError.message}`);
+  if (revisionError) throw revisionError;
+  console.log(`Answer caches invalidated for ${documentIds.length} documents.`);
+}
+
+async function bumpEvidenceRevisions(cacheClient: CacheInvalidationClient, documentIds: string[]) {
   for (let index = 0; index < documentIds.length; index += 200) {
     const batch = documentIds.slice(index, index + 200);
     const { data: revisions, error: readError } = await cacheClient
@@ -325,12 +342,6 @@ async function invalidateEvidenceCaches(supabase: unknown, documentIds: string[]
       .upsert(batch.map((documentId) => ({ document_id: documentId, revision: (current.get(documentId) ?? 0) + 1 })));
     if (bumpError) throw new Error(`Bumping evidence revisions failed: ${bumpError.message}`);
   }
-  const { error: cacheError } = await cacheClient
-    .from("rag_response_cache")
-    .delete()
-    .in("cache_kind", ["search", "answer"]);
-  if (cacheError) throw new Error(`Clearing the shared answer cache failed: ${cacheError.message}`);
-  console.log(`Answer caches invalidated for ${documentIds.length} documents.`);
 }
 
 main().catch((error) => {
