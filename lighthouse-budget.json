@@ -3,7 +3,7 @@
   "enforce": true,
   "$lighthouseVersion": "Pinned exactly, not `lighthouse@12`: a patch published between a baseline run and its follow-up would silently change the measurement. Kept in step with LIGHTHOUSE_VERSION in .github/workflows/live-web-vitals.yml by tests/check-lighthouse-budget.test.ts so the two Lighthouse entry points cannot drift apart.",
   "lighthouseVersion": "12.8.2",
-  "routes": ["/", "/documents/search"],
+  "routes": ["/", "/documents/search", "/my-day", "/on-call", "/psychiatry/mha-clock"],
   "strategies": ["mobile", "desktop"],
   "tolerance": {
     "lcpMs": {
@@ -49,5 +49,5 @@
     }
   },
   "updatedAt": "2026-10-21T08:36:48.021Z",
-  "$routes": "Only surfaces that still render. `/therapy-compass`, `/dsm` and `/forms` were removed when home consolidation turned them into redirect stubs: Lighthouse followed the 307 and graded `/?mode=<id>` against a baseline captured on the retired detailed home, which the checker reports as \"measured a different page than requested\". All three now render the same shared home as `/`, so removing them costs duplication rather than coverage. Restoring per-mode coverage means measuring the `<mode>/search` results routes, and those need baseline rows the dispatch-only refresh job records — do that rather than hand-writing numbers."
+  "$routes": "Only surfaces that still render. `/therapy-compass`, `/dsm` and `/forms` were removed when home consolidation turned them into redirect stubs: Lighthouse followed the 307 and graded `/?mode=<id>` against a baseline captured on the retired detailed home, which the checker reports as \"measured a different page than requested\". All three now render the same shared home as `/`, so removing them costs duplication rather than coverage. Restoring per-mode coverage means measuring the `<mode>/search` results routes, and those need baseline rows the dispatch-only refresh job records — do that rather than hand-writing numbers. `/my-day`, `/on-call` and `/psychiatry/mha-clock` joined on 2026-10-26 (performance audit M3): they were unguarded, which is how slow My Day loads and the On Call layout shift went unnoticed. Their own on-load API handlers are not carved into perfInitialLoadApiPatterns, so a change to one of those handlers alone does not trigger this job."
 }
