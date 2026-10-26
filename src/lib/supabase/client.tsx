@@ -479,7 +479,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [client]);
 
   const requireClient = useCallback(async () => {
-    const loaded = await ensureClient().catch(() => undefined);
+    const loaded = await ensureClient().catch((error: unknown) => {
+      console.warn("[auth] Supabase browser client failed to load", {
+        errorName: error instanceof Error ? error.name : typeof error,
+      });
+      return undefined;
+    });
     if (loaded) {
       // A retry after a failed first load must still install the auth listener.
       setClient(loaded);
@@ -609,7 +614,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       remoteSignOutFailed = true;
     }
     // A failed global sign-out can leave the persisted session in place; drop it locally so a reload is signed out.
-    if (remoteSignOutFailed) await client.auth.signOut({ scope: "local" }).catch(() => undefined);
+    if (remoteSignOutFailed)
+      await client.auth.signOut({ scope: "local" }).catch((error: unknown) => {
+        console.warn("[auth] Local Supabase sign-out failed after a failed global sign-out", {
+          errorName: error instanceof Error ? error.name : typeof error,
+        });
+        return undefined;
+      });
     userSignOutRef.current = false;
     clearAccountScopedBrowserState();
     publishedUserIdRef.current = null;
