@@ -24,14 +24,23 @@ vi.mock("next/navigation", () => ({
 }));
 
 // Mock Supabase auth
-vi.mock("@/lib/supabase/client", () => ({
-  useAuthSession: () => ({
-    status: "authenticated",
-    session: { user: { id: "test-user-m5", email: "clinician-m5@example.test" } },
-    isConfigured: true,
-    error: null,
-  }),
-}));
+vi.mock("@/lib/supabase/client", async () => {
+  const { TERMS_VERSION } = await import("@/lib/front-door-content");
+  return {
+    useAuthSession: () => ({
+      status: "authenticated",
+      session: {
+        user: {
+          id: "test-user-m5",
+          email: "clinician-m5@example.test",
+          user_metadata: { psychsift_terms: { version: TERMS_VERSION, acceptedAt: "2026-10-26T00:00:00.000Z" } },
+        },
+      },
+      isConfigured: true,
+      error: null,
+    }),
+  };
+});
 
 vi.mock("@/components/clinical-dashboard/search-command-context", () => ({
   useSearchCommand: () => null,

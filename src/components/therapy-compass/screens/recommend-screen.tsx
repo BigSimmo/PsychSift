@@ -9,7 +9,7 @@ import { cn, pageContainer } from "@/components/ui-primitives";
 import { Button } from "@/components/ui/button";
 import { announce } from "@/components/ui/live-announcer";
 import { ClinicalSignInNotice } from "@/components/mode-kit/clinical-sign-in-notice";
-import { useClinicalToolAccess } from "@/components/mode-kit/use-clinical-tool-access";
+import { clinicalToolLocked, useClinicalToolAccess } from "@/components/mode-kit/use-clinical-tool-access";
 import { CLINICAL_SIGN_IN_COPY } from "@/lib/front-door-content";
 
 import { useTcBindings } from "../bindings";
@@ -83,7 +83,7 @@ export function RecommendScreen() {
 
   // Ranking therapies against a typed scenario is for signed-in health professionals
   // (see useClinicalToolAccess); browsing and comparing stay open.
-  if (access === "sign-in-required") {
+  if (clinicalToolLocked(access)) {
     return (
       <section data-screen-label="Recommend" className={pageContainer}>
         {header}
