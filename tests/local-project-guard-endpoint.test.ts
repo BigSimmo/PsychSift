@@ -13,11 +13,16 @@ describe("isLocalProjectIdentityEndpointEnabled", () => {
     expect(isLocalProjectIdentityEndpointEnabled(req("http://localhost:3576/api/local-project-id"), prod)).toBe(true);
   });
 
-  it("answers a wildcard-bound next start when the Host header is loopback", () => {
-    const request = req("http://0.0.0.0:3576/api/local-project-id", {
+  it.each(["0.0.0.0", "[::]"])("rejects a %s bind despite spoofed loopback Host and XFF", (hostname) => {
+    const request = req(`http://${hostname}:3576/api/local-project-id`, {
       host: "localhost:3576",
       "x-forwarded-for": "::ffff:127.0.0.1",
     });
+    expect(isLocalProjectIdentityEndpointEnabled(request, prod)).toBe(false);
+  });
+
+  it.each(["127.0.0.1", "::1", "::ffff:127.0.0.1"])("accepts Next's loopback XFF %s on a loopback bind", (address) => {
+    const request = req("http://127.0.0.1:3576/api/local-project-id", { "x-forwarded-for": address });
     expect(isLocalProjectIdentityEndpointEnabled(request, prod)).toBe(true);
   });
 

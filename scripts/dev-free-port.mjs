@@ -141,7 +141,9 @@ const preferred = parsePreferredPort(forwardedArgs);
 const preferredPort = preferred.port;
 const freePort = await findFreePort(preferredPort);
 const nextBin = path.join(projectRoot, "node_modules", "next", "dist", "bin", "next");
-const url = `http://localhost:${freePort}`;
+const isProductionStart = parsedCommand.command === "start";
+const hostname = isProductionStart ? "127.0.0.1" : "0.0.0.0";
+const url = `http://${isProductionStart ? "127.0.0.1" : "localhost"}:${freePort}`;
 
 if (freePort !== preferredPort) {
   const portKind = preferred.source === "stable" ? "Stable project port" : "Configured port";
@@ -174,7 +176,7 @@ const child = spawn(
     nextBin,
     parsedCommand.command,
     "--hostname",
-    "0.0.0.0",
+    hostname,
     "--port",
     String(freePort),
     ...removePortArgs(forwardedArgs),
