@@ -18,7 +18,12 @@ function cleanCitationTitle(value: string) {
       // through here, so normalising it once fixes the safety card, the rail
       // cards, the drawer and print together. Display only: the stored title is
       // untouched, and nothing downstream matches on it.
-      .replace(/(\w)\(/g, "$1 (")
+      //
+      // Not before a receptor subtype: "5-HT(2A)", "5-HT(1A)" and "D(2)" are one
+      // name, and "5-HT (2A)" misreads as a gloss. A bracket holding one digit and at
+      // most one letter is that shape; a year or an organisation code still gets
+      // its space ("Policy(2024)", "Guideline(EMHS)").
+      .replace(/(\w)\((?!\d[A-Za-z]?\))/g, "$1 (")
   );
 }
 

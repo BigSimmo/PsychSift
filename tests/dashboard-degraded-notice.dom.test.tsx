@@ -42,7 +42,7 @@ describe("DegradedNoticeFrame", () => {
     expect(reservedEmpty).toHaveClass("sm:min-h-[3.875rem]", "max-sm:h-0");
     expect(reservedEmpty).not.toHaveClass("min-h-[3.875rem]");
     expect(reservedEmpty).toHaveAttribute("data-visible", "false");
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByRole("alert")).toBeEmptyDOMElement();
 
     rerender(<DegradedNoticeFrame visible isOnline={false} />);
 
@@ -60,6 +60,21 @@ describe("DegradedNoticeFrame", () => {
     rerender(<DegradedNoticeFrame visible={false} isOnline />);
 
     expect(screen.queryByTestId("dashboard-degraded-notice-frame")).not.toBeInTheDocument();
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByRole("alert")).toBeEmptyDOMElement();
+  });
+
+  it("keeps the same alert live region mounted so inserted notices are announced", () => {
+    const { rerender } = render(<DegradedNoticeFrame visible={false} isOnline />);
+    const region = screen.getByRole("alert");
+    expect(region).toHaveClass("sr-only");
+    expect(region).toBeEmptyDOMElement();
+
+    rerender(<DegradedNoticeFrame visible isOnline={false} />);
+    expect(screen.getByRole("alert")).toBe(region);
+    expect(region).toHaveTextContent("Offline");
+
+    rerender(<DegradedNoticeFrame visible isOnline reserveSpace />);
+    expect(screen.getByRole("alert")).toBe(region);
+    expect(region).toHaveTextContent("Service unavailable");
   });
 });

@@ -140,3 +140,25 @@ export const POISONS_INFORMATION_CONTACT = {
   sourceUrl: "https://scgh.health.wa.gov.au/Our-Services/Service-directory/Poisons",
   verifiedOn: "2026-10-13",
 } satisfies PublicCrisisContact;
+
+/**
+ * CAMHS Crisis Connect — WA's 24/7 child and youth mental health crisis line. The Clinical answer
+ * crisis card shows it straight after 000 when the question names someone under 18 (owner
+ * decision 2026-10-26, D10). Kept OUT of `WA_CRISIS_CONTACTS` for the same reason as the Poisons
+ * Information Centre: adding a line to the patient's own safety plan is a separate decision.
+ * Checked 2026-10-26 against the Mental Health Commission WA suicide support page (updated
+ * 11 August 2026): "1800 048 636", "24/7".
+ */
+export const CAMHS_CRISIS_CONNECT_CONTACT = {
+  id: "SYN-CRISIS-CONTACT-009",
+  name: "CAMHS Crisis Connect (children and young people)",
+  telephoneDisplay: "1800 048 636",
+  telephoneUri: "1800048636",
+  coverage: "Western Australia",
+  availability: "24 hours, every day",
+  isEmergencyService: false,
+  caveat:
+    "A phone and online support line for children and young people in a mental health crisis, and their families, carers and professionals. Call 000 in an emergency.",
+  sourceUrl: "https://www.mhc.wa.gov.au/getting-help/your-health-and-wellbeing/suicide",
+  verifiedOn: "2026-10-26",
+} satisfies PublicCrisisContact;

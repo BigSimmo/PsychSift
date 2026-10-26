@@ -15,6 +15,11 @@ import {
 } from "@/lib/on-call/demo-content-identity";
 import { DEMO_ON_CALL_ENTRIES } from "@/lib/on-call/demo-entries";
 import { onCallEntryToRow } from "@/lib/on-call/repository";
+import {
+  mayPublishSharedOnCallEntry,
+  sharedOnCallEntryRefusedResponse,
+  sharedOnCallPublisherIds,
+} from "@/lib/on-call/shared-entry-publisher";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError, requireAuthenticatedUser, unauthorizedResponse } from "@/lib/supabase/auth";
 
@@ -67,6 +72,11 @@ export const runtime = "nodejs";
  * longer be the design. The honest handling is to say so at the control that
  * triggers it, which `OnCallDemoContentControl` does, and to make removal one
  * request.
+ *
+ * Because most of the corpus is shared, loading it is publishing, so only a site
+ * administrator may load it (owner decision, 26 Oct 2026, extending the 25 Oct
+ * rule in `shared-entry-publisher.ts`). Anyone may still remove the copy in
+ * their own account.
  */
 
 /**
@@ -123,8 +133,10 @@ export async function GET(request: Request) {
     if (error) throw new Error(error.message);
 
     const loaded = (data ?? []).filter((row) => DEMO_SLUGS_BY_SECTION.get(row.section)?.has(row.slug)).length;
+    // Whether POST would accept this caller, so the control offers Load only to someone it works for.
+    const mayLoad = await mayPublishSharedOnCallEntry(request, supabase, user);
 
-    return NextResponse.json({ loaded, total: ON_CALL_DEMO_ENTRY_COUNT });
+    return NextResponse.json({ loaded, total: ON_CALL_DEMO_ENTRY_COUNT, mayLoad });
   } catch (error) {
     if (error instanceof AuthenticationError) return unauthorizedResponse();
     return jsonError(error);
@@ -146,6 +158,9 @@ export async function POST(request: Request) {
       return rateLimitJsonResponse("On Call requests are rate limited. Try again shortly.", rateLimit);
     }
 
+    // Most of the corpus is shared, so loading it publishes to every signed-in reader.
+    if (!(await mayPublishSharedOnCallEntry(request, supabase, user))) return sharedOnCallEntryRefusedResponse();
+
     // Refuse if another account already holds the corpus.
     //
     // The conflict key below is (owner_id, section, slug), so a second account
@@ -163,18 +178,26 @@ export async function POST(request: Request) {
     // own rows.
     // Selects `slug`, not `owner_id`: the question is only "does a copy exist
     // elsewhere", so the answer does not need to name whose. This is a
-    // deliberately cross-owner read on an owner-scoped table and is declared
-    // as one in `scripts/lib/tenancy-scan.mjs`; keeping the projection free of
-    // any owner identity is what makes that declaration narrow.
-    const { data: foreign, error: foreignError } = await supabase
-      .from("on_call_entries")
-      .select("slug")
-      .neq("owner_id", user.id)
-      .eq("is_personal", false)
-      .in("slug", ON_CALL_DEMO_SLUGS)
-      .limit(1);
-    if (foreignError) throw new Error(foreignError.message);
-    if ((foreign ?? []).length > 0) {
+    // deliberately cross-owner read, limited to other administrators' rows, and
+    // it gates a write without returning anyone's data.
+    // Only another administrator's copy counts: an ordinary account's copy, loaded before loading
+    // became administrator-only, no longer reaches the shared read, so it must not block a
+    // visible one.
+    const otherPublishers = (await sharedOnCallPublisherIds(supabase)).filter((id) => id !== user.id);
+    let foreign: unknown[] = [];
+    if (otherPublishers.length > 0) {
+      const { data, error: foreignError } = await supabase
+        .from("on_call_entries")
+        .select("slug")
+        .neq("owner_id", user.id)
+        .in("owner_id", otherPublishers)
+        .eq("is_personal", false)
+        .in("slug", ON_CALL_DEMO_SLUGS)
+        .limit(1);
+      if (foreignError) throw new Error(foreignError.message);
+      foreign = data ?? [];
+    }
+    if (foreign.length > 0) {
       return publicErrorResponse(
         "Example content is already loaded by another account on this site, and it is visible to everyone. That account needs to remove it first.",
         409,
