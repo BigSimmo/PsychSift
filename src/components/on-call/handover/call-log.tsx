@@ -21,7 +21,7 @@ import {
   onCallCallLogTime,
   onCallCallLogStorageKey,
   visibleOnCallCallLog,
-  removeOnCallCallLogEntry,
+  deleteOnCallCallLogEntryForUndo,
   restoreOnCallCallLogEntry,
   setOnCallCallLogDone,
   type OnCallCallLogDraft,
@@ -424,9 +424,9 @@ function CallLogRow({ entry }: { readonly entry: OnCallCallLogEntry }) {
   const title = [onCallCallLogTime(entry.at), who].filter(Boolean).join(" · ");
   // Delete at once, with a short Undo, instead of a confirm box (D26-25).
   const onDelete = () => {
-    removeOnCallCallLogEntry(entry.id);
+    const undo = deleteOnCallCallLogEntryForUndo(entry);
     const deleted = `${title} note deleted`;
-    if (!toast) {
+    if (!toast || !undo) {
       announce(deleted);
       return;
     }
@@ -437,7 +437,7 @@ function CallLogRow({ entry }: { readonly entry: OnCallCallLogEntry }) {
       action: {
         label: "Undo",
         onAction: () => {
-          announce(restoreOnCallCallLogEntry(entry) ? "Note put back." : "The note could not be put back.");
+          announce(restoreOnCallCallLogEntry(undo) ? "Note put back." : "The note could not be put back.");
         },
       },
     });

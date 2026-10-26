@@ -222,25 +222,47 @@ export function removeOnCallCallLogEntry(id: string, now: Date = new Date()): vo
   );
 }
 
-/**
- * Put back a note deleted moments ago (the Undo on the delete toast, D26-25). Refused once the
- * shift's labels have been wiped, so an Undo never carries a note into the next shift, and when
- * the log is already full again.
- */
-export function restoreOnCallCallLogEntry(entry: OnCallCallLogEntry, now: Date = new Date()): boolean {
-  if (typeof window === "undefined") return false;
-  let stamp: string | null = null;
+/** The current shift's stamp, with the random generation each new shift gets. */
+function readShiftStamp() {
   try {
-    stamp = window.localStorage.getItem(PATIENT_LABEL_EXPIRY_STORAGE_KEY);
+    return parsePatientLabelExpiryStamp(window.localStorage.getItem(PATIENT_LABEL_EXPIRY_STORAGE_KEY));
   } catch {
-    return false;
+    return null;
   }
-  const expiresAt = parsePatientLabelExpiry(stamp);
-  if (expiresAt === null || now.getTime() >= expiresAt) return false;
+}
+
+/**
+ * Delete a note and return what an Undo needs to put it back: the note and the shift it belonged
+ * to, read from the shift's stamp at the moment of deletion (D26-25).
+ */
+export function deleteOnCallCallLogEntryForUndo(
+  entry: OnCallCallLogEntry,
+  now: Date = new Date(),
+): OnCallCallLogUndo | null {
+  if (typeof window === "undefined") return null;
+  const stamp = readShiftStamp();
+  removeOnCallCallLogEntry(entry.id, now);
+  // A stamp from before generations existed cannot tell one shift from the next, so it gets no Undo.
+  return stamp?.generation ? { entry, shiftGeneration: stamp.generation } : null;
+}
+
+export type OnCallCallLogUndo = { readonly entry: OnCallCallLogEntry; readonly shiftGeneration: string };
+
+/**
+ * Put back a note deleted moments ago (the Undo on the delete toast). Refused unless the shift it
+ * was deleted in is still the current one: the same generation, unexpired. A sign-out, an account change
+ * or the end of the shift wipes the stamp, and any later shift writes a new one, so an Undo can
+ * never carry a note across a wipe into another person's or another shift's labels. Also refused
+ * when the log is already full again.
+ */
+export function restoreOnCallCallLogEntry(undo: OnCallCallLogUndo, now: Date = new Date()): boolean {
+  if (typeof window === "undefined") return false;
+  const stamp = readShiftStamp();
+  if (!stamp || stamp.generation !== undo.shiftGeneration || now.getTime() >= stamp.expiresAt) return false;
   const current = live(readStored(now), now);
-  if (current.some((existing) => existing.id === entry.id)) return true;
-  if (current.length >= ON_CALL_CALL_LOG_LIMIT || live([entry], now).length === 0) return false;
-  return write([entry, ...current], now);
+  if (current.some((existing) => existing.id === undo.entry.id)) return true;
+  if (current.length >= ON_CALL_CALL_LOG_LIMIT || live([undo.entry], now).length === 0) return false;
+  return write([undo.entry, ...current], now);
 }
 
 /** Clear every note on this device. */
