@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
+import { preloadSearchPatientCheck } from "@/components/clinical-dashboard/search-patient-detail-guard";
 import { TcProvider, useTcBindings } from "@/components/therapy-compass/bindings";
 
 // Design audit D-03: a Therapies search that looks like it holds a patient detail is not
@@ -45,6 +46,12 @@ function renderProbe(text: string) {
   );
   fireEvent.click(screen.getByRole("button", { name: "Submit" }));
 }
+
+// Searches check typed text for patient details before they send or navigate; load the check
+// once up front so the steps below see the request go out (privacy audit S1, 2026-10-26).
+beforeAll(async () => {
+  await preloadSearchPatientCheck();
+});
 
 describe("Therapies submitQuery patient-detail check", () => {
   it("keeps a search holding a record number out of the address", () => {

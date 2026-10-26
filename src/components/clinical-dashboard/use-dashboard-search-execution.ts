@@ -47,7 +47,11 @@ import type { VerifiedEvidencePreviewUnit } from "@/lib/answer-stream-contract";
 import { createAnswerThreadSnapshotMetadata, maxStoredAnswerTurns } from "@/lib/answer-thread-storage";
 import { appModeHomeHref, appModeQueryMode, appModeSearchConfig, type AppModeId } from "@/lib/app-modes";
 import { identifierShapeWarning } from "@/lib/clinical-ask/context";
-import { SEARCH_IDENTIFIER_HELD_BACK } from "@/components/clinical-dashboard/search-patient-detail-guard";
+import {
+  SEARCH_CHECK_UNAVAILABLE,
+  SEARCH_IDENTIFIER_HELD_BACK,
+  searchTextPatientDetailRefusal,
+} from "@/components/clinical-dashboard/search-patient-detail-guard";
 import { incrementalEvidencePreviewRenderingEnabled } from "@/lib/client-env";
 import { isDeployedClinicalKb } from "@/lib/deployed-app";
 import { documentsSearchHref } from "@/lib/document-flow-routes";
@@ -845,9 +849,16 @@ export function useDashboardSearchExecution(deps: DashboardSearchExecutionDeps) 
   }
 
   function setMedicationSearchQuery(searchText: string, updateUrl = true) {
-    modeChangeFromUiRef.current = true;
     const trimmedSearchText = searchText.trim();
     if (!trimmedSearchText) return;
+    // A suggested, recent or cross-mode Medication search writes the text into the address bar,
+    // history and recent searches, so it gets the same check as a typed one (privacy audit CA-01).
+    const refusal = searchTextPatientDetailRefusal(trimmedSearchText);
+    if (refusal) {
+      setActionNotice({ tone: "warning", message: refusal });
+      return;
+    }
+    modeChangeFromUiRef.current = true;
     setSearchMode("prescribing");
     setQuery(trimmedSearchText);
     setModeSearchSubmitted(true, trimmedSearchText);
@@ -897,10 +908,10 @@ export function useDashboardSearchExecution(deps: DashboardSearchExecutionDeps) 
         }
       } else if (sendsQueryToProvider) {
         refusal = PATIENT_CHECK_UNAVAILABLE;
-      } else if (identifierShapeWarning(trimmedQuery)) {
-        // Searches that stay on our servers still go ahead when the full check cannot load,
-        // but never with a record number, date of birth, phone number or email in them.
-        refusal = SEARCH_IDENTIFIER_HELD_BACK;
+      } else {
+        // Searches that stay on our servers are held back too when the full check cannot load,
+        // since a name would otherwise reach the address bar and history (privacy audit CA-04).
+        refusal = identifierShapeWarning(trimmedQuery) ? SEARCH_IDENTIFIER_HELD_BACK : SEARCH_CHECK_UNAVAILABLE;
       }
       if (refusal) {
         setActionNotice({ tone: "warning", message: refusal });

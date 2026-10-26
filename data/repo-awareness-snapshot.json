@@ -2157,6 +2157,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-26-deploy-gating-and-staging-order.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/superpowers/plans/2026-09-26-cpd-elevation.md",
         "section": "superpowers",
         "catalogued": true
@@ -2374,6 +2379,11 @@
       {
         "path": "docs/superpowers/specs/2026-09-01-calculators-clinical-safety.md",
         "section": "superpowers",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-26-keep-unreviewed-interaction-warning-live.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -2862,6 +2872,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-26-privacy-page-operator-and-contact.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/decisions/2026-10-21-normal-merge-documentation-alignment.md",
         "section": "decisions",
         "catalogued": true
@@ -3227,6 +3242,16 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-26-openai-monthly-budget.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-26-remove-form-6a-6b-print-layout.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/superpowers/plans/2026-08-20-care-plan-implementation.md",
         "section": "superpowers",
         "catalogued": true
@@ -3522,6 +3547,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-26-questions-stay-out-of-the-address-bar.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/openai-cross-border-basis.md",
         "section": "root",
         "catalogued": true
@@ -3544,6 +3574,11 @@
       {
         "path": "docs/archive/source-governance-status-2026-07-08.md",
         "section": "archive",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-26-feedback-notes-deleted-after-30-days.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -3842,6 +3877,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-26-no-patient-data-rule-extended.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/db-maintenance.md",
         "section": "root",
         "catalogued": true
@@ -4123,6 +4163,11 @@
       },
       {
         "path": "docs/decisions/2026-10-16-cloud-policy-repair-boundary.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-26-third-party-pdfs-admin-only.md",
         "section": "decisions",
         "catalogued": true
       },
@@ -4887,12 +4932,22 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-26-crisis-routing-under-18-youth-and-000.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/development-speed-playbook.md",
         "section": "root",
         "catalogued": true
       },
       {
         "path": "docs/decisions/2026-08-25-unsupported-claims-carry-no-mark.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-26-relayed-approvals-unconfirmed.md",
         "section": "decisions",
         "catalogued": true
       },
@@ -4934,6 +4989,11 @@
       {
         "path": "docs/governance/physiological-calculator-hold-2026-10-17.md",
         "section": "governance",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-26-shared-on-call-entries-admin-only.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -5082,6 +5142,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-26-adopt-frozen-24-aug-catalogue.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/audit/claude-code-cloud-connection-acceptance-2026-08-17.md",
         "section": "audit",
         "catalogued": true
@@ -5118,6 +5183,11 @@
       },
       {
         "path": "docs/decisions/2026-09-25-tablet-cross-mode-search-is-intended.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-26-clinical-sign-off-sheets.md",
         "section": "decisions",
         "catalogued": true
       },

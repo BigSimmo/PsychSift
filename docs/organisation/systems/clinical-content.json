@@ -275,7 +275,6 @@
     "tests/formulation.test.ts",
     "tests/governance-catalogue-audit.test.ts",
     "tests/guidance-difference-note.dom.test.tsx",
-    "tests/hostile-document-ingestion-matrix.test.ts",
     "tests/medication-interaction-lexicon-coverage.test.ts",
     "tests/medication-interactions.test.ts",
     "tests/medication-lexicon-report-signoff.test.ts",

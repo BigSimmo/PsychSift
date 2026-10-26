@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "73a239c2-ae2f-4a12-a30b-f9a0cd9aa56d",
+  "createdOn": "2026-10-26",
+  "action": "update",
+  "payload": {
+    "id": "#9Z197J",
+    "detail": "UPDATE 2026-10-26 (S9 triage, read from main CI logs via the GitHub MCP): main run 40282193144 on 2d3073c (#3796) failed one test in one shard, release-browser-matrix (webkit, mobile-pwa-standalone, 3, 5): tests/ui-tools.spec.ts:1538 'Services keeps its shortlist when the shared composer submits another query at 1280px'. After clearing the shortlist and typing 'housing', Enter still submitted 'crisis' (expected q=housing, got crisis). This is the same race f8f5ff2f7 (21 Oct) tried to settle by waiting for the cleared state and the typed value, so the wait is not enough on Safari. The other 22 Firefox and WebKit shards passed and the run concluded success, so it is intermittent. Next: check whether the shared composer can overwrite or resubmit stale text after the URL changes (a possible real Safari bug where a user's new query is replaced by the old one), and fix the cause rather than loosening the test. Job is outside PR required. UPDATE 2026-10-24 (read-only CI log read of 100 main runs 18-23 Oct): the WebKit tablet leg failed 36 times, each a single test. Repeat offenders were the formulation builder walk-through (8), specifier compare swap and map jump (7), and the calculator sheet open (1); the CME phone-scroll and services/on-call failures had already stopped. Cause in traces: the target moves by about a header height between Playwright actionability and the click. Fixed test-side on branch claude/project-thread-q5puw2 by routing those clicks through clickWhenSettled, which now also waits out header hide/reveal and composer-space transitions. Nothing skipped or loosened. Not reproducible in a cloud container: the next WebKit tablet runs on main are the proof; if a failure recurs, pull that run trace first.",
+    "baseRowFingerprint": "5f1ecdbbfdec6536d8c967111e6bda2a6b7271e55d8e80bd41f533b51b285dd2",
+    "targetUlid": "01M1XFVVAZ9Z197J7AAJJEP4C7"
+  }
+}

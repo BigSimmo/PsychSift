@@ -4,6 +4,13 @@ export type ClinicalVocabularyType =
 export type ClinicalVocabularyEntry = {
   canonical: string;
   aliases: string[];
+  /**
+   * One-way expansion terms (audit 26 Oct 2026, finding #5): features or members of the
+   * canonical (e.g. "fever" for serotonin syndrome). A query naming the canonical or an alias
+   * expands to these, but a query that only names one of these does NOT match the entry, so
+   * "clozapine fever" no longer drags in serotonin syndrome.
+   */
+  relatedTerms?: string[];
   type: ClinicalVocabularyType;
   weight?: number;
 };
@@ -93,38 +100,44 @@ const entries: ClinicalVocabularyEntry[] = [
   // Systematic Medical Term Expansion (RAG-E1)
   {
     canonical: "extrapyramidal side effects",
-    aliases: ["epse", "eps", "dystonia", "akathisia", "parkinsonism", "tardive dyskinesia"],
+    aliases: ["epse", "eps"],
+    relatedTerms: ["dystonia", "akathisia", "parkinsonism", "tardive dyskinesia"],
     type: "risk",
     weight: 1.1,
   },
   {
     canonical: "neuroleptic malignant syndrome",
-    aliases: ["nms", "hyperthermia", "muscle rigidity", "autonomic instability"],
+    aliases: ["nms"],
+    relatedTerms: ["hyperthermia", "muscle rigidity", "autonomic instability"],
     type: "risk",
     weight: 1.2,
   },
   {
     canonical: "serotonin syndrome",
-    aliases: ["serotonin toxicity", "shivering", "diarrhea", "muscle rigidity", "fever", "seizures"],
+    aliases: ["serotonin toxicity"],
+    relatedTerms: ["shivering", "diarrhoea", "diarrhea", "muscle rigidity", "fever", "seizures"],
     type: "risk",
     weight: 1.2,
   },
   {
     canonical: "anticholinergic side effects",
-    aliases: [
-      "anticholinergic toxicity",
-      "dry mouth",
-      "blurred vision",
-      "constipation",
-      "urinary retention",
-      "tachycardia",
-    ],
+    aliases: ["anticholinergic toxicity"],
+    relatedTerms: ["dry mouth", "blurred vision", "constipation", "urinary retention", "tachycardia"],
     type: "risk",
     weight: 1.1,
   },
   {
     canonical: "metabolic syndrome",
-    aliases: ["weight gain", "dyslipidemia", "hyperglycemia", "hypertension", "waist circumference"],
+    aliases: [],
+    relatedTerms: [
+      "weight gain",
+      "dyslipidaemia",
+      "hyperglycaemia",
+      "dyslipidemia",
+      "hyperglycemia",
+      "hypertension",
+      "waist circumference",
+    ],
     type: "risk",
     weight: 1.1,
   },
@@ -135,11 +148,17 @@ const entries: ClinicalVocabularyEntry[] = [
     weight: 1.1,
   },
   { canonical: "thyroid function", aliases: ["tft", "tsh", "free t4", "t3"], type: "lab", weight: 1.1 },
-  { canonical: "prolactin level", aliases: ["hyperprolactinemia", "prolactin"], type: "lab", weight: 1.1 },
-  { canonical: "body mass index", aliases: ["bmi", "weight", "height"], type: "lab", weight: 1.05 },
+  {
+    canonical: "prolactin level",
+    aliases: ["hyperprolactinaemia", "hyperprolactinemia", "prolactin"],
+    type: "lab",
+    weight: 1.1,
+  },
+  { canonical: "body mass index", aliases: ["bmi"], relatedTerms: ["weight", "height"], type: "lab", weight: 1.05 },
   {
     canonical: "blood pressure",
-    aliases: ["bp", "hypertension", "hypotension", "orthostatic hypotension"],
+    aliases: ["bp"],
+    relatedTerms: ["hypertension", "hypotension", "orthostatic hypotension"],
     type: "lab",
     weight: 1.1,
   },
@@ -304,6 +323,8 @@ export function expandClinicalVocabularyText(text: string, limit = 48) {
   for (const entry of clinicalVocabularyMatches(text, limit)) {
     additions.add(entry.canonical);
     for (const alias of entry.aliases.slice(0, 6)) additions.add(alias);
+    // Related terms get their own budget so AU/US spelling pairs never push out a feature.
+    for (const term of (entry.relatedTerms ?? []).slice(0, 8)) additions.add(term);
   }
   return Array.from(additions).slice(0, limit);
 }
