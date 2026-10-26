@@ -1,3 +1,4 @@
+import { SWALLOWED_AMOUNT } from "@/lib/crisis-wording";
 import type { ServiceRecord, ServiceSearchMatch } from "@/lib/service-ranker";
 
 export type ServiceUrgentIntent =
@@ -17,12 +18,6 @@ export type ServiceUrgentIntent =
 // `self[- ]?harm\w*` so "self harming", "self-harmed" and "selfharm" are all crisis wording.
 const CRISIS =
   /\b(?:suicid\w*|crisis|acute|unsafe|self[- ]?harm\w*|mental health emergency|kill (?:myself|oneself|themselves|himself|herself)|end (?:my|one['’]?s|their|his|her) life|take (?:my|one['’]?s|their|his|her) own life|hang (?:myself|oneself|themselves|himself|herself)|bottle of pills|(?:want(?:s|ed|ing)?|wanna)\s+to\s+(?:die|be\s+dead)|wanna\s+die)\b/i;
-// Swallowing an amount of medicine ("took a handful of pills", "swallowed a whole packet of
-// paracetamol", "took 20 tablets") is an overdose until shown otherwise, so it pins 000 first like
-// the word "overdose" does. Owner decision 2026-10-26 (D7). A one-digit count ("took 2 tablets")
-// and dosing wording ("take 10 x 5 mg") stay quiet.
-const SWALLOWED_AMOUNT =
-  /\b(?:took|taken|swallow(?:ed|ing)?|ingest(?:ed|ing)?)\s+(?:a\s+handful\s+of|(?:a|the|my|his|her|their)\s+(?:whole|entire)\s+(?:bottle|packet|pack|box|blister\s+pack|strip|script|prescription|supply)|(?:a|the)\s+(?:bottle|packet|pack|box|blister\s+pack|strip)\s+of|(?:all|a\s+lot)\s+of\s+(?:my|his|her|their|the)\s+(?:pills?|tablets?|meds?|medications?)|all\s+(?:my|his|her|their)\s+(?:pills?|tablets?|meds?|medications?)|\d{2,}\s*x\s*\d|\d{2,}\s+(?:\w+\s+){0,2}?(?:pills?|tablets?|tabs|capsules?|caps|panadol|paracetamol)\b)/i;
 const IMMEDIATE_DANGER =
   /\b(?:actively suicidal|immediate danger|life[- ]?threatening|severe injury|overdose|about to (?:kill|harm)|cannot keep (?:myself|them|him|her|the patient) safe|emergency (?:now|in progress)|strangl\w*|chok(?:ing|ed)?|can[’']?t breathe|cannot breathe)\b/i;
 // Medical emergencies (a seizure, collapse, unconsciousness, not breathing) pin Emergency

@@ -10,6 +10,8 @@ or a swallowed amount of medicine. "aged 15", "year 10 student" and "high school
 under 18, and "15M", "16F" and "(14)" count as youth wording. Status epilepticus, a patient fitting, a
 stroke happening, chest pain and similar emergencies pin 000. Kids Helpline and then Lifeline WA are
 pinned after the crisis lines for under-18 and youth crises, which ends the hold of 18 Oct 2026. The
-Answer crisis card adds CAMHS Crisis Connect after 000 when the question names someone under 18.
+Answer crisis card adds CAMHS Crisis Connect after 000 when the question names someone under 18. The
+Answer crisis card also shows for more suicidal intent and method wording and for a swallowed amount of
+medicine, and a swallowed amount adds the Poisons Information Centre (`src/lib/crisis-wording.ts`).
 
 If this summary and the source ever differ, the source wins.
