@@ -166,7 +166,7 @@
     "src/data/dictionary-source-dispositions.json": "c91faaa74dbca9c194fadd80166c6eb90198dd0ba010fb7da63001a035c54202",
     "src/lib/answer-render-policy.ts": "fb8cf5fdc6766361b0341b312a6243f91b861d1a7dc3a27196acfdd289398ccd",
     "src/lib/answer-verification.ts": "6705916862223e22aa6bae6ec25c9f03479273eb2d572112b300ac48acf44a63",
-    "src/lib/clinical-safety.ts": "f779a97793e0015b558e9c7a738e606111c85f09b005661ca8c4bba0c9d88f73",
+    "src/lib/clinical-safety.ts": "e3330c53d4ede160bdfe4795b287d9aa128f737c5c754b55ea4bd6a13aed636a",
     "src/lib/rag/rag-answer-support.ts": "4250f30017789f6c5d75e84e7a291f163f08abb95d615fb2368e904956841dd5",
     "src/lib/rag/rag-claim-support.ts": "a945a3aa1166590010404fbae71ac7a3cc1a8ed4036b68164667adea84e21b47",
     "src/lib/rag/rag-source-block.ts": "8d08e9d168fdd3e258f4b56e22db2b07541e62034a86f7ad90c5a58a8cdd38af",
