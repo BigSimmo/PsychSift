@@ -13,11 +13,15 @@ const declarationRoutes = [
 ];
 
 describe("health professional declaration on the AI routes", () => {
-  it.each(declarationRoutes)("%s checks the declaration straight after the sign-in check", (path) => {
+  it.each(declarationRoutes)("%s checks the declaration after sign-in and the rate limit", (path) => {
     const source = readFileSync(path, "utf8");
-    expect(source).toMatch(
-      /requireSignedInClinicalAccess\(access\);\n\s*await requireHealthProfessionalDeclaration\(access, supabase\);/u,
-    );
+    const signIn = source.indexOf("requireSignedInClinicalAccess(access);");
+    const rateLimit = source.indexOf("consumeSubjectApiRateLimit(");
+    const declaration = source.indexOf("await requireHealthProfessionalDeclaration(access, supabase);");
+    // The rate limit runs first so refused accounts still spend their allowance on the account lookup.
+    expect(signIn).toBeGreaterThan(-1);
+    expect(rateLimit).toBeGreaterThan(signIn);
+    expect(declaration).toBeGreaterThan(rateLimit);
   });
 });
 

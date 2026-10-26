@@ -184,7 +184,6 @@ export async function POST(request: Request) {
     const authStarted = Date.now();
     const access = await publicAccessContext(request, supabase);
     requireSignedInClinicalAccess(access);
-    await requireHealthProfessionalDeclaration(access, supabase);
     const authMs = Date.now() - authStarted;
     const rateStarted = Date.now();
     const rateLimit = await consumeSubjectApiRateLimit({
@@ -199,6 +198,7 @@ export async function POST(request: Request) {
         bucket: "clinical_ask",
       });
     }
+    await requireHealthProfessionalDeclaration(access, supabase);
     const serverTiming = buildServerTimingHeader(preambleServerTimingEntries({ authMs, rateLimitMs }));
     if (!clinicalAskModeEnabled(body.mode)) {
       return errorStream("mode_unavailable", "Smart answers are not available for this mode.", serverTiming);

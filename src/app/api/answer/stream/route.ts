@@ -343,7 +343,6 @@ export async function POST(request: Request) {
     const authStartedAt = Date.now();
     const access = await publicAccessContext(request, supabase);
     requireSignedInClinicalAccess(access);
-    await requireHealthProfessionalDeclaration(access, supabase);
     const authMs = Date.now() - authStartedAt;
 
     const rateLimitStartedAt = Date.now();
@@ -367,6 +366,7 @@ export async function POST(request: Request) {
       if (rateLimit.limited) return rateLimitStream(rateLimit);
     }
     const rateLimitMs = Date.now() - rateLimitStartedAt;
+    await requireHealthProfessionalDeclaration(access, supabase);
 
     return streamAnswer(
       body,

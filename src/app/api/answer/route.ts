@@ -93,7 +93,6 @@ export async function POST(request: Request) {
     const authStartedAt = Date.now();
     const access = await publicAccessContext(request, supabase);
     requireSignedInClinicalAccess(access);
-    await requireHealthProfessionalDeclaration(access, supabase);
     const authMs = Date.now() - authStartedAt;
     const accessScope = resolveRetrievalAccessScope(access.ownerId);
 
@@ -112,6 +111,7 @@ export async function POST(request: Request) {
     if (rateLimit.limited) {
       return rateLimitJsonResponse("Too many answer requests. Retry shortly.", rateLimit, { bucket: "answer" });
     }
+    await requireHealthProfessionalDeclaration(access, supabase);
 
     const scopeStartedAt = Date.now();
     const scope = await resolveSearchScope({
