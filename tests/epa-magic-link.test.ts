@@ -1,15 +1,33 @@
 import { createHash } from "node:crypto";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError } from "@/lib/supabase/auth";
 
-const { mockRequireAuthenticatedUser } = vi.hoisted(() => ({
-  mockRequireAuthenticatedUser: vi.fn(),
-}));
+const { mockRequireAuthenticatedUser, mockRpc, mockFrom, notLimitedRow } = vi.hoisted(() => {
+  const notLimitedRow = () => ({
+    data: [
+      {
+        limited: false,
+        limit_value: 60,
+        remaining: 59,
+        retry_after_seconds: 60,
+        reset_at: new Date(Date.now() + 60_000).toISOString(),
+      },
+    ],
+    error: null,
+  });
+  return {
+    mockRequireAuthenticatedUser: vi.fn(),
+    mockRpc: vi.fn(async () => notLimitedRow()),
+    mockFrom: vi.fn(),
+    notLimitedRow,
+  };
+});
 
 vi.mock("@/lib/supabase/admin", () => ({
-  createAdminClient: vi.fn(() => ({})),
+  // The shared database-backed rate limiter calls rpc(); the stored-links table is from().
+  createAdminClient: vi.fn(() => ({ rpc: mockRpc, from: mockFrom })),
 }));
 
 vi.mock("@/lib/supabase/auth", async (importOriginal) => {
@@ -262,7 +280,7 @@ describe("External supervisor EPA magic-link (#MAAXAX)", () => {
     const failing: Record<string, unknown> = {};
     for (const step of ["select", "eq", "gt", "order", "limit"]) failing[step] = () => failing;
     failing.maybeSingle = () => Promise.resolve(missingTable);
-    vi.mocked(createAdminClient).mockReturnValueOnce({ from: () => failing } as never);
+    vi.mocked(createAdminClient).mockReturnValueOnce({ rpc: mockRpc, from: () => failing } as never);
     try {
       const prodGet = await GET(new Request("https://psychiatry.tools/api/teaching/assessments/respond/some_token"), {
         params: Promise.resolve({ token: "some_token_1234567890abcdef" }),
@@ -326,7 +344,7 @@ describe("the demo-mode supervisor link", () => {
   it("works in production too, without touching the stored links", async () => {
     const { EPA_MAGIC_LINK_DEMO_TOKEN } = await import("@/lib/teaching/assessments/magic-link");
     vi.stubEnv("NODE_ENV", "production");
-    vi.mocked(createAdminClient).mockClear();
+    mockFrom.mockClear();
     try {
       const url = `https://psychiatry.tools/api/teaching/assessments/respond/${EPA_MAGIC_LINK_DEMO_TOKEN}`;
       const opened = await GET(new Request(url), { params: Promise.resolve({ token: EPA_MAGIC_LINK_DEMO_TOKEN }) });
@@ -340,9 +358,87 @@ describe("the demo-mode supervisor link", () => {
         { params: Promise.resolve({ token: EPA_MAGIC_LINK_DEMO_TOKEN }) },
       );
       expect(sent.status).toBe(200);
-      expect(createAdminClient).not.toHaveBeenCalled();
+      // Only the shared rate limiter runs; the stored-links table is never read or written.
+      expect(mockFrom).not.toHaveBeenCalled();
     } finally {
       vi.unstubAllEnvs();
     }
   });
+});
+
+describe("magic-link public rate limit uses the shared database-backed limiter", () => {
+  // Outside demo mode (production never runs demo mode) the routes use the shared limiter.
+  beforeEach(() => {
+    mockRpc.mockReset();
+    mockRpc.mockImplementation(async () => notLimitedRow());
+    vi.stubEnv("NODE_ENV", "production");
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("consumes the durable limiter with 60 reads and 20 writes per minute per caller", async () => {
+    const { EPA_MAGIC_LINK_DEMO_TOKEN } = await import("@/lib/teaching/assessments/magic-link");
+    const url = `https://psychiatry.tools/api/teaching/assessments/respond/${EPA_MAGIC_LINK_DEMO_TOKEN}`;
+    const params = () => ({ params: Promise.resolve({ token: EPA_MAGIC_LINK_DEMO_TOKEN }) });
+    await GET(new Request(url, { headers: { "x-forwarded-for": "203.0.113.7" } }), params());
+    await POST(
+      new Request(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-forwarded-for": "203.0.113.7" },
+        body: JSON.stringify({ level: "proximal", observed: "direct" }),
+      }),
+      params(),
+    );
+    expect(mockRpc).toHaveBeenNthCalledWith(
+      1,
+      "consume_api_subject_rate_limit",
+      expect.objectContaining({ p_bucket: "teaching_magic_link_read", p_limit: 60, p_window_seconds: 60 }),
+    );
+    expect(mockRpc).toHaveBeenNthCalledWith(
+      2,
+      "consume_api_subject_rate_limit",
+      expect.objectContaining({ p_bucket: "teaching_magic_link_write", p_limit: 20, p_window_seconds: 60 }),
+    );
+    const subjectKey = (mockRpc.mock.calls[0] as unknown[])[1] as { p_subject_key: string };
+    expect(subjectKey.p_subject_key).toMatch(/^anon:[0-9a-f]{32}$/);
+    expect(subjectKey.p_subject_key).not.toContain("203.0.113.7");
+  });
+
+  it("answers 429 with the same shape when the shared limiter says the caller is over the limit", async () => {
+    mockRpc.mockImplementation(async () => ({
+      data: [
+        {
+          limited: true,
+          limit_value: 60,
+          remaining: 0,
+          retry_after_seconds: 42,
+          reset_at: new Date(Date.now() + 42_000).toISOString(),
+        },
+      ],
+      error: null,
+    }));
+    const response = await GET(
+      new Request("https://psychiatry.tools/api/teaching/assessments/respond/rl_token_1234567890abcdef", {
+        headers: { "x-forwarded-for": "198.51.100.9" },
+      }),
+      { params: Promise.resolve({ token: "rl_token_1234567890abcdef" }) },
+    );
+    expect(response.status).toBe(429);
+    expect(response.headers.get("Retry-After")).toBe("42");
+    expect(response.headers.get("Cache-Control")).toBe("private, no-store, max-age=0");
+    expect(await response.json()).toMatchObject({ code: "rate_limited" });
+  });
+});
+
+it("gives a magic link a random ID that is not derived from its token hash", async () => {
+  const { createEpaMagicLinkRequest } = await import("@/lib/teaching/assessments/magic-link");
+  const created = createEpaMagicLinkRequest({
+    epaCode: "EPA 1",
+    traineeName: "Dr Alex Example",
+    supervisorName: "Dr Jordan Consultant",
+    now: new Date(),
+  });
+  expect(created.request.id).toMatch(/^epa-link-[0-9a-f-]{36}$/);
+  expect(created.request.id).not.toContain(created.tokenHash.slice(0, 12));
 });
