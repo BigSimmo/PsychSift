@@ -369,7 +369,7 @@ export const toolCatalogRecords: ToolCatalogRecord[] = [
       "Follow-up timeframe",
       "GP referral details and prior 291/293 billing dates",
     ],
-    output: "Care-plan structure, review points, monitoring prompts, and MBS 291/293 compliance guidance.",
+    output: "Guideline content on care planning, review points and MBS 291/293 rules, each linked to its source.",
   },
   {
     id: "safety-plan",
