@@ -4233,7 +4233,6 @@ export type Database = {
           last_fetched_at: string | null;
           owner_id: string;
           updated_at: string;
-          url: string | null;
           url_host: string | null;
           url_secret_id: string;
           workplace: string | null;
@@ -4245,9 +4244,8 @@ export type Database = {
           last_fetched_at?: string | null;
           owner_id: string;
           updated_at?: string;
-          url?: string | null;
           url_host?: string | null;
-          url_secret_id?: string;
+          url_secret_id: string;
           workplace?: string | null;
         };
         Update: {
@@ -4257,7 +4255,6 @@ export type Database = {
           last_fetched_at?: string | null;
           owner_id?: string;
           updated_at?: string;
-          url?: string | null;
           url_host?: string | null;
           url_secret_id?: string;
           workplace?: string | null;
