@@ -1,7 +1,7 @@
 # Decision: Sign in and Create account are separate, and the email is remembered
 
 - **Status:** decided 2026-10-26
-- **Source:** the owner, in the project thread "Redesign sign-in and sign-up pages"
+- **Source:** the owner, in chat
 
 On 26 Oct 2026 the owner asked to "have sign up and sign in clear", to "perfect the design" and to "ensure everything is remembered". After a before and after mockup, the owner said "Build" and then "Perfect further in real build".
 
