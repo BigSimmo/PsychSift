@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "8c659a3a-a8a3-450b-9bc3-74d6332598da",
+  "createdOn": "2026-10-23",
+  "action": "done",
+  "payload": {
+    "id": "#C2D9JF",
+    "outcome": "Revalidated 23 October 2026 at df1e07db04. Archive accepted review-only fallback behaviour, not a repaired defect. Preserve the scope-other-owner-document divergence pin and owner-scope safeguards; reopen only for a separately evidenced behaviour change. Evidence: tests/rag-adversarial-harness.test.ts.",
+    "baseRowFingerprint": "cd7fd2b0362846e3ac8cc319be1a192cb0206139edf0b45d4c04f2bebf3475af",
+    "targetUlid": "01M08C19VRC2D9JFG95HAJRFR7"
+  }
+}

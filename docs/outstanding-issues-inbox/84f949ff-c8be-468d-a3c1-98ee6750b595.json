@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "84f949ff-c8be-468d-a3c1-98ee6750b595",
+  "createdOn": "2026-10-23",
+  "action": "update",
+  "payload": {
+    "id": "#05WXHX",
+    "summary": "Medication mappings exist; adopted source batch needs fresh owner signatures",
+    "detail": "REVALIDATED 2026-10-23 at df1e07db04. 74 medication mappings exist. Preserve the newer adopted-source batch re-signing requirement and separate older-source adoption decisions; remove zero-links/footer claims that were superseded. No clinical approval is supplied. Source inspection only; no fresh application/provider execution or clinical sign-off. Evidence: src/data/medication-source-links.json; docs/decisions/2026-10-22-adopt-medication-page-sources.md. PRIOR DETAIL: UPDATE 2026-10-22 (later): the owner signed 75 sources (#3766), then chose to adopt the 73 sources the medication pages link to (71 TGA PI search records, WA Monitored Medicines Prescribing Code, ScriptCheckWA; docs/decisions/2026-10-22-adopt-medication-page-sources.md). Adoption voids those signatures. Next action: owner re-signs the adopted batch with clinical:review --pack then --write --batch, after which the links render. The older lithium, clozapine, mood-disorder and dictionary sources still need their own adoption decision.",
+    "source": "Current-state issue revalidation 2026-10-23 at df1e07db04; session 2026-10-10 /ledger sweep, PR #3398 (merged 2026-10-09 as 6f9203d55)",
+    "baseRowFingerprint": "ad6864beaa9a4a97ef1e524123503255025eff986dc0125f160c21453e71a530",
+    "targetUlid": "01M2ZSQKSX05WXHXF414N0ZZ8V"
+  }
+}

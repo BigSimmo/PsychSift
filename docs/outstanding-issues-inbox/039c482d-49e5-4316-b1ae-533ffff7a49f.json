@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "039c482d-49e5-4316-b1ae-533ffff7a49f",
+  "createdOn": "2026-10-23",
+  "action": "update",
+  "payload": {
+    "id": "#FVF58M",
+    "summary": "Wrapped/merged four-column PDF regression is drafted; retain broader table-fixture acceptance",
+    "detail": "LOCAL PROOF 24 October 2026: a new synthetic real-PDF test exercises four columns, wrapped actions, a confirmed vertically merged group, different threshold/rate/action tuples and the next unmerged group. tests/relational-table-evidence.test.ts invokes that Python test when PyMuPDF exists and separately asserts table-fact tuples and provenance. Existing parser was unchanged. Focused table producer/grouping/ranking/PDF tests passed; new real-PDF regression passed. Remaining: independent review and deciding whether this plus the existing reading-order fixtures covers the intended broader adversarial table benchmark. No live corpus, re-index or extraction-behaviour change is claimed.",
+    "source": "Current local execution 24 October 2026 at df1e07db04; prior source retained in historical detail.",
+    "baseRowFingerprint": "1fa18d0c3c0636cc1afc816fe2d64bce7990efb91cf3a93308224915d90bed26",
+    "targetUlid": "01M3CHC2MQFVF58MKZ723N3W8Q"
+  }
+}

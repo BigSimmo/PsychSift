@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "42f1bd66-47d5-4986-a12c-8bad5236146a",
+  "createdOn": "2026-10-23",
+  "action": "update",
+  "payload": {
+    "id": "#DW0T5X",
+    "summary": "Transactional roster-rule fix is drafted and reviewed; executable SQL parity and integration remain",
+    "detail": "CURRENT EXECUTION 24 October 2026: New local draft supabase/migrations/20261023185208_roster_swap_accept_team_rules.sql adds a service-role-only invoker helper and one accept condition while the existing team advisory lock holds and settings have been read. Parent and independent schema reviewer verified the rest of roster_command is byte-identical to the original after removing that one addition. Source inspection matches existing app before/after rules, Perth start dates, clipped hours and manager routing. New TS text contracts and a disposable synthetic SQL fixture are written. Migration-role guard passed. PostgreSQL execution, two-session locking, numeric/date/two-way parity, schema mirror integration and deployment remain unverified. This is an unapplied/unsealed local draft, not a completed production fix or authority to merge/apply it.",
+    "source": "Local execution and independent scoped review 24 October 2026 at df1e07db04.",
+    "baseRowFingerprint": "3b05108112492c5de517fc1adea31838d7c8354f0af90fedef018f4a8ba31652",
+    "targetUlid": "01M5GK7J60DW0T5XW9TXGA6E25"
+  }
+}

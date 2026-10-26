@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "bc2ffd58-3b22-4df8-8861-5b1952b32565",
+  "createdOn": "2026-10-23",
+  "action": "update",
+  "payload": {
+    "id": "#2F8K1V",
+    "summary": "Extraction provenance is implemented; legacy missing provenance and operator acceptance remain",
+    "detail": "REVALIDATED 2026-10-23 at df1e07db04. Reader, chunker and OCR provenance fields and coverage now exist. Retain legacy not-recorded documents and operator acceptance; remove the claim that no per-document provenance is persisted. Do not re-index history automatically. Source inspection only; no fresh application/provider execution or clinical sign-off. Evidence: worker/extraction-provenance.ts; tests/extraction-provenance.test.ts. PRIOR DETAIL: UPDATE 2026-10-21: documents.metadata.extraction_provenance now also records the chunker versions of the committed chunks and the OCR engine (Tesseract) versions and count of OCR'd pages (worker/extraction-provenance.ts), on top of the reader version, PyMuPDF version and table strategy recorded since PR #3632. npm run extraction:provenance (read-only; needs owner confirmation before a live run) lists documents by reader, chunker or OCR version, and npm run reindex:rollback -- --chunker-version already scopes a rollback. No migration needed. Remaining: documents indexed before these keys existed report 'not recorded' until their next index, and re-extraction by version is still an operator step. Close when the owner accepts that. PRIOR DETAIL: Verified offline: only a coarse indexing_version ('rag-deep-memory-v1') is stored; no extractor/OCR/table-strategy/chunker provenance exists in schema or worker.",
+    "source": "Current-state issue revalidation 2026-10-23 at df1e07db04; Ultimate Audit Master Report 2026-09-25 (owner-supplied .docx), reviewed offline against main 955996146 in session claude/review-assessment-4s1w86; no provider access",
+    "baseRowFingerprint": "28d76115f6d8e24d11f073ee9579ac34858f3085a21589ff65454c8ef6d15278",
+    "targetUlid": "01M3CHC29Y2F8K1VF3T2SYJQCG"
+  }
+}

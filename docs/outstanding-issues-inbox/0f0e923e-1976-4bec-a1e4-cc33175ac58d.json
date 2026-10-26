@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "id": "0f0e923e-1976-4bec-a1e4-cc33175ac58d",
+  "createdOn": "2026-10-23",
+  "action": "cancel",
+  "payload": {
+    "requestId": "24332fb8-c83b-4770-9133-d8f3329d9078",
+    "reason": "Superseded by final local review and test evidence; full previous detail retained."
+  }
+}

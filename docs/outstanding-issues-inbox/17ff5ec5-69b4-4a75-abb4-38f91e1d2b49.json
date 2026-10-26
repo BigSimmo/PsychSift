@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "17ff5ec5-69b4-4a75-abb4-38f91e1d2b49",
+  "createdOn": "2026-10-23",
+  "action": "update",
+  "payload": {
+    "id": "#TXVBAZ",
+    "summary": "Diagnosis/treatment restraint and medium-trust quotes are implemented; canary and regulatory acceptance remain",
+    "detail": "CURRENT CORRECTION 24 October 2026: Owner approval is already recorded in docs/decisions/2026-10-21-answers-leave-diagnosis-to-clinician.md. src/lib/rag/rag-answer-instructions.ts has the diagnosis/treatment restraint in both prompts. src/lib/answer-render-policy.ts permits up to two medium-trust quotes while retaining authority-cap suppression. Do not request the same implementation yes again. Retain the before/after canary and behaviour assessment plus regulatory acceptance; recorded earlier-session paid approval is not transferred to this session and no new paid run is claimed. This is not a claim of regulatory exemption compliance.\n\nHISTORICAL DETAIL (superseded where corrected above): Amended TGA exemption limbs (d) and (e) from 1 Nov 2026. Fix sits in protected RAG/answer files: needs owner's named yes, RAG impact line and before/after eval canary (about US$1-2). Canary blocked until OpenAI quota restored (audit 9 PB-01). Findings R-04, R-14.",
+    "source": "Independent current-source cross-check 24 October 2026 at df1e07db04; exact source paths retained in detail.",
+    "baseRowFingerprint": "a0106c173a96c1b329b0b2fd457047b5c48342753de1491d015bdfc343f27919",
+    "targetUlid": "01M5D6CDNWTXVBAZD4T3TKS75Z"
+  }
+}

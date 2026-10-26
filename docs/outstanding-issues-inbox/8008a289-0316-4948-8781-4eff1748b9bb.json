@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "id": "8008a289-0316-4948-8781-4eff1748b9bb",
+  "createdOn": "2026-10-23",
+  "action": "cancel",
+  "payload": {
+    "requestId": "27096a2e-3437-48c1-8b94-bc04eb676b7e",
+    "reason": "Replace with current-state revalidation that retains the full newer detail and corrects its stale title."
+  }
+}
