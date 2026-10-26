@@ -1076,6 +1076,11 @@ describe("repeated headings and unpunctuated text (EXT-02, EXT-05)", () => {
     expect(withhold?.section_path).not.toContain("Mental Health Services escalation");
   });
 
+  it("keeps the heading of a one-page document (EXT-02)", () => {
+    const chunks = buildChunks([page(1, "Lithium policy\nCheck levels before each adjustment.")]);
+    expect(chunks.map((chunk) => chunk.content).join("\n")).toContain("Lithium policy");
+  });
+
   it("still removes a keyword running header that repeats on most pages (EXT-02)", () => {
     const pages = [1, 2, 3, 4].map((number) =>
       page(number, `Clozapine Prescribing Guideline\nReview step ${number} with the treating team.`),

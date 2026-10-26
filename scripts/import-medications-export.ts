@@ -6,6 +6,7 @@ import { execFileSync } from "node:child_process";
 import {
   buildMedicationSnapshotProvenance,
   diffMedicationSnapshots,
+  isMedicationsRemote,
   judgeMedicationImport,
   parseAcceptedChanges,
 } from "./lib/medication-import-guard.mjs";
@@ -40,13 +41,19 @@ function provenancePath() {
   return path.resolve(process.cwd(), "data/medications-snapshot.provenance.json");
 }
 
-/** The Medications checkout's HEAD commit, or null when it is not a git checkout or git is missing. */
+/**
+ * The Medications checkout's HEAD commit, or null when the source is not inside a Medications
+ * checkout (for example an export saved in this repository) or git is missing.
+ */
 function upstreamCommitFor(source: string): string | null {
-  try {
-    return execFileSync("git", ["-C", path.dirname(source), "rev-parse", "HEAD"], {
+  const git = (args: string[]) =>
+    execFileSync("git", ["-C", path.dirname(source), ...args], {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
     }).trim();
+  try {
+    if (!isMedicationsRemote(git(["remote", "get-url", "origin"]))) return null;
+    return git(["rev-parse", "HEAD"]);
   } catch {
     return null;
   }

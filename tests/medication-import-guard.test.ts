@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildMedicationSnapshotProvenance,
   diffMedicationSnapshots,
+  isMedicationsRemote,
   judgeMedicationImport,
   parseAcceptedChanges,
 } from "../scripts/lib/medication-import-guard.mjs";
@@ -87,5 +88,16 @@ describe("medication snapshot provenance (audit 2026-10-24 E2E-09)", () => {
     expect(
       buildMedicationSnapshotProvenance({ ...base, upstreamCommit: "fatal: not a git repository" }).upstreamCommit,
     ).toBeNull();
+  });
+});
+
+describe("isMedicationsRemote", () => {
+  it("accepts only the BigSimmo/Medications remote, so another checkout's HEAD is never recorded", () => {
+    expect(isMedicationsRemote("https://github.com/BigSimmo/Medications.git")).toBe(true);
+    expect(isMedicationsRemote("git@github.com:BigSimmo/Medications.git\n")).toBe(true);
+    expect(isMedicationsRemote("https://github.com/BigSimmo/Medications")).toBe(true);
+    expect(isMedicationsRemote("https://github.com/BigSimmo/PsychSift.git")).toBe(false);
+    expect(isMedicationsRemote("https://github.com/BigSimmo/Medications-archive.git")).toBe(false);
+    expect(isMedicationsRemote(null)).toBe(false);
   });
 });

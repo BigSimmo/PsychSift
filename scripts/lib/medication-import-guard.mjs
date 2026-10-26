@@ -93,6 +93,17 @@ export function judgeMedicationImport(diff, accepted) {
 }
 
 /**
+ * True when a git remote URL names the BigSimmo/Medications repository. An export saved inside some
+ * other checkout (this repository included) must not have that checkout's HEAD recorded as the
+ * Medications commit, so the import only reads HEAD after this check passes.
+ *
+ * @param {string | null | undefined} remoteUrl
+ */
+export function isMedicationsRemote(remoteUrl) {
+  return typeof remoteUrl === "string" && /[/:]bigsimmo\/medications(?:\.git)?\/?$/i.test(remoteUrl.trim());
+}
+
+/**
  * The record written beside `data/medications-snapshot.json` (audit 2026-10-24 E2E-09).
  *
  * The snapshot is a bare array, so nothing said which Medications version or export it came

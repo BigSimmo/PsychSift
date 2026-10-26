@@ -249,8 +249,9 @@ function buildRepeatedBoilerplateLines(inputs: ChunkInput[]) {
   // ("Lithium policy") is often a real heading repeated on a couple of pages. Stripping it left
   // those pages under the previous section's heading. Such a line is now a running header only
   // when it repeats on at least three pages and at least half of the document's pages, or on
-  // every page of a shorter document.
-  const keywordMinimum = Math.min(inputs.length, Math.max(3, Math.ceil(inputs.length / 2)));
+  // every page of a shorter document. It must still repeat at least twice, or a one-page
+  // document would lose its only heading.
+  const keywordMinimum = Math.max(2, Math.min(inputs.length, Math.max(3, Math.ceil(inputs.length / 2))));
   return new Set(
     [...counts.entries()]
       .filter(([, { count, kind }]) => count >= (kind === "strong" ? 2 : keywordMinimum))
