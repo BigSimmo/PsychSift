@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { env } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError } from "@/lib/supabase/auth";
 
@@ -367,14 +368,19 @@ describe("the demo-mode supervisor link", () => {
 });
 
 describe("magic-link public rate limit uses the shared database-backed limiter", () => {
+  let savedDemoMode: string = env.NEXT_PUBLIC_DEMO_MODE;
   // Outside demo mode (production never runs demo mode) the routes use the shared limiter.
   beforeEach(() => {
     mockRpc.mockReset();
     mockRpc.mockImplementation(async () => notLimitedRow());
     vi.stubEnv("NODE_ENV", "production");
+    // CI shards may run with NEXT_PUBLIC_DEMO_MODE=true, which env parses once at import.
+    savedDemoMode = env.NEXT_PUBLIC_DEMO_MODE;
+    (env as { NEXT_PUBLIC_DEMO_MODE: string }).NEXT_PUBLIC_DEMO_MODE = "false";
   });
   afterEach(() => {
     vi.unstubAllEnvs();
+    (env as { NEXT_PUBLIC_DEMO_MODE: string }).NEXT_PUBLIC_DEMO_MODE = savedDemoMode;
   });
 
   it("consumes the durable limiter with 60 reads and 20 writes per minute per caller", async () => {
