@@ -104,7 +104,7 @@ import { useAskTermsGate } from "@/components/front-door/use-ask-terms-gate";
 import { Button } from "@/components/ui/button";
 import { ClinicalSignInNotice } from "@/components/mode-kit/clinical-sign-in-notice";
 import { ClinicalCatalogueGate } from "@/components/mode-kit/clinical-catalogue-gate";
-import { useClinicalToolAccess } from "@/components/mode-kit/use-clinical-tool-access";
+import { clinicalToolLocked, useClinicalToolAccess } from "@/components/mode-kit/use-clinical-tool-access";
 import { ASK_TERMS_DECLINED_NOTICE, ASK_TERMS_REVIEW_LABEL, CLINICAL_SIGN_IN_COPY } from "@/lib/front-door-content";
 import { focusComposerInput as scheduleComposerFocus } from "@/components/clinical-dashboard/focus-composer-input";
 import {
@@ -2323,7 +2323,7 @@ function ClinicalDashboardContent({
                     </ClinicalCatalogueGate>
                   ) : (
                     <>
-                      {searchMode === "documents" && clinicalToolAccess === "sign-in-required" ? (
+                      {searchMode === "documents" && clinicalToolLocked(clinicalToolAccess) ? (
                         askTermsGate.signInQuery && askTermsGate.signInQuery === query.trim() ? null : (
                           <ClinicalSignInNotice copy={CLINICAL_SIGN_IN_COPY.library} testId="library-sign-in" />
                         )

@@ -94,6 +94,16 @@ export function writeDeviceTermsVersion(version: string) {
   safeSet(DEVICE_TERMS_KEY, version);
 }
 
+/**
+ * Asks the app's Terms prompt (`TermsAcceptancePrompt`) to open again after Not now, for the
+ * card a clinical tool shows while the declaration is missing (D26-07, 26 Oct 2026).
+ */
+export const TERMS_PROMPT_REQUEST_EVENT = "psychsift:terms-prompt-request";
+
+export function requestTermsPrompt() {
+  window.dispatchEvent(new Event(TERMS_PROMPT_REQUEST_EVENT));
+}
+
 /** `owner` is the signed-in user id. */
 export function isFirstRunGuideDismissed(owner: string, metadata: unknown): boolean {
   if (metadata && typeof metadata === "object" && (metadata as Record<string, unknown>)[GUIDE_METADATA_KEY]) {

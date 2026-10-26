@@ -248,6 +248,15 @@ export const CLINICAL_SIGN_IN_COPY = {
     body: "Library documents are for health professionals. Sign in to read the text, search it and open the original.",
   },
 } as const satisfies Record<string, ClinicalSignInCopy>;
+/**
+ * D26-07 (26 Oct 2026): the card a clinical tool shows a signed-in account that chose Not now
+ * on the first-open declaration. Its button opens the Terms prompt again.
+ */
+export const CLINICAL_DECLARATION_COPY = {
+  title: "Accept the Terms to use this",
+  body: "PsychSift's clinical tools are for health professionals. Accept the Terms once and every tool opens.",
+  action: "Review the Terms",
+} as const;
 export const CLINICAL_SIGN_IN_INVITE_NOTE =
   "No account? You can create one from Sign in. PsychSift is for health professionals only.";
 

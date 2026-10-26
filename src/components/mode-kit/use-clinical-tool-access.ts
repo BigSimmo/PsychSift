@@ -1,7 +1,9 @@
 "use client";
 
 import { isLocalNoAuthMode } from "@/lib/client-env";
+import { TERMS_VERSION } from "@/lib/front-door-content";
 import { useAuthSession } from "@/lib/supabase/client";
+import { readTermsAcceptance } from "@/lib/terms-acceptance";
 
 /**
  * Whether this browser may use the clinical decision tools: Answer, the medicine
@@ -14,8 +16,18 @@ import { useAuthSession } from "@/lib/supabase/client";
  * sign-in card flash past. The server refuses Answer and the originals to signed-out
  * requests on its own; this decides only what the page shows. Scoring and therapy
  * ranking run in the browser, so for them this is the only gate (N-03).
+ *
+ * "declaration-required" is a signed-in account that has not yet made the "I'm a health
+ * professional and I accept the Terms" declaration. The owner moved that declaration to
+ * first open, before any clinical tool (D26-07, 26 Oct 2026), so every tool waits on the
+ * same tick. Only the account record counts, as on the server.
  */
-export type ClinicalToolAccess = "allowed" | "checking" | "sign-in-required";
+export type ClinicalToolAccess = "allowed" | "checking" | "sign-in-required" | "declaration-required";
+
+/** True for either locked state: the tool shows its card instead of working. */
+export function clinicalToolLocked(access: ClinicalToolAccess): boolean {
+  return access === "sign-in-required" || access === "declaration-required";
+}
 
 type SessionStatus = ReturnType<typeof useAuthSession>["status"];
 
@@ -40,10 +52,25 @@ export function clinicalToolAccessForStatus(
   return "sign-in-required";
 }
 
-/** The session status when an `AuthProvider` is mounted; null in a bare render (unit tests). */
-function useSessionStatusIfAvailable(): SessionStatus | null {
+/**
+ * Adds the declaration to the sign-in decision. A signed-in account is held at
+ * "declaration-required" until its account record holds the current Terms version.
+ * Local no-auth development has no account and stays open.
+ */
+export function clinicalToolAccessForSession(
+  status: SessionStatus | null,
+  userMetadata: unknown,
+  environment: string | undefined = process.env.NODE_ENV,
+): ClinicalToolAccess {
+  const access = clinicalToolAccessForStatus(status, environment);
+  if (access !== "allowed" || status !== "authenticated" || isLocalNoAuthMode()) return access;
+  return readTermsAcceptance(userMetadata)?.version === TERMS_VERSION ? "allowed" : "declaration-required";
+}
+
+/** The session when an `AuthProvider` is mounted; null in a bare render (unit tests). */
+function useSessionIfAvailable(): Pick<ReturnType<typeof useAuthSession>, "status" | "session"> | null {
   try {
-    return useAuthSession().status;
+    return useAuthSession();
   } catch (error) {
     if (error instanceof Error && error.message === "useAuthSession must be used within AuthProvider.") return null;
     throw error;
@@ -51,5 +78,6 @@ function useSessionStatusIfAvailable(): SessionStatus | null {
 }
 
 export function useClinicalToolAccess(): ClinicalToolAccess {
-  return clinicalToolAccessForStatus(useSessionStatusIfAvailable());
+  const auth = useSessionIfAvailable();
+  return clinicalToolAccessForSession(auth?.status ?? null, auth?.session?.user?.user_metadata);
 }

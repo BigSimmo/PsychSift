@@ -7,7 +7,7 @@ const state = vi.hoisted(() => ({
   demo: false,
   noAuth: false,
   configured: true,
-  user: null as { id: string; banned_until?: string } | null,
+  user: null as { id: string; banned_until?: string; user_metadata?: Record<string, unknown> } | null,
   getUser: vi.fn(),
 }));
 
@@ -66,7 +66,10 @@ import DifferentialDiagnosesRoute from "@/app/(search-app)/differentials/diagnos
 import DifferentialPresentationsRoute from "@/app/(search-app)/differentials/presentations/page";
 import DifferentialsSearchRoute from "@/app/(search-app)/differentials/search/page";
 import { presentationStaticParams } from "@/lib/differentials";
+import { TERMS_VERSION } from "@/lib/front-door-content";
+import { TERMS_METADATA_KEY } from "@/lib/terms-acceptance";
 
+const declared = { [TERMS_METADATA_KEY]: { version: TERMS_VERSION, acceptedAt: "2026-10-26T00:00:00.000Z" } };
 const medication = loadMedicationSnapshot()[0]!;
 const diagnosisSlug = differentialStaticParams()[0]!.slug;
 const presentationSlug = presentationStaticParams()[0]!.slug;
@@ -88,12 +91,20 @@ beforeEach(() => {
 describe("server-rendered clinical pages need sign-in (#3738)", () => {
   it("decides sign-in from the server session, demo, no-auth and config", async () => {
     expect(await clinicalPageSignInRequired()).toBe(true);
-    state.user = { id: "synthetic-user" };
+    state.user = { id: "synthetic-user", user_metadata: declared };
     expect(await clinicalPageSignInRequired()).toBe(false);
-    // PP-04: a blocked account still has a session until it expires, so it gets the card.
-    state.user = { id: "synthetic-user", banned_until: "2999-01-01T00:00:00Z" };
+    // D26-07: signed in without the health professional declaration still gets the card.
+    state.user = { id: "synthetic-user" };
     expect(await clinicalPageSignInRequired()).toBe(true);
-    state.user = { id: "synthetic-user", banned_until: "2000-01-01T00:00:00Z" };
+    state.user = {
+      id: "synthetic-user",
+      user_metadata: { psychsift_terms: { version: "2020-01-01", acceptedAt: "x" } },
+    };
+    expect(await clinicalPageSignInRequired()).toBe(true);
+    // PP-04: a blocked account still has a session until it expires, so it gets the card.
+    state.user = { id: "synthetic-user", banned_until: "2999-01-01T00:00:00Z", user_metadata: declared };
+    expect(await clinicalPageSignInRequired()).toBe(true);
+    state.user = { id: "synthetic-user", banned_until: "2000-01-01T00:00:00Z", user_metadata: declared };
     expect(await clinicalPageSignInRequired()).toBe(false);
     state.user = null;
     state.demo = true;
@@ -120,7 +131,7 @@ describe("server-rendered clinical pages need sign-in (#3738)", () => {
   });
 
   it("sends a signed-in reader the medicine record", async () => {
-    state.user = { id: "synthetic-user" };
+    state.user = { id: "synthetic-user", user_metadata: declared };
     const element = (await MedicationPage({ params: params({ slug: medication.slug }) })) as {
       props: { fallbackRecord?: { name: string } };
     };
@@ -142,7 +153,7 @@ describe("server-rendered clinical pages need sign-in (#3738)", () => {
   });
 
   it("sends a signed-in reader the diagnosis record", async () => {
-    state.user = { id: "synthetic-user" };
+    state.user = { id: "synthetic-user", user_metadata: declared };
     const element = (await DifferentialDiagnosisRoute({ params: params({ slug: diagnosisSlug }) })) as {
       props: { fallbackRecord?: { slug: string } };
     };
@@ -180,7 +191,7 @@ describe("server-rendered clinical pages need sign-in (#3738)", () => {
   });
 
   it("signed-in layouts render their children on the server while the browser session loads", async () => {
-    state.user = { id: "synthetic-user" };
+    state.user = { id: "synthetic-user", user_metadata: declared };
     const meds = await MedicationsLayout({ children: <p>synthetic record body</p> });
     expect(renderToString(meds)).toContain("synthetic record body");
   });

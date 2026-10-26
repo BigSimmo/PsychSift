@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
@@ -21,6 +21,7 @@ import {
 import { useAuthSession } from "@/lib/supabase/client";
 import {
   TERMS_METADATA_KEY,
+  TERMS_PROMPT_REQUEST_EVENT,
   buildTermsAcceptance,
   readTermsAcceptance,
   writeLocalTermsVersion,
@@ -38,6 +39,10 @@ const PROMPT_EXEMPT_PATHS = ["/terms", "/about", "/privacy", "/auth"];
  * documents check the account on the server (`requireHealthProfessionalDeclaration`),
  * so a save that failed must keep asking rather than leave the user refused there
  * with no prompt (D26-40, 26 Oct 2026).
+ *
+ * This is where the declaration is made, on first open (D26-07, 26 Oct 2026). Every
+ * clinical tool stays behind it (`useClinicalToolAccess`), and the card a tool shows
+ * after Not now opens this prompt again (`requestTermsPrompt`).
  */
 export function TermsAcceptancePrompt() {
   const { client, session, status } = useAuthSession();
@@ -48,6 +53,15 @@ export function TermsAcceptancePrompt() {
   const [laterFor, setLaterFor] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
+
+  useEffect(() => {
+    const reopen = () => {
+      setLaterFor(null);
+      setSaveError(false);
+    };
+    window.addEventListener(TERMS_PROMPT_REQUEST_EVENT, reopen);
+    return () => window.removeEventListener(TERMS_PROMPT_REQUEST_EVENT, reopen);
+  }, []);
 
   if (status !== "authenticated" || !userId) return null;
   if (PROMPT_EXEMPT_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))) return null;

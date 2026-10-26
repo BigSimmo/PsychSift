@@ -7,7 +7,7 @@ import { cn } from "@/components/ui-primitives";
 import { announce } from "@/components/ui/live-announcer";
 import { canRestoreFocusTo, isTopmostSheet, popSheet, pushSheet, updateSheetRoot } from "@/components/ui/sheet-focus";
 import { MissingValue } from "@/components/ui/missing-value";
-import { useClinicalToolAccess } from "@/components/mode-kit/use-clinical-tool-access";
+import { clinicalToolLocked, useClinicalToolAccess } from "@/components/mode-kit/use-clinical-tool-access";
 
 import { domainLabels, type CalculatorFixture } from "./calculator-fixtures";
 import {
@@ -49,7 +49,7 @@ export function CalculatorSheet({
 }: CalculatorSheetProps) {
   // Signed out (or a session that just expired), no score from earlier answers may show, and the
   // answers are cleared so the next person at a shared workstation cannot see them.
-  const scoringLocked = useClinicalToolAccess() === "sign-in-required";
+  const scoringLocked = clinicalToolLocked(useClinicalToolAccess());
   const hasAnswers = Object.keys(answers).length > 0;
   useEffect(() => {
     if (scoringLocked && hasAnswers) onAnswersChange({});
