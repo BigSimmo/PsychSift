@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "a769145c-b5df-4b77-a0c2-79c93be1b266",
+  "createdOn": "2026-10-26",
+  "action": "done",
+  "payload": {
+    "id": "#MAAXAX",
+    "outcome": "Done 2026-10-26 (S9 check against main 2d02dbeb7). PR #3759 merged 22 Oct (d01496110). The post-merge live-drift run 39740811325 on 4a790082 (which contains d01496110) passed. The respond page and its GET and POST API stay open to signed-out visitors through the link token, rate limited. The leftover clean-ups (retire the old signed-in PUT registration route and the process-memory store, and a purge for completed or expired links) move to a new P4 row.",
+    "baseRowFingerprint": "a4a6beff87cd4474e0b6b5ce64ce467ec1563506e67b2ed993ae1d5501720fd5",
+    "targetUlid": "01M484CAW5MAAXAX35108YZ443"
+  }
+}
