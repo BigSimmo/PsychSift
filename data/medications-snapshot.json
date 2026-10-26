@@ -598,7 +598,7 @@
         "rows": [
           {
             "key": "Source Review",
-            "val": "Source Check - Subutex Australian PI (rev. 5 Sep 2025) for SL induction and paediatric exposure; Buvidal Australian PI (rev. 13 Oct 2025); Sublocade Australian PI (rev. 14 Jan 2026) for injection sites and initiation; WA CPOP Clinical Policies and Procedures (3rd ed., 2014); WA Monitored Medicines Prescribing Code (Dec 2024) s7.4.3.3 and s7.6.3; also Buvidal ARTG/PI, Sublocade Australian PI, and PBS buprenorphine modified-release injection search. Originally checked 2026-05-10 for this entry. Checked against source 20 Oct 2026 (audit); awaiting clinical sign-off."
+            "val": "Source Check - Subutex Australian PI (rev. 5 Sep 2025) for SL induction and paediatric exposure; Buvidal Australian PI (rev. 13 Oct 2025); Sublocade Australian PI (rev. 14 Jan 2026) for injection sites and initiation; WA CPOP Clinical Policies and Procedures (3rd ed., 2014); WA Monitored Medicines Prescribing Code (Dec 2024) s7.4–7.4.3.1; also Buvidal ARTG/PI, Sublocade Australian PI, and PBS buprenorphine modified-release injection search. Originally checked 2026-05-10 for this entry. Checked against source 20 Oct 2026 (audit); awaiting clinical sign-off."
           }
         ]
       },
@@ -608,7 +608,7 @@
         "rows": [
           {
             "key": "Status",
-            "val": "Drafted from Monitored Medicines Prescribing Code; awaiting clinical review.",
+            "val": "Drafted from Monitored Medicines Prescribing Code (Dec 2024) §7.4–7.4.3.1; awaiting clinical review.",
             "tags": []
           },
           {
@@ -962,7 +962,7 @@
         "rows": [
           {
             "key": "Source Review",
-            "val": "Source Check - Suboxone Film Australian PI (rev. 9 Sep 2025) for induction timing and dosing; WA CPOP Clinical Policies and Procedures (3rd ed., 2014); WA Monitored Medicines Prescribing Code (Dec 2024) s7.4.3.3 and s7.6.3; also SUBOXONE ARTG 211117, Suboxone Film Australian PI, and PBS Suboxone search. Originally checked 2026-05-10 for this entry. Checked against source 20 Oct 2026 (audit); awaiting clinical sign-off."
+            "val": "Source Check - Suboxone Film Australian PI (rev. 9 Sep 2025) for induction timing and dosing; WA CPOP Clinical Policies and Procedures (3rd ed., 2014); WA Monitored Medicines Prescribing Code (Dec 2024) s7.4–7.4.3.1; also SUBOXONE ARTG 211117, Suboxone Film Australian PI, and PBS Suboxone search. Originally checked 2026-05-10 for this entry. Checked against source 20 Oct 2026 (audit); awaiting clinical sign-off."
           }
         ]
       },
@@ -972,7 +972,7 @@
         "rows": [
           {
             "key": "Status",
-            "val": "Drafted from Monitored Medicines Prescribing Code; awaiting clinical review.",
+            "val": "Drafted from Monitored Medicines Prescribing Code (Dec 2024) §7.4–7.4.3.1; awaiting clinical review.",
             "tags": []
           },
           {
@@ -62624,7 +62624,7 @@
         "rows": [
           {
             "key": "Status",
-            "val": "Drafted from ScriptCheckWA and Monitored Medicines Prescribing Code; awaiting clinical review.",
+            "val": "Drafted from ScriptCheckWA and Monitored Medicines Prescribing Code (Dec 2024) Part 8 / §8.5; awaiting clinical review.",
             "tags": []
           },
           {
@@ -63895,7 +63895,7 @@
         "rows": [
           {
             "key": "Status",
-            "val": "Drafted from ScriptCheckWA and Monitored Medicines Prescribing Code; awaiting clinical review.",
+            "val": "Drafted from ScriptCheckWA and Monitored Medicines Prescribing Code (Dec 2024) Part 8 / §8.5; awaiting clinical review.",
             "tags": []
           },
           {
@@ -65192,7 +65192,7 @@
         "rows": [
           {
             "key": "Status",
-            "val": "Drafted from Monitored Medicines Prescribing Code; awaiting clinical review.",
+            "val": "Drafted from Monitored Medicines Prescribing Code (Dec 2024) Part 6 (§6.2, §6.5–6.5.2.1); awaiting clinical review.",
             "tags": []
           },
           {
@@ -68554,7 +68554,7 @@
         "rows": [
           {
             "key": "Status",
-            "val": "Drafted from Monitored Medicines Prescribing Code; awaiting clinical review.",
+            "val": "Drafted from Monitored Medicines Prescribing Code (Dec 2024) §3.4–3.5.4; awaiting clinical review.",
             "tags": []
           },
           {
@@ -69197,7 +69197,7 @@
         "rows": [
           {
             "key": "Status",
-            "val": "Drafted from Monitored Medicines Prescribing Code; awaiting clinical review.",
+            "val": "Drafted from Monitored Medicines Prescribing Code (Dec 2024) §3.4–3.5.4; awaiting clinical review.",
             "tags": []
           },
           {
@@ -69571,7 +69571,7 @@
         "rows": [
           {
             "key": "Status",
-            "val": "Drafted from Monitored Medicines Prescribing Code; awaiting clinical review.",
+            "val": "Drafted from Monitored Medicines Prescribing Code (Dec 2024) §3.4–3.5.4; awaiting clinical review.",
             "tags": []
           },
           {
