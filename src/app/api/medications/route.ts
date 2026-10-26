@@ -27,6 +27,8 @@ import {
   catalogueListScope,
   readCatalogueWithSeedFallback,
 } from "@/lib/site-content/catalogue-seed-fallback";
+import { siteContentSnapshotReleaseId } from "@/lib/site-content/prefer-bundled-form-record";
+import { preferBundledMedicationRecord } from "@/lib/site-content/prefer-bundled-medication-record";
 import {
   canonicalSiteContentGovernance,
   readCanonicalSiteContentRecords,
@@ -253,7 +255,11 @@ export async function GET(request: Request) {
           }),
         });
         observed.source = result.source;
-        return result.records;
+        // The live release is still the 2026-08-24 freeze, which predates the 20 Oct content corrections.
+        const activeReleaseId = siteContentSnapshotReleaseId(result.snapshot);
+        return result.records.map((entry) =>
+          preferBundledMedicationRecord(entry, { activeReleaseId, bundledGovernance: publicMedicationGovernance }),
+        );
       },
     });
     const fullRecords = canonical.records.map((entry) => entry.record);
