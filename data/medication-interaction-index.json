@@ -5009,7 +5009,7 @@
           "counterparties": ["amiodarone", "fluconazole", "metronidazole"],
           "termIds": ["cotrimoxazole"],
           "resolved": true,
-          "note": "CRITICAL — **CYP2C9** inhibitors (Amiodarone, Metronidazole, Fluconazole, Bactrim) massively spike INR and cause bleeding. You MUST halve the warfarin dose if starting these."
+          "note": "CRITICAL — **CYP2C9** inhibitors (Amiodarone, Metronidazole, Fluconazole, Bactrim) massively spike INR and cause bleeding. Check the INR closely when starting or stopping these; a dose reduction is often needed. The Coumadin and Marevan PIs advise INR monitoring, not a fixed dose cut."
         },
         {
           "rowKey": "Pharmacokinetic",
@@ -5065,7 +5065,7 @@
           "counterparties": ["amiodarone", "fluconazole", "metronidazole"],
           "termIds": ["cotrimoxazole"],
           "resolved": true,
-          "note": "CRITICAL — **CYP2C9** inhibitors (Amiodarone, Metronidazole, Fluconazole, Bactrim) massively spike INR and cause bleeding. You MUST halve the warfarin dose if starting these."
+          "note": "CRITICAL — **CYP2C9** inhibitors (Amiodarone, Metronidazole, Fluconazole, Bactrim) massively spike INR and cause bleeding. Check the INR closely when starting or stopping these; a dose reduction is often needed. The Coumadin and Marevan PIs advise INR monitoring, not a fixed dose cut."
         },
         {
           "rowKey": "Pharmacokinetic",
@@ -8102,7 +8102,7 @@
           "counterparties": [],
           "termIds": [],
           "resolved": false,
-          "note": "HIGH — Omeprazole inhibits CYP2C19, significantly increasing Escitalopram levels and QTc risk. Max Escitalopram dose is 10mg if on Omeprazole."
+          "note": "HIGH — Omeprazole inhibits CYP2C19, significantly increasing Escitalopram levels and QTc risk. With omeprazole, the Lexapro PI advises caution at the upper end of the dose range; it sets no fixed cap."
         },
         {
           "rowKey": "Pharmacodynamic",

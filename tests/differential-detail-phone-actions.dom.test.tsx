@@ -120,6 +120,18 @@ describe("the authored Do now steps on a phone", () => {
     expect(card).not.toHaveTextContent(/locally authored/i);
   });
 
+  it("does not claim a shared presentation hinge separates the group (MD-F-09)", () => {
+    // The 26 Oct 2026 re-audit: every record carries one of 31 group hinges, and the
+    // hinge often describes one member (alcohol withdrawal's on antidepressant
+    // discontinuation), so "Separates the group" was untrue.
+    renderRecord("antidepressant-discontinuation-syndrome", []);
+
+    const note = screen.getByTestId("differential-clinical-hinge-scope");
+    expect(note).toHaveTextContent(/may describe another condition/i);
+    expect(note).toHaveTextContent(/not specific to Antidepressant discontinuation syndrome/i);
+    expect(note).not.toHaveTextContent(/separates/i);
+  });
+
   it("carries no group warning when the steps are the authored overlay", () => {
     renderRecord(SEROTONIN, []);
 
