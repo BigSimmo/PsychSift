@@ -30,6 +30,13 @@
 //      for the same reason, and only one of them used to stop green: a patient
 //      on a drug the corpus never mentions produced no interactions, zero
 //      unresolved rows, and a confident green.
+//   6. A high-risk medication (`HIGH_RISK_INTERACTION_MEDICINES`) on either side
+//      of the pair whose record is not marked `coverageReviewed` →
+//      `unreviewedHighRiskMedications`. Cases 1-5 assume a record's rows list
+//      every interaction it has. A thin record breaks that silently: lithium
+//      carried one row and no unresolved ones, so it composed to green against
+//      carbamazepine, sertraline and SGLT2 inhibitors. For these medicines green
+//      needs a person to have confirmed the record is complete.
 //   5. An entered medication carrying its own unresolved rows →
 //      `reverseUnresolvedCounterparties`. Case 1 counts only the VIEWED drug's
 //      rows, but the reverse scan reads the PATIENT's rows too, and an
@@ -89,6 +96,13 @@ export type MedicationInteractionResult = {
    * The fifth route to an incomplete analysis.
    */
   reverseUnresolvedCounterparties: string[];
+  /**
+   * High-risk medications in this pair (the viewed drug or an entered one) whose
+   * interaction record has not been reviewed as complete (`coverageReviewed`).
+   * Empty when no medication list is entered. The sixth route to an incomplete
+   * analysis.
+   */
+  unreviewedHighRiskMedications: string[];
 };
 
 type IndexRow = {
@@ -123,10 +137,81 @@ type InteractionIndexShape = {
   names: Record<string, string>;
   /** Source-check date of each medication record, which every interaction row inside it shares. */
   reviewedOn?: Record<string, string | null>;
-  bySlug: Record<string, { rows: IndexRow[]; unresolvedRowCount: number }>;
+  bySlug: Record<
+    string,
+    {
+      rows: IndexRow[];
+      unresolvedRowCount: number;
+      /**
+       * True only when a clinical reviewer has confirmed this record lists every
+       * interaction it should. Absent means not reviewed. Only `true` counts:
+       * any other value is read as not reviewed. See `HIGH_RISK_INTERACTION_MEDICINES`.
+       */
+      coverageReviewed?: boolean;
+    }
+  >;
 };
 
 const INDEX = interactionIndex as unknown as InteractionIndexShape;
+
+/**
+ * Medications whose interactions are dangerous enough that "No interaction found"
+ * must never be shown unless their record has been reviewed as complete
+ * (owner decision 26 Oct 2026). Matched on whole words in the catalogue slug and
+ * display name, so a generic, a salt form or a brand-named entry all match.
+ * Names only, no clinical content.
+ */
+export const HIGH_RISK_INTERACTION_MEDICINES = [
+  { id: "lithium", terms: ["lithium", "lithicarb", "quilonum", "priadel"] },
+  { id: "clozapine", terms: ["clozapine", "clozaril", "clopine"] },
+  {
+    id: "valproate",
+    terms: ["valproate", "valproic", "divalproex", "epilim", "valpro", "valprease"],
+  },
+  { id: "methadone", terms: ["methadone", "biodone", "physeptone", "methadose"] },
+  {
+    id: "maoi",
+    terms: [
+      "maoi",
+      "moclobemide",
+      "aurorix",
+      "phenelzine",
+      "nardil",
+      "tranylcypromine",
+      "parnate",
+      "selegiline",
+      "eldepryl",
+      "emsam",
+      "isocarboxazid",
+      "marplan",
+      "rasagiline",
+      "azilect",
+    ],
+  },
+] as const satisfies readonly { id: string; terms: readonly string[] }[];
+
+export type HighRiskInteractionMedicineId = (typeof HIGH_RISK_INTERACTION_MEDICINES)[number]["id"];
+
+function normaliseMedicationWords(value: string): string {
+  return ` ${value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()} `;
+}
+
+/** Which high-risk group a medication belongs to, matched on its slug and display name. */
+export function highRiskInteractionMedicineId(slug: string): HighRiskInteractionMedicineId | null {
+  const haystack = `${normaliseMedicationWords(slug)}${normaliseMedicationWords(medicationDisplayName(slug))}`;
+  for (const group of HIGH_RISK_INTERACTION_MEDICINES) {
+    if (group.terms.some((term) => haystack.includes(` ${term} `))) return group.id;
+  }
+  return null;
+}
+
+/** Whether a reviewer has marked this medication's interaction record complete. Only `true` counts. */
+export function isInteractionCoverageReviewed(slug: string): boolean {
+  return INDEX.bySlug[slug]?.coverageReviewed === true;
+}
 
 /**
  * Catalogue medications outside both ends of every resolved interaction edge.
@@ -379,6 +464,14 @@ export function evaluateMedicationInteractions(
   // The graph calculation already includes both endpoints of every resolved
   // edge. Keep this result filter as a defensive invariant so the UI can never
   // call a medication uncheckable directly above an alert about that drug.
+  // With no medication list there is no pairing to call clear, so nothing to flag.
+  const unreviewedHighRiskMedications =
+    patient.size === 0
+      ? []
+      : [slug, ...Array.from(patient).sort((a, b) => medicationDisplayName(a).localeCompare(medicationDisplayName(b)))]
+          .filter((value) => highRiskInteractionMedicineId(value) !== null)
+          .filter((value) => !isInteractionCoverageReviewed(value));
+
   const unreachableCounterparties = Array.from(patient)
     .filter((value) => UNREACHABLE_SLUGS.has(value))
     .filter((value) => !resultInteractions.some((item) => item.counterpartySlug === value))
@@ -396,6 +489,7 @@ export function evaluateMedicationInteractions(
       .filter((value) => (INDEX.bySlug[value]?.unresolvedRowCount ?? 0) > 0)
       .filter((value) => !unreachableCounterparties.includes(value))
       .sort((a, b) => medicationDisplayName(a).localeCompare(medicationDisplayName(b))),
+    unreviewedHighRiskMedications,
   };
 }
 
@@ -426,12 +520,19 @@ export function composeMedicationVerdict(input: {
    * a caller omits it.
    */
   reverseUnresolvedCounterpartyCount?: number;
+  /**
+   * High-risk medications in the pair whose record is not reviewed as complete.
+   * Required, unlike the two above: omitting it would let lithium, clozapine,
+   * valproate, methadone or an MAOI reach green on a thin record.
+   */
+  unreviewedHighRiskCount: number;
 }): MedicationVerdict {
   const incomplete =
     input.unassessedCount > 0 ||
     input.unresolvedRowCount > 0 ||
     (input.unreachableCounterpartyCount ?? 0) > 0 ||
-    (input.reverseUnresolvedCounterpartyCount ?? 0) > 0;
+    (input.reverseUnresolvedCounterpartyCount ?? 0) > 0 ||
+    input.unreviewedHighRiskCount > 0;
   const candidates = [input.considerationTone, input.interactionTone].filter(
     (tone): tone is SemanticTone => tone !== null,
   );

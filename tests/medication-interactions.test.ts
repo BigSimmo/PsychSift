@@ -77,6 +77,7 @@ describe("evaluateMedicationInteractions", () => {
       interactionCount: result.interactions.length,
       unresolvedRowCount: 0,
       unreachableCounterpartyCount: result.unreachableCounterparties.length,
+      unreviewedHighRiskCount: result.unreviewedHighRiskMedications.length,
     });
     expect(verdict.tone).not.toBe("success");
     expect(verdict.incomplete).toBe(true);
@@ -101,6 +102,7 @@ describe("evaluateMedicationInteractions", () => {
       unresolvedRowCount: result.unresolvedRowCount,
       unreachableCounterpartyCount: result.unreachableCounterparties.length,
       reverseUnresolvedCounterpartyCount: result.reverseUnresolvedCounterparties.length,
+      unreviewedHighRiskCount: result.unreviewedHighRiskMedications.length,
     });
     expect(verdict.tone).toBe("neutral");
     expect(verdict.incomplete).toBe(true);
@@ -163,6 +165,7 @@ describe("evaluateMedicationInteractions", () => {
       interactionTone: result.highestTone,
       interactionCount: result.interactions.length,
       unresolvedRowCount: result.unresolvedRowCount,
+      unreviewedHighRiskCount: result.unreviewedHighRiskMedications.length,
     });
     expect(verdict.tone).toBe("neutral");
     expect(verdict.incomplete).toBe(true);
@@ -278,6 +281,7 @@ describe("a documented low-severity interaction is never an all-clear", () => {
       interactionCount: result.interactions.length,
       unresolvedRowCount: result.unresolvedRowCount,
       unreachableCounterpartyCount: result.unreachableCounterparties.length,
+      unreviewedHighRiskCount: result.unreviewedHighRiskMedications.length,
     });
     expect(verdict.incomplete).toBe(false);
     expect(verdict.interactionCount).toBe(1);
@@ -309,6 +313,7 @@ describe("composeMedicationVerdict", () => {
     interactionTone: null,
     interactionCount: 0,
     unresolvedRowCount: 0,
+    unreviewedHighRiskCount: 0,
   };
 
   it("is green only when both engines ran clean", () => {

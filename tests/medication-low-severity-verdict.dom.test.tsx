@@ -27,6 +27,7 @@ function verdictFor(slug: string, patientMedications: string[]): MedicationVerdi
     interactionCount: result.interactions.length,
     unresolvedRowCount: result.unresolvedRowCount,
     unreachableCounterpartyCount: result.unreachableCounterparties.length,
+    unreviewedHighRiskCount: result.unreviewedHighRiskMedications.length,
   });
 }
 

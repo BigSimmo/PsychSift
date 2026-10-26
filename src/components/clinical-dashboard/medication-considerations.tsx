@@ -526,7 +526,8 @@ function MedicationInteractionBlock({ record }: { record: MedicationRecord }) {
           tone={
             result.unresolvedRowCount > 0 ||
             result.unreachableCounterparties.length > 0 ||
-            result.reverseUnresolvedCounterparties.length > 0
+            result.reverseUnresolvedCounterparties.length > 0 ||
+            result.unreviewedHighRiskMedications.length > 0
               ? "neutral"
               : "success"
           }
@@ -602,6 +603,18 @@ function MedicationInteractionBlock({ record }: { record: MedicationRecord }) {
           {result.unresolvedRowCount} of this medication&rsquo;s {result.totalRowCount} interaction{" "}
           {result.totalRowCount === 1 ? "row" : "rows"} could not be matched automatically — review the Key Interactions
           section below manually. This medication is not shown as clear.
+        </InlineNotice>
+      ) : null}
+
+      {/* A high-risk medication whose record nobody has confirmed complete: a thin
+          record can say nothing about a real interaction, so this is never shown
+          as clear (owner decision 26 Oct 2026). */}
+      {hasList && result.unreviewedHighRiskMedications.length > 0 ? (
+        <InlineNotice tone="neutral">
+          <span data-testid="unreviewed-high-risk-interactions">
+            {formatMedicationList(result.unreviewedHighRiskMedications.map(medicationDisplayName))}: not reviewed for
+            this pairing. Check the source.
+          </span>
         </InlineNotice>
       ) : null}
 
