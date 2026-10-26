@@ -63,6 +63,16 @@ it is the July 2026 analysis, kept as history._
      document keeps its current index and stays `indexed`, otherwise it is marked `failed`. Only a person can
      queue it again.
 
+10. **Content-preserving deduplication and embedding admission (chunker 1.3.4).** Chunk deduplication
+    normalizes whitespace only; comparisons, signs, decimal punctuation, case, non-Latin symbols and
+    table/figure references remain distinct in both strategies. Fuzzy lookup normalization is separate.
+    For known byte-BPE embedding models, every individual input must fit the conservative 8,191-byte
+    UTF-8 bound as well as the 300,000-byte request budget. Oversized inputs are refused without truncation
+    before the provider client is constructed, including when an earlier input could have formed a batch.
+    This conservative byte bound can also refuse long inputs that would fit the token limit; source-aware
+    splitting remains the caller's responsibility. These guards affect future ingestion only: they do not
+    update existing generations, authorize a re-index or establish whole-corpus acceptance.
+
 **Production today.** The production worker is paused on purpose: it runs a placeholder that processes no jobs.
 The library re-index is stopped by owner decision
 ([decision](decisions/2026-10-17-library-reindex-stopped.md)), apart from a three-document pilot

@@ -253,7 +253,7 @@ describe("image-aware chunks", () => {
 });
 
 describe("buildChunks dedupe", () => {
-  it("dedupes same-page chunks despite punctuation and table-label noise", () => {
+  it("retains distinct same-page punctuation and table references", () => {
     const chunks = buildChunks([
       {
         documentId: "doc-1",
@@ -269,7 +269,36 @@ describe("buildChunks dedupe", () => {
       },
     ]);
 
-    expect(chunks.map((chunk) => chunk.content)).toEqual(["Table: Lithium monitoring"]);
+    expect(chunks.map((chunk) => chunk.content)).toEqual(["Table: Lithium monitoring", "Lithium-monitoring"]);
+  });
+
+  it.each([
+    ["<", ">"],
+    ["≤", "≥"],
+    ["+", "-"],
+    ["+", "−"],
+    ["α", "β"],
+    ["1.5", "1,5"],
+    ["pH", "PH"],
+    ["table", "figure"],
+  ])("retains same-page chunks differing only by %s versus %s", (left, right) => {
+    const texts = [left, right].map((value) => `synthetic result ${value} with a source qualification.`);
+    const chunks = buildChunks(
+      texts.map((pageText) => ({ documentId: "doc-1", pageNumber: 1, pageText, metadata: {} })),
+    );
+    expect(chunks.map((chunk) => chunk.content)).toEqual(texts);
+  });
+
+  it("still collapses same-page duplicates with only whitespace differences", () => {
+    const chunks = buildChunks(
+      ["synthetic result < 1.5 units.", "synthetic   result < 1.5 units."].map((pageText) => ({
+        documentId: "doc-1",
+        pageNumber: 1,
+        pageText,
+        metadata: {},
+      })),
+    );
+    expect(chunks.map((chunk) => chunk.content)).toEqual(["synthetic result < 1.5 units."]);
   });
 });
 
@@ -438,6 +467,22 @@ describe("document-mode chunking (CI-1)", () => {
     const mod = await import("../src/lib/chunking");
     return mod.buildChunks(inputs);
   }
+
+  it.each([
+    ["<", ">"],
+    ["≤", "≥"],
+    ["+", "−"],
+    ["α", "β"],
+  ])("retains document-mode chunks differing only by %s versus %s", async (left, right) => {
+    // Identical qualification paragraphs force separate chunks in one page/section scope.
+    const qualify = "synthetic source qualification for the retained observation. ".repeat(25);
+    const texts = [left, right].map((value) => `synthetic result ${value} 1.5 units. ${qualify}`);
+    const chunks = await buildDocumentChunks([
+      { documentId: "doc-1", pageNumber: 1, pageText: texts.join("\n\n"), metadata: {} },
+    ]);
+    expect(chunks.some((chunk) => chunk.content.includes(`synthetic result ${left} 1.5 units.`))).toBe(true);
+    expect(chunks.some((chunk) => chunk.content.includes(`synthetic result ${right} 1.5 units.`))).toBe(true);
+  });
 
   it("merges a section across a page break into a single cross-page chunk", async () => {
     const chunks = await buildDocumentChunks([

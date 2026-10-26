@@ -3,6 +3,7 @@ import {
   batchEmbeddingInputs,
   EmbeddingRequestBudgetError,
   EMBEDDING_MAX_BATCH_UTF8_BYTES,
+  EMBEDDING_MAX_INPUT_UTF8_BYTES,
   hasKnownEmbeddingBudget,
 } from "../src/lib/embedding-input-budget";
 
@@ -10,15 +11,34 @@ describe("embedding request budgets", () => {
   const model = "text-embedding-3-small";
 
   it("preserves order and exact contents at the request-byte boundary", () => {
-    const inputs = ["a".repeat(100_000), "b".repeat(100_000), "c".repeat(100_000), "d"];
-    expect(batchEmbeddingInputs(inputs, 256, model)).toEqual([inputs.slice(0, 3), inputs.slice(3)]);
+    const wholeInputs = Math.floor(EMBEDDING_MAX_BATCH_UTF8_BYTES / EMBEDDING_MAX_INPUT_UTF8_BYTES);
+    const inputs = [
+      ...Array.from({ length: wholeInputs }, () => "a".repeat(EMBEDDING_MAX_INPUT_UTF8_BYTES)),
+      "b".repeat(EMBEDDING_MAX_BATCH_UTF8_BYTES % EMBEDDING_MAX_INPUT_UTF8_BYTES),
+      "d",
+    ];
+    expect(batchEmbeddingInputs(inputs, 256, model)).toEqual([inputs.slice(0, -1), inputs.slice(-1)]);
   });
 
   it("counts UTF-8 bytes rather than characters", () => {
-    const inputs = ["界".repeat(50_000), "語".repeat(50_000), "é"];
+    const input = "界".repeat(Math.floor(EMBEDDING_MAX_INPUT_UTF8_BYTES / 3));
+    const inputs = [...Array.from({ length: 36 }, () => input), "語".repeat(1720), "é"];
     const batches = batchEmbeddingInputs(inputs, 256, model);
-    expect(batches).toEqual([inputs.slice(0, 2), inputs.slice(2)]);
+    expect(batches).toEqual([inputs.slice(0, -1), inputs.slice(-1)]);
     expect(Buffer.byteLength(batches[0].join(""), "utf8")).toBe(EMBEDDING_MAX_BATCH_UTF8_BYTES);
+  });
+
+  it.each([0, 1, 2])("refuses an oversized individual input at position %i before returning any batch", (position) => {
+    const inputs = ["first", "second"];
+    inputs.splice(position, 0, "界".repeat(Math.floor(EMBEDDING_MAX_INPUT_UTF8_BYTES / 3) + 1));
+    expect(() => batchEmbeddingInputs(inputs, 1, model)).toThrow(EmbeddingRequestBudgetError);
+  });
+
+  it("accepts the exact individual byte boundary without truncating", () => {
+    const input = "界".repeat(2730) + "a";
+    expect(Buffer.byteLength(input, "utf8")).toBe(EMBEDDING_MAX_INPUT_UTF8_BYTES);
+    expect(batchEmbeddingInputs([input], 256, model)).toEqual([[input]]);
+    expect(() => batchEmbeddingInputs([input + "a"], 256, model)).toThrow(EmbeddingRequestBudgetError);
   });
 
   it("also respects the configured count limit", () => {
