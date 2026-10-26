@@ -22,7 +22,8 @@ export const ORIGINAL_ACCESS_CHECK_FAILED_MESSAGE = "We could not check access t
  *   copy. It reads the record wherever the app asks for it, so it holds whether the Terms step
  *   stays at the first Ask or moves to first open.
  * - R-05: when `THIRD_PARTY_ORIGINALS_ADMIN_ONLY` is on, only administrators get the original,
- *   checked on a live account lookup. A failed lookup refuses. Off by default.
+ *   checked on a live account lookup. A failed lookup refuses. On by default, by the owner's
+ *   decision of 26 Oct 2026 (docs/decisions/2026-10-26-third-party-originals-admin-only.md).
  *
  * Local no-auth development mode is allowed through, as in `requireSignedInClinicalAccess`.
  */

@@ -73,7 +73,14 @@ describe("requireOriginalDocumentAccess", () => {
     });
   });
 
-  it("opens a shared original to a declared account while the switch is off (the default)", async () => {
+  it("limits originals to administrators by default, by the owner's decision of 26 Oct 2026 (R-05)", async () => {
+    vi.resetModules();
+    const { env } = await import("../src/lib/env");
+    expect(process.env.THIRD_PARTY_ORIGINALS_ADMIN_ONLY).toBeUndefined();
+    expect(env.THIRD_PARTY_ORIGINALS_ADMIN_ONLY).toBe(true);
+  });
+
+  it("opens a shared original to a declared account once the owner turns the switch off", async () => {
     const { requireOriginalDocumentAccess } = await loadHelper();
     const { supabase } = accountClient({ user_metadata: declared });
     await expect(requireOriginalDocumentAccess(signedIn, { owner_id: null }, supabase)).resolves.toBeUndefined();

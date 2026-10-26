@@ -132,10 +132,11 @@ const envSchema = z
     OPENAI_TRANSCRIPTION_MODEL: z.string().default("gpt-4o-mini-transcribe"),
     // R-05 (26 Oct 2026): "true" limits the original files of documents the caller does not own
     // (the shared third-party corpus) to administrators, until each source has a licence entry.
-    // Off by default; turning it on is the owner's call (question Q5). Cited excerpts stay open.
+    // On by default: the owner chose this on 26 Oct 2026 (question Q5). "false" reopens them to
+    // every declared account, for the owner to set once licences are recorded. Cited excerpts stay open.
     THIRD_PARTY_ORIGINALS_ADMIN_ONLY: z
       .enum(["true", "false"])
-      .default("false")
+      .default("true")
       .transform((value) => value === "true"),
     CLINICAL_ASK_ENABLED: z
       .enum(["true", "false"])
