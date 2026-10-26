@@ -609,6 +609,7 @@ function MedicationResults({
           unresolvedRowCount: interactions.unresolvedRowCount,
           unreachableCounterpartyCount: interactions.unreachableCounterparties.length,
           reverseUnresolvedCounterpartyCount: interactions.reverseUnresolvedCounterparties.length,
+          unreviewedHighRiskCount: interactions.unreviewedHighRiskMedications.length,
         });
         return {
           result,
