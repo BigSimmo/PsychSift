@@ -99,6 +99,68 @@ describe("/api/local-project-id", () => {
     expect(payload.projectId).toMatch(/^clinical-kb:[0-9a-f]{12}$/i);
     expect(payload.localServer.currentPort).toBe(3100);
   });
+
+  it("answers a bare 404 on the deployed site so it never echoes headers or project identity", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("RAILWAY_ENVIRONMENT_NAME", "production");
+    try {
+      const { GET } = await import("../src/app/api/local-project-id/route");
+      const response = await GET(
+        new Request("https://psychiatry.tools/api/local-project-id", {
+          headers: {
+            origin: "https://evil.example",
+            referer: "https://evil.example/x",
+            "x-forwarded-for": "203.0.113.1",
+          },
+        }),
+      );
+      expect(response.status).toBe(404);
+      expect(response.headers.get("cache-control")).toBe("no-store");
+      const body = await response.text();
+      expect(body).toBe("");
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("answers 404 in a production build reached through a proxy or a non-loopback host, even off Railway", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    for (const name of [
+      "RAILWAY_ENVIRONMENT_NAME",
+      "RAILWAY_ENVIRONMENT",
+      "RAILWAY_PROJECT_ID",
+      "RAILWAY_SERVICE_ID",
+    ]) {
+      vi.stubEnv(name, "");
+    }
+    try {
+      const { GET } = await import("../src/app/api/local-project-id/route");
+      expect((await GET(new Request("https://psychiatry.tools/api/local-project-id"))).status).toBe(404);
+      expect(
+        (
+          await GET(
+            new Request("http://localhost:3100/api/local-project-id", {
+              headers: { "x-forwarded-for": "203.0.113.1" },
+            }),
+          )
+        ).status,
+      ).toBe(404);
+      // Next fills X-Forwarded-For with the loopback socket address for a local caller.
+      expect(
+        (
+          await GET(
+            new Request("http://localhost:3100/api/local-project-id", { headers: { "x-forwarded-for": "::1" } }),
+          )
+        ).status,
+      ).toBe(200);
+      // A local `next start` (boot smoke, Playwright, Lighthouse) still identifies itself.
+      const local = await GET(new Request("http://localhost:3100/api/local-project-id"));
+      expect(local.status).toBe(200);
+      expect((await local.json()).localServer.currentPort).toBe(3100);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
 });
 
 describe("/api/jobs", () => {
