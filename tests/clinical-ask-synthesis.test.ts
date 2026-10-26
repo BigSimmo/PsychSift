@@ -5,7 +5,8 @@ vi.mock("@/lib/openai", () => ({ generateStructuredTextResponse }));
 
 import type { ClinicalAskEvidence, ClinicalAskRequest } from "@/lib/clinical-ask/contracts";
 import { clinicalAskModeProfile } from "@/lib/clinical-ask/mode-profiles";
-import { synthesizeClinicalAskDraft } from "@/lib/clinical-ask/synthesis";
+import { synthesizeClinicalAskDraft, suggestClinicalAskContext } from "@/lib/clinical-ask/synthesis";
+import { env } from "@/lib/env";
 
 const request: ClinicalAskRequest = {
   mode: "services",
@@ -78,10 +79,22 @@ describe("Clinical Ask structured synthesis", () => {
     expect(options).toMatchObject({
       operation: "answer",
       schemaName: "clinical_ask_draft",
+      reasoningEffort: env.OPENAI_STRONG_REASONING_EFFORT,
       maxRetries: 0,
       store: false,
     });
     expect(options).not.toHaveProperty("maxOutputTokens");
+  });
+
+  it("keeps context extraction on fast effort when both answer routes share Sol 6.1", async () => {
+    generateStructuredTextResponse.mockResolvedValue('{"suggestions":[]}');
+    await suggestClinicalAskContext(request, new AbortController().signal);
+    expect(generateStructuredTextResponse.mock.calls[0]?.[2]).toMatchObject({
+      model: env.OPENAI_FAST_ANSWER_MODEL,
+      reasoningEffort: env.OPENAI_FAST_REASONING_EFFORT,
+      maxRetries: 0,
+      store: false,
+    });
   });
 
   // Audit SEC-N3: sources and context answers never ride in the system message.

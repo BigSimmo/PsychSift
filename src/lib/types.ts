@@ -1404,6 +1404,9 @@ export type RagAnswer = {
   };
   openAIRequestIds?: string[];
   openAIUsage?: OpenAITokenUsage;
+  /** Generation-only attempts; absent usage means an attempted call has unknown cost.
+   * Contains no prompts or source content. Aggregate usage remains backwards compatible. */
+  openAIUsageAttempts?: Array<{ model: string; usage?: OpenAITokenUsage }>;
   answerSections?: AnswerSection[];
   evidenceSummary?: EvidenceSummary;
   conflictsOrGaps?: ConflictOrGap[];
