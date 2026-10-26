@@ -5347,6 +5347,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-26-document-results-stop-jumping.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/decisions/2026-09-17-differential-code-is-clinical-risk.md",
         "section": "decisions",
         "catalogued": true

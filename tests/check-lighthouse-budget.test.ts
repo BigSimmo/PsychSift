@@ -43,9 +43,10 @@ const ROUTES = ["/", "/therapy-compass", "/documents/search", "/dsm", "/forms"];
  * `/forms` left the budget when home consolidation turned them into redirect
  * stubs — Lighthouse followed the 307 and graded `/?mode=<id>` against a baseline
  * captured on the retired detailed home. All three now render the same shared home
- * as `/`, so their removal costs duplication rather than coverage.
+ * as `/`, so their removal costs duplication rather than coverage. My Day, On Call
+ * and the MHA clock joined on 2026-10-26 (performance audit M3).
  */
-const COMMITTED_ROUTES = ["/", "/documents/search"];
+const COMMITTED_ROUTES = ["/", "/documents/search", "/my-day", "/on-call", "/psychiatry/mha-clock"];
 
 const budget = (overrides: Record<string, unknown> = {}) => ({
   enforce: true,

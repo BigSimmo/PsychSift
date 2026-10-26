@@ -4,6 +4,7 @@ import { createServerClient, type SetAllCookies } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
 import { env } from "@/lib/env";
+import { boundServerAuthChecks, createServerAuthDeadline } from "@/lib/supabase/auth-deadline";
 import type { Database } from "@/lib/supabase/database.types";
 
 /** Public (browser/user-context) Supabase config, or null when the public env
@@ -31,18 +32,26 @@ type SupabaseServerClientOptions = {
  * cookies via `next/headers`. Returns null when the public Supabase env is
  * absent so callers can fall back to demo behaviour. RLS applies to this client
  * (unlike the service-role admin client).
+ *
+ * Its sign-in checks (`auth.getUser()` / `auth.getClaims()`) share one deadline
+ * (`SERVER_AUTH_DEADLINE_MS`), so a stalled Supabase auth server makes the page
+ * render as signed out instead of hanging. Cookie writes that arrive after the
+ * deadline are dropped so a late refresh can never clear the session.
  */
 export async function createSupabaseServerClient(options: SupabaseServerClientOptions = {}) {
   const config = publicSupabaseConfig();
   if (!config) return null;
 
   const cookieStore = await cookies();
-  return createServerClient<Database>(config.url, config.key, {
+  const deadline = createServerAuthDeadline();
+  const client = createServerClient<Database>(config.url, config.key, {
+    global: { fetch: deadline.fetch },
     cookies: {
       getAll() {
         return cookieStore.getAll();
       },
       setAll(cookiesToSet, responseHeaders) {
+        if (deadline.expired) return;
         if (options.setAllCookies) {
           return options.setAllCookies(cookiesToSet, responseHeaders);
         }
@@ -59,4 +68,5 @@ export async function createSupabaseServerClient(options: SupabaseServerClientOp
       },
     },
   });
+  return boundServerAuthChecks(client, deadline);
 }
