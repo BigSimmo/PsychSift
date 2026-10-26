@@ -16,7 +16,9 @@ type AdminClient = ReturnType<typeof import("@/lib/supabase/admin").createAdminC
  * `owner_id`, and the full address is read only inside this file: the list
  * handed back to a client carries a host preview, never the link itself, so
  * a token in its query string is never repeated where a client, a log or an
- * error could show it.
+ * error could show it. The database keeps the address encrypted in Vault
+ * (privacy audit DB-04): the list reads only `url_host`, and a refresh reads
+ * the address back through `roster_calendar_link_urls`, which checks the owner.
  */
 
 export const ROSTER_CALENDAR_LINK_URL_MAX = 2000;
@@ -66,33 +68,29 @@ export const refreshRosterCalendarLinksSchema = z.object({ id: z.string().uuid()
 
 type LinkRow = {
   id: string;
-  url: string;
+  url_host: string | null;
   workplace: string | null;
   last_fetched_at: string | null;
   last_error: string | null;
   created_at: string;
 };
 
-const LINK_COLUMNS = "id,url,workplace,last_fetched_at,last_error,created_at";
+const LINK_COLUMNS = "id,url_host,workplace,last_fetched_at,last_error,created_at";
 
 function rowToLinkReason(reason: string | null): RosterCalendarLinkReason | null {
   return reason !== null && KNOWN_LINK_REASONS.has(reason) ? (reason as RosterCalendarLinkReason) : null;
 }
 
 /** The link's host, with the path, query string and any token squashed to "…". */
-function hostPreviewOf(rawUrl: string): string {
-  try {
-    return `${new URL(rawUrl).hostname}/…`;
-  } catch {
-    return "…";
-  }
+function hostPreviewOf(host: string | null): string {
+  return host ? `${host}/…` : "…";
 }
 
 function rowToLink(row: LinkRow): RosterCalendarLink {
   return {
     id: row.id,
     workplace: row.workplace,
-    hostPreview: hostPreviewOf(row.url),
+    hostPreview: hostPreviewOf(row.url_host),
     lastFetchedAt: row.last_fetched_at,
     lastError: rowToLinkReason(row.last_error),
     createdAt: row.created_at,
@@ -202,6 +200,17 @@ export async function deleteOwnerCalendarLinks(supabase: AdminClient, ownerId: s
   if (error) throw error;
 }
 
+/**
+ * The full addresses of the owner's own links, by id, decrypted by the database. Ids that are not
+ * the caller's come back missing, never as someone else's address.
+ */
+async function decryptedUrls(supabase: AdminClient, ownerId: string, ids: string[]): Promise<Map<string, string>> {
+  if (ids.length === 0) return new Map();
+  const { data, error } = await supabase.rpc("roster_calendar_link_urls", { p_owner_id: ownerId, p_ids: ids });
+  if (error) throw error;
+  return new Map((data ?? []).map(({ id, url }: { id: string; url: string }) => [id, url]));
+}
+
 /** One named link's full address, read only for a server-side refresh. Null when it isn't the caller's. */
 export async function fetchCalendarLinkForRefresh(
   supabase: AdminClient,
@@ -211,12 +220,14 @@ export async function fetchCalendarLinkForRefresh(
   requireOwner(ownerId);
   const { data, error } = await supabase
     .from("roster_calendar_links")
-    .select("id,url,workplace")
+    .select("id,workplace")
     .eq("owner_id", ownerId)
     .eq("id", id)
     .maybeSingle();
   if (error) throw error;
-  return data ?? null;
+  if (!data) return null;
+  const url = (await decryptedUrls(supabase, ownerId, [data.id])).get(data.id);
+  return url ? { id: data.id, url, workplace: data.workplace } : null;
 }
 
 /** Every link due a refresh: never fetched, or last fetched more than `olderThanMs` ago. */
@@ -229,15 +240,20 @@ export async function fetchCalendarLinksDueForRefresh(
   const cutoff = new Date(Date.now() - olderThanMs).toISOString();
   const { data, error } = await supabase
     .from("roster_calendar_links")
-    .select("id,url,workplace,last_fetched_at")
+    .select("id,workplace,last_fetched_at")
     .eq("owner_id", ownerId)
     .or(`last_fetched_at.is.null,last_fetched_at.lt.${cutoff}`);
   if (error) throw error;
-  return (data ?? []).map(({ id, url, workplace }: { id: string; url: string; workplace: string | null }) => ({
-    id,
-    url,
-    workplace,
-  }));
+  const rows = (data ?? []) as { id: string; workplace: string | null }[];
+  const urls = await decryptedUrls(
+    supabase,
+    ownerId,
+    rows.map((row) => row.id),
+  );
+  return rows.flatMap(({ id, workplace }) => {
+    const url = urls.get(id);
+    return url ? [{ id, url, workplace }] : [];
+  });
 }
 
 /**

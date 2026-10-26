@@ -4234,6 +4234,8 @@ export type Database = {
           owner_id: string;
           updated_at: string;
           url: string;
+          url_host: string | null;
+          url_secret_id: string;
           workplace: string | null;
         };
         Insert: {
@@ -4244,6 +4246,8 @@ export type Database = {
           owner_id: string;
           updated_at?: string;
           url: string;
+          url_host?: string | null;
+          url_secret_id?: string;
           workplace?: string | null;
         };
         Update: {
@@ -4254,6 +4258,8 @@ export type Database = {
           owner_id?: string;
           updated_at?: string;
           url?: string;
+          url_host?: string | null;
+          url_secret_id?: string;
           workplace?: string | null;
         };
         Relationships: [];
@@ -5015,6 +5021,10 @@ export type Database = {
           p_removed: number;
         };
         Returns: string;
+      };
+      roster_calendar_link_urls: {
+        Args: { p_owner_id: string; p_ids: string[] };
+        Returns: { id: string; url: string }[];
       };
       roster_read: {
         Args: { p_actor_id: string; p_service_id: string | null; p_what: string; p_payload?: Json };
