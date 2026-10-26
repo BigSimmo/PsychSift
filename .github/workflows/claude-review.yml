@@ -59,6 +59,10 @@ on:
     # every repair push, format commit, or base sync. Re-review: mark ready again
     # after a draft cycle, or invoke the @claude comment workflow.
     types: [opened, ready_for_review]
+    paths-ignore:
+      # Docs-only PRs: this workflow is advisory (not in PR required's needs).
+      - "docs/**"
+      - "**/*.md"
 
 # Least privilege by default; the job widens only what the review needs.
 permissions:

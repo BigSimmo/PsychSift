@@ -5,6 +5,10 @@ on:
     branches: [main, "release/**"]
   pull_request:
     branches: [main, "release/**"]
+    paths-ignore:
+      # Docs-only PRs: this workflow is advisory (not in PR required's needs).
+      - "docs/**"
+      - "**/*.md"
   workflow_dispatch:
 
 concurrency:
