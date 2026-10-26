@@ -32,8 +32,7 @@ export function FavouritesSetChips({
     <div role="group" aria-label="Filter by set" data-testid="favourites-set-chips" className="work-chips -my-1.5">
       <button type="button" className="work-chip" aria-pressed={selectedSets.size === 0} onClick={() => onSelect(null)}>
         {/* Named by what it shows, so voice control can say it (WCAG 2.5.3, A11Y-02). */}
-        All <span className="work-chip__count">{totalCount}</span>
-        <span className="sr-only"> favourites</span>
+        All <span className="work-chip__count">{totalCount}</span> <span className="sr-only">favourites</span>
       </button>
       {chips.map((chip) => (
         <button
@@ -43,8 +42,8 @@ export function FavouritesSetChips({
           aria-pressed={selectedSets.has(chip.name)}
           onClick={() => onSelect(selectedSets.size === 1 && selectedSets.has(chip.name) ? null : chip.name)}
         >
-          {chip.name} <span className="work-chip__count">{chip.count}</span>
-          <span className="sr-only"> {chip.count === 1 ? "favourite" : "favourites"}</span>
+          {chip.name} <span className="work-chip__count">{chip.count}</span>{" "}
+          <span className="sr-only">{chip.count === 1 ? "favourite" : "favourites"}</span>
         </button>
       ))}
       {onNewSet ? (
