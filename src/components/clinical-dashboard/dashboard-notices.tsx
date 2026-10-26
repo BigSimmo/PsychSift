@@ -110,29 +110,33 @@ export function DegradedNoticeFrame({
   isOnline: boolean;
   reserveSpace?: boolean;
 }) {
+  // The live region stays mounted (empty when no notice) so screen readers
+  // announce the text when it is inserted; sr-only keeps it out of layout.
+  const liveRegion = (
+    <span role="alert" className="sr-only">
+      {visible ? (!isOnline ? "Offline" : "Service unavailable") : null}
+    </span>
+  );
+
   if (!visible && !reserveSpace) {
-    return null;
+    return liveRegion;
   }
 
   return (
-    <div
-      data-testid="dashboard-degraded-notice-frame"
-      data-visible={visible ? "true" : "false"}
-      className={
-        reserveSpace
-          ? "max-sm:relative max-sm:z-10 max-sm:!mt-0 max-sm:h-0 max-sm:overflow-visible sm:min-h-[3.875rem]"
-          : "relative z-10 !mt-0 h-0 overflow-visible"
-      }
-    >
-      {visible ? (
-        <>
-          <span role="alert" className="sr-only">
-            {!isOnline ? "Offline" : "Service unavailable"}
-          </span>
-          <DegradedNotice isOnline={isOnline} />
-        </>
-      ) : null}
-    </div>
+    <>
+      {liveRegion}
+      <div
+        data-testid="dashboard-degraded-notice-frame"
+        data-visible={visible ? "true" : "false"}
+        className={
+          reserveSpace
+            ? "max-sm:relative max-sm:z-10 max-sm:!mt-0 max-sm:h-0 max-sm:overflow-visible sm:min-h-[3.875rem]"
+            : "relative z-10 !mt-0 h-0 overflow-visible"
+        }
+      >
+        {visible ? <DegradedNotice isOnline={isOnline} /> : null}
+      </div>
+    </>
   );
 }
 
