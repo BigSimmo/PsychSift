@@ -493,6 +493,101 @@ describe("GET /api/health/ready", () => {
       vi.resetModules();
     }
   });
+
+  describe("cross-caller isolation of the shared cache", () => {
+    it("does not hand authorized-only fields to an unauthorized caller inside the cache window", async () => {
+      vi.useFakeTimers();
+      try {
+        mockEnv({ configured: true, deepSecret: true });
+        const { probeSupabaseHealth } = mockHealthySiteContent();
+        const spendSnapshot = vi.fn(async () => ({ totalUsd: 42 }));
+        vi.doMock("@/lib/observability/spend-metrics", () => ({ spendSnapshot }));
+        const { GET } = await import("../src/app/api/health/ready/route");
+
+        const authorized = await payload(
+          await GET(
+            new Request("http://localhost/api/health/ready", { headers: { "x-health-deep-token": DEEP_TOKEN } }),
+          ),
+        );
+        const unauthorized = await payload(await GET(new Request("http://localhost/api/health/ready")));
+
+        // The second call is served from the cache, so this is the exact window the leak lived in.
+        expect(probeSupabaseHealth).toHaveBeenCalledTimes(1);
+        for (const body of [authorized, unauthorized]) {
+          expect(body.spend).toBeUndefined();
+          expect(body.ragProgramme).toBeUndefined();
+          expect(body.slo).toBeUndefined();
+        }
+        expect(spendSnapshot).not.toHaveBeenCalled();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("never stores a diagnostic section in the cache, even if the probe starts emitting one", async () => {
+      vi.resetModules();
+      // Simulates a regression in health-response.ts that emits operator sections for a
+      // token-bearing request, or unconditionally. Neither may reach a later caller.
+      const seenTokens: Array<string | null> = [];
+      vi.doMock("@/lib/health-response", () => ({
+        healthResponse: async (request: Request) => {
+          seenTokens.push(request.headers.get("x-health-deep-token"));
+          return Response.json(
+            {
+              status: "ok",
+              checks: { supabase: "ok" },
+              spend: { totalUsd: 42 },
+              ragProgramme: { configuredMode: "legacy" },
+            },
+            { status: 200 },
+          );
+        },
+      }));
+      try {
+        const { GET } = await import("../src/app/api/health/ready/route");
+
+        const authorized = await payload(
+          await GET(
+            new Request("http://localhost/api/health/ready", { headers: { "x-health-deep-token": DEEP_TOKEN } }),
+          ),
+        );
+        const unauthorized = await payload(await GET(new Request("http://localhost/api/health/ready")));
+
+        expect(seenTokens, "the shared probe must not see any caller's token").toEqual([null]);
+        for (const body of [authorized, unauthorized]) {
+          expect(body).not.toHaveProperty("spend");
+          expect(body).not.toHaveProperty("ragProgramme");
+          expect(body).toMatchObject({ status: "ok", checks: { supabase: "ok" } });
+        }
+      } finally {
+        vi.doUnmock("@/lib/health-response");
+        vi.resetModules();
+      }
+    });
+
+    it("still returns 503 for a failing probe, for authorized and unauthorized callers alike", async () => {
+      mockEnv({ configured: true, deepSecret: true });
+      vi.doMock("@/lib/supabase/admin", () => ({ createAdminClient: vi.fn(() => ({})) }));
+      vi.doMock("@/lib/supabase/health", () => ({
+        probeSupabaseHealth: vi.fn(async () => ({
+          ok: false,
+          checkedAt: "2026-07-22T00:00:00.000Z",
+          message: "Supabase health check failed.",
+          rawMessage: "permission denied",
+        })),
+      }));
+      const { GET } = await import("../src/app/api/health/ready/route");
+
+      const authorized = await GET(
+        new Request("http://localhost/api/health/ready", { headers: { "x-health-deep-token": DEEP_TOKEN } }),
+      );
+      const unauthorized = await GET(new Request("http://localhost/api/health/ready"));
+
+      expect(authorized.status).toBe(503);
+      expect(unauthorized.status).toBe(503);
+      expect(JSON.stringify(await payload(unauthorized))).not.toContain("permission denied");
+    });
+  });
 });
 
 /**

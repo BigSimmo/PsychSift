@@ -17,7 +17,7 @@ import { ragDeepMemoryVersion } from "../src/lib/deep-memory";
 import { extractDocument } from "../src/lib/extractors/document";
 import { shouldPersistJobProgress } from "../src/lib/ingestion";
 import { embedTexts } from "../src/lib/openai";
-import { contentFreeErrorDetails, safeErrorLogDetails } from "../src/lib/privacy";
+import { contentFreeErrorDetails, safeErrorLogDetails, startupCrashLogDetails } from "../src/lib/privacy";
 import { isAtomicReindexCandidate } from "../src/lib/reindex-pipeline";
 // After a document commits, drop that owner's cached retrieval results through the cache
 // interface directly, keeping worker orchestration independent of answer generation.
@@ -898,10 +898,14 @@ export async function runWorkerMain() {
     process.exit(0);
   } catch (error) {
     const abort = error instanceof WorkerAbortError ? error : null;
-    console.error(abort ? "PsychSift worker aborted" : "PsychSift worker stopped unexpectedly", {
-      ...contentFreeErrorDetails(error),
-      stage,
-    });
+    console.error(
+      abort ? "PsychSift worker aborted" : "PsychSift worker stopped unexpectedly",
+      {
+        ...contentFreeErrorDetails(error),
+        stage,
+      },
+      startupCrashLogDetails(error),
+    );
     captureWorkerException(error, "fatal");
     const failureDetails = contentFreeErrorDetails(error);
     // WorkerAbortError wraps the underlying failure in `cause`; read its allowlisted code too.
