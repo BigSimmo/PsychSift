@@ -252,6 +252,30 @@ describe("Clinical Math Calculators (CS-001)", () => {
       expect(result.riskCategory).toBe("prolonged");
     });
 
+    it("uses the higher Fridericia value for the category in bradycardia, where Bazett undercorrects", () => {
+      // QT 490 ms, HR 50 bpm (RR 1.2 s): Bazett ~447 ms (normal for male), Fridericia ~461 ms (borderline).
+      const result = calculateQtc({ qtMs: 490, heartRateBpm: 50, sex: "male" });
+      expect(result.bazettMs).toBeLessThanOrEqual(450);
+      expect(result.fridericiaMs).toBeGreaterThan(450);
+      expect(result.riskCategory).toBe("borderline");
+    });
+
+    it("does not let bradycardic Bazett hide a QTc at or above 500 ms by Fridericia", () => {
+      // QT 545 ms, HR 50 bpm: Bazett ~498 ms (prolonged), Fridericia ~513 ms (critical).
+      const result = calculateQtc({ qtMs: 545, heartRateBpm: 50, sex: "male" });
+      expect(result.bazettMs).toBeLessThan(500);
+      expect(result.fridericiaMs).toBeGreaterThanOrEqual(500);
+      expect(result.riskCategory).toBe("critical_torsades_risk");
+    });
+
+    it("keeps Bazett for the category from 60 to 85 bpm, where it is the higher value", () => {
+      // QT 425 ms, HR 75 bpm (RR 0.8 s): Bazett ~475 ms (prolonged for male), Fridericia ~458 ms (borderline).
+      const result = calculateQtc({ qtMs: 425, heartRateBpm: 75, sex: "male" });
+      expect(result.bazettMs).toBeGreaterThan(470);
+      expect(result.fridericiaMs).toBeLessThanOrEqual(470);
+      expect(result.riskCategory).toBe("prolonged");
+    });
+
     it("fails closed on invalid HR or QT", () => {
       const zeroHr = calculateQtc({
         qtMs: 400,

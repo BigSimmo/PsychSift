@@ -847,9 +847,10 @@ see the [owner's retained recovery decision](decisions/2026-10-16-stuck-final-at
 
 Before declaring rollback complete, compare the pre/post deployment IDs and inspect
 the affected in-flight job IDs, attempt counts, locks and document/index state through
-approved bounded reads. `reindex:health` and the 6-hourly check examine only the 25
-oldest open jobs for stuck-processing diagnostics, so a healthy result does not exclude
-an exhausted-attempt job behind that window. Follow the existing approved
+approved bounded reads. The `reindex:health` open-jobs preview holds only the 25 oldest
+open jobs, but it also counts exhausted-attempt jobs directly: `jobs_stranded_final_attempt`
+for `processing` rows and `jobs_pending_exhausted` for `pending` rows (see
+[`reindex-runbook.md`](reindex-runbook.md), Abandoned jobs). Follow the existing approved
 `recover:ingestion` dry-run/review/apply procedure for confirmed stuck work; it applies
 at most 20 fixes per run by default. Do not substitute consolidated `reindex` recovery
 or add an automatic database fix. Recovery writes and any subsequent worker/provider

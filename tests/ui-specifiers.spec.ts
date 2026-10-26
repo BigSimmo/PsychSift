@@ -2,7 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Locator, type Page, type TestInfo } from "playwright/test";
 import { clickWhenSettled, expectSingleSettledOwner, visibleByTestId } from "./playwright-settlement";
 
-const axeWcagTags = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
+const axeWcagTags = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 const axeBlockingImpacts = new Set(["critical", "serious"]);
 
 async function blockExternalRequests(page: Page) {

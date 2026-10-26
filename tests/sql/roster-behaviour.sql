@@ -638,6 +638,36 @@ begin
 end
 $swap_to_manager$;
 
+-- Declining a claim answers with the claimer it cleared, read under the decline's own lock
+-- (20261026070000_roster_open_decline_returns_claimer.sql), so the alert never names a stale claimer.
+do $open_decline$
+declare
+  svc uuid := pg_temp.id('svc');
+  gap jsonb := jsonb_build_object('startsAt', date_trunc('day', now()) + interval '3 days',
+    'endsAt', date_trunc('day', now()) + interval '3 days 8 hours', 'shiftCode', 'DQ', 'kind', 'day');
+  posted jsonb; result jsonb; oid uuid;
+begin
+  posted := pg_temp.cmd('mgr', 'open.post', gap);
+  oid := (posted ->> 'openShiftId')::uuid;
+  result := pg_temp.cmd('lee', 'open.claim', jsonb_build_object('openShiftId', oid));
+  if result ->> 'status' is distinct from 'claimed' then raise exception 'open decline: setup expected a pending claim, got %', result; end if;
+  -- Only a manager can decline, and a missing shift reads as missing.
+  perform pg_temp.expect_error(format('select public.roster_open_decline(%L,%L,%L)',
+    pg_temp.id('mei'), svc, oid), 'roster_role_denied');
+  perform pg_temp.expect_error(format('select public.roster_open_decline(%L,%L,%L)',
+    pg_temp.id('mgr'), svc, gen_random_uuid()), 'roster_not_found');
+  result := public.roster_open_decline(pg_temp.id('mgr'), svc, oid);
+  if result ->> 'status' is distinct from 'open' or result ->> 'declinedClaimedBy' is distinct from pg_temp.id('lee')::text then
+    raise exception 'open decline: wrong answer %', result; end if;
+  if (select claimed_by from public.roster_open_shifts where id = oid) is not null then
+    raise exception 'open decline: the claim was not cleared'; end if;
+  -- A second decline finds no claim, and nothing changes.
+  perform pg_temp.expect_error(format('select public.roster_open_decline(%L,%L,%L)',
+    pg_temp.id('mgr'), svc, oid), 'roster_role_denied');
+  perform pg_temp.cmd('mgr', 'open.cancel', jsonb_build_object('openShiftId', oid));
+end
+$open_decline$;
+
 -- 14. Deleting a doctor's account is never blocked by a Roster table.
 reset role;
 do $delete_account$

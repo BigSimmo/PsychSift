@@ -1,8 +1,7 @@
 import type * as PatientCheck from "@/lib/clinical-question-patient-check";
 
 // Matches the Answer path's wording when the check cannot load.
-const PATIENT_CHECK_UNAVAILABLE =
-  "Could not check your question for patient details. Check your connection and try again.";
+import { patientCheckUnavailableMessage } from "@/lib/patient-check-unavailable-copy";
 
 /**
  * Whether a question set aside by Not now may run as a Documents search. The
@@ -16,7 +15,7 @@ export async function notNowDocumentsSearch(
   loadCheck: () => Promise<typeof PatientCheck> = () => import("@/lib/clinical-question-patient-check"),
 ): Promise<{ query: string } | { notice: string }> {
   const check = await loadCheck().catch(() => null);
-  if (!check) return { notice: PATIENT_CHECK_UNAVAILABLE };
+  if (!check) return { notice: patientCheckUnavailableMessage() };
   const detail = check.clinicalQuestionPatientDetail(query);
   if (detail) return { notice: check.clinicalQuestionPatientDetailMessage(detail) };
   return { query };

@@ -4233,7 +4233,9 @@ export type Database = {
           last_fetched_at: string | null;
           owner_id: string;
           updated_at: string;
-          url: string;
+          url: string | null;
+          url_host: string | null;
+          url_secret_id: string;
           workplace: string | null;
         };
         Insert: {
@@ -4243,7 +4245,9 @@ export type Database = {
           last_fetched_at?: string | null;
           owner_id: string;
           updated_at?: string;
-          url: string;
+          url?: string | null;
+          url_host?: string | null;
+          url_secret_id?: string;
           workplace?: string | null;
         };
         Update: {
@@ -4253,7 +4257,9 @@ export type Database = {
           last_fetched_at?: string | null;
           owner_id?: string;
           updated_at?: string;
-          url?: string;
+          url?: string | null;
+          url_host?: string | null;
+          url_secret_id?: string;
           workplace?: string | null;
         };
         Relationships: [];
@@ -5016,6 +5022,21 @@ export type Database = {
         };
         Returns: string;
       };
+      roster_calendar_link_add: {
+        Args: { p_owner_id: string; p_url: string; p_workplace: string | null };
+        Returns: {
+          id: string;
+          url_host: string | null;
+          workplace: string | null;
+          last_fetched_at: string | null;
+          last_error: string | null;
+          created_at: string;
+        }[];
+      };
+      roster_calendar_link_urls: {
+        Args: { p_owner_id: string; p_ids: string[] };
+        Returns: { id: string; url: string }[];
+      };
       roster_read: {
         Args: { p_actor_id: string; p_service_id: string | null; p_what: string; p_payload?: Json };
         Returns: Json;
@@ -5086,9 +5107,17 @@ export type Database = {
         Args: { p_actor_id: string; p_service_id: string; p_open_shift_id: string };
         Returns: Json;
       };
+      roster_open_decline: {
+        Args: { p_actor_id: string; p_service_id: string; p_open_shift_id: string };
+        Returns: Json;
+      };
       roster_swap_accept_for_manager: {
         Args: { p_actor_id: string; p_service_id: string; p_swap_id: string };
         Returns: Json;
+      };
+      roster_swap_breaks_team_rules: {
+        Args: { p_service_id: string; p_swap_id: string; p_rules: Json };
+        Returns: boolean;
       };
       roster_open_post_once: {
         Args: { p_actor_id: string; p_service_id: string; p_post_key: string; p_payload: Json };

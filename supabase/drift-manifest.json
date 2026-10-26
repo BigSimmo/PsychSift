@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-10-26T04:46:49.542Z",
+  "generated_at": "2026-10-26T15:15:24.935Z",
   "generator": "scripts/generate-drift-manifest.ts",
   "postgres_image": "supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83",
-  "schema_sha256": "b9364f9857dac5198f7a7254fb5a7792250a781e68f7af1b77e603c8c9914f76",
-  "replay_seconds": 20,
+  "schema_sha256": "bdb894a97a7968635928c8917f8d620d127f6092bb4e20bcec3699d2065ae527",
+  "replay_seconds": 31,
   "snapshot": {
     "views": [
       {
@@ -8835,6 +8835,22 @@
           {
             "name": "url",
             "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "url_host",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "url_secret_id",
+            "type": "uuid",
             "default": null,
             "identity": "",
             "not_null": true,
@@ -18562,6 +18578,11 @@
         "table": "cme_evidence"
       },
       {
+        "def": "CREATE TRIGGER cme_evidence_queue_file_cleanup BEFORE DELETE ON public.cme_evidence FOR EACH ROW EXECUTE FUNCTION public.cme_evidence_queue_file_cleanup()",
+        "name": "cme_evidence_queue_file_cleanup",
+        "table": "cme_evidence"
+      },
+      {
         "def": "CREATE TRIGGER cme_missed_sessions_updated_at BEFORE UPDATE ON public.cme_missed_sessions FOR EACH ROW EXECUTE FUNCTION public.set_updated_at()",
         "name": "cme_missed_sessions_updated_at",
         "table": "cme_missed_sessions"
@@ -18842,6 +18863,11 @@
         "table": "rag_aliases"
       },
       {
+        "def": "CREATE TRIGGER rag_answer_feedback_drop_note_with_owner BEFORE UPDATE OF owner_id ON public.rag_answer_feedback FOR EACH ROW WHEN (((old.owner_id IS NOT NULL) AND (new.owner_id IS NULL))) EXECUTE FUNCTION public.rag_answer_feedback_drop_note_with_owner()",
+        "name": "rag_answer_feedback_drop_note_with_owner",
+        "table": "rag_answer_feedback"
+      },
+      {
         "def": "CREATE TRIGGER rag_answer_feedback_retire_superseded_triage AFTER UPDATE ON public.rag_answer_feedback FOR EACH ROW WHEN ((old.id IS DISTINCT FROM new.id)) EXECUTE FUNCTION public.retire_superseded_feedback_triage()",
         "name": "rag_answer_feedback_retire_superseded_triage",
         "table": "rag_answer_feedback"
@@ -18879,6 +18905,16 @@
       {
         "def": "CREATE TRIGGER roster_calendar_links_cap BEFORE INSERT ON public.roster_calendar_links FOR EACH ROW EXECUTE FUNCTION public.roster_calendar_links_cap()",
         "name": "roster_calendar_links_cap",
+        "table": "roster_calendar_links"
+      },
+      {
+        "def": "CREATE TRIGGER roster_calendar_links_drop_secret AFTER DELETE ON public.roster_calendar_links FOR EACH ROW EXECUTE FUNCTION public.roster_calendar_links_drop_secret()",
+        "name": "roster_calendar_links_drop_secret",
+        "table": "roster_calendar_links"
+      },
+      {
+        "def": "CREATE TRIGGER roster_calendar_links_seal_url BEFORE INSERT OR UPDATE ON public.roster_calendar_links FOR EACH ROW EXECUTE FUNCTION public.roster_calendar_links_seal_url()",
+        "name": "roster_calendar_links_seal_url",
         "table": "roster_calendar_links"
       },
       {
@@ -19329,6 +19365,13 @@
         ],
         "def_hash": "4b9519d6501d08a3559daba6f993243a",
         "signature": "public.cme_evidence_counts(uuid,integer)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "8845adbf6d37fe02b578b5c18141b5ef",
+        "signature": "public.cme_evidence_queue_file_cleanup()"
       },
       {
         "acl": [
@@ -20370,6 +20413,13 @@
       },
       {
         "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "6fe7acd0a750ca55bf0011f8cf3a8a2b",
+        "signature": "public.rag_answer_feedback_drop_note_with_owner()"
+      },
+      {
+        "acl": [
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
@@ -20753,10 +20803,40 @@
       },
       {
         "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "3c2439733defbcd1dfe8273bc56de2ff",
+        "signature": "public.roster_calendar_link_add(uuid,text,text)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "00a0abe0f57c7fcf3fd1f730ab730fd0",
+        "signature": "public.roster_calendar_link_urls(uuid,uuid[])"
+      },
+      {
+        "acl": [
           "postgres=X/postgres"
         ],
         "def_hash": "bcf4020df3551b705e8aef6f63e9fd3e",
         "signature": "public.roster_calendar_links_cap()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "f022f4169490391cb187d0761fb01040",
+        "signature": "public.roster_calendar_links_drop_secret()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "719518bf4142ccf8ffe84fa0b985fec9",
+        "signature": "public.roster_calendar_links_seal_url()"
       },
       {
         "acl": [
@@ -20771,7 +20851,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "439f7982b4a841ad6685fef4c2eb3764",
+        "def_hash": "ba8aa3de476fd7a7c02e870cd5c1ce5a",
         "signature": "public.roster_command(uuid,uuid,text,jsonb)"
       },
       {
@@ -20812,6 +20892,14 @@
         ],
         "def_hash": "3970f82d1ac917820e8f1d2d8cc9b88e",
         "signature": "public.roster_on_membership_revoked()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "b3c039ae87bf778bb09bb65c4691a591",
+        "signature": "public.roster_open_decline(uuid,uuid,uuid)"
       },
       {
         "acl": [
@@ -20955,6 +21043,14 @@
         ],
         "def_hash": "88e1a65f5536d4f9c7be100661805c19",
         "signature": "public.roster_swap_accept_for_manager(uuid,uuid,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "138ead40994c9e25283a209196f939b7",
+        "signature": "public.roster_swap_breaks_team_rules(uuid,uuid,jsonb)"
       },
       {
         "acl": [
@@ -24218,7 +24314,7 @@
         "table": "rag_answer_feedback"
       },
       {
-        "def": "FOREIGN KEY (owner_id) REFERENCES auth.users(id) ON DELETE SET NULL",
+        "def": "FOREIGN KEY (owner_id) REFERENCES auth.users(id) ON DELETE CASCADE NOT VALID",
         "name": "rag_queries_owner_id_fkey",
         "table": "rag_queries"
       },
@@ -24238,7 +24334,7 @@
         "table": "rag_query_misses"
       },
       {
-        "def": "FOREIGN KEY (owner_id) REFERENCES auth.users(id) ON DELETE SET NULL",
+        "def": "FOREIGN KEY (owner_id) REFERENCES auth.users(id) ON DELETE CASCADE NOT VALID",
         "name": "rag_query_misses_owner_id_fkey",
         "table": "rag_query_misses"
       },
@@ -24268,7 +24364,7 @@
         "table": "rag_response_cache"
       },
       {
-        "def": "FOREIGN KEY (owner_id) REFERENCES auth.users(id) ON DELETE SET NULL",
+        "def": "FOREIGN KEY (owner_id) REFERENCES auth.users(id) ON DELETE CASCADE NOT VALID",
         "name": "rag_retrieval_logs_owner_id_fkey",
         "table": "rag_retrieval_logs"
       },
@@ -24425,6 +24521,11 @@
       {
         "def": "CHECK (((url ~ '^https://'::text) AND (char_length(url) <= 2000)))",
         "name": "roster_calendar_links_url_check",
+        "table": "roster_calendar_links"
+      },
+      {
+        "def": "CHECK (((url_host IS NULL) OR (char_length(url_host) <= 253)))",
+        "name": "roster_calendar_links_url_host_check",
         "table": "roster_calendar_links"
       },
       {

@@ -1422,6 +1422,11 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
   white-space: nowrap;
 }
 
+/* The deep ink is dark on dark here (3.9:1). The plain accent reads at 7.6:1 (A11Y-10, gentle option). */
+.dark .work-more-area__tag {
+  color: var(--mode-identity);
+}
+
 .work-more-area__chev {
   width: 1rem;
   height: 1rem;

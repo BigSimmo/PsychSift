@@ -926,7 +926,7 @@ export function ServiceDetailPage({ service }: { service: ServiceRecord }) {
                         href={sourceHref}
                         target="_blank"
                         rel="noopener noreferrer"
-                        aria-label="View service source"
+                        aria-label="View source for this service"
                         className="ml-auto inline-flex min-h-tap items-center justify-center gap-2 rounded-lg px-2.5 text-sm font-semibold text-[color:var(--clinical-accent)] transition hover:bg-[color:var(--clinical-accent-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
                       >
                         View source

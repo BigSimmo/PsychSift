@@ -88,9 +88,9 @@ describe("Open shifts, signed-out preview", () => {
     const rostered = screen
       .getAllByRole("button", { name: /you're rostered/ })
       .map((day) => day.getAttribute("aria-label"));
-    expect(rostered.some((label) => label?.startsWith("Monday 5 October"))).toBe(true);
-    expect(rostered.some((label) => label?.startsWith("Tuesday 6 October"))).toBe(false);
-    expect(rostered.some((label) => label?.startsWith("Wednesday 7 October"))).toBe(true);
+    expect(rostered.some((label) => /^Monday 5( October)?,/.test(label ?? ""))).toBe(true);
+    expect(rostered.some((label) => /^Tuesday 6( October)?,/.test(label ?? ""))).toBe(false);
+    expect(rostered.some((label) => /^Wednesday 7( October)?,/.test(label ?? ""))).toBe(true);
   });
 
   it("filters the example list when No clashes is switched off", () => {

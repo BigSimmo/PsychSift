@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { TERMS_VERSION } from "@/lib/front-door-content";
 import { CLINICAL_SIGN_IN_COPY } from "@/lib/front-door-content";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -19,7 +20,9 @@ const { push, authorizationHeader, registerAuthRequest, isAuthEpochCurrent, mark
     // mounted. Reset to the signed-out default in beforeEach.
     authState: {
       status: "signed_out" as string,
-      session: null as { user: { id: string; app_metadata?: Record<string, unknown> } } | null,
+      session: null as {
+        user: { id: string; app_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> };
+      } | null,
     },
   }));
 vi.mock("next/navigation", () => ({
@@ -224,7 +227,12 @@ describe("DocumentViewer — shell states", () => {
 
   it("honours the demo signed-out preview only for the demo corpus", async () => {
     authState.status = "authenticated";
-    authState.session = { user: { id: "user-a" } };
+    authState.session = {
+      user: {
+        id: "user-a",
+        user_metadata: { psychsift_terms: { version: TERMS_VERSION, acceptedAt: "2026-10-26T00:00:00.000Z" } },
+      },
+    };
     const { unmount } = render(
       <DocumentViewer documentId="doc-1" initialPage={1} initialDetail={detailPayload()} demoSignedOutPreview />,
     );

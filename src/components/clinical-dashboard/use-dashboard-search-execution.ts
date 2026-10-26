@@ -47,7 +47,11 @@ import type { VerifiedEvidencePreviewUnit } from "@/lib/answer-stream-contract";
 import { createAnswerThreadSnapshotMetadata, maxStoredAnswerTurns } from "@/lib/answer-thread-storage";
 import { appModeHomeHref, appModeQueryMode, appModeSearchConfig, type AppModeId } from "@/lib/app-modes";
 import { identifierShapeWarning } from "@/lib/clinical-ask/context";
-import { SEARCH_IDENTIFIER_HELD_BACK } from "@/components/clinical-dashboard/search-patient-detail-guard";
+import {
+  SEARCH_CHECK_UNAVAILABLE,
+  SEARCH_IDENTIFIER_HELD_BACK,
+  searchTextPatientDetailRefusal,
+} from "@/components/clinical-dashboard/search-patient-detail-guard";
 import { incrementalEvidencePreviewRenderingEnabled } from "@/lib/client-env";
 import { isDeployedClinicalKb } from "@/lib/deployed-app";
 import { documentsSearchHref } from "@/lib/document-flow-routes";
@@ -58,6 +62,10 @@ import { isDashboardModeHref } from "@/lib/search-route-ownership";
 import type { SearchScopeFilters } from "@/lib/search-scope";
 import type { SourceGovernanceWarning } from "@/lib/source-governance";
 import { errorCopy } from "@/lib/ui-copy";
+// A question is never sent unchecked: when the check cannot load (a dropped connection),
+// Ask stops with this and the next Ask tries the download again.
+import { patientCheckUnavailableMessage } from "@/lib/patient-check-unavailable-copy";
+import { answerHandoffParam, privateAnswerHref, resolveAnswerHandoffParams } from "@/lib/answer-question-handoff";
 import type {
   ClinicalQueryMode,
   DocumentMatch,
@@ -72,10 +80,6 @@ function loadClinicalQuestionPatientCheck() {
   return import("@/lib/clinical-question-patient-check");
 }
 
-// A question is never sent unchecked: when the check cannot load (a dropped connection),
-// Ask stops with this and the next Ask tries the download again.
-const PATIENT_CHECK_UNAVAILABLE =
-  "Could not check your question for patient details. Check your connection and try again.";
 /** Longest Retry-After the client waits out before reporting the service's busy message instead. */
 const maxClientRetryWaitMs = 10_000;
 
@@ -84,11 +88,13 @@ const maxClientRetryWaitMs = 10_000;
  *  different, earlier question belongs to the result still on screen. */
 function clearRefusedQueryFromAddress(refused: string) {
   const url = new URL(window.location.href);
-  // The dashboard runs a deep link from `q`, or from its older alias `query`.
-  const held = (url.searchParams.get("q") ?? url.searchParams.get("query"))?.trim();
+  // The dashboard runs a deep link from `q`, its older alias `query`, or an Answer `ask` id.
+  const params = resolveAnswerHandoffParams(url.searchParams);
+  const held = (params.get("q") ?? params.get("query"))?.trim();
   if (held !== refused) return;
   url.searchParams.delete("q");
   url.searchParams.delete("query");
+  url.searchParams.delete(answerHandoffParam);
   url.searchParams.delete("run");
   const rest = url.searchParams.toString();
   window.history.replaceState(window.history.state, "", `${url.pathname}${rest ? `?${rest}` : ""}${url.hash}`);
@@ -150,6 +156,8 @@ type DashboardSearchExecutionDeps = {
   setRestoredAnswerSavedAt: Dispatch<SetStateAction<number | null>>;
   setError: Dispatch<SetStateAction<string | null>>;
   setErrorKind: Dispatch<SetStateAction<AnswerErrorKind | null>>;
+  /** The server's own words behind a failure, keyed to the message they belong to (D26-08). */
+  setErrorDetail: Dispatch<SetStateAction<{ message: string; detail: string } | null>>;
   setLastFailedQuery: Dispatch<SetStateAction<string | null>>;
   setDemoMode: Dispatch<SetStateAction<boolean>>;
   setActionNotice: Dispatch<SetStateAction<DashboardActionNotice | null>>;
@@ -216,6 +224,7 @@ export function useDashboardSearchExecution(deps: DashboardSearchExecutionDeps) 
     setRestoredAnswerSavedAt,
     setError,
     setErrorKind,
+    setErrorDetail,
     setLastFailedQuery,
     setDemoMode,
     setActionNotice,
@@ -473,7 +482,7 @@ export function useDashboardSearchExecution(deps: DashboardSearchExecutionDeps) 
       const patientCheck = await loadClinicalQuestionPatientCheck().catch(() => null);
       if (submittedSeq !== searchRequestSeqRef.current) return;
       if (!patientCheck) {
-        setActionNotice({ tone: "warning", message: PATIENT_CHECK_UNAVAILABLE });
+        setActionNotice({ tone: "warning", message: patientCheckUnavailableMessage() });
         return;
       }
       const patientDetail = patientCheck.clinicalQuestionPatientDetail(trimmedQuery);
@@ -796,13 +805,15 @@ export function useDashboardSearchExecution(deps: DashboardSearchExecutionDeps) 
           window.history.replaceState(
             null,
             "",
-            appModeHomeHref(targetMode, {
-              query: trimmedQuery,
-              run: true,
-              queryMode: queryModeOverride,
-              scopeFilters: filtersOverride,
-              scopeRef: privateScopeRef,
-            }),
+            privateAnswerHref(
+              appModeHomeHref(targetMode, {
+                query: trimmedQuery,
+                run: true,
+                queryMode: queryModeOverride,
+                scopeFilters: filtersOverride,
+                scopeRef: privateScopeRef,
+              }),
+            ),
           );
           if (isAnswerFollowUp) {
             window.requestAnimationFrame(() => {
@@ -826,9 +837,14 @@ export function useDashboardSearchExecution(deps: DashboardSearchExecutionDeps) 
             : makeSearchError(searchTimedOutMessage("Search"), 408, false)
           : requestError;
         if (isAnswerRequest) dispatchAnswerLifecycle({ type: "fail" });
-        setError(surfacedError instanceof Error ? surfacedError.message : "Search failed");
+        const surfacedMessage = surfacedError instanceof Error ? surfacedError.message : "Search failed";
+        const surfacedDetail = (surfacedError as SearchError | null)?.detail;
+        setError(surfacedMessage);
         setErrorKind(classifyAnswerError(surfacedError));
+        setErrorDetail(surfacedDetail ? { message: surfacedMessage, detail: surfacedDetail } : null);
         setLastFailedQuery(trimmedQuery);
+        // An expired sign-in never sent the question: keep it in the box for Sign in and send (D26-05).
+        if (sessionExpired) setQuery(trimmedQuery);
       }
     } finally {
       answerWatchdog.cancel();
@@ -845,9 +861,16 @@ export function useDashboardSearchExecution(deps: DashboardSearchExecutionDeps) 
   }
 
   function setMedicationSearchQuery(searchText: string, updateUrl = true) {
-    modeChangeFromUiRef.current = true;
     const trimmedSearchText = searchText.trim();
     if (!trimmedSearchText) return;
+    // A suggested, recent or cross-mode Medication search writes the text into the address bar,
+    // history and recent searches, so it gets the same check as a typed one (privacy audit CA-01).
+    const refusal = searchTextPatientDetailRefusal(trimmedSearchText);
+    if (refusal) {
+      setActionNotice({ tone: "warning", message: refusal });
+      return;
+    }
+    modeChangeFromUiRef.current = true;
     setSearchMode("prescribing");
     setQuery(trimmedSearchText);
     setModeSearchSubmitted(true, trimmedSearchText);
@@ -896,11 +919,11 @@ export function useDashboardSearchExecution(deps: DashboardSearchExecutionDeps) 
             : patientCheck.searchPatientDetailMessage(patientDetail);
         }
       } else if (sendsQueryToProvider) {
-        refusal = PATIENT_CHECK_UNAVAILABLE;
-      } else if (identifierShapeWarning(trimmedQuery)) {
-        // Searches that stay on our servers still go ahead when the full check cannot load,
-        // but never with a record number, date of birth, phone number or email in them.
-        refusal = SEARCH_IDENTIFIER_HELD_BACK;
+        refusal = patientCheckUnavailableMessage();
+      } else {
+        // Searches that stay on our servers are held back too when the full check cannot load,
+        // since a name would otherwise reach the address bar and history (privacy audit CA-04).
+        refusal = identifierShapeWarning(trimmedQuery) ? SEARCH_IDENTIFIER_HELD_BACK : SEARCH_CHECK_UNAVAILABLE;
       }
       if (refusal) {
         setActionNotice({ tone: "warning", message: refusal });

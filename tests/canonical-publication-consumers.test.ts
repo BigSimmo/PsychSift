@@ -13,6 +13,10 @@ vi.mock("@/lib/env", async (original) => ({
   isLocalNoAuthMode: () => false,
 }));
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({}) }));
+// These tests are about which records render. Sign-in and the declaration on these pages are
+// covered in clinical-snapshot-pages-sign-in.dom.test.tsx; with no server client the pages now
+// fail closed (N-06), so the reader is treated as signed in and declared here.
+vi.mock("@/lib/clinical-page-access", () => ({ clinicalPageSignInRequired: async () => false }));
 vi.mock("next/server", async (original) => ({
   ...(await original<typeof import("next/server")>()),
   connection: vi.fn(),

@@ -40,9 +40,10 @@ import { conceptReviewState } from "@/lib/formulation-review-status";
 const EXPECTED: Record<SignOffFamilyId, number> = {
   // Every form was signed by 2026-10-06 (Form 2 last). The 20 Oct 2026 clinical
   // content audit edited eight signed forms (1A, 3D, 4B, 5A, 5B, 5C, 11D, 12C),
-  // which went back to drafted until the owner signs each one again, so 8 wait.
+  // which went back to drafted until the owner signs each one again. The 26 Oct 2026
+  // re-audit edited Form 3B too (its ceiling is continuous, not cumulative), so 9 wait.
   // The empty-family test below still fails if the reader and review file disagree.
-  "wa-mha-forms": 8,
+  "wa-mha-forms": 9,
   // The twelve mechanisms and the non-Indigenous concepts were signed off.
   // Six Indigenous concepts and guides remain, held for Aboriginal governance review.
   formulation: 6,
@@ -287,8 +288,8 @@ describe("clinical sign-off queue", () => {
     expect(forms, "wa-mha-forms family is missing").toBeDefined();
     expect(
       forms!.rows.map((row) => row.id),
-      "the eight forms the 20 Oct 2026 clinical content audit edited await sign-off again",
-    ).toEqual(["form-1a", "form-3d", "form-4b", "form-5a", "form-5b", "form-5c", "form-11d", "form-12c"]);
+      "the forms the 20 Oct and 26 Oct 2026 clinical content audits edited await sign-off again",
+    ).toEqual(["form-1a", "form-3b", "form-3d", "form-4b", "form-5a", "form-5b", "form-5c", "form-11d", "form-12c"]);
 
     const dead = forms!.rows
       .filter((row) => row.href !== null)
@@ -338,14 +339,17 @@ describe("clinical sign-off queue", () => {
 const EXPECTED_SIGNED_BY_DOMAIN: Record<SignOffDomainId, { signed: number; waiting: number }> = {
   "today-rules": { signed: 3, waiting: 0 },
   // The 20 Oct 2026 clinical content audit edited eight signed forms and sections 14 and 76,
-  // which went back to drafted until the owner signs each one again.
-  "wa-mha-forms": { signed: 46, waiting: 8 },
+  // which went back to drafted until the owner signs each one again. The 26 Oct 2026
+  // re-audit edited Form 3B, which went back to drafted too.
+  "wa-mha-forms": { signed: 45, waiting: 9 },
   // 21 Oct 2026: section 357, signed in #3562, went back to drafted (owner ruling).
   "mha-sections": { signed: 107, waiting: 3 },
   "mha-timeframes": { signed: 9, waiting: 0 },
   "cp-standards": { signed: 7, waiting: 1 },
   "cultural-notes": { signed: 14, waiting: 9 },
-  differentials: { signed: 11, waiting: 232 },
+  // 26 Oct 2026: the acute dystonia overlay was edited (parenteral benzatropine, not
+  // diphenhydramine, which is not registered in Australia) and waits for the owner again.
+  differentials: { signed: 10, waiting: 233 },
   formulation: { signed: 58, waiting: 6 },
   // Three edited ARFID rows went back to clinician-review-pending on 20 Oct 2026, and the other
   // 85 "Psych Sift" reviews from #3562 on 21 Oct 2026 (owner ruling).
@@ -405,16 +409,16 @@ describe("clinical & rule sign-off ledger", () => {
   });
 
   it("derives the overall totals, signer breakdown, and categorized waiting counts from the domain rows", () => {
-    expect(ledger.totalSigned).toBe(533);
-    expect(ledger.totalWaiting).toBe(1417);
+    expect(ledger.totalSigned).toBe(531);
+    expect(ledger.totalWaiting).toBe(1419);
     expect(ledger.totalGoverned).toBe(1950);
     expect(ledger.signedByTotals).toEqual({
       "Josh Simpson": 7,
-      "Psych Sift": 67,
-      PsychSift: 459,
+      "Psych Sift": 66,
+      PsychSift: 458,
     });
     expect(ledger.waitingByCategory).toEqual({
-      signableNow: 244,
+      signableNow: 246,
       indigenousHold: 26,
       awaitingPrerequisites: 582,
       awaitingTool: 565,

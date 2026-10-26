@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  searchTextPatientDetailRefusal,
+  usePreloadSearchPatientCheck,
+} from "@/components/clinical-dashboard/search-patient-detail-guard";
 import { ClipboardList, Feather, LayoutList } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -160,7 +164,12 @@ export function OnCallReferSections({ query }: { readonly query: string }) {
 
   const secondary = (item: HandbookItem) =>
     item.parsed.team ? onCallTeamBarLabel(item.parsed.team) : handbookFirstLine(item.body);
-  const servicesHref = `/services/search?q=${encodeURIComponent(query.trim())}`;
+  // Text that looks like it holds a patient detail is left out of the link's address (privacy audit CA-03).
+  usePreloadSearchPatientCheck(query);
+  const servicesHref =
+    query.trim() && !searchTextPatientDetailRefusal(query)
+      ? `/services/search?q=${encodeURIComponent(query.trim())}`
+      : "/services/search";
   const resultCount = shown.length + (signedOut ? 0 : mineShown.length);
 
   return (

@@ -212,16 +212,17 @@ describe("Empirical Challenger M3-2: Button Wiring, A11y Names & Focus Integrity
 
       // Check desktop button
       const workspaceBtn = screen.getByRole("button", {
-        name: `Select ${item.title} for workspace`,
+        name: new RegExp(`^Select ${item.title}\\b.* for workspace$`),
       });
       expect(workspaceBtn).toBeInTheDocument();
       expect(workspaceBtn).toHaveAttribute("type", "button");
       expect(workspaceBtn).toHaveAttribute("aria-pressed", "false");
-      expect(workspaceBtn).toHaveAttribute("aria-label", `Select ${item.title} for workspace`);
+      // Named by its content, so the words on screen are in the name (WCAG 2.5.3).
+      expect(workspaceBtn).not.toHaveAttribute("aria-label");
 
       // Check mobile link
       const mobileLink = screen.getByRole("link", {
-        name: `Open ${item.title}`,
+        name: new RegExp(`^Open ${item.title}\\b`),
       });
       expect(mobileLink).toBeInTheDocument();
       expect(mobileLink).toHaveAttribute("href", item.href);
@@ -254,7 +255,7 @@ describe("Empirical Challenger M3-2: Button Wiring, A11y Names & Focus Integrity
 
       expect(
         screen.getByRole("button", {
-          name: `Select ${item.title} for workspace`,
+          name: new RegExp(`^Select ${item.title}\\b.* for workspace$`),
         }),
       ).toHaveAttribute("aria-pressed", "true");
     });
@@ -288,22 +289,20 @@ describe("Empirical Challenger M3-2: Button Wiring, A11y Names & Focus Integrity
       // The desktop workspace button MUST NOT exist in multi-select mode
       expect(
         screen.queryByRole("button", {
-          name: `Select ${item.title} for workspace`,
+          name: new RegExp(`^Select ${item.title}\\b.* for workspace$`),
         }),
       ).toBeNull();
 
       // The selection checkbox button MUST exist with the distinct name "Select ${item.title}"
       const selectBtn = screen.getByRole("button", {
-        name: `Select ${item.title}`,
+        name: new RegExp(`^Select ${item.title}\\b(?!.* for workspace$)`),
       });
       expect(selectBtn).toBeInTheDocument();
       expect(selectBtn).toHaveAttribute("type", "button");
       expect(selectBtn).toHaveAttribute("aria-pressed", "false");
 
       // Verify no other button matches ambiguous naming
-      const allButtonsWithName = screen
-        .getAllByRole("button")
-        .filter((b) => b.getAttribute("aria-label")?.includes(item.title));
+      const allButtonsWithName = screen.getAllByRole("button", { name: new RegExp(item.title) });
       expect(allButtonsWithName).toHaveLength(1);
       expect(allButtonsWithName[0]).toBe(selectBtn);
 

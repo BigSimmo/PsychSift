@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "0b5213fa-293d-4619-838c-aaadd44e861d",
+  "createdOn": "2026-10-23",
+  "action": "done",
+  "payload": {
+    "id": "#NM9S1V",
+    "outcome": "Implemented locally for integration: build:internal invokes scripts/run-next-build.mjs rather than POSIX shell assignment. Real subprocess tests from a path containing spaces verify preserved/default NODE_OPTIONS, 8192 heap, webpack and nonzero exit propagation. RAM/server/upload/service-worker/bundle-secret guards remain. Three focused build/guard/workflow files passed 16 tests; scoped ESLint passed. Full app build and hosted/deployed acceptance were not run; this closes the reported Windows shell syntax defect only after these files land.",
+    "baseRowFingerprint": "4bb57e4cbdb4d5fcc79082aaa5f290be54ad3601e6cbcaa1ce573ce75efee269",
+    "targetUlid": "01M5F8P0FNNM9S1V3H9AR6DFVC"
+  }
+}

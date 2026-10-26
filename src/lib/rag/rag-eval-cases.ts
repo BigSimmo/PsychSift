@@ -76,6 +76,13 @@ export type RagEvalCase = {
    */
   acceptSourceOnly?: boolean;
   /**
+   * Owner-accepted conservative outcome for one named safety gate. When the answer is the
+   * "passages to review" fallback for exactly this extractive gate reason, the eval accepts it in
+   * place of a grounded, cited answer. Any other outcome is scored normally, so a grounded answer
+   * still has to meet every check. Set only with a recorded owner decision.
+   */
+  acceptedReviewFallbackReason?: "dose_without_named_medication";
+  /**
    * Optional programme gate expectations for the privacy-reviewed target slice.
    * The case remains in this canonical registry; later plans add diagnostics,
    * never a second list of questions.
@@ -1825,6 +1832,9 @@ export const ragEvalCases: RagEvalCase[] = [
     allowedRoutes: ["extractive", "fast", "strong"],
     minCitations: 1,
     latencyTargetMs: 2000,
+    // Owner decision 2026-10-26: the A2R-01 gate (#3799) holds this answer back for review
+    // because the quoted dose names no medicine. Canary run 40298163623 measured it.
+    acceptedReviewFallbackReason: "dose_without_named_medication",
   },
   {
     id: "admission-discharge-coverage-paraphrase",
@@ -2041,6 +2051,82 @@ export const ragEvalCases: RagEvalCase[] = [
     expectedFiles: [],
     allowedRoutes: ["unsupported"],
     minCitations: 0,
+    latencyTargetMs: 4000,
+  },
+  // Retrieval-and-citation-only cases (owner decision 2026-10-26): each checks only that the named
+  // corpus document is retrieved and cited, so a source-only answer (grounded=false) that cites it
+  // passes (acceptSourceOnly). No answer text, clinical claims or numeric expectations;
+  // full cases for the highest-risk areas come later. Expected files are corpus documents already
+  // named in docs/source-review-priority-2026-07-02.md and docs/source-governance-refresh-worklist-2026-07-22.md.
+  {
+    id: "retrieval-methadone-to-buprenorphine-transfer",
+    question: "Find the procedure for transferring a patient from methadone to buprenorphine.",
+    category: "routine",
+    suite: "core",
+    relevanceGrade: "direct",
+    supported: true,
+    acceptSourceOnly: true,
+    expectedFiles: ["NS IPWU Transfer from Methadone to Buprenorphine OST SOP (RPBG).pdf"],
+    allowedRoutes: ["extractive", "fast", "strong"],
+    minCitations: 1,
+    requireExpectedFileCitation: true,
+    latencyTargetMs: 4000,
+  },
+  {
+    id: "retrieval-buprenorphine-ost-sop",
+    question:
+      "Which SOP covers starting buprenorphine opioid substitution treatment for someone currently on methadone?",
+    category: "routine",
+    suite: "core",
+    relevanceGrade: "direct",
+    supported: true,
+    acceptSourceOnly: true,
+    expectedFiles: ["NS IPWU Transfer from Methadone to Buprenorphine OST SOP (RPBG).pdf"],
+    allowedRoutes: ["extractive", "fast", "strong"],
+    minCitations: 1,
+    requireExpectedFileCitation: true,
+    latencyTargetMs: 4000,
+  },
+  {
+    id: "retrieval-opioid-use-disorder-guidance",
+    question: "What guidance is available on managing opioid use disorder?",
+    category: "routine",
+    suite: "core",
+    relevanceGrade: "direct",
+    supported: true,
+    acceptSourceOnly: true,
+    expectedFiles: ["Opioid use disorder.pdf"],
+    allowedRoutes: ["extractive", "fast", "strong"],
+    minCitations: 1,
+    requireExpectedFileCitation: true,
+    latencyTargetMs: 4000,
+  },
+  {
+    id: "retrieval-alcohol-withdrawal-guidance",
+    question: "What guidance is available on managing alcohol withdrawal?",
+    category: "routine",
+    suite: "core",
+    relevanceGrade: "direct",
+    supported: true,
+    acceptSourceOnly: true,
+    expectedFiles: ["Alcohol withdrawal.pdf"],
+    allowedRoutes: ["extractive", "fast", "strong"],
+    minCitations: 1,
+    requireExpectedFileCitation: true,
+    latencyTargetMs: 4000,
+  },
+  {
+    id: "retrieval-alcohol-aod-withdrawal-fsh",
+    question: "Find the FSH alcohol and other drugs addiction, toxicity and withdrawal guideline.",
+    category: "routine",
+    suite: "core",
+    relevanceGrade: "direct",
+    supported: true,
+    acceptSourceOnly: true,
+    expectedFiles: ["Alcohol and Other Drugs - Addiction, Toxicity and Withdrawal (FSH).pdf"],
+    allowedRoutes: ["extractive", "fast", "strong"],
+    minCitations: 1,
+    requireExpectedFileCitation: true,
     latencyTargetMs: 4000,
   },
   ...programmeEvalCases,

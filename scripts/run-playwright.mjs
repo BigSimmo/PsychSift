@@ -236,7 +236,7 @@ async function waitForServer(baseUrl, server) {
  * `waitForServer` reads — lives in one place.
  */
 function startIsolatedServer(serverPort, env) {
-  const child = spawn(process.execPath, [nextBin, "start", "--hostname", "0.0.0.0", "--port", String(serverPort)], {
+  const child = spawn(process.execPath, [nextBin, "start", "--hostname", "127.0.0.1", "--port", String(serverPort)], {
     cwd: projectRoot,
     detached: process.platform !== "win32",
     env,
@@ -380,7 +380,7 @@ function deriveIsolatedRunExclude(rootProjectRoot, isolatedRunExtraEntries) {
 
 try {
   const port = await findFreePort(stableProjectPort(projectRoot));
-  const baseUrl = `http://localhost:${port}`;
+  const baseUrl = `http://127.0.0.1:${port}`;
   mkdirSync(absoluteRunRoot, { recursive: true });
   writeFileSync(
     path.join(absoluteRunRoot, "tsconfig.json"),

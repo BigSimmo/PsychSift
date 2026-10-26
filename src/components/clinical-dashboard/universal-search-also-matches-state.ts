@@ -1,4 +1,5 @@
 import type { AppModeId } from "@/lib/app-modes";
+import { resolveAnswerHandoffParams } from "@/lib/answer-question-handoff";
 import { isSmartLocalOnlyMode, interpretSmartSearch } from "@/lib/smart-search-intent";
 
 /**
@@ -13,7 +14,8 @@ import { isSmartLocalOnlyMode, interpretSmartSearch } from "@/lib/smart-search-i
 export function shouldRunUniversalAlsoMatches(modeId: AppModeId, locationSearch: string | null, query = "") {
   if (isSmartLocalOnlyMode(modeId) && interpretSmartSearch(modeId, query).naturalLanguage) return false;
   if (modeId !== "answer" || locationSearch === null) return true;
-  const params = new URLSearchParams(locationSearch);
+  // A submitted Answer URL names its question by an `ask` id (FE-01).
+  const params = resolveAnswerHandoffParams(new URLSearchParams(locationSearch));
   const submittedQuery = (params.get("q") ?? params.get("query") ?? "").trim();
   return params.get("run") === "1" && submittedQuery.length > 0;
 }

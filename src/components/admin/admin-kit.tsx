@@ -135,30 +135,45 @@ export function AdminRow({
   readonly disabled?: boolean;
   readonly className?: string;
 }) {
-  // A row that acts is named by its title and end status; the sub line and tags describe it,
-  // so "Copy for workforce" is the button's name, not the whole paragraph under it.
+  // A row that acts is named by every line it shows, in the order it shows them, so a
+  // voice-control user can say any of it (WCAG 2.5.3, A11Y-02). An icon lead adds nothing;
+  // a lead with words ("Start renewing:") is read first, as it is drawn.
   const baseId = useId();
   const hasEnd = end !== undefined && end !== null;
-  const labelledBy = hasEnd ? `${baseId}-t ${baseId}-e` : `${baseId}-t`;
-  const describedBy = [sub ? `${baseId}-s` : null, tags ? `${baseId}-g` : null].filter(Boolean).join(" ") || undefined;
+  const labelledBy = [
+    lead ? `${baseId}-l` : null,
+    `${baseId}-t`,
+    sub ? `${baseId}-s` : null,
+    tags ? `${baseId}-g` : null,
+    hasEnd ? `${baseId}-e` : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
   const body = (
     <>
-      {lead}
+      {/* `contents`, so the lead keeps its place in the row while the name can point at it.
+          The {" "} between parts are word breaks for the spoken and visible text; flex and
+          grid draw nothing for them. */}
+      {lead ? (
+        <span className="contents" id={`${baseId}-l`}>
+          {lead}
+        </span>
+      ) : null}{" "}
       <span className="work-row__text">
         <span className="work-row__title" id={`${baseId}-t`}>
           {title}
-        </span>
+        </span>{" "}
         {sub ? (
           <span className="work-row__sub" id={`${baseId}-s`}>
             {sub}
           </span>
-        ) : null}
+        ) : null}{" "}
         {tags ? (
           <span className={styles.rowTags} id={`${baseId}-g`}>
             {tags}
           </span>
         ) : null}
-      </span>
+      </span>{" "}
       {hasEnd ? (
         <span className="work-row__end" id={`${baseId}-e`}>
           {end}
@@ -174,13 +189,7 @@ export function AdminRow({
     </>
   );
   const control = href ? (
-    <Link
-      href={href}
-      className="work-row"
-      aria-labelledby={labelledBy}
-      aria-describedby={describedBy}
-      data-testid={testId}
-    >
+    <Link href={href} className="work-row" aria-labelledby={labelledBy} data-testid={testId}>
       {body}
     </Link>
   ) : onClick ? (
@@ -191,7 +200,6 @@ export function AdminRow({
       className={cn("work-row", ariaExpanded !== undefined && styles.disclosure)}
       aria-expanded={ariaExpanded}
       aria-labelledby={labelledBy}
-      aria-describedby={describedBy}
       data-testid={testId}
     >
       {body}
