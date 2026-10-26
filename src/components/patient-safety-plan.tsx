@@ -374,6 +374,11 @@ function AddRow({
         }}
         placeholder={primaryPlaceholder}
         aria-label={kind === "contact" ? `${label}: ${primaryPlaceholder}` : `${label}: new entry`}
+        // Kept from autofill, spelling and grammar extensions, like the other note fields (privacy audit CA-08).
+        autoComplete="off"
+        spellCheck={false}
+        data-gramm="false"
+        data-enable-grammarly="false"
         className={cn(fieldControlPlain, "min-h-tap")}
       />
       {kind === "contact" ? (
@@ -394,6 +399,10 @@ function AddRow({
           }}
           placeholder={secondaryPlaceholder}
           aria-label={`${label}: ${secondaryPlaceholder}`}
+          autoComplete="off"
+          spellCheck={false}
+          data-gramm="false"
+          data-enable-grammarly="false"
           className={cn(fieldControlPlain, "min-h-tap")}
         />
       ) : null}
@@ -1170,6 +1179,7 @@ export function PatientSafetyPlan() {
                   setFinalised(false);
                 }}
                 placeholder="e.g. 12 Aug 2026"
+                autoComplete="off"
                 className={fieldControlPlain}
               />
             </div>

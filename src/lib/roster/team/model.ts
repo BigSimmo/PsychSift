@@ -525,6 +525,7 @@ export const rosterCommandResultSchema = z
     needsManagerBecause: z.string().optional(),
     cancelReason: z.string().optional(),
     assignmentId: uuid.optional(),
+    declinedClaimedBy: uuid.nullable().optional(),
   })
   .passthrough();
 export type RosterCommandResult = z.infer<typeof rosterCommandResultSchema>;

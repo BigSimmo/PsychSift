@@ -68,11 +68,42 @@ function withoutClinicalShorthand(text: string): string {
     .replace(MS_DIAGNOSIS, "multiple sclerosis");
 }
 
+/**
+ * Public service numbers ("Lifeline 13 11 14", "MHERL 1300 555 788", "Kids Helpline 1800 55 1800").
+ * A 1300 or 1800 number belongs to a service, never to a person, so it is set aside before the
+ * phone check (privacy audit PD-02, 2026-10-26). A mobile or landline is still refused. It is
+ * replaced by a word rather than removed, so the same digits typed as a labelled record number
+ * ("MRN: 1300555788") or inside an email address are still caught by those checks.
+ */
+const PUBLIC_SERVICE_NUMBER = /(?<![\d+])1[38]00(?:[\s-]?\d){6}(?!\d)/g;
+
+/**
+ * A date that a guideline, policy or protocol carries ("protocol updated 01/03/2024", "guideline
+ * 15/06/2023", "version 2.1 dated 03/04/2025"), set aside like an age (privacy audit PD-02). It
+ * needs a document word: "updated", "reviewed" or "dated" alone can describe a patient's visit, so
+ * "patient reviewed 01/02/1990" is still refused. Up to two words may come between, but never a
+ * word that makes the date a person's ("born", "DOB", "admitted", "patient"), so "protocol DOB
+ * 01/02/1990" and "guideline reviewed patient 01/02/1990" are still refused.
+ */
+const DOCUMENT_DATE = new RegExp(
+  "\\b(?:guidelines?|guidance|protocols?|polic(?:y|ies)|procedures?|code\\s+of\\s+practice|versions?|circular|bulletin)\\b" +
+    "((?:\\s+(?!(?:dob|d\\.o\\.b\\.?|born|birth|birthday|admitted|admission|discharged|seen|died|deceased|patients?|pt|client|consumer|person|he|she|they|him|her|them|mrs?|ms|mx|miss)\\b)[\\p{L}\\d.]+){0,2}?)" +
+    "\\s+(?:\\d{1,2}[/.-]\\d{1,2}[/.-]\\d{2,4}|\\d{4}-\\d{1,2}-\\d{1,2})\\b",
+  "giu",
+);
+
+function withoutPublicNumbersAndDocumentDates(text: string): string {
+  return text
+    .replace(PUBLIC_SERVICE_NUMBER, "servicenumber")
+    .replace(DOCUMENT_DATE, (_whole, between: string) => `document${between}`);
+}
+
 const OPTIONS = { allowCapitals: true } as const;
 
 /** What in a Clinical question looks like a patient detail; null when it reads as safe to send. */
-export function clinicalQuestionPatientDetail(text: string): PatientDetailProblem | null {
-  if (!text.trim()) return null;
+export function clinicalQuestionPatientDetail(typed: string): PatientDetailProblem | null {
+  if (!typed.trim()) return null;
+  const text = withoutPublicNumbersAndDocumentDates(typed);
   if (identifierShapeWarning(text)) {
     return {
       title: "This looks like an identifier",
