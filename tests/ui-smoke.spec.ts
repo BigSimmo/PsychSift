@@ -1051,10 +1051,12 @@ async function expectMobileSettingsLayout(settings: Locator) {
 }
 
 async function expectAccountSetupSurface(setup: Locator) {
-  await expect(setup.getByRole("heading", { name: "Continue to your workspace" })).toBeVisible();
+  await expect(setup.getByRole("heading", { name: "Welcome back" })).toBeVisible();
+  await expect(setup.getByRole("radio", { name: "Sign in" })).toBeChecked();
+  await expect(setup.getByRole("radio", { name: "Create account" })).toBeVisible();
   await expect(setup.getByRole("heading", { name: "Your workspace, wherever you work." })).toBeVisible();
   await expect(setup.getByLabel("Email address")).toBeVisible();
-  await expect(setup.getByRole("button", { name: "Sign in with email" })).toBeVisible();
+  await expect(setup.getByRole("button", { name: "Sign in", exact: true })).toBeVisible();
   await expect(setup.getByRole("button", { name: "Continue with Apple" })).toBeEnabled();
   await expect(setup.getByRole("button", { name: "Continue with Google" })).toBeEnabled();
   await expect(setup.getByRole("button", { name: "Continue with Microsoft" })).toBeEnabled();
@@ -1395,9 +1397,7 @@ test.describe("PsychSift UI smoke coverage", () => {
     const expandSidebar = page.getByRole("button", { name: "Expand sidebar" });
     await expect(expandSidebar).toBeVisible();
     await expectMinTouchTarget(expandSidebar);
-    await expect(page.getByTestId("collapsed-account-settings")).toHaveAccessibleName(
-      /G Guest Not signed in\. Set up workspace/,
-    );
+    await expect(page.getByTestId("collapsed-account-settings")).toHaveAccessibleName("Sign in or create an account");
     await expect(sidebar).toHaveCount(0);
     await expandSidebar.click();
     await expect(sidebar).toBeVisible();
@@ -1408,9 +1408,7 @@ test.describe("PsychSift UI smoke coverage", () => {
       "href",
       "/psychiatry",
     );
-    await expect(sidebar.getByTestId("sidebar-account-settings")).toHaveAccessibleName(
-      /G Guest Not signed in\. Set up workspace/,
-    );
+    await expect(sidebar.getByTestId("sidebar-account-settings")).toHaveAccessibleName("Sign in or create an account");
 
     const collapseSidebar = page.getByRole("button", { name: "Collapse sidebar" });
     const guideSearch = sidebar.getByRole("button", { name: "Search PsychSift" });
@@ -1424,9 +1422,7 @@ test.describe("PsychSift UI smoke coverage", () => {
 
     await expectMinTouchTarget(collapseSidebar);
     await collapseSidebar.click();
-    await expect(page.getByTestId("collapsed-account-settings")).toHaveAccessibleName(
-      /G Guest Not signed in\. Set up workspace/,
-    );
+    await expect(page.getByTestId("collapsed-account-settings")).toHaveAccessibleName("Sign in or create an account");
 
     await expandSidebar.click();
     await sidebar.getByRole("link", { name: "Answer", exact: true }).click();
@@ -1872,7 +1868,7 @@ test.describe("PsychSift UI smoke coverage", () => {
 
     await page.setViewportSize({ width: 320, height: 700 });
     const setupEmail = setup.getByLabel("Email address");
-    const emailSubmit = setup.getByRole("button", { name: "Sign in with email" });
+    const emailSubmit = setup.getByRole("button", { name: "Sign in", exact: true });
     // Scroll to the lower of the pair. Scrolling to the field only worked where the engine centres
     // it (Chromium); WebKit scrolls to the nearest edge and leaves the button just below the fold.
     await emailSubmit.scrollIntoViewIfNeeded();

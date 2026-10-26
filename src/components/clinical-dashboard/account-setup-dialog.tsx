@@ -5,7 +5,12 @@ import { useState } from "react";
 import { ArrowRight, Clock3, Heart, Loader2, ShieldCheck, SlidersHorizontal, type LucideIcon } from "lucide-react";
 
 import { BrandMark } from "@/components/clinical-dashboard/brand";
-import { EmailAuthForm } from "@/components/clinical-dashboard/email-auth-form";
+import {
+  AccountTabSwitch,
+  accountTabFor,
+  EmailAuthForm,
+  type EmailMode,
+} from "@/components/clinical-dashboard/email-auth-form";
 import { ProviderBrandIcon, type SsoProvider } from "@/components/clinical-dashboard/provider-brand-icons";
 import { Sheet } from "@/components/ui/sheet";
 import { cn, floatingControl, InlineNotice } from "@/components/ui-primitives";
@@ -56,13 +61,21 @@ export function AccountSetupDialog({
 }) {
   const auth = useAuthSession();
   const [pendingProvider, setPendingProvider] = useState<SsoProvider | null>(null);
+  const [mode, setMode] = useState<EmailMode>(intent === "favourites" ? "signup" : "signin");
+  const tab = accountTabFor(mode);
   const busy = auth.status === "loading";
   const actionBusy = busy || pendingProvider !== null;
   const isFavouritesIntent = intent === "favourites";
-  const title = isFavouritesIntent ? "Sign up to save favourites" : "Continue to your workspace";
+  const title = isFavouritesIntent
+    ? "Sign up to save favourites"
+    : tab === "signup"
+      ? "Create your account"
+      : "Welcome back";
   const description = isFavouritesIntent
     ? "Sign in or create an account to save favourites and reopen them on any device."
-    : "Choose a provider or sign in with your email and password.";
+    : tab === "signup"
+      ? "Free for health professionals. It takes about a minute."
+      : "Sign in to your PsychSift account. You stay signed in on this device until you sign out.";
 
   async function chooseProvider(provider: SsoProvider) {
     if (actionBusy) return;
@@ -81,7 +94,9 @@ export function AccountSetupDialog({
       title="Account setup"
       closeLabel="Close account setup"
       mobileHeaderSafeArea="offset"
-      headerClassName="absolute right-3 top-3 z-30 w-auto border-0 bg-transparent p-0 sm:right-4 sm:top-4 sm:p-0"
+      // Phone: the close button gets its own row above the scrolling body, so it never
+      // floats over a provider button as the form scrolls. From sm it floats in the corner.
+      headerClassName="static z-30 justify-end border-0 bg-[color:var(--clinical-accent-soft)] px-3 pb-0 pt-[max(0.25rem,var(--safe-area-top))] sm:absolute sm:right-4 sm:top-4 sm:w-auto sm:bg-transparent sm:p-0"
       titleClassName="sr-only"
       bodyClassName="bg-[color:var(--surface)] p-0 sm:p-0"
       contentClassName="account-setup-dialog relative max-h-[calc(100dvh-0.5rem)] sm:max-h-[calc(100dvh-2rem)] sm:max-w-[68rem]"
@@ -92,7 +107,13 @@ export function AccountSetupDialog({
 
         <div className="grid content-start gap-5 bg-[color:var(--surface)] p-5 pt-8 sm:p-8 lg:p-10 lg:pt-12">
           <section aria-labelledby="account-provider-title" className="grid gap-5">
-            <div className="max-w-[36rem] pr-10 sm:pr-8">
+            <AccountTabSwitch
+              value={tab}
+              onChange={(next) => setMode(next)}
+              disabled={actionBusy}
+              className="mr-12 max-w-[26rem] sm:mr-10"
+            />
+            <div className="max-w-[36rem]">
               <h2
                 id="account-provider-title"
                 className="text-balance text-2xl font-semibold tracking-tight text-[color:var(--text-heading)] sm:text-3xl"
@@ -109,6 +130,7 @@ export function AccountSetupDialog({
                 <ProviderButton
                   key={provider}
                   provider={provider}
+                  verb={tab === "signup" ? "Sign up with" : "Continue with"}
                   busy={actionBusy}
                   pending={pendingProvider === provider}
                   onClick={() => void chooseProvider(provider)}
@@ -119,11 +141,11 @@ export function AccountSetupDialog({
 
           <div className="flex items-center gap-3 text-xs font-medium text-[color:var(--text-muted)]">
             <span className="h-px flex-1 bg-[color:var(--border)]" />
-            <span>or continue with email</span>
+            <span>{tab === "signup" ? "or sign up with email" : "or with email"}</span>
             <span className="h-px flex-1 bg-[color:var(--border)]" />
           </div>
 
-          <EmailAuthForm disabled={actionBusy} showAuthFeedback={false} />
+          <EmailAuthForm disabled={actionBusy} showAuthFeedback={false} mode={mode} onModeChange={setMode} />
 
           {auth.notice ? <InlineNotice tone="success">{auth.notice}</InlineNotice> : null}
           {auth.error ? <InlineNotice tone="danger">{auth.error}</InlineNotice> : null}
@@ -140,7 +162,7 @@ function AccountOrientationPanel() {
     <section
       aria-labelledby="account-workspace-benefits"
       data-testid="account-storage-summary"
-      className="relative isolate flex min-h-0 flex-col overflow-hidden bg-[color:var(--clinical-accent-soft)] px-5 pb-5 pt-[max(1.5rem,var(--safe-area-top))] sm:px-8 sm:py-8 lg:min-h-[36rem] lg:px-10 lg:py-10"
+      className="relative isolate flex min-h-0 flex-col overflow-hidden bg-[color:var(--clinical-accent-soft)] px-5 pb-5 pt-1 sm:px-8 sm:py-8 lg:min-h-[36rem] lg:px-10 lg:py-10"
     >
       <span
         aria-hidden="true"
@@ -236,11 +258,14 @@ function PrivacyFooter({ className }: { className?: string }) {
 
 function ProviderButton({
   provider,
+  verb,
   busy,
   pending,
   onClick,
 }: {
   provider: SsoProvider;
+  /** Providers make the account on first use, so the create tab says so. */
+  verb: "Continue with" | "Sign up with";
   busy: boolean;
   pending: boolean;
   onClick: () => void;
@@ -250,7 +275,7 @@ function ProviderButton({
       type="button"
       onClick={onClick}
       disabled={busy}
-      aria-label={`Continue with ${provider}`}
+      aria-label={`${verb} ${provider}`}
       data-provider={provider.toLowerCase()}
       className={cn(
         floatingControl,
@@ -270,7 +295,7 @@ function ProviderButton({
           "Connecting…"
         ) : (
           <>
-            <span className="sm:hidden">Continue with </span>
+            <span className="sm:hidden">{verb} </span>
             {provider}
           </>
         )}

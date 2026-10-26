@@ -118,6 +118,7 @@
     "src/lib/server-timing.ts",
     "src/lib/signed-url-cache.ts",
     "src/lib/supabase/**",
+    "src/lib/remembered-email.ts",
     "src/lib/terms-acceptance.ts",
     "src/lib/validation/**",
     "src/lib/webhooks/**",
