@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "56ec8173-5cf1-42ac-8d1b-2332efc5de24",
+  "createdOn": "2026-10-23",
+  "action": "update",
+  "payload": {
+    "id": "#CC8D30",
+    "summary": "Before enabling the reindex reaper, verify live eligibility and retention coverage",
+    "detail": "REVALIDATED 2026-10-23 at df1e07db04. The no-DDL migration-history half is already closed. Retain only the live reaper eligibility/retention read before enabling that workflow; no live read was performed. Source inspection only; no fresh application/provider execution or clinical sign-off. Evidence: .github/workflows/reindex-reaper.yml. PRIOR DETAIL: REVIEW 2026-09-25 (offline audit of current main; no provider access): Drop read (1): resolved row #DW3XK8 (2026-09-12) already closed the four no-DDL stems, and live-drift was recorded green on 2026-09-19. Read (2) is still owed; reindex-reaper.yml is still gated on the unset REINDEX_REAPER_ENABLED, so nothing is blocked until someone arms the reaper: P3. PRs #2549 and #2552 have merged (cd2552e2f, 316feca88). PRIOR DETAIL: Both are SELECTs that change nothing, and neither can be run from an agent session (no credentials, and the standing instruction is never to touch the live database). (1) Migration-history classification for the four newly declared no-op migrations, needed to decide whether each requires a 20260804110240-pattern validation guard plus a reviewed drift-allowlist entry: select jsonb_agg(row) from jsonb_array_elements(public.schema_drift_snapshot() -> 'migration_history') as row where row ->> 'version' in ('20260629100000','20260702170000','20260708160000','20260709150000'); Note the no_ddl predicate currently cannot express 'select 1 where false;', so that predicate needs review before any allowlist entry is written, and it must not be widened to make an entry pass. (2) Reindex-reaper alarm baseline, needed before REINDEX_REAPER_ENABLED is ever set, because a non-zero would_alert_forever means the weekly probe opens a permanently red issue the moment it is armed: select (select count(*) from public.documents) as documents_total, (select count(*) from public.documents where index_generation_id is null) as documents_missing_pointer, (select count(distinct c.document_id) from public.document_chunks c join public.documents d on d.id = c.document_id where c.index_generation_id is not null and d.index_generation_id is null) as would_alert_forever;",
+    "source": "Current-state issue revalidation 2026-10-23 at df1e07db04; PRs #2549 (claude/migration-history-guards) and #2552 (claude/reindex-reaper)",
+    "baseRowFingerprint": "7171be6f3d0a6046f906a116bcb47beabb01827c286ea72d9ce15d0792cf58a7",
+    "targetUlid": "01M1GRW5YXCC8D3021M0S3TH7T"
+  }
+}

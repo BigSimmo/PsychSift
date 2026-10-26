@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  ANSWER_SERVICE_FAILED_MESSAGE,
+  answerApiFailure,
   answerPayloadIsUsable,
   answerRequestMaxDurationMs,
   answerStallTimeoutMs,
@@ -14,6 +16,7 @@ import {
   shouldRetryFailedAttempt,
   SEARCH_SESSION_EXPIRED_MESSAGE,
 } from "@/components/clinical-dashboard/search-utils";
+import { ApiClientError } from "@/lib/api-client-error";
 import type { RagAnswer } from "@/lib/types";
 
 function answer(overrides: Partial<RagAnswer> = {}): RagAnswer {
@@ -175,5 +178,42 @@ describe("answer request watchdog", () => {
     vi.advanceTimersByTime(70);
     expect(onTimeout).toHaveBeenCalledTimes(1);
     expect(watchdog.timedOut).toBe(true);
+  });
+});
+
+// D26-08 to D26-10: a failed answer reads in plain words, the daily cap offers no Retry and
+// gives a clock time, and the server's own words are kept only as detail.
+describe("answerApiFailure", () => {
+  const now = new Date(2026, 9, 26, 9, 0, 0).getTime();
+
+  it("turns the daily cap into a non-retryable daily-limit with a reset time", () => {
+    const error = answerApiFailure(
+      new ApiClientError("This account has reached its daily limit.", 429, "generation_daily_cap", true, 38_400_000),
+      now,
+    );
+    expect(error.retryable).toBe(false);
+    expect(classifyAnswerError(error)).toBe("daily-limit");
+    expect(error.message).toMatch(/You can ask again from 7:40\s?pm\./);
+    expect(error.message).not.toMatch(/seconds/);
+  });
+
+  it("gives a burst limit its wait in minutes and keeps it retryable", () => {
+    const error = answerApiFailure(new ApiClientError("Too many requests.", 429, "rate_limited", true, 42_000), now);
+    expect(error.retryable).toBe(true);
+    expect(classifyAnswerError(error)).toBe("failure");
+    expect(error.message).toBe("Too many questions in a short time. Wait a minute, then try again.");
+  });
+
+  it("keeps a server fault's words as detail, not as the message", () => {
+    const error = answerApiFailure(new ApiClientError("upstream_timeout: stream closed", 502, "http_502", true), now);
+    expect(error.message).toBe(ANSWER_SERVICE_FAILED_MESSAGE);
+    expect(error.detail).toBe("upstream_timeout: stream closed");
+    expect(error.retryable).toBe(true);
+  });
+
+  it("passes a written 4xx message through unchanged", () => {
+    const error = answerApiFailure(new ApiClientError("Question is too long.", 400, "invalid_request", false), now);
+    expect(error.message).toBe("Question is too long.");
+    expect(error.detail).toBeUndefined();
   });
 });

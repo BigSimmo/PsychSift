@@ -5,6 +5,8 @@ import {
 import { isAnswerStreamEventName, type VerifiedEvidencePreviewUnit } from "@/lib/answer-stream-contract";
 import { projectClientAnswerPayload, type ClientRagAnswerPayload } from "@/lib/answer-client-payload";
 import type { RagAnswer } from "@/lib/types";
+import { ANSWER_DAILY_LIMIT_CODE, answerBurstLimitMessage, answerDailyLimitMessage } from "@/lib/answer-limit-copy";
+import type { ApiClientError } from "@/lib/api-client-error";
 
 export { keywordQueryFromNaturalLanguage } from "@/lib/keyword-query";
 
@@ -49,6 +51,8 @@ export type SearchError = Error & {
   retryable?: boolean;
   code?: string;
   retryAfterMs?: number | null;
+  /** The server's own words, kept behind "Show technical detail" rather than shown as the message. */
+  detail?: string;
 };
 
 export const searchRetryDelaysMs = [500, 1000, 2000] as const;
@@ -354,7 +358,7 @@ export function createAnswerRequestWatchdog(
   };
 }
 
-export type AnswerErrorKind = "no-results" | "session-expired" | "failure";
+export type AnswerErrorKind = "no-results" | "session-expired" | "daily-limit" | "failure";
 
 /** Shown when the server answers 401: retrying with the expired session cannot help (audit F-15). */
 export const SEARCH_SESSION_EXPIRED_MESSAGE = "Your session expired. Sign in again, then try again.";
@@ -375,7 +379,39 @@ export function classifyAnswerError(error: unknown): AnswerErrorKind {
   if (error instanceof Error && (error as SearchError).status === 401) {
     return "session-expired";
   }
+  if (
+    error instanceof Error &&
+    (error as SearchError).status === 429 &&
+    (error as SearchError).code === ANSWER_DAILY_LIMIT_CODE
+  ) {
+    return "daily-limit";
+  }
   return "failure";
+}
+
+/** Shown when the answer service itself fails; the server's words move behind a tap (D26-08). */
+export const ANSWER_SERVICE_FAILED_MESSAGE =
+  "This answer didn’t finish. Your question is kept. Try again, or search your documents for the same topic.";
+
+/**
+ * Turn a failed answer response into plain words. The daily cap gets its reset time and no Retry,
+ * a burst limit gets its wait in minutes, and a server fault keeps its own text only as `detail`.
+ * Other 4xx messages are already written for the reader and pass through unchanged.
+ */
+export function answerApiFailure(apiError: ApiClientError, now = Date.now()): SearchError {
+  const daily = apiError.status === 429 && apiError.code === ANSWER_DAILY_LIMIT_CODE;
+  const message = daily
+    ? answerDailyLimitMessage(apiError.retryAfterMs, now)
+    : apiError.status === 429
+      ? answerBurstLimitMessage(apiError.retryAfterMs)
+      : apiError.status >= 500
+        ? ANSWER_SERVICE_FAILED_MESSAGE
+        : apiError.message;
+  const error = makeSearchError(message, apiError.status, daily ? false : apiError.retryable);
+  error.code = apiError.code;
+  error.retryAfterMs = apiError.retryAfterMs;
+  if (message !== apiError.message && apiError.message) error.detail = apiError.message;
+  return error;
 }
 
 /**

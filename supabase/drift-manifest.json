@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-10-26T15:20:48.312Z",
+  "generated_at": "2026-10-26T17:21:29.185Z",
   "generator": "scripts/generate-drift-manifest.ts",
   "postgres_image": "supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83",
-  "schema_sha256": "da69e5a89963640063c2c73581dbc33a2596948d698b71f9e86b0d5de6dadd99",
-  "replay_seconds": 18,
+  "schema_sha256": "52e1e20eec989674cf86ddcb77bad9c658df9fc6c574bc4b0b2a547e8c6d68ba",
+  "replay_seconds": 19,
   "snapshot": {
     "views": [
       {
@@ -20849,7 +20849,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "439f7982b4a841ad6685fef4c2eb3764",
+        "def_hash": "ba8aa3de476fd7a7c02e870cd5c1ce5a",
         "signature": "public.roster_command(uuid,uuid,text,jsonb)"
       },
       {
@@ -21041,6 +21041,14 @@
         ],
         "def_hash": "88e1a65f5536d4f9c7be100661805c19",
         "signature": "public.roster_swap_accept_for_manager(uuid,uuid,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "138ead40994c9e25283a209196f939b7",
+        "signature": "public.roster_swap_breaks_team_rules(uuid,uuid,jsonb)"
       },
       {
         "acl": [

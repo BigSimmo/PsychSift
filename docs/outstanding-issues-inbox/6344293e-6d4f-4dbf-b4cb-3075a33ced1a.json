@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "6344293e-6d4f-4dbf-b4cb-3075a33ced1a",
+  "createdOn": "2026-10-26",
+  "action": "done",
+  "payload": {
+    "id": "#WFYDV6",
+    "outcome": "Resolved 2026-10-25 by deletion, not sign-off: commit 458ae3e24 (batch D4) removed the unwired src/components/forms/wa-mha-form-print.tsx and its DOM test under the owner's 25 Oct decision (docs/decisions/2026-10-25-delete-unused-surfaces-from-audit.md). The owner confirmed on 26 Oct 2026, answering plan question Q18, that the Form 6A/6B layout is deleted rather than signed. No Form 6A/6B statutory wording was signed off.",
+    "baseRowFingerprint": "8c8ce528fa7e145bd8192af110d5143f770afdc5866ccd81a904536ec4ae87e9",
+    "targetUlid": "01M4ZM793BWFYDV65NNBHBP53K"
+  }
+}

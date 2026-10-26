@@ -98,6 +98,20 @@ function labelKeysIn(storage: Storage): string[] {
   return keys;
 }
 
+/** True when a real label is stored, not just the shift's expiry stamp. */
+function hasLabelDataKeys(): boolean {
+  for (const area of ["local", "session"] as const) {
+    const storage = storageFor(area);
+    if (!storage) continue;
+    try {
+      if (labelKeysIn(storage).some((key) => key !== PATIENT_LABEL_EXPIRY_STORAGE_KEY)) return true;
+    } catch {
+      // Storage that refuses access holds nothing to lose.
+    }
+  }
+  return false;
+}
+
 function hasAnyLabelKeys(): boolean {
   for (const area of ["local", "session"] as const) {
     const storage = storageFor(area);
@@ -177,7 +191,55 @@ export function clearPatientLabels(reason: PatientLabelClearReason = "manual"): 
       // Storage that refuses access has nothing stored to clear.
     }
   }
+  if (reason === "account-transition") setShiftLabelsClearedAt(null);
   notifyPatientLabelsCleared(reason);
+}
+
+/**
+ * Whether this phone still holds any of this shift's patient labels (timers, call notes, handover
+ * drafts), so Sign out can say what it will clear before it clears it (D26-26). Expired labels are
+ * wiped first, so a finished shift never counts.
+ */
+export function patientLabelsOnDevice(now: number = Date.now()): boolean {
+  if (typeof window === "undefined") return false;
+  clearExpiredPatientLabels(now);
+  return hasLabelDataKeys();
+}
+
+/**
+ * When the end of a shift last wiped this phone's labels: a time only, never a label, kept outside
+ * the label prefix so the wipe itself leaves it. On Call says "were cleared at" from it, because the
+ * wipe often happens while the page is closed and the list was simply empty next morning (D26-25).
+ * A new shift's first label, a sign-out or an account change removes it.
+ */
+export const SHIFT_LABELS_CLEARED_AT_STORAGE_KEY = "psychsift-shift-labels-cleared-at";
+
+function setShiftLabelsClearedAt(at: number | null): void {
+  const local = storageFor("local");
+  if (!local) return;
+  try {
+    if (at === null) local.removeItem(SHIFT_LABELS_CLEARED_AT_STORAGE_KEY);
+    else local.setItem(SHIFT_LABELS_CLEARED_AT_STORAGE_KEY, String(at));
+  } catch {
+    // A notice that cannot be kept is simply not shown.
+  }
+}
+
+/** When the end of the last shift wiped this phone's labels, or null. */
+export function readShiftLabelsClearedAt(): number | null {
+  const local = storageFor("local");
+  if (!local) return null;
+  try {
+    const value = Number(local.getItem(SHIFT_LABELS_CLEARED_AT_STORAGE_KEY));
+    return Number.isFinite(value) && value > 0 ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The reader has seen the "were cleared" notice. */
+export function dismissShiftLabelsClearedNotice(): void {
+  setShiftLabelsClearedAt(null);
 }
 
 function notifyPatientLabelsCleared(reason: PatientLabelClearReason): void {
@@ -242,6 +304,8 @@ export function clearExpiredPatientLabels(now: number = Date.now()): boolean {
     return true;
   }
   if (now >= stamp.expiresAt) {
+    // An expiry stamp with nothing under it cleared nothing, so there is nothing to tell anyone.
+    if (hasLabelDataKeys()) setShiftLabelsClearedAt(stamp.expiresAt);
     clearPatientLabels("shift-ended");
     return true;
   }
@@ -312,6 +376,8 @@ function ensurePatientLabelStamp(options: WritePatientLabelsOptions = {}): Expir
   } catch {
     return null;
   }
+  // A new shift has started, so last shift's "were cleared" notice no longer applies.
+  if (typeof existing !== "object") setShiftLabelsClearedAt(null);
   clearStaleSessionLabels(stamp, now);
   return stamp;
 }

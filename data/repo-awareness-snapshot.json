@@ -2992,6 +2992,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-26-accept-agitation-dose-review.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/superpowers/plans/2026-08-21-trusted-admin-document-ingestion.md",
         "section": "superpowers",
         "catalogued": true
@@ -4707,6 +4712,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-26-gentle-accessibility-options.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/skipped-tests-inventory.md",
         "section": "root",
         "catalogued": false
@@ -4943,6 +4953,11 @@
       },
       {
         "path": "docs/decisions/2026-10-26-crisis-routing-under-18-youth-and-000.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-26-sign-in-keeps-signed-out-shift-work.md",
         "section": "decisions",
         "catalogued": true
       },

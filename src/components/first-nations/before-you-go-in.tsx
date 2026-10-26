@@ -5,6 +5,7 @@ import { FnButton } from "@/components/first-nations/kit";
 import { ModuleHeader } from "@/components/first-nations/module-header";
 import { TickList, toggleIn } from "@/components/first-nations/tick-list";
 import { Sheet } from "@/components/ui/sheet";
+import { useHoldWhileEngaged } from "@/components/use-hold-while-engaged";
 import type { StepView } from "@/lib/first-nations/view-model";
 
 export const UNDO_MS = 6_000;
@@ -13,11 +14,12 @@ export const UNDO_MS = 6_000;
 function Checks({ steps }: { steps: readonly StepView[] }) {
   const [ticked, setTicked] = useState<ReadonlySet<string>>(() => new Set());
   const [undo, setUndo] = useState<ReadonlySet<string> | null>(null);
+  const { held, holdProps } = useHoldWhileEngaged(undo !== null);
   useEffect(() => {
-    if (!undo) return;
+    if (!undo || held) return;
     const timer = window.setTimeout(() => setUndo(null), UNDO_MS);
     return () => window.clearTimeout(timer);
-  }, [undo]);
+  }, [undo, held]);
   return (
     <div className="grid gap-3">
       <TickList steps={steps} ticked={ticked} onToggle={(id) => setTicked((t) => toggleIn(t, id))} />
@@ -34,6 +36,7 @@ function Checks({ steps }: { steps: readonly StepView[] }) {
       {undo ? (
         <div
           role="status"
+          {...holdProps}
           className="flex min-h-12 items-center justify-between rounded-xl bg-[color:var(--command)] pl-3.5 pr-1 text-sm-minus text-[color:var(--command-contrast)]"
         >
           <span>Ticks cleared</span>

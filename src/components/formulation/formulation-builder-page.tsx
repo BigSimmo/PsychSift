@@ -135,7 +135,7 @@ function BuilderThread({
   completedQuality: number;
 }) {
   return (
-    <aside className="grid content-start gap-4 xl:sticky xl:top-20">
+    <aside aria-label="Live formulation thread" className="grid content-start gap-4 xl:sticky xl:top-20">
       <section className="overflow-hidden rounded-xl border border-[color:var(--clinical-accent-border)] bg-[color:var(--surface)] shadow-[var(--e2)]">
         <div className="flex items-center gap-3 border-b border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] px-4 py-3.5">
           <span className="grid h-10 w-10 place-items-center rounded-lg bg-[color:var(--clinical-accent)] text-[color:var(--clinical-accent-contrast)]">

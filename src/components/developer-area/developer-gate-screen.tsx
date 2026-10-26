@@ -106,7 +106,10 @@ export function DeveloperGateScreen({
 
   return (
     <main
-      className="mx-auto grid w-full max-w-md gap-6 px-4 py-16 sm:px-6"
+      // The root layout's "Skip to main content" link lands here (A11Y-06).
+      id="main-content"
+      tabIndex={-1}
+      className="mx-auto grid w-full max-w-md gap-6 px-4 py-16 outline-none sm:px-6"
       data-testid="developer-gate-screen"
       data-developer-gate-state={state}
     >
@@ -231,7 +234,6 @@ export function DeveloperGateScreen({
                 type="button"
                 onClick={() => void chooseProvider(provider)}
                 disabled={busy}
-                aria-label={`Continue with ${provider}`}
                 className={cn(
                   controlDisabled,
                   "flex min-h-12 w-full items-center gap-3 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)] px-3 text-left text-sm font-semibold text-[color:var(--text-heading)] shadow-[var(--shadow-inset)] transition hover:border-[color:var(--border-strong)] hover:bg-[color:var(--surface-subtle)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] disabled:cursor-wait",

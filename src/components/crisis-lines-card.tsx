@@ -56,7 +56,8 @@ function CrisisLineRow({ contact, testIdPrefix }: { contact: PublicCrisisContact
         <button
           type="button"
           aria-haspopup="dialog"
-          aria-label={`${contact.name}, ${spoken}. Show dialling options`}
+          // The number as shown, so a voice-control user can say it, then digit by digit (A11Y-02).
+          aria-label={`${contact.name}, ${number.display} (${spoken}). Show dialling options`}
           onClick={() => setSheetOpen(true)}
           className={cn(
             focusRing,

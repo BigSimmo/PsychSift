@@ -137,7 +137,7 @@ describe("ServiceDetailPage content cleanup", () => {
     const actions = within(screen.getByTestId("service-actions-sheet"));
     expect(actions.getByRole("link", { name: "Call" })).toHaveAttribute("href", "tel:139276");
     expect(actions.getByRole("link", { name: "Open source" })).toHaveAttribute("href", sourceUrl);
-    expect(screen.getByRole("link", { name: "View service source" })).toHaveAttribute("href", sourceUrl);
+    expect(screen.getByRole("link", { name: "View source for this service" })).toHaveAttribute("href", sourceUrl);
   });
 
   it("does not expose a non-HTTP website contact as an actionable link", () => {

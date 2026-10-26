@@ -152,6 +152,39 @@ describe("RAG eval source identity matching", () => {
     expect(validation.failures).toEqual([]);
   });
 
+  it("accepts the owner-accepted review fallback only for its named gate reason", () => {
+    const testCase: RagEvalCase = {
+      id: "agitation-arousal-typo-dosing",
+      question: "What agitaton and arousl dosing guidance applies to psychiatric inpatients?",
+      category: "routine",
+      expectedQueryClass: "medication_dose_risk",
+      supported: true,
+      expectedFiles: ["MHSP.AgitationArousalPharmaMgt.pdf"],
+      allowedRoutes: ["extractive", "fast", "strong"],
+      minCitations: 1,
+      latencyTargetMs: 2000,
+      acceptedReviewFallbackReason: "dose_without_named_medication",
+    };
+    const reviewStub = (gateReason: string) =>
+      ({
+        answer: "Passages to review.",
+        grounded: false,
+        confidence: "low",
+        citations: [],
+        sources: [],
+        queryClass: "medication_dose_risk",
+        routingMode: "extractive",
+        routingReason: `medication_dose_risk_strong_route; source_backed_review_fallback; extractive_quality_gate:${gateReason}`,
+        visualEvidence: [],
+        latencyTimings: { total_latency_ms: 800 },
+      }) as unknown as RagAnswer;
+
+    expect(validateRagAnswer(testCase, reviewStub("dose_without_named_medication")).failures).toEqual([]);
+    expect(validateRagAnswer(testCase, reviewStub("fragment_like_answer")).failures).toEqual(
+      expect.arrayContaining(["expected grounded answer", "expected at least 1 citations"]),
+    );
+  });
+
   it("still fails an acceptSourceOnly case when the expected documents are no longer retrieved", () => {
     const testCase: RagEvalCase = {
       id: "discharge-documentation",

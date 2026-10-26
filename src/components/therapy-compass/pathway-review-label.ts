@@ -5,7 +5,13 @@ export function pathwayLinkedStepCount(pathway: Pick<Pathway, "steps">): number 
 }
 
 export function pathwayRowAccessibleName(pathway: Pathway, active: boolean): string {
-  const parts = [pathway.name, `${pathwayLinkedStepCount(pathway)} linked steps`, pathwayReviewLabel(pathway)];
+  // Every line the row shows, in order, so voice control can say any of it (WCAG 2.5.3, A11Y-02).
+  const parts = [
+    pathway.name,
+    pathway.clinicalProblem ?? pathway.summary ?? "Therapy workflow",
+    `${pathwayLinkedStepCount(pathway)} linked steps`,
+    pathwayReviewLabel(pathway),
+  ];
   if (active) parts.push("currently selected");
   return parts.join(", ");
 }

@@ -284,7 +284,7 @@ export const curatedDifferentials: Record<string, DifferentialCuratedEntry> = {
     doNow: [
       "Recognise acute dystonia as sustained involuntary muscle contractions and spasms (e.g., oculogyric crisis, torticollis, trismus, or laryngeal spasm) following dopamine receptor blockade",
       "Perform immediate airway assessment to rule out life-threatening laryngeal dystonia and stridor, keeping emergency airway equipment accessible",
-      "Administer emergency anticholinergic therapy immediately using parenteral benztropine or diphenhydramine",
+      "Administer emergency anticholinergic therapy immediately using parenteral benzatropine (IM or IV). Parenteral diphenhydramine is not registered in Australia",
       "Reassess symptoms after parenteral anticholinergic administration; prepare to repeat therapy or secure the airway if laryngeal spasm does not rapidly resolve",
       "Review the causative dopamine antagonist and prescribe short-term oral anticholinergic coverage to prevent rebound dystonia",
     ],

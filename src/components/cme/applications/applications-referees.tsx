@@ -100,7 +100,6 @@ export function RefereeList({
               type="button"
               onClick={() => onOpen(referee.id)}
               data-testid="applications-referee"
-              aria-label={`${referee.name}, ${refereeStatusLabel(referee.status)}. Open`}
               className={cn(focusRing, "flex min-h-13 w-full min-w-0 items-center gap-3 px-3 py-2 text-left")}
             >
               <span
@@ -112,13 +111,15 @@ export function RefereeList({
               <span className="grid min-w-0 flex-1">
                 <span className="truncate text-base-minus font-medium leading-5 text-[color:var(--text-heading)]">
                   {referee.name}
-                </span>
+                </span>{" "}
                 {/* Wraps, never truncates: "no reply in 6 days" is the key fact, even on a 320 px phone. */}
                 <span className="break-words text-sm leading-5 text-[color:var(--text-muted)]">
                   {refereeLine(referee, today)}
                 </span>
-              </span>
+              </span>{" "}
+              {/* Named by what it shows, so voice control can say it (WCAG 2.5.3, A11Y-02). */}
               <RefereeStatusChip status={referee.status} />
+              <span className="sr-only">. Open</span>
             </button>
           </li>
         ))}

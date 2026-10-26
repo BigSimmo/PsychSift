@@ -368,7 +368,7 @@ describe("Routines", () => {
     expect(commandFilled(container)).toEqual([]);
     expect(screen.getByRole("button", { name: "Log 1.0 h for Supervision" })).toHaveTextContent("Log 1.0 h");
     expect(screen.getByRole("button", { name: "Log now for Journal club" })).toHaveTextContent("Log now");
-    expect(screen.getByRole("button", { name: "Edit Journal club" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Journal club .*\. Edit$/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /new routine/i })).toBeInTheDocument();
   });
 

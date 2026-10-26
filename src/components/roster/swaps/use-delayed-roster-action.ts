@@ -32,9 +32,11 @@ export function useDelayedRosterAction(): {
   canSend: boolean;
   schedule: (job: Job) => void;
   undo: () => void;
+  /** Pause (true) or restart (false) the hold while someone is on the Undo bar. */
+  hold: (on: boolean) => void;
 } {
   const auth = useAuthSession();
-  const held = useRef<{ job: Job; timer: number } | null>(null);
+  const held = useRef<{ job: Job; timer: number; paused: boolean } | null>(null);
   const inFlight = useRef(false);
   const [sending, setSending] = useState(false);
   const [pending, setPending] = useState<{ label: string; authEpoch: number } | null>(null);
@@ -58,10 +60,23 @@ export function useDelayedRosterAction(): {
   const schedule = useCallback(
     (next: Job) => {
       if (held.current || inFlight.current || auth.status !== "authenticated") return;
-      held.current = { job: next, timer: window.setTimeout(send, UNDO_MS) };
+      held.current = { job: next, timer: window.setTimeout(send, UNDO_MS), paused: false };
       setPending({ label: next.label, authEpoch: auth.authEpoch });
     },
     [send, auth.authEpoch, auth.status],
+  );
+
+  // While the pointer or keyboard focus is on the Undo bar the send waits, and the
+  // full window starts again once both have left (WCAG 2.2.1).
+  const hold = useCallback(
+    (on: boolean) => {
+      const current = held.current;
+      if (!current || current.paused === on) return;
+      window.clearTimeout(current.timer);
+      current.paused = on;
+      if (!on) current.timer = window.setTimeout(send, UNDO_MS);
+    },
+    [send],
   );
 
   const undo = useCallback(() => {
@@ -81,5 +96,5 @@ export function useDelayedRosterAction(): {
 
   const visiblePending =
     auth.status === "authenticated" && pending?.authEpoch === auth.authEpoch ? pending.label : null;
-  return { pending: visiblePending, sending, canSend: auth.status === "authenticated", schedule, undo };
+  return { pending: visiblePending, sending, canSend: auth.status === "authenticated", schedule, undo, hold };
 }

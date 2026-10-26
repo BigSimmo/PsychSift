@@ -57,7 +57,10 @@ export function TeachingDisplayScreen({ secret }: { secret: string }) {
 
   return (
     <main
-      className="grid min-h-dvh place-items-center bg-[color:var(--surface)] p-6 text-[color:var(--text-heading)]"
+      // The root layout's "Skip to main content" link lands here (A11Y-06).
+      id="main-content"
+      tabIndex={-1}
+      className="grid min-h-dvh place-items-center bg-[color:var(--surface)] p-6 text-[color:var(--text-heading)] outline-none"
       data-testid="teaching-display"
     >
       <div className="grid w-full justify-items-center gap-4 text-center">

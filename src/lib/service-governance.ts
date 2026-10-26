@@ -307,6 +307,14 @@ function mergeTags(left: CatalogServiceTags, right: CatalogServiceTags): Catalog
   };
 }
 
+// Only a canonical tier A (immediate) record may read as "Crisis / urgent". A legacy row's
+// crisis_high flag would otherwise survive the merge and put that chip on a canonical record
+// that says it is not for urgent matters (MHAS, Kids Helpline, the WACHS clinics: MC-F-08).
+function withoutLegacyCrisisFlag(tags: CatalogServiceTags, record: CanonicalServiceInput): CatalogServiceTags {
+  if (record.tier === "A_immediate") return tags;
+  return { ...tags, acuity_flags: tags.acuity_flags.filter((flag) => flag !== "crisis_high") };
+}
+
 function legacyKeys(service: CatalogService): Set<string> {
   return new Set(
     [service.name, service.canonical_name_key, ...(service.aliases ?? []), ...service.merged_aliases]
@@ -348,7 +356,7 @@ function mergeCanonicalIntoLegacy(legacy: CatalogService, record: CanonicalServi
     source_files: legacy.source_files,
     source_row_count: legacy.source_row_count,
     source_table_lines: legacy.source_table_lines,
-    tags: mergeTags(legacy.tags, canonical.tags),
+    tags: withoutLegacyCrisisFlag(mergeTags(legacy.tags, canonical.tags), record),
     merged_aliases: unique([legacy.name, ...legacy.merged_aliases, record.name, ...record.aliases]),
     canonical_name_key: legacy.canonical_name_key || canonical.canonical_name_key,
   };

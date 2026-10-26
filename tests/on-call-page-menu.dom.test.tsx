@@ -23,7 +23,7 @@ describe("On Call in-page More", () => {
     // "Options", so it never reads as a second copy of the band's More tab (12 Oct 2026).
     expect(trigger.textContent).toContain("Options");
     expect(trigger.className).toMatch(/min-h-12/);
-    expect(trigger.getAttribute("aria-label")).toBe("Open Contacts actions");
+    expect(trigger.getAttribute("aria-label")).toBe("Options for Contacts");
   });
 
   it("keeps add, pocket card, shifts, calendar, and order in the sheet", () => {
