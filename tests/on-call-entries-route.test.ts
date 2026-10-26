@@ -42,7 +42,16 @@ vi.mock("@/lib/api-rate-limit", () => ({
   consumeSubjectApiRateLimit: vi.fn(async () => ({ limited: false })),
   rateLimitJsonResponse: () => new Response("limited", { status: 429 }),
 }));
-vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({ from: mocks.from }) }));
+// One site administrator, so the shared read (owner decision, 26 Oct 2026) has a publisher to read.
+const listUsers = vi.hoisted(() =>
+  vi.fn(async () => ({
+    data: { users: [{ id: "00000000-0000-4000-8000-0000000000aa", app_metadata: { site_role: "administrator" } }] },
+    error: null,
+  })),
+);
+vi.mock("@/lib/supabase/admin", () => ({
+  createAdminClient: () => ({ from: mocks.from, auth: { admin: { listUsers } } }),
+}));
 
 import { GET } from "@/app/api/on-call/entries/route";
 

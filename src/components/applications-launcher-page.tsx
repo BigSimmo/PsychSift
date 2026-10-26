@@ -1,5 +1,10 @@
 "use client";
 
+import {
+  searchTextPatientDetailRefusal,
+  usePreloadSearchPatientCheck,
+} from "@/components/clinical-dashboard/search-patient-detail-guard";
+import { useOptionalToast } from "@/components/ui/toast";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -711,6 +716,7 @@ export function ApplicationsLauncherWorkspace({
   canAccessFavourites: canAccessFavouritesProp,
 }: ApplicationsLauncherWorkspaceProps) {
   const router = useRouter();
+  const pushToast = useOptionalToast()?.push;
   const auth = useAuthSession();
   const clientDemoMode = resolveClientDemoMode({
     explicitDemoMode: process.env.NEXT_PUBLIC_DEMO_MODE === "true",
@@ -727,6 +733,7 @@ export function ApplicationsLauncherWorkspace({
   const launcherApps = useMemo(() => launcherAppsForSession(canAccessFavourites), [canAccessFavourites]);
   const desktopFilters = useMemo(() => desktopFiltersForSession(canAccessFavourites), [canAccessFavourites]);
   const query = localQuery ?? controlledQuery ?? searchCommand?.query ?? "";
+  usePreloadSearchPatientCheck(query);
   const normalizedQuery = query.trim().toLowerCase();
   const naturalSmartSearch = useMemo(() => interpretSmartSearch("tools", query).naturalLanguage, [query]);
   const smartExpansions = useMemo(() => smartSearchExpansions("tools", query), [query]);
@@ -787,6 +794,12 @@ export function ApplicationsLauncherWorkspace({
   function submitSearch() {
     const submittedQuery = query.trim();
     if (submittedQuery) {
+      // Text that looks like it holds a patient detail stays in the box, not the address (privacy audit CA-03).
+      const refusal = searchTextPatientDetailRefusal(submittedQuery);
+      if (refusal) {
+        pushToast?.({ tone: "warning", title: refusal });
+        return;
+      }
       router.push(`/tools?q=${encodeURIComponent(submittedQuery)}&run=1`);
       return;
     }

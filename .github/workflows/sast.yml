@@ -5,6 +5,10 @@ on:
     branches: [main, "release/**"]
   pull_request:
     branches: [main, "release/**"]
+    paths-ignore:
+      # Docs-only PRs: Semgrep here is advisory (not in PR required's needs); ci.yml's blocking Ingestion SAST is unaffected.
+      - "docs/**"
+      - "**/*.md"
   workflow_dispatch:
 
 concurrency:

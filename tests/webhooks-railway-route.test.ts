@@ -86,6 +86,88 @@ describe("POST /api/webhooks/railway", () => {
     expect(notification.severity).toBe("error");
     expect(notification.title).toContain("worker");
   });
+
+  // Railway's current webhook payload (docs.railway.com/observability/webhooks): the event is in
+  // `type`, names sit under `resource`, the deploy status under `details`. Reading only the older
+  // flat shape answered every one of these with status_not_notable, so an authenticated failed
+  // deploy still reached nobody.
+  function currentPayload(type: string, detailsStatus?: string) {
+    return {
+      type,
+      details: { id: "deploy-1", source: "GitHub", status: detailsStatus ?? "SUCCESS" },
+      resource: {
+        workspace: { id: "ws", name: "Workspace" },
+        project: { id: "p", name: "PsychSift" },
+        environment: { id: "e", name: "production", isEphemeral: false },
+        service: { id: "s", name: "worker" },
+        deployment: { id: "d" },
+      },
+      severity: "WARNING",
+      timestamp: "2026-10-26T00:00:00.000Z",
+    };
+  }
+
+  it("forwards a failed deploy in Railway's current payload shape", async () => {
+    const { route, postChatNotification } = await loadRoute({ RAILWAY_WEBHOOK_SECRET: SECRET });
+    const response = await route.POST(
+      post("http://localhost/api/webhooks/railway", currentPayload("Deployment.failed"), {
+        "x-webhook-secret": SECRET,
+      }),
+    );
+    const body = await response.json();
+    expect(response.status).toBe(200);
+    expect(body.forwarded).toBe(true);
+    const notification = (
+      postChatNotification.mock.calls[0] as unknown as [
+        { severity: string; title: string; fields: Array<{ label: string; value: string }> },
+      ]
+    )[0];
+    // The event type wins over a details.status that disagrees with it.
+    expect(notification.severity).toBe("error");
+    expect(notification.title).toBe("Railway deploy failed: worker");
+    expect(notification.fields).toEqual(
+      expect.arrayContaining([
+        { label: "Project", value: "PsychSift" },
+        { label: "Environment", value: "production" },
+      ]),
+    );
+  });
+
+  it("forwards a crashed deploy in the current shape", async () => {
+    const { route, postChatNotification } = await loadRoute({ RAILWAY_WEBHOOK_SECRET: SECRET });
+    await route.POST(
+      post("http://localhost/api/webhooks/railway", currentPayload("Deployment.crashed"), {
+        "x-webhook-secret": SECRET,
+      }),
+    );
+    expect(postChatNotification).toHaveBeenCalledTimes(1);
+  });
+
+  it("skips a transient deploy phase in the current shape", async () => {
+    const { route, postChatNotification } = await loadRoute({ RAILWAY_WEBHOOK_SECRET: SECRET });
+    const response = await route.POST(
+      post("http://localhost/api/webhooks/railway", currentPayload("Deployment.building", "BUILDING"), {
+        "x-webhook-secret": SECRET,
+      }),
+    );
+    const body = await response.json();
+    expect(body).toMatchObject({ skipped: true, reason: "status_not_notable", status: "BUILDING" });
+    expect(postChatNotification).not.toHaveBeenCalled();
+  });
+
+  it("does not read a non-deploy alert type as a deploy status", async () => {
+    const { route, postChatNotification } = await loadRoute({ RAILWAY_WEBHOOK_SECRET: SECRET });
+    const response = await route.POST(
+      post(
+        "http://localhost/api/webhooks/railway",
+        { ...currentPayload("VolumeAlert.triggered"), details: {} },
+        { "x-webhook-secret": SECRET },
+      ),
+    );
+    const body = await response.json();
+    expect(body).toMatchObject({ skipped: true, reason: "status_not_notable" });
+    expect(postChatNotification).not.toHaveBeenCalled();
+  });
 });
 
 /**

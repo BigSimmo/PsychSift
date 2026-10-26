@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "f2161a30-4730-4873-a225-13df2eecb2ac",
+  "createdOn": "2026-10-26",
+  "action": "update",
+  "payload": {
+    "id": "#WWTRM5",
+    "detail": "UPDATE 2026-10-26 (S9 check against main 2d02dbeb7): item 4 is on main (docs/decisions/2026-09-26-remove-ward-flow-and-caring-contacts.md carries the clock.ts note). Item 1 is still open: docs/outstanding-issues.md line 15 still shows the mojibake arrow. issues:reconcile does not rewrite the preamble, and check:ledger-write-discipline refuses any other edit to the canonical file, so the next reconcile alone will not fix it. Fix needs a small change to scripts/ledger-inbox.mjs (normalise that preamble line during reconcile) or a sanctioned one-off exception.",
+    "baseRowFingerprint": "2e93d89df02787b61b346f03735a75a948da1ca64fde9f418267bb4685de9a61",
+    "targetUlid": "01M54YEVQ8WWTRM5RPCGA0FEVP"
+  }
+}

@@ -26,6 +26,7 @@ import {
 } from "@/lib/recent-query-storage";
 import { PatientProfileProvider } from "@/components/clinical-dashboard/patient-profile-context";
 import {
+  checkSearchTextPatientDetail,
   searchTextPatientDetailRefusal,
   usePreloadSearchPatientCheck,
 } from "@/components/clinical-dashboard/search-patient-detail-guard";
@@ -468,6 +469,26 @@ function GlobalStandaloneSearchShellBody({
   const [query, setQuery] = useState(requestedQuery);
   usePreloadSearchPatientCheck(query);
   const toast = useOptionalToast();
+  const pushToast = toast?.push;
+  // A shared link whose ?q= looks like it holds a patient detail is cleaned on arrival on every
+  // search page, not only the dashboard, which cleans its own (privacy audit CA-05, 2026-10-26).
+  useEffect(() => {
+    if (!requestedQuery || pathname === "/") return undefined;
+    let cancelled = false;
+    void checkSearchTextPatientDetail(requestedQuery).then((refusal) => {
+      if (cancelled || !refusal) return;
+      const url = new URL(window.location.href);
+      if ((url.searchParams.get("q") ?? url.searchParams.get("query") ?? "").trim() !== requestedQuery) return;
+      url.searchParams.delete("q");
+      url.searchParams.delete("query");
+      url.searchParams.delete("run");
+      pushToast?.({ tone: "warning", title: refusal });
+      router.replace(`${url.pathname}${url.search}${url.hash}`, { scroll: false });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname, pushToast, requestedQuery, router]);
   const deferredQuery = useDeferredValue(query);
   const [, setLastAppMode] = useLastAppMode();
   // Previous URL snapshot for during-render sync (React "adjusting state when a
