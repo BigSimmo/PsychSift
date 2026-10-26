@@ -12,6 +12,7 @@ import {
   type CommittedGeneration,
   type RollbackScope,
   type RollbackStore,
+  type RollbackPreflight,
 } from "../src/lib/reindex-rollback";
 
 const DOC_A = "00000000-0000-4000-8000-00000000000a";
@@ -25,6 +26,7 @@ type MemoryDocument = {
   chunkerVersions?: Record<string, string[]>;
   /** Generations without a complete snapshot; every other generation has one. */
   missingSnapshots?: string[];
+  preflight?: Partial<RollbackPreflight>;
 };
 
 function memoryStore(documents: Record<string, MemoryDocument>) {
@@ -52,6 +54,16 @@ function memoryStore(documents: Record<string, MemoryDocument>) {
     },
     async hasGenerationSnapshot(documentId, generationId) {
       return !(documents[documentId]?.missingSnapshots ?? []).includes(generationId);
+    },
+    async preflight(documentId) {
+      return {
+        openIngestionJobs: 0,
+        openEnrichmentJobs: 0,
+        pageStorageMode: "typed_exact",
+        targetPages: 4,
+        unstampedPages: 0,
+        ...documents[documentId]?.preflight,
+      };
     },
     repoint,
   };
@@ -118,6 +130,50 @@ describe("reindex rollback", () => {
     const { store, repoint } = memoryStore({ [DOC_A]: { ...twoGenerations(), missingSnapshots: ["gen-old"] } });
     const [outcome] = await runReindexRollback(store, { kind: "documents", documentIds: [DOC_A] }, { apply: true });
     expect(outcome.refusal).toBe("target_snapshot_missing");
+    expect(repoint).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { openIngestionJobs: 1, openEnrichmentJobs: 0 },
+    { openIngestionJobs: 0, openEnrichmentJobs: 2 },
+  ])("refuses and reports open work during preflight: %j", async (openJobs) => {
+    const { store, repoint } = memoryStore({ [DOC_A]: { ...twoGenerations(), preflight: openJobs } });
+    const [outcome] = await runReindexRollback(store, { kind: "documents", documentIds: [DOC_A] }, { apply: true });
+    expect(outcome.refusal).toBe("ingestion_in_progress");
+    expect(outcome.preflight).toMatchObject(openJobs);
+    expect(formatRollbackOutcome(outcome, false)).toContain(
+      `${openJobs.openIngestionJobs} open ingestion jobs, ${openJobs.openEnrichmentJobs} open enrichment jobs`,
+    );
+    expect(repoint).not.toHaveBeenCalled();
+  });
+
+  it("refuses a chunk-only target without restorable pages", async () => {
+    const { store, repoint } = memoryStore({
+      [DOC_A]: { ...twoGenerations(), preflight: { targetPages: 0, unstampedPages: 0 } },
+    });
+    const [outcome] = await runReindexRollback(store, { kind: "documents", documentIds: [DOC_A] }, { apply: true });
+    expect(outcome.refusal).toBe("target_not_committed");
+    expect(repoint).not.toHaveBeenCalled();
+  });
+
+  it("keeps the existing legacy-page fallback only when leaving typed page storage", async () => {
+    const { store, repoint, documents } = memoryStore({
+      [DOC_A]: { ...twoGenerations(), preflight: { targetPages: 0, unstampedPages: 7 } },
+    });
+    const [eligible] = await runReindexRollback(store, { kind: "documents", documentIds: [DOC_A] });
+    expect(eligible.refusal).toBeNull();
+    documents[DOC_A].preflight = { targetPages: 0, unstampedPages: 7, pageStorageMode: "legacy_unqualified" };
+    const [refused] = await runReindexRollback(store, { kind: "documents", documentIds: [DOC_A] }, { apply: true });
+    expect(refused.refusal).toBe("target_not_committed");
+    expect(repoint).not.toHaveBeenCalled();
+  });
+
+  it("never applies when preflight metadata cannot be read", async () => {
+    const { store, repoint } = memoryStore({ [DOC_A]: twoGenerations() });
+    store.preflight = vi.fn().mockRejectedValue(new Error("preflight read unavailable"));
+    await expect(
+      runReindexRollback(store, { kind: "documents", documentIds: [DOC_A] }, { apply: true }),
+    ).rejects.toThrow("preflight read unavailable");
     expect(repoint).not.toHaveBeenCalled();
   });
 

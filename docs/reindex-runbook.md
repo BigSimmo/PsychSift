@@ -142,7 +142,10 @@ commit of that document. The script needs the `rollback_document_index_generatio
 `20261021170000_restore_generation_metadata_on_rollback.sql`).
 
 - Dry run is the default. For each document it prints the current and previous generation,
-  their chunk counts and commit times, and whether it would roll back.
+  their chunk counts and commit-time proxies, and whether it would roll back. For a target with
+  chunks it also reports pending/processing job counts in both ingestion and enrichment queues,
+  target stamped-page and unstamped-page counts, and the current page-storage mode. These reads
+  select counts and storage metadata, never page text, vectors, summaries or patient content.
 - Choose one scope: `--document-id <uuid>[,<uuid>]`, `--committed-after <ISO time>` (the
   current generation was committed after that time) or `--chunker-version <version>` (the
   current generation's chunks carry that `chunker_version`). `--limit` caps the documents
@@ -154,12 +157,16 @@ commit of that document. The script needs the `rollback_document_index_generatio
   is left alone. A generation that was replaced before 21 Oct 2026 (before
   `20261021170000_restore_generation_metadata_on_rollback.sql` started taking snapshots) has no
   snapshot and is refused with `target_snapshot_missing` rather than rolled back with mismatched
-  details. The dry run reports that refusal too, so a document it lists as ready will not be
-  refused for it at apply.
+  details. The dry run reports that refusal too. Its reads are not an atomic snapshot or an apply
+  guarantee: the database function repeats its checks under the document lock.
 - `--apply` writes (it asks first unless `--yes` is given). It refuses a document with no
   previous committed generation, or whose previous generation has no chunks. The database
-  function also refuses if the pointer moved since the dry run or an ingestion job for the
-  document is pending or processing.
+  function also refuses if the pointer moved since the dry run. Both dry run and apply refuse
+  pending or processing work in either `ingestion_jobs` or `indexing_v3_agent_jobs`
+  (`ingestion_in_progress`), or a target without restorable pages (`target_not_committed`).
+  Unstamped pages qualify only when leaving `typed_exact` page storage, matching the existing
+  legacy-page fallback in the database function. A failed or incomplete preflight read stops
+  planning; it never assumes an empty queue.
 - The generation you roll back from is kept, so a rollback can itself be undone. On branch
   `claude/project-thread-d92wad` (24 Oct 2026), a second run that would move a document forward
   to that newer generation is refused as `previous_generation_is_newer` unless you pass

@@ -15,7 +15,11 @@ it is the July 2026 analysis, kept as history._
    `trusted_document_admission_core`, which inserts the `documents`, `ingestion_jobs` and
    `document_admission_events` rows in one transaction. The older `create_uploaded_document_with_ingestion_job`
    has no caller.
-3. **Claim with a lease.** The worker (`worker/main.ts`) claims through `claim_ingestion_jobs`. Each claimed job
+3. **Claim with a lease.** Before creating startup clients or claiming work, the worker checks its
+   build-baked embedding contract: `text-embedding-3-small`, 1,536 dimensions. This is an offline
+   configuration check, not a provider probe or proof of the deployed schema/corpus. A different model
+   requires its own governed corpus migration even if its vector length matches.
+   The worker (`worker/main.ts`) claims through `claim_ingestion_jobs`. Each claimed job
    carries a `lease_token`, a `lease_write_generation_id`, a `lease_authority_digest` and a `lease_expires_at`.
    Scoped workers use the five-argument overload; see
    [worker-deploy-runbook.md](worker-deploy-runbook.md#scoped-node-worker-claims).
@@ -42,6 +46,10 @@ it is the July 2026 analysis, kept as history._
 7. **Generation commit.** Index artifacts are written under the leased write generation and promoted atomically
    by `commit_document_index_generation`; managed generations reach one of their fenced terminal completions
    (`worker/managed-generation-job.ts`).
+   The supported legacy worker path refuses extractor-reported unresolved OCR, page-count mismatch and
+   truncated tables before provider work, then refuses poor core extraction before promotion. Missing optional
+   enrichment does not stand in for missing source evidence. These checks preserve the previous generation;
+   they are not a new server-wide quality policy or independent source-completeness proof.
 8. **Recovery.** `recover:ingestion` and `npm run reindex` use `recover_ingestion_job` only
    (`src/lib/ingestion-recovery.ts`). It requeues expired or never-leased work under the same locks as a claim,
    leaves current leases alone, and keeps all generations; see

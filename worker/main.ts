@@ -109,6 +109,8 @@ import { cleanString, sanitizeJsonbRecord } from "./ingestion-sanitize";
 import type { IngestionStageContext, ManagedEmbeddingScope } from "./ingestion-stage-context";
 import { createJobProviderEgressContext, initializeManagedAdminGeneration } from "./job-attempt-setup";
 import { runManagedGenerationJob } from "./managed-generation-job";
+import { assertWorkerEmbeddingCompatibility } from "./embedding-contract";
+import { assertLegacyExtractionComplete, assertLegacyIndexPromotion } from "./legacy-index-promotion";
 
 export type WorkerRuntimeOptions = {
   client: SupabaseClient;
@@ -140,6 +142,9 @@ export type WorkerRuntimeOptions = {
 
 /** Importing this module neither creates a provider client nor claims work. */
 export function createWorkerRuntime(options: WorkerRuntimeOptions) {
+  // Offline and before client wrapping, readiness, claims or provider work. The
+  // contract is bundled with the worker; no startup embedding probe spends tokens.
+  assertWorkerEmbeddingCompatibility({ model: env.OPENAI_EMBEDDING_MODEL, dimensions: env.EMBEDDING_DIMENSIONS });
   let activeStopSignal: AbortSignal | undefined;
   const supabase = withControlPlaneAbortClient(options.client, (stopSignal) =>
     controlPlaneAbortSignal(stopSignal ?? activeStopSignal),
@@ -559,6 +564,8 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
         recordClaimProcessed(); // A managed terminal is a successful claim for the health check too
         return;
       }
+      // Refuse known missing source evidence before captions/embeddings spend budget.
+      assertLegacyExtractionComplete(extracted);
       const {
         chunks,
         indexedChunkRows,
@@ -624,6 +631,9 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
             "extraction/OCR produced 0 chunks and 0 searchable images.",
         );
       }
+      // A nonempty but poor or known-incomplete replacement must not displace
+      // the live generation. Failure keeps the attempt's pre-commit fence intact.
+      assertLegacyIndexPromotion({ extracted, chunks, insertedImages });
       await commitDocumentIndexGeneration({
         jobId: job.id,
         documentId: job.document_id,
@@ -880,6 +890,7 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
 const FAILURE_WEBHOOK_TIMEOUT_MS = 5_000;
 
 export async function runWorkerMain() {
+  assertWorkerEmbeddingCompatibility({ model: env.OPENAI_EMBEDDING_MODEL, dimensions: env.EMBEDDING_DIMENSIONS });
   // A fixed label for the step that failed. The error itself stays content-free, so without this a
   // crash before the first log line (for example an unreadable runtime module) is indistinguishable
   // from any other startup failure in the deploy log.

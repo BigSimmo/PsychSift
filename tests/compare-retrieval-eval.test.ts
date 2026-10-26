@@ -82,7 +82,13 @@ describe("compareRetrievalEval", () => {
 
 // Per-case results as written by eval-retrieval's --json-out (trimmed to the compared fields).
 function perCase(id: string, rr: number, contentRR: number): Record<string, unknown> {
-  return { id, reciprocalRankAt10: rr, contentReciprocalRankAt10: contentRR };
+  return {
+    id,
+    reciprocalRankAt10: rr,
+    contentReciprocalRankAt10: contentRR,
+    expectedContentTerms: ["synthetic content"],
+    failures: [],
+  };
 }
 
 describe("comparePerCaseRanks", () => {
@@ -169,16 +175,22 @@ describe("compare-retrieval-eval CLI --fail-on-regression", () => {
     failed_cases: [],
   };
 
-  function writeArtifact(name: string, results: Array<Record<string, unknown>>): string {
+  function writeArtifact(name: string, results: unknown, summaryOverrides: Record<string, unknown> = {}): string {
     const filePath = join(dir, name);
-    writeFileSync(filePath, JSON.stringify({ summary, results }));
+    writeFileSync(filePath, JSON.stringify({ summary: { ...summary, ...summaryOverrides }, results }));
     return filePath;
   }
 
-  function runCli(baseline: string, candidate: string) {
+  function runCli(baseline: string, candidate: string, strict = true) {
     return spawnSync(
       process.execPath,
-      ["scripts/run-tsx.mjs", "scripts/compare-retrieval-eval.ts", baseline, candidate, "--fail-on-regression"],
+      [
+        "scripts/run-tsx.mjs",
+        "scripts/compare-retrieval-eval.ts",
+        baseline,
+        candidate,
+        ...(strict ? ["--fail-on-regression"] : []),
+      ],
       { cwd: join(__dirname, ".."), encoding: "utf8" },
     );
   }
@@ -197,5 +209,95 @@ describe("compare-retrieval-eval CLI --fail-on-regression", () => {
     const out = runCli(baseline, candidate);
     expect(out.stdout).toContain("NEW in candidate (no baseline): extra");
     expect(out.status).toBe(1);
+  });
+
+  it.each([
+    ["document_recall_at_5", 0.5],
+    ["content_recall_at_5", 0.5],
+    ["top_k_hit_rate", 0],
+    ["failed_cases", [{ id: "a", failures: ["synthetic missing content"] }]],
+  ])("rejects an absolute %s failure even with unchanged per-case ranks", (metric, value) => {
+    const baseline = writeArtifact("quality-base.json", [perCase("a", 1, 1)]);
+    const candidate = writeArtifact("quality-cand.json", [perCase("a", 1, 1)], { [metric]: value });
+    const out = runCli(baseline, candidate);
+    expect(out.stdout).toContain("zero per-case rr regressions");
+    expect(out.stderr).toContain(metric);
+    expect(out.status).toBe(1);
+  });
+
+  it("reproduces the audit's combined recall, top-k and failed-case defect", () => {
+    const baseline = writeArtifact("audit-base.json", [perCase("a", 1, 1)]);
+    const candidate = writeArtifact("audit-cand.json", [perCase("a", 1, 1)], {
+      content_recall_at_5: 0.5,
+      top_k_hit_rate: 0,
+      failed_cases: [{ id: "a", failures: ["synthetic missing content"] }],
+    });
+    expect(runCli(baseline, candidate).status).toBe(1);
+    // Comparison remains useful for diagnostics without requesting a release verdict.
+    expect(runCli(baseline, candidate, false).status).toBe(0);
+  });
+
+  it("rejects an equally failing pair instead of treating no delta as a clean gate", () => {
+    const artifact = writeArtifact("failing-pair.json", [perCase("a", 1, 1)], { content_recall_at_5: 0.5 });
+    expect(runCli(artifact, artifact).status).toBe(1);
+  });
+
+  it.each([
+    ["missing", undefined],
+    ["empty", []],
+    ["duplicate", [perCase("a", 1, 1), perCase("a", 1, 1)]],
+    ["missing ID", [{ reciprocalRankAt10: 1, contentReciprocalRankAt10: 1 }]],
+    ["empty ID", [perCase("", 1, 1)]],
+    ["blank ID", [perCase("  ", 1, 1)]],
+    ["non-object", [null]],
+  ])("rejects %s results in either artifact", (_name, results) => {
+    const clean = writeArtifact("population-clean.json", [perCase("a", 1, 1)]);
+    const malformed = writeArtifact("population-invalid.json", results);
+    expect(runCli(clean, malformed).status).toBe(1);
+    expect(runCli(malformed, clean).status).toBe(1);
+    expect(runCli(malformed, malformed).status).toBe(1);
+  });
+
+  it.each([
+    ["case_count", 0],
+    ["case_count", 2],
+    ["case_count", 1.5],
+    ["content_mrr_case_count", -1],
+    ["content_mrr_case_count", 0.5],
+    ["content_mrr_case_count", 2],
+    ["content_mrr_case_count", 0],
+  ])("rejects an inconsistent %s=%s even on an identical pair", (metric, value) => {
+    const artifact = writeArtifact("count-invalid.json", [perCase("a", 1, 1)], { [metric]: value });
+    const out = runCli(artifact, artifact);
+    expect(out.stderr).toContain(metric);
+    expect(out.status).toBe(1);
+  });
+
+  it("rejects failures hidden from the summary", () => {
+    const baseline = writeArtifact("hidden-failure-base.json", [perCase("a", 1, 1)]);
+    const candidate = writeArtifact("hidden-failure-cand.json", [
+      { ...perCase("a", 1, 1), failures: ["synthetic failure"] },
+    ]);
+    expect(runCli(baseline, candidate).status).toBe(1);
+  });
+
+  it("accepts a content-MRR subset when both artifacts declare the same population", () => {
+    const results = [perCase("a", 1, 1), { ...perCase("b", 1, 0), expectedContentTerms: [] }];
+    const artifact = writeArtifact("subset-clean.json", results, { case_count: 2, content_mrr_case_count: 1 });
+    expect(runCli(artifact, artifact).status).toBe(0);
+  });
+
+  it("rejects changed content-MRR population membership despite equal summary counts", () => {
+    const baseline = writeArtifact(
+      "content-population-base.json",
+      [perCase("a", 1, 1), { ...perCase("b", 1, 1), expectedContentTerms: [] }],
+      { case_count: 2 },
+    );
+    const candidate = writeArtifact(
+      "content-population-cand.json",
+      [{ ...perCase("a", 1, 1), expectedContentTerms: [] }, perCase("b", 1, 1)],
+      { case_count: 2 },
+    );
+    expect(runCli(baseline, candidate).status).toBe(1);
   });
 });
