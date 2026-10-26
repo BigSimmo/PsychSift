@@ -138,6 +138,20 @@ test("catalogue Clear search stays on the catalogue and keeps the filters", asyn
   await expectSingleSettledOwner(page.getByTestId("sources-catalogue-main"));
 });
 
+test.describe("catalogue navigation before hydration", () => {
+  test.use({ javaScriptEnabled: false, viewport: { width: 390, height: 844 } });
+
+  test("catalogue Clear search works without JavaScript and resets only query and page", async ({ page }) => {
+    await page.goto("/sources/search?usedBy=dictionary&q=zzzzznomatch&page=2", {
+      waitUntil: "domcontentloaded",
+    });
+    await page.getByTestId("search-results-empty-clear-search").click();
+
+    await expect(page).toHaveURL(/\/sources\/search\?usedBy=dictionary$/);
+    await expect(page.getByRole("button", { name: "Remove Used in: Dictionary filter" })).toBeVisible();
+  });
+});
+
 test("a browse query narrows the browse list instead of being ignored", async ({ page }) => {
   await page.goto("/sources/topics?q=zzzzznomatch", { waitUntil: "domcontentloaded" });
   await expect(page.getByTestId("search-query-ribbon").getByRole("status")).toContainText("0 topics");
