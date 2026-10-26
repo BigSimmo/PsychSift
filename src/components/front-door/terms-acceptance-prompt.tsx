@@ -22,8 +22,7 @@ import { useAuthSession } from "@/lib/supabase/client";
 import {
   TERMS_METADATA_KEY,
   buildTermsAcceptance,
-  hasAcceptedTerms,
-  readLocalTermsVersion,
+  readTermsAcceptance,
   writeLocalTermsVersion,
 } from "@/lib/terms-acceptance";
 
@@ -34,6 +33,11 @@ const PROMPT_EXEMPT_PATHS = ["/terms", "/about", "/privacy", "/auth"];
  * Asks a signed-in user to accept the current Terms of Use, once per terms
  * version. Signed-out and demo sessions see nothing. See
  * `src/lib/terms-acceptance.ts` for where the record is kept and why.
+ *
+ * Only the account record counts, not this device's copy: Answer and the original
+ * documents check the account on the server (`requireHealthProfessionalDeclaration`),
+ * so a save that failed must keep asking rather than leave the user refused there
+ * with no prompt (D26-40, 26 Oct 2026).
  */
 export function TermsAcceptancePrompt() {
   const { client, session, status } = useAuthSession();
@@ -51,10 +55,7 @@ export function TermsAcceptancePrompt() {
   // Stay mounted while the save is in flight or its error is showing: the local
   // copy written after a failed save would otherwise hide the warning at once.
   const settling = saving || saveError;
-  if (
-    !settling &&
-    hasAcceptedTerms({ metadata: session?.user.user_metadata, localVersion: readLocalTermsVersion(userId) })
-  ) {
+  if (!settling && readTermsAcceptance(session?.user.user_metadata)?.version === TERMS_VERSION) {
     return null;
   }
 

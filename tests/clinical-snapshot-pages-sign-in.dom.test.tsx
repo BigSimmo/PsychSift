@@ -7,7 +7,7 @@ const state = vi.hoisted(() => ({
   demo: false,
   noAuth: false,
   configured: true,
-  user: null as { id: string } | null,
+  user: null as { id: string; banned_until?: string } | null,
   getUser: vi.fn(),
 }));
 
@@ -89,6 +89,11 @@ describe("server-rendered clinical pages need sign-in (#3738)", () => {
   it("decides sign-in from the server session, demo, no-auth and config", async () => {
     expect(await clinicalPageSignInRequired()).toBe(true);
     state.user = { id: "synthetic-user" };
+    expect(await clinicalPageSignInRequired()).toBe(false);
+    // PP-04: a blocked account still has a session until it expires, so it gets the card.
+    state.user = { id: "synthetic-user", banned_until: "2999-01-01T00:00:00Z" };
+    expect(await clinicalPageSignInRequired()).toBe(true);
+    state.user = { id: "synthetic-user", banned_until: "2000-01-01T00:00:00Z" };
     expect(await clinicalPageSignInRequired()).toBe(false);
     state.user = null;
     state.demo = true;

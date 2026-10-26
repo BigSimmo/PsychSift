@@ -142,7 +142,7 @@ function extractSessionAccessToken(request: Request): string | null {
  * A blocked account still holds a valid access token until it expires, so a live lookup that
  * finds the account banned refuses it rather than trusting the token (PP-04, 26 Oct 2026).
  */
-function isBannedNow(user: { banned_until?: string | null }, now = Date.now()): boolean {
+export function isBannedNow(user: { banned_until?: string | null }, now = Date.now()): boolean {
   if (!user.banned_until) return false;
   const until = Date.parse(user.banned_until);
   // An unreadable ban date still means the account was blocked, so it fails closed.

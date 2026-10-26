@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FirstRunGuide } from "@/components/front-door/first-run-guide";
 import { TermsAcceptancePrompt } from "@/components/front-door/terms-acceptance-prompt";
 import { TERMS_PROMPT_ACCEPT_LABEL, TERMS_PROMPT_SAVE_ERROR, TERMS_VERSION } from "@/lib/front-door-content";
-import { TERMS_METADATA_KEY } from "@/lib/terms-acceptance";
+import { TERMS_METADATA_KEY, readLocalTermsVersion } from "@/lib/terms-acceptance";
 
 const updateUser = vi.fn(async () => ({ data: {}, error: null as unknown }));
 let auth: {
@@ -54,7 +54,7 @@ describe("Terms acceptance prompt", () => {
     expect(updateUser).toHaveBeenCalledWith({
       data: { [TERMS_METADATA_KEY]: expect.objectContaining({ version: TERMS_VERSION }) },
     });
-    expect(window.localStorage.getItem("psychsift:terms-accepted:user-1")).toBe(TERMS_VERSION);
+    expect(readLocalTermsVersion("user-1")).toBe(TERMS_VERSION);
   });
 
   it("keeps the prompt open with a warning when the account save fails", async () => {
@@ -63,10 +63,10 @@ describe("Terms acceptance prompt", () => {
     render(<TermsAcceptancePrompt />);
     fireEvent.click(screen.getByRole("button", { name: TERMS_PROMPT_ACCEPT_LABEL }));
     expect(screen.getByTestId("terms-acceptance-prompt")).toBeTruthy();
-    expect(window.localStorage.getItem("psychsift:terms-accepted:user-1")).toBeNull();
+    expect(readLocalTermsVersion("user-1")).toBeNull();
     expect(await screen.findByText(TERMS_PROMPT_SAVE_ERROR)).toBeTruthy();
     expect(screen.getByTestId("terms-acceptance-prompt")).toBeTruthy();
-    expect(window.localStorage.getItem("psychsift:terms-accepted:user-1")).toBe(TERMS_VERSION);
+    expect(readLocalTermsVersion("user-1")).toBe(TERMS_VERSION);
     fireEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(screen.queryByTestId("terms-acceptance-prompt")).toBeNull();
   });
@@ -77,6 +77,13 @@ describe("Terms acceptance prompt", () => {
     expect(screen.queryByTestId("terms-acceptance-prompt")).toBeNull();
     unmount();
     signedIn({ [TERMS_METADATA_KEY]: { version: "2020-01-01", acceptedAt: "2020-01-01T00:00:00Z" } });
+    render(<TermsAcceptancePrompt />);
+    expect(screen.getByTestId("terms-acceptance-prompt")).toBeTruthy();
+  });
+
+  it("keeps asking when only this device holds the acceptance, because the server reads the account (D26-40)", () => {
+    signedIn();
+    window.localStorage.setItem("psychsift:terms-accepted:user-1", TERMS_VERSION);
     render(<TermsAcceptancePrompt />);
     expect(screen.getByTestId("terms-acceptance-prompt")).toBeTruthy();
   });

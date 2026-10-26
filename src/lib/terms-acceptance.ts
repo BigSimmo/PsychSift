@@ -7,8 +7,9 @@ import { TERMS_VERSION } from "@/lib/front-door-content";
  * `user_metadata` (written with `auth.updateUser({ data })`, which merges
  * top-level keys), under `TERMS_METADATA_KEY`, so it follows the user between
  * devices without a migration. A copy goes in this browser's `localStorage`,
- * keyed by user id, so the prompt stays dismissed if the metadata write fails or
- * the session has not refreshed yet.
+ * keyed by user id, as a local note of the accept. It no longer hides the prompt:
+ * Answer and the original documents read only the account record on the server,
+ * so the prompt keeps asking until the account save succeeds (D26-40, 26 Oct 2026).
  *
  * `user_metadata` is editable by the user themselves, so this is a record that
  * the user clicked Accept, not a tamper-proof audit trail. A server-owned audit
