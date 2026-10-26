@@ -42,9 +42,12 @@ Python locks, model identities, legacy OCR and archive support remain unchanged.
   reproduction remains separate evidence; ordinary XML smoke is not proof of
   every overflow guard. The Python SAX binding also receives the exact upstream
   CVE-2026-74860 reference-count repair, with 32 enumeration ownership controls
-  against the built extension. CVE-2026-6653 remains unresolved; its larger vendor
-  candidate changes public entity/input structures and is excluded pending
-  compatibility evidence.
+  against the built extension. CVE-2026-6653 uses the byte-identical Ubuntu 2.9.14
+  security patch (upstream 463bbeec, "Rework entity amplification checks"). It
+  only appends fields to the library-allocated `xmlEntity` and
+  `xmlParserInput` structs; exported symbols and the SONAME are unchanged. In
+  this image libxml2's system consumer is libarchive (pulled in by Tesseract),
+  which uses the reader APIs and never allocates those structs; the Python venvs' lxml wheels bundle their own copy.
 
 The final image also runs its existing Python/OCR/clinical fixtures and runtime
 validator, both venv dependency checks and a bounded offline conversion of a
@@ -59,8 +62,10 @@ Keep the complete image scan. A Debian advisory with no published fixed version
 can continue to flag an honestly labelled local backport, so the CVEs these
 backports patch are listed in `scripts/trivy-suppressions.json` by exact image,
 package, installed version and CVE. Any rebuild, version bump or Debian update
-resurfaces them, and unpatched or unresolved advisories (CVE-2026-6653,
-CVE-2026-86139, CVE-2026-78409) are deliberately not listed. Suppressed and
+resurfaces them, and unpatched or unresolved advisories (CVE-2026-86139,
+CVE-2026-78409) are deliberately not listed. CVE-2026-6653 is backported but
+not listed either: the owner chose a backport without a suppression, so the
+scan keeps reporting it until Debian publishes a fixed version. Suppressed and
 remaining per-CVE diagnostics go to stderr in the CI log, the retained report
 stays unfiltered, and stdout keeps the strict aggregate scan records (with a
 `SUPPRESSED=` count). Pillow 12.3.0 in the Docling venv is also listed until
@@ -78,7 +83,7 @@ the `.dsc` hash, so each backport is pinned to one exact Debian source. Every
 | util-linux | 2.41.5-0+deb13u1                     | 2.41.5-0+deb13u1+psychsift1                     | CVE-2026-76642, CVE-2026-78408, CVE-2026-78410                                                 | trixie-security ships a util-linux fixing all three                               |
 | tesseract  | 5.5.0-1                              | 5.5.0-1+psychsift1                              | CVE-2026-73066, CVE-2026-88047, CVE-2026-88048, CVE-2026-88051, CVE-2026-88052, CVE-2026-88053 | trixie(-security) ships a tesseract fixing all six                                |
 | ncurses    | 6.5+20250216-2                       | 6.5+20250216-2+psychsift1                       | CVE-2025-69720                                                                                 | trixie(-security) ships an ncurses fixing it                                      |
-| libxml2    | 2.12.7+dfsg+really2.9.14-2.1+deb13u3 | 2.12.7+dfsg+really2.9.14-2.1+deb13u3+psychsift1 | CVE-2026-74860, CVE-2026-86138, CVE-2026-86140, CVE-2026-86142, CVE-2026-86143, CVE-2026-86144 | trixie-security ships a libxml2 fixing all six (CVE-2026-6653 is still open here) |
+| libxml2    | 2.12.7+dfsg+really2.9.14-2.1+deb13u3 | 2.12.7+dfsg+really2.9.14-2.1+deb13u3+psychsift1 | CVE-2026-6653, CVE-2026-74860, CVE-2026-86138, CVE-2026-86140, CVE-2026-86142, CVE-2026-86143, CVE-2026-86144 | trixie-security ships a libxml2 fixing all seven (Debian marks CVE-2026-6653 `no-dsa` for trixie, so it may only arrive in a point release) |
 
 Version-ordering risk (checked with `dpkg --compare-versions`):
 
