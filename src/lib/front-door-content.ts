@@ -174,7 +174,7 @@ export const TERMS_PROMPT_ACCEPT_LABEL = "I'm a health professional and I accept
 export const TERMS_PROMPT_LATER_LABEL = "Not now";
 export const TERMS_PROMPT_LATER_NOTE = "If you choose Not now, we will ask again next time you open PsychSift.";
 export const TERMS_PROMPT_SAVE_ERROR =
-  "Your acceptance could not be saved to your account, so it is remembered on this device only.";
+  "Your acceptance could not be saved to your account, so we will ask again next time you open PsychSift.";
 /** Shown when the Terms step at the first Ask cannot save to the account; Answer stays unsent. */
 export const ASK_TERMS_SAVE_ERROR =
   "Your acceptance could not be saved to your account, so Answer can't run yet. Try again.";
