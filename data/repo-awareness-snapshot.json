@@ -2382,6 +2382,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-26-keep-unreviewed-interaction-warning-live.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/prompts/codex-cloud-design-status-semantics.md",
         "section": "prompts",
         "catalogued": true
@@ -3229,6 +3234,11 @@
       {
         "path": "docs/superpowers/specs/2026-08-20-care-plan-design.md",
         "section": "superpowers",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-26-openai-monthly-budget.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -4917,6 +4927,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-26-relayed-approvals-unconfirmed.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/audit/gate-consolidation-audit-2026-09-02.md",
         "section": "audit",
         "catalogued": true
@@ -5107,6 +5122,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-26-adopt-frozen-24-aug-catalogue.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/audit/claude-code-cloud-connection-acceptance-2026-08-17.md",
         "section": "audit",
         "catalogued": true
@@ -5143,6 +5163,11 @@
       },
       {
         "path": "docs/decisions/2026-09-25-tablet-cross-mode-search-is-intended.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-26-clinical-sign-off-sheets.md",
         "section": "decisions",
         "catalogued": true
       },
