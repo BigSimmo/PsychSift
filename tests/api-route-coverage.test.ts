@@ -145,6 +145,14 @@ describe("/api/local-project-id", () => {
           )
         ).status,
       ).toBe(404);
+      // Next fills X-Forwarded-For with the loopback socket address for a local caller.
+      expect(
+        (
+          await GET(
+            new Request("http://localhost:3100/api/local-project-id", { headers: { "x-forwarded-for": "::1" } }),
+          )
+        ).status,
+      ).toBe(200);
       // A local `next start` (boot smoke, Playwright, Lighthouse) still identifies itself.
       const local = await GET(new Request("http://localhost:3100/api/local-project-id"));
       expect(local.status).toBe(200);
