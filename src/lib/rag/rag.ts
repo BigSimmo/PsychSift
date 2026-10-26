@@ -140,6 +140,11 @@ import { contextPackAdmissionMatches } from "./rag-context-admission";
 import { withAdmissionDischargeSideEvidence } from "./rag-admission-discharge-side-evidence";
 import { withBestPracticePrescriptionEvidence } from "./rag-best-practice-prescription-evidence";
 import { chooseValidatedExtractiveShortCircuit, hasValidatedExtractiveCandidate } from "@/lib/rag/rag-extractive-first";
+import {
+  doseAttributedToOtherMedicationReason,
+  doseWithoutNamedMedicationReason,
+  extractiveFallbackRiskReason,
+} from "@/lib/rag/rag-extractive-risk-gate";
 import { buildComparisonMatrix, comparisonEvidenceGuide, selectSafeComparisonFallback } from "@/lib/rag/rag-comparison";
 export {
   classifyAnswerIntent,
@@ -2961,12 +2966,20 @@ async function answerQuestionWithScopeUncoalesced(
     const extractiveReviewCitations = answer.citations.length
       ? answer.citations
       : compactCitations(finalizedAnswer.sources, 5, "deterministic_support");
+    // A2R-01: a high-confidence quoted dose with no medicine named is shown for review.
+    const extractiveRiskReason = finalizedAnswer.grounded
+      ? (doseWithoutNamedMedicationReason(finalizedAnswer.answer ?? "", queryClass, args.query) ??
+        (queryClass === "medication_dose_risk"
+          ? doseAttributedToOtherMedicationReason(args.query, finalizedAnswer.answer ?? "")
+          : null))
+      : null;
     const extractiveNeedsReviewFallback =
-      !finalizedAnswer.grounded &&
+      (!finalizedAnswer.grounded || extractiveRiskReason !== null) &&
       extractiveReviewCitations.length > 0 &&
       !(finalizedAnswer.routingReason ?? answer.routingReason ?? "").includes("comparison_evidence_gap");
     if (extractiveNeedsReviewFallback) {
       const extractiveQualityReason =
+        extractiveRiskReason ??
         generatedAnswerQualityFailureReason(finalizedAnswer, args.query, queryClass) ??
         finalizedAnswer.routingReason?.match(/\bfinal_quality_gate:([^;]+)/)?.[1] ??
         "ungrounded_extractive_answer";
@@ -4054,7 +4067,16 @@ ${buildContextSourceBlock(contextResults, { query: answerFocusQuery, queryClass 
     const sourceBackedReviewReason = extractiveFallbackAnswer
       ? !extractiveFallbackAnswer.grounded || extractiveFallbackAnswer.confidence === "unsupported"
         ? "ungrounded_extractive_fallback"
-        : extractiveFallbackQualityReason
+        : (extractiveFallbackQualityReason ??
+          extractiveFallbackRiskReason({
+            query: args.query,
+            queryClass,
+            routeReason: route.reason,
+            answerText: [
+              extractiveFallbackAnswer.answer ?? "",
+              ...(extractiveFallbackAnswer.answerSections ?? []).map((section) => section.body),
+            ].join("\n"),
+          }))
       : null;
     const generationFallbackAnswer = comparisonFallbackAnswer
       ? {
