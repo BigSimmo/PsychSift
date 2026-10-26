@@ -33,9 +33,9 @@ describe("requireHealthProfessionalDeclaration", () => {
       ...(await importOriginal<typeof import("@/lib/env")>()),
       isLocalNoAuthMode: () => localNoAuth,
     }));
-    const module = await import("../src/lib/clinical-access");
-    module.resetHealthProfessionalDeclarationCache();
-    return module;
+    const clinicalAccess = await import("../src/lib/clinical-access");
+    clinicalAccess.resetHealthProfessionalDeclarationCache();
+    return clinicalAccess;
   }
 
   function client(result: { data: unknown; error: unknown } | Error) {
