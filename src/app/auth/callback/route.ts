@@ -62,14 +62,45 @@ function callerOrigin(request: Request) {
   }
 }
 
+/**
+ * A short code for a failed code exchange, in place of the auth server's own sentence, which is
+ * long, technical and would otherwise sit in the address bar and history. The two failures people
+ * actually meet get their own code so the page can say what to do (see `safeCallbackError`).
+ */
+function exchangeFailureCode(message: string | undefined): string {
+  const normalized = message?.toLowerCase() ?? "";
+  if (normalized.includes("code verifier")) return "link_other_browser";
+  if (normalized.includes("expired") || normalized.includes("flow state") || normalized.includes("already used")) {
+    return "link_expired";
+  }
+  return "exchange_failed";
+}
+
+const NEXT_PROBE_ORIGIN = "https://callback.invalid";
+
+/**
+ * Only same-origin paths are honoured, to avoid an open redirect. A plain "starts with one
+ * slash" test let `/\evil.example` through: browsers read a backslash as a slash, so it is the
+ * protocol-relative `//evil.example`. Backslashes and control characters are refused outright,
+ * and what remains is parsed against a placeholder origin, which must survive unchanged.
+ */
+function sameOriginNext(rawNext: string | null): string {
+  if (!rawNext || !rawNext.startsWith("/") || /[\\\u0000-\u001f\u007f]/.test(rawNext)) return "/";
+  try {
+    const target = new URL(rawNext, NEXT_PROBE_ORIGIN);
+    if (target.origin !== NEXT_PROBE_ORIGIN) return "/";
+    return `${target.pathname}${target.search}${target.hash}`;
+  } catch {
+    return "/";
+  }
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const origin = callerOrigin(request);
   const code = searchParams.get("code");
   const errorDescription = searchParams.get("error_description") ?? searchParams.get("error");
-  // Only honour same-origin relative redirects to avoid an open-redirect.
-  const rawNext = searchParams.get("next") ?? "/";
-  const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/";
+  const next = sameOriginNext(searchParams.get("next"));
 
   // Keep the validated `next` on failure so recovery (and other deep links) can
   // still render their retry UI instead of dumping the user on `/` with a hidden error.
@@ -112,7 +143,7 @@ export async function GET(request: Request) {
 
   const { error } = await supabase.auth.exchangeCodeForSession(code);
   if (error) {
-    return withAuthMutations(failure(error.message));
+    return withAuthMutations(failure(exchangeFailureCode(error.message)));
   }
   const response = NextResponse.redirect(`${origin}${next}`);
   // Mark recovery-bound sessions so /auth/reset-password can require more than

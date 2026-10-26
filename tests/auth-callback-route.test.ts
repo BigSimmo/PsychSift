@@ -161,7 +161,13 @@ describe("/auth/callback", () => {
     });
   });
 
-  it.each(["https://evil.example/steal", "//evil.example/steal"])("rejects unsafe redirect target %s", async (next) => {
+  it.each([
+    "https://evil.example/steal",
+    "//evil.example/steal",
+    "/\\evil.example/steal",
+    "/\\/evil.example/steal",
+    "/\t/evil.example/steal",
+  ])("rejects unsafe redirect target %s", async (next) => {
     const exchangeCodeForSession = vi.fn(async () => ({ error: null }));
     vi.doMock("@/lib/supabase/server", () => ({
       createSupabaseServerClient: vi.fn(async () => ({ auth: { exchangeCodeForSession } })),
@@ -240,12 +246,31 @@ describe("/auth/callback", () => {
 
     const response = await GET(callbackRequest("code=bad-code&next=%2Fdocuments"));
 
-    expect(response.headers.get("location")).toBe(
-      "https://clinical.example/documents?auth_error=Code%20verifier%20mismatch",
-    );
+    expect(response.headers.get("location")).toBe("https://clinical.example/documents?auth_error=link_other_browser");
     expect(response.cookies.get("sb-session")?.value).toBe("");
     expect(response.headers.get("cache-control")).toBe("private, no-store");
     expect(response.headers.get("pragma")).toBe("no-cache");
+  });
+
+  it.each([
+    [
+      "PKCE code verifier not found in storage. This can happen if the auth flow was initiated in a different browser or device",
+      "link_other_browser",
+    ],
+    ["invalid flow state, no valid flow state found", "link_expired"],
+    ["Email link is invalid or has expired", "link_expired"],
+    ["Database error granting user", "exchange_failed"],
+  ])("turns the exchange failure %s into the short code %s", async (message, code) => {
+    vi.doMock("@/lib/supabase/server", () => ({
+      createSupabaseServerClient: vi.fn(async () => ({
+        auth: { exchangeCodeForSession: vi.fn(async () => ({ error: { message } })) },
+      })),
+    }));
+    const { GET } = await import("../src/app/auth/callback/route");
+
+    const response = await GET(callbackRequest("code=x&next=%2Fdifferentials"));
+
+    expect(response.headers.get("location")).toBe(`https://clinical.example/differentials?auth_error=${code}`);
   });
 
   it("preserves a validated reset destination when exchange fails", async () => {
@@ -261,7 +286,7 @@ describe("/auth/callback", () => {
     const response = await GET(callbackRequest("code=stale&next=%2Fauth%2Freset-password"));
 
     expect(response.headers.get("location")).toBe(
-      "https://clinical.example/auth/reset-password?auth_error=otp_expired",
+      "https://clinical.example/auth/reset-password?auth_error=link_expired",
     );
   });
 
