@@ -297,7 +297,7 @@ function Milestones({ term, today, update }: { term: TermRecord; today: string; 
       <T5Section
         label="Term assessments"
         right={
-          <T5Link href={TERM_TRACKER_SOURCES.claSignIn} external label="Open Clinical Learning Australia">
+          <T5Link href={TERM_TRACKER_SOURCES.claSignIn} external label="Open CLA (Clinical Learning Australia)">
             Open CLA
           </T5Link>
         }
@@ -428,7 +428,7 @@ function Epas({
     <T5Section
       label={targets || summary.year > 0 ? "EPAs this year" : "EPA target"}
       right={
-        <T5Link onClick={() => setLogging((open) => !open)} label={logging ? "Stop logging EPAs" : "Log an EPA"}>
+        <T5Link onClick={() => setLogging((open) => !open)} label={logging ? "Done logging EPAs" : "Log one EPA"}>
           {logging ? "Done" : "Log one"}
         </T5Link>
       }

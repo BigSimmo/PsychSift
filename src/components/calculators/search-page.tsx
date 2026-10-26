@@ -157,7 +157,6 @@ function CalculatorTile({
       >
         <Icon className="size-icon-md" aria-hidden="true" />
       </span>
-
       <span className="min-w-0">
         <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <span className="text-base font-extrabold leading-6 text-[color:var(--text-heading)]">{calc.abbrev}</span>{" "}
@@ -190,7 +189,6 @@ function CalculatorTile({
           </span>
         ) : null}
       </span>
-
       <ArrowRight
         className="size-icon-md shrink-0 self-center text-[color:var(--decoration-soft)] transition group-hover:translate-x-0.5 group-hover:text-[color:var(--clinical-accent)] motion-reduce:transition-none motion-reduce:group-hover:translate-x-0"
         aria-hidden="true"

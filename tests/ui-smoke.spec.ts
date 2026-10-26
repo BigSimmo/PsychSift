@@ -5907,7 +5907,7 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(sectionSheet.getByRole("button", { name: /Indexed source text/ })).toBeVisible();
     const mobileDensityToggle = sectionSheet.getByTestId("document-view-density-toggle");
     await expect(mobileDensityToggle).toHaveAttribute("aria-pressed", "true");
-    await expect(mobileDensityToggle).toHaveAccessibleName("Show full document content");
+    await expect(mobileDensityToggle).toHaveAccessibleName(/^Condensed view\b/);
     await page.keyboard.press("Escape");
     await expect(sectionSheet).toHaveCount(0);
     await expect(page.getByRole("heading", { level: 1, name: "Synthetic lithium monitoring protocol" })).toBeVisible();

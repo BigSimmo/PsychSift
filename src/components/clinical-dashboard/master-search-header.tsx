@@ -1033,6 +1033,10 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
 
   function renderModeMenuOption(mode: (typeof visibleAppModeOptions)[number], index: number) {
     const active = mode.id === modeMenuRowFor(searchMode);
+    // The phone line is picker B's one-line hint. Work's desktop list shows
+    // the registry description, as #3351 drew it.
+    const description = usesPhoneSearchLayout ? modePickerHint(mode.id) : mode.description;
+    const showDescription = modeMenuSide === "work";
     return (
       <button
         key={mode.id}
@@ -1042,7 +1046,8 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
         type="button"
         role="menuitemradio"
         aria-checked={active}
-        aria-label={`${mode.label}. ${mode.description}`}
+        // Says the line the row shows, so voice control can say it (WCAG 2.5.3, A11Y-02).
+        aria-label={`${mode.label}. ${showDescription ? description : mode.description}`}
         tabIndex={active ? 0 : -1}
         data-sheet-autofocus={usesPhoneSearchLayout && index === modeMenuFocusIndex ? "true" : undefined}
         onFocus={() => prefetchModeSelection(mode.id)}
@@ -1056,11 +1061,9 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
         {renderModeMenuRowContent({
           icon: appModeIcons[mode.id],
           label: mode.label,
-          // The phone line is picker B's one-line hint. Work's desktop list shows
-          // the registry description, as #3351 drew it.
-          description: usesPhoneSearchLayout ? modePickerHint(mode.id) : mode.description,
+          description,
           active,
-          showDescription: modeMenuSide === "work",
+          showDescription,
           modeIconId: usesPhoneSearchLayout ? mode.id : undefined,
         })}
       </button>

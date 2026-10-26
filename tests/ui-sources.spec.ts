@@ -177,7 +177,9 @@ for (const colorScheme of ["light", "dark"] as const) {
       await page.keyboard.press("Tab");
       await expect(page.locator(":focus-visible")).toHaveCount(1);
       await expectNoHorizontalOverflow(page);
-      const axe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]).analyze();
+      const axe = await new AxeBuilder({ page })
+        .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
+        .analyze();
       await testInfo.attach(`sources-axe-${testId}`, {
         body: JSON.stringify(axe.violations, null, 2),
         contentType: "application/json",

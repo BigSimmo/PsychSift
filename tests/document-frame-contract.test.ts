@@ -56,7 +56,7 @@ describe("DocumentFrame contract", () => {
     expect(pdfOwnerSource).not.toContain("frameOwnsZoomChrome");
     expect(frameSource).toContain('"Enter fullscreen document view"');
     expect(frameSource).toContain('"Exit fullscreen document view"');
-    expect(frameSource).toContain('aria-label="Fit document to width"');
+    expect(frameSource).toContain('aria-label="Fit width of document"');
     expect(frameSource).not.toContain('"Fit page width and enter fullscreen"');
 
     // Rapid wheel/pinch functional updates must compose against a ref, not a

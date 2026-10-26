@@ -830,7 +830,6 @@ function DayCell({
       type="button"
       aria-pressed={selected}
       aria-current={isToday ? "date" : undefined}
-      aria-label={`${formatZonedLongDay(date, today)}: ${items.length ? `${items.length} ${items.length === 1 ? "item" : "items"}${late ? `, ${late} need${late === 1 ? "s" : ""} you` : ""}` : "nothing on"}`}
       onClick={onSelect}
       data-testid={`my-day-calendar-day-${date}`}
       className={cn(
@@ -840,8 +839,13 @@ function DayCell({
           "bg-[color:var(--work-wash)] forced-colors:outline forced-colors:outline-2 forced-colors:outline-[Highlight]",
       )}
     >
+      {/* Named by its content, so voice control can say what the cell shows at any width
+          (WCAG 2.5.3, A11Y-02): the spoken day and count first, then the day number, the
+          item lines a wider screen draws, and "+2". */}
+      <span className="sr-only">
+        {`${formatZonedLongDay(date, today)}: ${items.length ? `${items.length} ${items.length === 1 ? "item" : "items"}${late ? `, ${late} need${late === 1 ? "s" : ""} you` : ""}` : "nothing on"}. `}
+      </span>
       <span
-        aria-hidden="true"
         className={cn(
           "grid size-6.5 place-items-center rounded-full text-xs nums forced-colors:border sm:justify-self-start",
           isToday
@@ -854,7 +858,7 @@ function DayCell({
         )}
       >
         {Number(date.slice(8, 10))}
-      </span>
+      </span>{" "}
       {/* Phone: a coloured bar per item. Wider: the item's time and title in its area's colour. */}
       <span aria-hidden="true" className="flex flex-wrap justify-center gap-0.5 sm:hidden">
         {listed.map((item) => (
@@ -868,7 +872,7 @@ function DayCell({
           />
         ))}
       </span>
-      <span aria-hidden="true" className="hidden min-w-0 gap-0.5 text-left sm:grid">
+      <span className="hidden min-w-0 gap-0.5 text-left sm:grid">
         {listed.map((item) => (
           <span
             key={item.key}
@@ -881,14 +885,12 @@ function DayCell({
             )}
           >
             {item.time ? <span className="nums text-[color:var(--text-muted)]">{`${item.time} `}</span> : null}
-            {item.title}
+            {item.title}{" "}
           </span>
         ))}
-      </span>
+      </span>{" "}
       {more > 0 ? (
-        <span aria-hidden="true" className="text-3xs font-semibold text-[color:var(--text-muted)] nums sm:text-left">
-          {`+${more}`}
-        </span>
+        <span className="text-3xs font-semibold text-[color:var(--text-muted)] nums sm:text-left">{`+${more}`}</span>
       ) : null}
     </button>
   );

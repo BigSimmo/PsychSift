@@ -62,7 +62,7 @@ function CrossModeLinkCard({ link, Icon, query, onModeSearch }: CrossModeLinkCar
   const extraBadge = link.badges[0] ?? null;
 
   return (
-    <article
+    <div
       role="listitem"
       data-category-accent={APP_MODE_ACCENT[link.modeId]}
       className={cn(sourceCard, "relative flex min-h-12 min-w-0 items-center gap-2.5 px-2.5 py-1.5", "md:max-w-full")}
@@ -135,7 +135,7 @@ function CrossModeLinkCard({ link, Icon, query, onModeSearch }: CrossModeLinkCar
           <ArrowUpRight className="h-4 w-4 shrink-0" aria-hidden />
         </Link>
       </span>
-    </article>
+    </div>
   );
 }
 
@@ -145,7 +145,7 @@ function CrossModeLinkCard({ link, Icon, query, onModeSearch }: CrossModeLinkCar
 // space matters (e.g. the documents search page).
 function CrossModeLinkChip({ link, Icon, query, onModeSearch }: CrossModeLinkCardProps) {
   return (
-    <article
+    <div
       role="listitem"
       data-category-accent={APP_MODE_ACCENT[link.modeId]}
       className="flex shrink-0 items-stretch overflow-hidden rounded-lg border border-[color:var(--border-lux)] bg-[color:var(--surface-raised)] shadow-[var(--shadow-inset)] transition hover:border-[color:var(--cat-border)] hover:shadow-[var(--e1)]"
@@ -177,7 +177,7 @@ function CrossModeLinkChip({ link, Icon, query, onModeSearch }: CrossModeLinkCar
       >
         <Search className="h-3.5 w-3.5" aria-hidden />
       </button>
-    </article>
+    </div>
   );
 }
 

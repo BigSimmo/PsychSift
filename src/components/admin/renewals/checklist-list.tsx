@@ -274,14 +274,13 @@ export function ChecklistList({
                       type="button"
                       className={cn("work-row", adminStyles.disclosure)}
                       aria-expanded={open}
-                      aria-label={label}
-                      aria-describedby={subId}
                       onClick={() => toggle(group)}
                       data-testid={`${testId}-group-${group}-toggle`}
                     >
                       <WorkIconCircle icon={Icon} />
                       <span className="work-row__text">
-                        <span className="work-row__title">{label}</span>
+                        {/* Named by what it shows, so voice control can say it (WCAG 2.5.3, A11Y-02). */}
+                        <span className="work-row__title">{label}</span>{" "}
                         <span className="work-row__sub" id={subId}>
                           {groupSummary(groupRows, today)}
                         </span>
