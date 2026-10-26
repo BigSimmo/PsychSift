@@ -140,7 +140,11 @@ import { contextPackAdmissionMatches } from "./rag-context-admission";
 import { withAdmissionDischargeSideEvidence } from "./rag-admission-discharge-side-evidence";
 import { withBestPracticePrescriptionEvidence } from "./rag-best-practice-prescription-evidence";
 import { chooseValidatedExtractiveShortCircuit, hasValidatedExtractiveCandidate } from "@/lib/rag/rag-extractive-first";
-import { doseWithoutNamedMedicationReason, extractiveFallbackRiskReason } from "@/lib/rag/rag-extractive-risk-gate";
+import {
+  doseAttributedToOtherMedicationReason,
+  doseWithoutNamedMedicationReason,
+  extractiveFallbackRiskReason,
+} from "@/lib/rag/rag-extractive-risk-gate";
 import { buildComparisonMatrix, comparisonEvidenceGuide, selectSafeComparisonFallback } from "@/lib/rag/rag-comparison";
 export {
   classifyAnswerIntent,
@@ -2964,7 +2968,10 @@ async function answerQuestionWithScopeUncoalesced(
       : compactCitations(finalizedAnswer.sources, 5, "deterministic_support");
     // A2R-01: a high-confidence quoted dose with no medicine named is shown for review.
     const extractiveRiskReason = finalizedAnswer.grounded
-      ? doseWithoutNamedMedicationReason(finalizedAnswer.answer ?? "", queryClass, args.query)
+      ? (doseWithoutNamedMedicationReason(finalizedAnswer.answer ?? "", queryClass, args.query) ??
+        (queryClass === "medication_dose_risk"
+          ? doseAttributedToOtherMedicationReason(args.query, finalizedAnswer.answer ?? "")
+          : null))
       : null;
     const extractiveNeedsReviewFallback =
       (!finalizedAnswer.grounded || extractiveRiskReason !== null) &&

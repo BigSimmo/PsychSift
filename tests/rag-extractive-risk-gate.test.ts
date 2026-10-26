@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  doseAttributedToOtherMedicationReason,
   doseWithoutNamedMedicationReason,
   extractiveFallbackRiskReason,
   querySubjectNotInAnswerReason,
@@ -114,5 +115,44 @@ describe("querySubjectNotInAnswerReason", () => {
       "query_subject_not_in_answer",
     );
     expect(querySubjectNotInAnswerReason("anaesthetic for ect in pregnancy", "For ECT, propofol is used.")).toBeNull();
+  });
+});
+
+describe("A2R-01 follow-ups (owner yes, 26 Oct 2026)", () => {
+  it("does not let a shared topic word excuse an unnamed dose", () => {
+    expect(
+      doseWithoutNamedMedicationReason(
+        "For agitation, give 10 mg IM.",
+        "medication_dose_risk",
+        "What IM doses are recommended for agitation?",
+      ),
+    ).toBe("dose_without_named_medication");
+  });
+
+  it("flags a dose that belongs to a different medicine from the one asked about", () => {
+    expect(
+      doseAttributedToOtherMedicationReason(
+        "What is the lithium starting dose?",
+        "If taking lithium, give diazepam 10 mg.",
+      ),
+    ).toBe("dose_attributed_to_other_medication");
+  });
+
+  it("keeps a dose for the asked-for medicine, and interaction answers that also give it", () => {
+    expect(
+      doseAttributedToOtherMedicationReason("What is the lithium starting dose?", "Start lithium 250 mg at night."),
+    ).toBeNull();
+    expect(
+      doseAttributedToOtherMedicationReason(
+        "Clozapine dose with diazepam?",
+        "Clozapine 12.5 mg on day 1. Diazepam 5 mg may be added with caution.",
+      ),
+    ).toBeNull();
+    expect(
+      doseAttributedToOtherMedicationReason(
+        "Does ibuprofen affect lithium?",
+        "NSAIDs can raise lithium levels; monitor levels.",
+      ),
+    ).toBeNull();
   });
 });

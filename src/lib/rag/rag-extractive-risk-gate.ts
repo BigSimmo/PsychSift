@@ -1,4 +1,4 @@
-import { medicationSafetyEntitiesInText } from "@/lib/medication-entities";
+import { medicationEntityMatchesInText, medicationSafetyEntitiesInText } from "@/lib/medication-entities";
 import type { RagQueryClass } from "@/lib/types";
 
 /**
@@ -19,43 +19,75 @@ const ignoredQueryAcronyms = new Set(["IM", "IV", "PO", "SC", "UK", "US", "AU", 
 // Clinical acronyms people often type in lower case.
 const lowercaseQueryAcronyms = /\b(?:ect|cto|ciwa|nms|ssri|snri|maoi|tca|rtms)\b/g;
 
-const genericDoseQueryWords = new Set([
-  "about",
-  "adult",
-  "adults",
-  "advised",
-  "children",
-  "commence",
-  "doses",
-  "dosing",
-  "given",
-  "maximum",
-  "medication",
-  "medications",
+// Endings shared by most medicine names, so an unrecognised name in the question ("zolinapine")
+// can still count as the asked-for medicine while a topic word ("agitation") cannot.
+const medicineNameShape =
+  /^[a-z]{5,}(?:apine|pine|idone|done|azepam|azolam|pam|lam|oxetine|oxamine|aline|tyline|pramine|prazole|olol|pril|sartan|mab|nib|zine|xine|amide|mide|thium|proate|amate|igine|ine|one|ol|ate)$/;
+const nonMedicineWords = new Set([
+  "adolescent",
+  "alcohol",
+  "alone",
+  "baseline",
+  "cholesterol",
+  "combine",
+  "determine",
+  "estimate",
+  "examine",
+  "immediate",
+  "intermediate",
   "medicine",
-  "medicines",
-  "recommended",
-  "should",
-  "starting",
-  "there",
-  "these",
-  "which",
+  "moderate",
+  "online",
+  "routine",
+  "someone",
+  "urine",
 ]);
 
+/** Words in the question that look like a medicine name, recognised or not. */
+function queryMedicineNameWords(query: string) {
+  return (query.toLowerCase().match(/[a-z]{5,}/g) ?? []).filter(
+    (word) => medicineNameShape.test(word) && !nonMedicineWords.has(word),
+  );
+}
+
 /**
- * A dose-risk quoted answer that gives a dose figure, names no recognised medicine and shares no
- * subject word with the question (child agitation doses quoted for "IM doses for agitation"). An
- * answer that repeats the asked-for name is kept, because the medicine list is not complete.
+ * A dose-risk quoted answer that gives a dose figure and names no recognised medicine, unless it
+ * repeats a medicine-like name from the question (the medicine list is not complete). A shared
+ * topic word ("For agitation, give 10 mg IM") does not count, because the medicine is unknown.
  */
 export function doseWithoutNamedMedicationReason(answerText: string, queryClass: RagQueryClass, query: string) {
   if (queryClass !== "medication_dose_risk") return null;
   if (!doseFigurePattern.test(answerText)) return null;
   if (medicationSafetyEntitiesInText(answerText).length) return null;
   const answerLower = answerText.toLowerCase();
-  const subjectWords = (query.toLowerCase().match(/[a-z]{5,}/g) ?? []).filter(
-    (word) => !genericDoseQueryWords.has(word),
+  return queryMedicineNameWords(query).some((word) => answerLower.includes(word))
+    ? null
+    : "dose_without_named_medication";
+}
+
+/**
+ * Every quoted dose figure belongs to a medicine the question did not ask about: each figure is
+ * read against the nearest medicine named before it in the same sentence ("If taking lithium,
+ * give diazepam 10 mg" gives the dose to diazepam). Figures with no medicine before them are
+ * ignored, and one figure for the asked-for medicine is enough to keep the answer.
+ */
+export function doseAttributedToOtherMedicationReason(query: string, answerText: string) {
+  const queryMedications = new Set(medicationSafetyEntitiesInText(query));
+  if (!queryMedications.size) return null;
+  const safeAnswerMedications = new Set(medicationSafetyEntitiesInText(answerText));
+  const mentions = medicationEntityMatchesInText(answerText).filter((match) =>
+    safeAnswerMedications.has(match.canonical),
   );
-  return subjectWords.some((word) => answerLower.includes(word)) ? null : "dose_without_named_medication";
+  const owners: string[] = [];
+  for (const dose of answerText.matchAll(new RegExp(doseFigurePattern.source, "gi"))) {
+    const owner = mentions
+      .filter((mention) => mention.end <= dose.index)
+      .filter((mention) => !/[.!?;\n]/.test(answerText.slice(mention.end, dose.index)))
+      .at(-1);
+    if (owner) owners.push(owner.canonical);
+  }
+  if (!owners.length || owners.some((owner) => queryMedications.has(owner))) return null;
+  return "dose_attributed_to_other_medication";
 }
 
 /**
@@ -67,7 +99,8 @@ export function medicationSubjectMismatchReason(query: string, answerText: strin
   const queryMedications = medicationSafetyEntitiesInText(query);
   const answerMedications = new Set(medicationSafetyEntitiesInText(answerText));
   if (queryMedications.length) {
-    return queryMedications.some((entity) => answerMedications.has(entity)) ? null : "medication_subject_not_in_answer";
+    if (!queryMedications.some((entity) => answerMedications.has(entity))) return "medication_subject_not_in_answer";
+    return doseAttributedToOtherMedicationReason(query, answerText);
   }
   return answerMedications.size ? "answer_names_unasked_medication" : null;
 }
