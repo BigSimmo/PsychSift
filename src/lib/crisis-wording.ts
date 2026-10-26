@@ -27,8 +27,23 @@ const crisisWordingPattern =
 // the Services search pins 000 first (D7), and the Answer crisis card shows and adds the Poisons
 // Information Centre (D1, D3). A one-digit count ("took 2 tablets")
 // and dosing wording ("take 10 x 5 mg") stay quiet.
-export const SWALLOWED_AMOUNT =
-  /\b(?:took|taken|swallow(?:ed|ing)?|ingest(?:ed|ing)?)\s+(?:a\s+handful\s+of|(?:a|the|my|his|her|their)\s+(?:whole|entire)\s+(?:bottle|packet|pack|box|blister\s+pack|strip|script|prescription|supply)|(?:a|the)\s+(?:bottle|packet|pack|box|blister\s+pack|strip)\s+of|(?:all|a\s+lot)\s+of\s+(?:my|his|her|their|the)\s+(?:pills?|tablets?|meds?|medications?)|all\s+(?:my|his|her|their)\s+(?:pills?|tablets?|meds?|medications?)|\d{2,}\s*x\s*\d|\d{2,}\s+(?:\w+\s+){0,2}?(?:pills?|tablets?|tabs|capsules?|caps|panadol|paracetamol)\b)/i;
+// Containers and handfuls count only when what was taken is a medicine, so "swallowed a bottle of
+// water" and "took a handful of nuts" stay quiet.
+const SWALLOWED_MEDICINE = String.raw`(?:\w+\s+){0,2}?(?:pills?|tablets?|tabs|capsules?|caps|meds?|medications?|medicines?|panadol|paracetamol|nurofen|ibuprofen|aspirin|codeine|lithium|insulin|antidepressants?|antipsychotics?|[a-z]{3,}(?:apine|idone|azepam|azolam|oxetine|pramine|triptyline|alopram|faxine|amol|ofen))\b`;
+export const SWALLOWED_AMOUNT = new RegExp(
+  String.raw`\b(?:took|taken|swallow(?:ed|ing)?|ingest(?:ed|ing)?)\s+(?:` +
+    [
+      String.raw`a\s+handful\s+of\s+${SWALLOWED_MEDICINE}`,
+      String.raw`(?:a|the|my|his|her|their)\s+(?:whole|entire)\s+(?:blister\s+pack|strip|script|prescription|supply)\b`,
+      String.raw`(?:a|the|my|his|her|their)\s+(?:whole\s+|entire\s+)?(?:bottle|packet|pack|box|blister\s+pack|strip)\s+of\s+${SWALLOWED_MEDICINE}`,
+      String.raw`(?:all|a\s+lot)\s+of\s+(?:my|his|her|their|the)\s+(?:pills?|tablets?|meds?|medications?)`,
+      String.raw`all\s+(?:my|his|her|their)\s+(?:pills?|tablets?|meds?|medications?)`,
+      String.raw`\d{2,}\s*x\s*\d`,
+      String.raw`\d{2,}\s+(?:\w+\s+){0,2}?(?:pills?|tablets?|tabs|capsules?|caps|panadol|paracetamol)\b`,
+    ].join("|") +
+    String.raw`)`,
+  "i",
+);
 
 // Owner decision 2026-10-26 (D1, "Go ahead with all recommendations"): further suicidal intent and
 // method wording the 26 Oct test phrasings missed, each tested against ordinary clinical text that

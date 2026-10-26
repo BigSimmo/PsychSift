@@ -292,6 +292,24 @@ describe("service urgent routing — owner decisions of 26 Oct 2026", () => {
     }
   });
 
+  it("pins 000 ahead of regional routes for a swallowed amount or immediate danger", () => {
+    for (const query of ["took 20 tablets and wants to die in Broome", "actively suicidal in Kununurra 10am"]) {
+      expect(detectServiceUrgentIntents(query)[0], query).toBe("emergency");
+    }
+  });
+
+  it("does not read a school named without a student as an age", () => {
+    expect(detectServiceUrgentIntents("high school teacher suicidal")).toEqual(["emergency", "adult_metro_crisis"]);
+    expect(hasUnder18Wording("primary school counsellor")).toBe(false);
+  });
+
+  it.each(["swallowed a bottle of water", "took a handful of nuts", "took a box of chocolates"])(
+    "pins nothing when %j names no medicine",
+    (query) => {
+      expect(detectServiceUrgentIntents(query)).toEqual([]);
+    },
+  );
+
   it("keeps regional routing first for an under-18 crisis", () => {
     expect(detectServiceUrgentIntents("teen suicidal tonight in Broome")).toEqual([
       "regional_after_hours",

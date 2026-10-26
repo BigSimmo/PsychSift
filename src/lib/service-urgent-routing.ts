@@ -34,7 +34,7 @@ const MEDICAL_EMERGENCY =
 // "age 12", "15 yo boy", "14 girl", "year 10 student" and "high school student"; "aged 75",
 // "aged 15 mg" and "aged care" stay adult.
 const CHILD =
-  /(?:\b(?:child(?:ren)?|kids?|teen(?:ager)?s?|adolescents?|minors?|under[- ]?18|(?:[0-9]|1[0-7])\s*[- ]?\s*(?:year|yr)s?[- ]?old|aged?\s+(?:[0-9]|1[0-7])(?!\s*(?:mg|kg|cm|m|%|years?\s+ago|weeks?|months?))|(?:[5-9]|1[0-7])\s*(?:yo|y\/o)?\s*(?:boy|girl|son|daughter)|year\s+(?:[1-9]|1[0-2])\s+(?:student|pupil|boy|girl)|(?:primary|high)\s+school(?:er|\s+(?:student|kid|boy|girl))?s?)\b|\b(?:[0-9]|1[0-7])\s*[- ]?\s*(?:y\s*\/\s*o|y\.?\s*o\.?)(?![a-z0-9])|<\s*18\b)/i;
+  /(?:\b(?:child(?:ren)?|kids?|teen(?:ager)?s?|adolescents?|minors?|under[- ]?18|(?:[0-9]|1[0-7])\s*[- ]?\s*(?:year|yr)s?[- ]?old|aged?\s+(?:[0-9]|1[0-7])(?!\s*(?:mg|kg|cm|m|%|years?\s+ago|weeks?|months?))|(?:[5-9]|1[0-7])\s*(?:yo|y\/o)?\s*(?:boy|girl|son|daughter)|year\s+(?:[1-9]|1[0-2])\s+(?:student|pupil|boy|girl)|(?:primary|high)\s+school(?:er|\s+(?:student|kid|boy|girl))s?)\b|\b(?:[0-9]|1[0-7])\s*[- ]?\s*(?:y\s*\/\s*o|y\.?\s*o\.?)(?![a-z0-9])|<\s*18\b)/i;
 // Owner decision 15 (Josh, 2026-09-25): plain youth wording does not say whether the person is
 // under or over 18, so a youth crisis pins both CAMHS Crisis Connect and the adult MHERL line,
 // CAMHS first. Explicit under-18 wording (CHILD) in the same query settles the age: no MHERL.
@@ -207,8 +207,9 @@ export function detectServiceUrgentIntents(query: string): ServiceUrgentIntent[]
   const isAfterHours = queryIndicatesAfterHours(clean);
   const isDaytime = detectClockTimeUrgency(clean) === "daytime";
 
-  // A medical emergency pins 000 ahead of every other route, regional ones included.
-  if (medicalEmergency) intents.push("emergency");
+  // A medical emergency or immediate danger (including a swallowed amount) pins 000 ahead of every
+  // other route, regional ones included.
+  if (medicalEmergency || immediateDanger) intents.push("emergency");
 
   // Regional routing:
   // After-hours pins Rurallink first while retaining emergency (000) below.

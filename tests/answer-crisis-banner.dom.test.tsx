@@ -78,6 +78,7 @@ describe("hasCrisisWording", () => {
     "swallowed a whole packet of paracetamol",
     "took my whole blister pack",
     "my friend swallowed a bottle of pills",
+    "took a packet of mirtazapine",
     "pt ingested 20 x 25mg quetiapine",
     "she took all her tablets",
   ])("matches %j", (query) => {
@@ -131,6 +132,9 @@ describe("hasCrisisWording", () => {
     "gas exchange in COPD",
     "the car into the car park",
     "kms driven",
+    "swallowed a bottle of water",
+    "took a handful of nuts",
+    "took a box of chocolates",
     "best coffee machine",
     "",
   ])("does not match %j", (query) => {
