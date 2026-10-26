@@ -3193,11 +3193,16 @@ html[data-motion="reduced"] .shared-compare-tray-layer[data-scroll-hidden="true"
    because its override also changes other properties. A single mobile-scoped
    rule leaves nothing for the compiler to merge away. */
 @media (max-width: 639px) {
-  /* Phone baseline: a full-width opaque header. Controls still respect the
-     side safe areas, but no blur or tint extends below the actual bar. */
+  /* Phone baseline: a full-width opaque header. It wears the page's own
+     colour. Controls still respect the side safe areas, but no blur or tint
+     extends below the actual bar. `--background`, not `--surface`: the near-white
+     surface drew a grey band with a hard lower edge against the white page,
+     which read as a blur behind the controls (owner report, 26 Oct 2026).
+     Opaque, so scrolled content still disappears cleanly under the bar.
+     Banded and work-framed bars keep their own tint (more specific rules). */
   .edge-glass-header,
   .universal-header {
-    background: var(--surface);
+    background: var(--background);
     backdrop-filter: none;
   }
 
