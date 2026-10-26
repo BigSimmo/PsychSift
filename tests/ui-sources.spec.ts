@@ -139,13 +139,27 @@ test("catalogue Clear search stays on the catalogue and keeps the filters", asyn
 });
 
 test.describe("catalogue navigation before hydration", () => {
-  test.use({ javaScriptEnabled: false, viewport: { width: 390, height: 844 } });
+  test.use({ viewport: { width: 390, height: 844 } });
 
-  test("catalogue Clear search works without JavaScript and resets only query and page", async ({ page }) => {
+  test("catalogue Clear search works before client scripts load and resets only query and page", async ({ page }) => {
+    // Keep inline streaming scripts enabled so Next can reveal the server-rendered
+    // content, but prevent downloaded client code from hydrating its controls.
+    let blockedClientScripts = 0;
+    await page.route("**/_next/static/chunks/**", async (route) => {
+      if (route.request().resourceType() === "script") {
+        blockedClientScripts += 1;
+        await route.abort("blockedbyclient");
+        return;
+      }
+      await route.fallback();
+    });
     await page.goto("/sources/search?usedBy=dictionary&q=zzzzznomatch&page=2", {
       waitUntil: "domcontentloaded",
     });
-    await page.getByTestId("search-results-empty-clear-search").click();
+    const clearSearch = page.getByTestId("search-results-empty-clear-search");
+    await expect(clearSearch).toHaveAttribute("href", "/sources/search?usedBy=dictionary");
+    expect(blockedClientScripts).toBeGreaterThan(0);
+    await clearSearch.click();
 
     await expect(page).toHaveURL(/\/sources\/search\?usedBy=dictionary$/);
     await expect(page.getByRole("button", { name: "Remove Used in: Dictionary filter" })).toBeVisible();
