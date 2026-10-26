@@ -3,7 +3,9 @@
 import { isPdfDocument } from "@/lib/pdf-documents";
 import { useSubmittedModeSearch } from "@/components/clinical-dashboard/use-submitted-mode-search";
 import { useSettingsState } from "./clinical-dashboard/SettingsStateProvider";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
+import { useAnswerSearchParams, usePrivateAnswerRouter } from "@/components/clinical-dashboard/use-private-answer-url";
+import { resolveAnswerHandoffParams } from "@/lib/answer-question-handoff";
 import { Clock3, ExternalLink, FolderOpen, Activity } from "lucide-react";
 import {
   type CSSProperties,
@@ -235,8 +237,8 @@ function ClinicalDashboardContent({
   autoRunSearch = false,
   clinicalAskAvailableModeIds = [],
 }: ClinicalDashboardProps = {}) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const router = usePrivateAnswerRouter();
+  const searchParams = useAnswerSearchParams();
   const pathname = usePathname();
   const [lastAppMode, setLastAppMode] = useLastAppMode();
   const [initialSearchNavigationContext] = useState(() => readSearchNavigationContext(searchParams));
@@ -1020,7 +1022,7 @@ function ClinicalDashboardContent({
 
   useEffect(() => {
     if (urlSearchBootstrappedRef.current) return;
-    const params = new URLSearchParams(window.location.search);
+    const params = resolveAnswerHandoffParams(new URLSearchParams(window.location.search));
     const mode = params.get("mode");
     const searchText = params.get("q")?.trim();
     const shouldFocusComposer = params.get("focus") === "1";
@@ -1049,7 +1051,7 @@ function ClinicalDashboardContent({
   useEffect(() => {
     if (urlDocumentSearchBootstrappedRef.current) return;
     if (authStatus === "loading") return;
-    const params = new URLSearchParams(window.location.search);
+    const params = resolveAnswerHandoffParams(new URLSearchParams(window.location.search));
     const mode = params.get("mode");
     const searchText = params.get("q")?.trim();
     if (!searchText || !isAppModeId(mode) || !isAppModeVisible(mode)) return;
@@ -2235,13 +2237,15 @@ function ClinicalDashboardContent({
                         question={loading ? (answerLifecycle.query ?? latestAnswerQuery) : null}
                       />
                     ) : null
-                  ) : loading && answerProgress ? (
+                  ) : loading && answerProgress && activeModeResultKind !== "documents" ? (
+                    // Document searches skip this line: their results area shows its own
+                    // "Finding matching documents" placeholder, and this line vanishing
+                    // as results landed moved them up by its height (performance audit M2).
                     <SearchProgressBanner message={answerProgress} onStop={stopSearch} />
                   ) : null)}
 
                 {showUniversalAlsoMatches &&
                 (activeModeResultKind === "tools" ||
-                  activeModeResultKind === "documents" ||
                   activeModeResultKind === "services" ||
                   activeModeResultKind === "forms") ? (
                   <UniversalSearchAlsoMatches modeId={searchMode} query={universalAlsoMatchesQuery} />
@@ -2489,7 +2493,14 @@ function ClinicalDashboardContent({
                     near-identical panels under one answer is what the owner
                     photographed on 2026-08-26. The mode-level view is still
                     reachable from mode navigation and still renders on the
-                    tools, documents, services and forms result kinds above. */}
+                    tools, documents, services and forms result kinds. */}
+
+                {/* Documents draw it under the results, not above: the strip arrives after the
+                    results and, above them, pushed every result down by its height on a phone
+                    (performance audit M2, CLS 0.129 on document results). */}
+                {showUniversalAlsoMatches && activeModeResultKind === "documents" ? (
+                  <UniversalSearchAlsoMatches modeId={searchMode} query={universalAlsoMatchesQuery} />
+                ) : null}
               </section>
 
               {showSystemNotice && answer ? (

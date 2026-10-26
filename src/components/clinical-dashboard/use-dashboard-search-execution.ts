@@ -65,6 +65,7 @@ import { errorCopy } from "@/lib/ui-copy";
 // A question is never sent unchecked: when the check cannot load (a dropped connection),
 // Ask stops with this and the next Ask tries the download again.
 import { patientCheckUnavailableMessage } from "@/lib/patient-check-unavailable-copy";
+import { answerHandoffParam, privateAnswerHref, resolveAnswerHandoffParams } from "@/lib/answer-question-handoff";
 import type {
   ClinicalQueryMode,
   DocumentMatch,
@@ -87,11 +88,13 @@ const maxClientRetryWaitMs = 10_000;
  *  different, earlier question belongs to the result still on screen. */
 function clearRefusedQueryFromAddress(refused: string) {
   const url = new URL(window.location.href);
-  // The dashboard runs a deep link from `q`, or from its older alias `query`.
-  const held = (url.searchParams.get("q") ?? url.searchParams.get("query"))?.trim();
+  // The dashboard runs a deep link from `q`, its older alias `query`, or an Answer `ask` id.
+  const params = resolveAnswerHandoffParams(url.searchParams);
+  const held = (params.get("q") ?? params.get("query"))?.trim();
   if (held !== refused) return;
   url.searchParams.delete("q");
   url.searchParams.delete("query");
+  url.searchParams.delete(answerHandoffParam);
   url.searchParams.delete("run");
   const rest = url.searchParams.toString();
   window.history.replaceState(window.history.state, "", `${url.pathname}${rest ? `?${rest}` : ""}${url.hash}`);
@@ -802,13 +805,15 @@ export function useDashboardSearchExecution(deps: DashboardSearchExecutionDeps) 
           window.history.replaceState(
             null,
             "",
-            appModeHomeHref(targetMode, {
-              query: trimmedQuery,
-              run: true,
-              queryMode: queryModeOverride,
-              scopeFilters: filtersOverride,
-              scopeRef: privateScopeRef,
-            }),
+            privateAnswerHref(
+              appModeHomeHref(targetMode, {
+                query: trimmedQuery,
+                run: true,
+                queryMode: queryModeOverride,
+                scopeFilters: filtersOverride,
+                scopeRef: privateScopeRef,
+              }),
+            ),
           );
           if (isAnswerFollowUp) {
             window.requestAnimationFrame(() => {

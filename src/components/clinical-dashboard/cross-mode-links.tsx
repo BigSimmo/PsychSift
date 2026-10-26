@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePrivateAnswerRouter } from "@/components/clinical-dashboard/use-private-answer-url";
 import { useEffect, useId, useMemo, useState } from "react";
 import { ArrowUpRight, ChevronDown, Layers, Search, type LucideIcon } from "lucide-react";
 
@@ -210,7 +210,7 @@ export function CrossModeLinksSection({
    */
   universalMode?: AppModeId;
 }) {
-  const router = useRouter();
+  const router = usePrivateAnswerRouter();
   const services = useRegistryRecords("service", { enabled, view: "search" });
   const forms = useRegistryRecords("form", { enabled, view: "search" });
   // fields=index keeps this to the ~30 KB identity slice of the catalog.
