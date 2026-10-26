@@ -171,7 +171,7 @@
     "src/lib/rag/rag-claim-support.ts": "a945a3aa1166590010404fbae71ac7a3cc1a8ed4036b68164667adea84e21b47",
     "src/lib/rag/rag-source-block.ts": "8d08e9d168fdd3e258f4b56e22db2b07541e62034a86f7ad90c5a58a8cdd38af",
     "src/lib/service-ranker.ts": "bbdbe3629520a22104194fc727530c05614dfba5528d9b9d8d5743acbfa9ea44",
-    "src/lib/service-urgent-routing.ts": "1ee89792b0f941dc3fc94723ee08616f9afa12399981e47dd9c0de31efb80b30",
+    "src/lib/service-urgent-routing.ts": "de8a6597e9c1c275c3ae14145a475146455f3f40f99796ec144a70d8f7a89db5",
     "src/lib/source-authority-registry.ts": "938bbbb1d26bdb88acbb9cc15f43fc6d809a13de49e6a47d745c992aaba3f813",
     "src/lib/source-governance.ts": "edec0e4bc7dc115847e0fdd2802a88cc340a8676b2e8288ee427563ce1bc1c68",
     "src/lib/source-text-sanitizer.ts": "cb6c869b520a8be03d40bae1206a87b6d53318573baeaec664b35c353fa1bd80",
