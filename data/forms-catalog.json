@@ -531,7 +531,7 @@
       "maker": "Psychiatrist making the s61(1)(c) order.",
       "involved": "Confirm patient, maker, receiving service, support contacts and required notifications from the form.",
       "threshold": "Use only following the applicable s61 examination outcome.",
-      "clock": "Movement detention: up to 24-hour blocks, cumulative maximum 72 hours, measured from when this Form 3D (s61(1)(c) order) was made. Immediate reassessment before each continuation. Post-reception examination: apply the separate statutory examination detention clock; do not merge it with movement time, measured from reception at authorised hospital.",
+      "clock": "Movement detention: up to 24-hour blocks, continuous maximum 72 hours, measured from when this Form 3D (s61(1)(c) order) was made. Immediate reassessment before each continuation. Post-reception examination: apply the separate statutory examination detention clock; do not merge it with movement time, measured from reception at authorised hospital.",
       "destination": "Confirm destination/place fields on the approved form.",
       "authorises": "Authority is limited to what the approved form and Act section state.",
       "doesNotAuthorise": "Does not replace linked forms, consent, notification or reporting duties unless the source says so.",
@@ -588,9 +588,9 @@
       ],
       "priorityFacts": {
         "clock": {
-          "title": "Movement detention: up to 24-hour blocks, cumulative maximum 72 hours",
+          "title": "Movement detention: up to 24-hour blocks, continuous maximum 72 hours",
           "detail": "from when this Form 3D (s61(1)(c) order) was made · 1 further clock",
-          "body": "Movement detention: up to 24-hour blocks, cumulative maximum 72 hours, measured from when this Form 3D (s61(1)(c) order) was made. Immediate reassessment before each continuation. Post-reception examination: apply the separate statutory examination detention clock; do not merge it with movement time, measured from reception at authorised hospital."
+          "body": "Movement detention: up to 24-hour blocks, continuous maximum 72 hours, measured from when this Form 3D (s61(1)(c) order) was made. Immediate reassessment before each continuation. Post-reception examination: apply the separate statutory examination detention clock; do not merge it with movement time, measured from reception at authorised hospital."
         }
       }
     },
