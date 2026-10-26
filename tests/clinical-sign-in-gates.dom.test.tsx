@@ -46,6 +46,20 @@ describe("clinicalToolAccessForStatus", () => {
     expect(clinicalToolAccessForStatus(null)).toBe("allowed");
   });
 
+  it("fails closed in a production build with no Supabase config unless it is a demo deploy (N-03)", () => {
+    const previous = process.env.NEXT_PUBLIC_DEMO_MODE;
+    try {
+      delete process.env.NEXT_PUBLIC_DEMO_MODE;
+      expect(clinicalToolAccessForStatus("unconfigured", "production")).toBe("sign-in-required");
+      expect(clinicalToolAccessForStatus("authenticated", "production")).toBe("allowed");
+      process.env.NEXT_PUBLIC_DEMO_MODE = "true";
+      expect(clinicalToolAccessForStatus("unconfigured", "production")).toBe("allowed");
+    } finally {
+      if (previous === undefined) delete process.env.NEXT_PUBLIC_DEMO_MODE;
+      else process.env.NEXT_PUBLIC_DEMO_MODE = previous;
+    }
+  });
+
   it("waits while the session loads and asks everyone else to sign in", () => {
     expect(clinicalToolAccessForStatus("loading")).toBe("checking");
     expect(clinicalToolAccessForStatus("signed_out")).toBe("sign-in-required");

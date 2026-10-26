@@ -130,6 +130,13 @@ const envSchema = z
     SENTRY_AUTH_TOKEN: z.string().optional(),
     OPENAI_API_KEY: z.string().optional(),
     OPENAI_TRANSCRIPTION_MODEL: z.string().default("gpt-4o-mini-transcribe"),
+    // R-05 (26 Oct 2026): "true" limits the original files of documents the caller does not own
+    // (the shared third-party corpus) to administrators, until each source has a licence entry.
+    // Off by default; turning it on is the owner's call (question Q5). Cited excerpts stay open.
+    THIRD_PARTY_ORIGINALS_ADMIN_ONLY: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((value) => value === "true"),
     CLINICAL_ASK_ENABLED: z
       .enum(["true", "false"])
       .default("false")
