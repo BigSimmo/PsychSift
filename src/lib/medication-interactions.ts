@@ -193,7 +193,10 @@ export const HIGH_RISK_INTERACTION_MEDICINES = [
 export type HighRiskInteractionMedicineId = (typeof HIGH_RISK_INTERACTION_MEDICINES)[number]["id"];
 
 function normaliseMedicationWords(value: string): string {
-  return ` ${value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()} `;
+  return ` ${value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()} `;
 }
 
 /** Which high-risk group a medication belongs to, matched on its slug and display name. */

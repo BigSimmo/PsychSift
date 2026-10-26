@@ -12,9 +12,8 @@ vi.mock("../data/medication-interaction-index.json", async (importOriginal) => {
   return { default: index };
 });
 
-const { composeMedicationVerdict, evaluateMedicationInteractions, isInteractionCoverageReviewed } = await import(
-  "@/lib/medication-interactions"
-);
+const { composeMedicationVerdict, evaluateMedicationInteractions, isInteractionCoverageReviewed } =
+  await import("@/lib/medication-interactions");
 
 function tone(viewed: string, entered: string) {
   const result = evaluateMedicationInteractions(viewed, [entered]);
