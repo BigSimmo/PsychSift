@@ -173,6 +173,7 @@ export const TERMS_PROMPT_POINTS = [
 export const TERMS_PROMPT_ACCEPT_LABEL = "I'm a health professional and I accept the Terms";
 export const TERMS_PROMPT_LATER_LABEL = "Not now";
 export const TERMS_PROMPT_LATER_NOTE = "If you choose Not now, we will ask again next time you open PsychSift.";
+// The owner approved this save error, the declaration card below and the privacy sign-in note on 26 Oct 2026.
 export const TERMS_PROMPT_SAVE_ERROR =
   "Your acceptance could not be saved to your account, so we will ask again next time you open PsychSift.";
 /** Shown when the Terms step at the first Ask cannot save to the account; Answer stays unsent. */
