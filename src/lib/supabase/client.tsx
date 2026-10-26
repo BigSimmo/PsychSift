@@ -4,6 +4,7 @@ import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { clearAccountScopedBrowserStorage } from "@/lib/account-scoped-browser-state";
 import { clearAdminPins } from "@/lib/admin/pin-storage-keys";
+import { isChunkLoadError, reloadOnceForChunkLoadError } from "@/lib/chunk-load-recovery";
 import { removeThisDevicePushSubscription } from "@/lib/alerts/device-push";
 import { clearPersistedAnswerThread } from "@/lib/answer-thread-storage-keys";
 import { authSessionFingerprint, createAuthRequestLifecycle } from "@/lib/auth-request-lifecycle";
@@ -334,6 +335,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!config) return Promise.resolve(null);
     clientLoadRef.current ??= loadBrowserSupabaseClient(config).catch((loadError: unknown) => {
       clientLoadRef.current = null;
+      // After a deploy the old build's library file is gone, so retrying the same import fails
+      // forever and sign-in silently does nothing. One reload picks up the current build.
+      if (isChunkLoadError(loadError)) reloadOnceForChunkLoadError();
       throw loadError;
     });
     return clientLoadRef.current;

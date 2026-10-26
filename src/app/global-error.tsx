@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { isChunkLoadError, reloadOnceForChunkLoadError } from "@/lib/chunk-load-recovery";
 import { useCopyDiagnostics } from "@/lib/use-copy-diagnostics";
 
 /**
@@ -25,6 +26,8 @@ export default function GlobalError({
 
   useEffect(() => {
     console.error("Fatal error captured by global-error boundary:", error);
+    // A page left over from before a deploy is fixed by one reload (see chunk-load-recovery).
+    if (isChunkLoadError(error) && reloadOnceForChunkLoadError()) return;
     headingRef.current?.focus({ preventScroll: true });
   }, [error]);
 
