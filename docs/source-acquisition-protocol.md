@@ -1,7 +1,5 @@
 # Source acquisition protocol
 
-_Updated 2026-10-24 — structured rights evidence and its approval boundaries; Documentation owns._
-
 How a clinical source gets found, judged, recorded and indexed in PsychSift.
 
 Run this whenever new information is added to the knowledge base, whether it arrives from a
@@ -178,15 +176,6 @@ nothing read it and nothing noticed. The pattern is the Therapy catalogue's
 | `npx vitest run tests/source-acquisition-ledger.test.ts` | The rules themselves still hold                                              |
 
 ## 7. Known limits
-
-The register can carry optional structured `rights`: `status` (`unknown`, `restricted` or
-`documented`), `licence`, `termsUrl`, `checkedAt` and `notes`. Omission means unknown.
-Recorded restrictions and documented terms require an HTTPS evidence link and a real check
-date; documented terms also require the licence or permission wording. This records evidence
-only. It does not authorize ingestion, copying, public promotion or clinical use, and it does
-not change source ranking, clinical review or access controls. Existing source records are
-not backfilled with assumed permissions. Adding or changing rights on a signed record makes
-its content signature stale and requires the normal owner review.
 
 - **An unregistered publisher cannot leave D band.** The catalogue derives jurisdiction solely
   from `src/lib/source-authority-registry.ts`, so a source from a publisher that is not

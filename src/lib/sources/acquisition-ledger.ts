@@ -95,16 +95,6 @@ export { isTgaProductInformationSearchUrl };
 
 export const LIVE_PRODUCT_INFORMATION_VERSION = "Current TGA-approved Product Information (live search)";
 
-/** Evidence about usage terms, separate from clinical review and access controls.
- * `documented` means terms were recorded; it never grants publication or ingestion permission. */
-export type SourceRightsMetadata = {
-  status: "unknown" | "restricted" | "documented";
-  licence: string | null;
-  termsUrl: string | null;
-  checkedAt: string | null;
-  notes: string | null;
-};
-
 export type SourceAcquisitionRecord = {
   id: string;
   title: string;
@@ -141,8 +131,6 @@ export type SourceAcquisitionRecord = {
   dispositionReason: string | null;
   supersededBy: string[];
   notes: string | null;
-  /** Omission means unknown. Adding or changing this invalidates an existing attestation. */
-  rights?: SourceRightsMetadata;
   /**
    * Publisher licence or permission status (finding R-07). Optional, and absent
    * means unknown, which is every record's state when the field was introduced.
@@ -354,42 +342,6 @@ export function acquisitionLedgerIssues(
     requireText(record.publisher, "publisher", id, issues);
     requireText(record.jurisdiction, "jurisdiction", id, issues);
     requireText(record.capturedFor, "capturedFor", id, issues);
-    if (record.rights !== undefined) {
-      const rights = record.rights;
-      if (!rights || typeof rights !== "object" || Array.isArray(rights)) {
-        issues.push(`${id}: rights must be a structured rights record`);
-      } else {
-        if (!["unknown", "restricted", "documented"].includes(rights.status)) {
-          issues.push(`${id}: rights.status must be unknown, restricted or documented`);
-        }
-        for (const field of ["licence", "termsUrl", "checkedAt", "notes"] as const) {
-          if (rights[field] !== null && (typeof rights[field] !== "string" || !rights[field].trim())) {
-            issues.push(`${id}: rights.${field} must be non-empty text or null`);
-          }
-        }
-        if (rights.termsUrl) {
-          let safe = false;
-          try {
-            const url = new URL(rights.termsUrl);
-            safe = url.protocol === "https:" && !url.username && !url.password;
-          } catch {
-            // Invalid evidence links are not accepted as documented terms.
-          }
-          if (!safe) issues.push(`${id}: rights.termsUrl must be an HTTPS URL without credentials`);
-        }
-        if (rights.checkedAt === null || typeof rights.checkedAt === "string") {
-          requireStrictDate(rights.checkedAt, "rights.checkedAt", id, issues);
-        }
-        if (rights.status === "documented" || rights.status === "restricted") {
-          if (!rights.termsUrl || !rights.checkedAt) {
-            issues.push(`${id}: recorded rights require termsUrl and checkedAt evidence`);
-          }
-        }
-        if (rights.status === "documented" && !presentText(rights.licence)) {
-          issues.push(`${id}: documented rights require the licence or permission terms`);
-        }
-      }
-    }
     requireStrictDate(record.publicationDate, "publicationDate", id, issues);
     requireStrictDate(record.reviewDate, "reviewDate", id, issues);
     requireStrictDate(record.lastUpdatedDate ?? null, "lastUpdatedDate", id, issues);

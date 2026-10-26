@@ -1,15 +1,6 @@
 # Testing and verification
 
-_Updated 2026-10-24 — cross-platform build launcher verification; Documentation owns._
-
 ## Safe local execution
-
-`npm run build` uses a Node launcher for Next so the same command works in Windows shells
-and POSIX shells. It preserves caller `NODE_OPTIONS`, defaults an empty value to an 8 GiB
-heap, and still runs the server/RAM guard, upload-limit parity, service-worker stamping,
-webpack build and client-bundle secret check. `tests/run-next-build.test.ts` exercises a
-subprocess from a path containing spaces and verifies nonzero exit propagation without
-building the app or contacting providers.
 
 Repository verification uses a local run coordinator derived from Git's common directory, so admission covers every worktree for this repository. It permits at most two shared leases from different worktrees for fail-closed focused Vitest selections and read-only typechecking. Full Vitest, coverage, lint, build, Playwright, and live-provider tests retain exclusive admission. Unknown Vitest selections fail closed to exclusive mode, and shared Vitest runs are capped at two workers each.
 

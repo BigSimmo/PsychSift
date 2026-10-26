@@ -1,6 +1,4 @@
--- Synthetic disposable replay only. Apply the draft migration before this fixture.
--- The local test:sql harness starts from schema.sql, which intentionally does not yet
--- include this draft; full migration replay is required until the schema is regenerated.
+-- Synthetic disposable replay only (`npm run test:sql`). Proves 20261026085000_roster_swap_accept_team_rules.sql.
 begin;
 create temp table rule_test_ids (k text primary key, v uuid) on commit drop;
 grant all on rule_test_ids to service_role;
