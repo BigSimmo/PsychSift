@@ -12,6 +12,7 @@ import {
   Table2,
   X,
 } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 
 import { searchCommandSurfaceConfig } from "@/lib/search-command-surface";
@@ -910,6 +911,7 @@ export function SearchResultsEmptyState({
   appliedFilters = EMPTY_APPLIED_FILTERS,
   onClearFilters,
   onClearSearch,
+  clearSearchHref,
   onBrowseAll,
   browseAllLabel = "Browse all sources",
   degraded = false,
@@ -945,6 +947,8 @@ export function SearchResultsEmptyState({
   onClearFilters?: () => void;
   /** Clears the query when a mode has no example or cross-mode recovery. */
   onClearSearch?: () => void;
+  /** Native navigation for clearing a query, including before hydration. Takes precedence over the callback. */
+  clearSearchHref?: string;
   /** Reach rather than refinement: the whole corpus, for when narrowing this
       result set is not the answer. */
   onBrowseAll?: () => void;
@@ -1073,7 +1077,18 @@ export function SearchResultsEmptyState({
         </button>
       ) : null,
     ),
-    onClearSearch ? (
+    clearSearchHref ? (
+      <Link
+        key="clear-search"
+        href={clearSearchHref}
+        prefetch={false}
+        data-testid="search-results-empty-clear-search"
+        className={cn(emptyStateAction, focusRing)}
+      >
+        <X className="h-3.5 w-3.5 shrink-0" aria-hidden />
+        Clear search
+      </Link>
+    ) : onClearSearch ? (
       <button
         key="clear-search"
         type="button"
