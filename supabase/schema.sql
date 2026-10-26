@@ -37890,7 +37890,7 @@ revoke all on function public.rollback_document_index_generation(uuid, uuid, uui
   from public, anon, authenticated;
 grant execute on function public.rollback_document_index_generation(uuid, uuid, uuid) to service_role;
 
--- Projection: 20261025150000_rollback_legacy_pages_summary_and_guards.sql
+-- Projection: 20261025170000_rollback_legacy_pages_summary_and_guards.sql
 -- Merge only after the owner's explicit yes to this database change.
 -- Audit 2026-10-24 follow-ups to the index rollback (20261021150000, 20261021170000).
 --
@@ -38144,7 +38144,7 @@ revoke all on function public.rollback_document_index_generation(uuid, uuid, uui
   from public, anon, authenticated;
 grant execute on function public.rollback_document_index_generation(uuid, uuid, uuid) to service_role;
 
--- Projection: 20261025151000_label_cache_revision_licence_withdrawal.sql
+-- Projection: 20261025171000_label_cache_revision_licence_withdrawal.sql
 -- Merge only after the owner's explicit yes to this database change.
 -- Audit 2026-10-24 follow-ups: answer-cache freshness after label edits, a licence that no longer
 -- permits indexing, and a redundant index.

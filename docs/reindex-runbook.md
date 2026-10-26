@@ -156,7 +156,7 @@ commit of that document. The script needs the `rollback_document_index_generatio
   before any re-index, including the pilot: a refusal there means "no quick undo for this document
   right now". It is not the final word, because once the re-index commits, the generation it
   replaced becomes the one to roll back to. Run the dry run again after the commit and before
-  any no-go decision. Migration `20261025150000_rollback_legacy_pages_summary_and_guards.sql`
+  any no-go decision. Migration `20261025170000_rollback_legacy_pages_summary_and_guards.sql`
   (audit E2E-01) fixes the older case once it is live: the planner also lists generations that
   have chunks but no stamped pages, and the database rollback then switches the document back to
   its unstamped pages. It merges only after the owner's own yes. Until then the refusal stands.
@@ -176,7 +176,7 @@ commit of that document. The script needs the `rollback_document_index_generatio
   snapshot, so after a rollback they still describe the newer version. The script prints a note
   for every document it rolled back. Rebuild that document's enrichment afterwards (a small paid
   run that needs spending approval) before relying on its summary. Once migration
-  `20261025150000` is live, the snapshot keeps the outgoing summary and generated labels and the
+  `20261025170000` is live, the snapshot keeps the outgoing summary and generated labels and the
   rollback restores them (its result says `summary_restored` and `labels_restored`); the note
   still applies to generations that left before it went live.
 - **`--committed-after` and `--chunker-version` start from the documents table (audit DB-N3).**

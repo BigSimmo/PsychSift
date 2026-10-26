@@ -296,7 +296,7 @@ describe("pre-cutover generations (E2E-01)", () => {
 
   it("migration lets the rollback restore unstamped pages, guards the enrichment queue and keeps summaries", async () => {
     const { readFileSync } = await import("node:fs");
-    const sql = readFileSync("supabase/migrations/20261025150000_rollback_legacy_pages_summary_and_guards.sql", "utf8");
+    const sql = readFileSync("supabase/migrations/20261025170000_rollback_legacy_pages_summary_and_guards.sql", "utf8");
     // Exercised end to end against a scratch replay of schema.sql (rollback to a legacy generation,
     // roll forward, enrichment-queue refusal, marker clearing, snapshot refusals).
     expect(sql).toMatch(/v_page_mode := 'legacy_unqualified'/);

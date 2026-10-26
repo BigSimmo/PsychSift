@@ -53,7 +53,7 @@ it is the July 2026 analysis, kept as history._
      docs/audit/tenancy-defense-in-depth-review.md §6).
    - `scripts/reindex-rollback.ts` moves a document back to its previous generation and stamps
      `index_generation_rolled_back_from` and `index_generation_rolled_back_at` in its metadata.
-     Migration `20261025150000` (drafted 25 Oct 2026, merges only after the owner's own yes) makes
+     Migration `20261025170000` (drafted 25 Oct 2026, merges only after the owner's own yes) makes
      the next commit clear those markers, lets a rollback return to a generation committed before
      13 Oct 2026 (unstamped pages), restores the summary and generated labels it kept, and refuses
      while the background enrichment queue has work for the document. See

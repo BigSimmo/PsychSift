@@ -1,7 +1,7 @@
 # Decision: A document whose licence stops permitting indexing leaves answers at once
 
 - **Status:** decided 2026-10-25
-- **Source:** `supabase/migrations/20261025151000_label_cache_revision_licence_withdrawal.sql`, find "it is now marked outdated in the same update"
+- **Source:** `supabase/migrations/20261025171000_label_cache_revision_licence_withdrawal.sql`, find "it is now marked outdated in the same update"
 
 The owner approved every remaining recommendation of the 24 Oct 2026 search and ingestion
 re-audit, including audit E2E-10. When a document's licence changes to one that forbids indexing

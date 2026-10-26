@@ -40,7 +40,7 @@ behind an unrelated latest indexed document. Full metadata inclusion conservativ
 invalidates caches after unrelated document updates.
 
 Each document's hash also carries its evidence counter (`document_evidence_revisions`), which
-table-fact and image edits bump. Migration `20261025151000_label_cache_revision_licence_withdrawal.sql`
+table-fact and image edits bump. Migration `20261025171000_label_cache_revision_licence_withdrawal.sql`
 (drafted 25 Oct 2026, merges only after the owner's own yes) adds label inserts, real updates
 and deletes to that counter (audit E2E-11), so a label edit reaches every app copy, not only the
 one that handled it. The `backfill:text-normalization` script bumps the counter for every document
