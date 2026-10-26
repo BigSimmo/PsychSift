@@ -29,7 +29,7 @@ describe("regional and Aboriginal mental health service call links", () => {
 
   it.each(regionalRecords)("%s keeps phone numbers out of its email contacts", (slug) => {
     const record = getServiceRecord(slug)!;
-    for (const contact of record.contacts.filter((entry) => entry.kind === "email")) {
+    for (const contact of (record.contacts ?? []).filter((entry) => entry.kind === "email")) {
       expect(contact.value).toMatch(/^[^\s;]+@[^\s;]+$/);
     }
   });
