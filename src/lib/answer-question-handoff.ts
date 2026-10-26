@@ -12,6 +12,8 @@
  * Only submitted (`run=1`) Answer URLs change. Drafts and other modes keep `q`.
  */
 
+import { subscribeAccountTransition } from "@/lib/account-scoped-browser-state";
+
 export const answerHandoffParam = "ask";
 
 const storagePrefix = "clinical.answer-question.";
@@ -26,6 +28,9 @@ type HandoffStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 // When sessionStorage is blocked the question still never goes in the address.
 // It survives in-app navigation through this map, but not a refresh.
 const memoryStore = new Map<string, string>();
+// Sign-out and account switches sweep the sessionStorage copies (account-device-sweep.ts);
+// the in-memory copies go with them, so the next person cannot resolve an old `ask` id.
+subscribeAccountTransition(() => memoryStore.clear());
 
 function sessionStorageOrNull(): HandoffStorage | null {
   try {

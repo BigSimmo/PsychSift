@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from "vitest";
 
+import { clearAccountScopedBrowserStorage } from "../src/lib/account-scoped-browser-state";
 import {
   answerHandoffParam,
   privateAnswerHref,
@@ -93,6 +94,14 @@ describe("answer question handoff (FE-01)", () => {
     for (let i = 0; i < 45; i += 1) stashAnswerQuestion(`synthetic question ${i}`, storage, createRef);
     const questionKeys = [...storage.values.keys()].filter((key) => !key.endsWith("index"));
     expect(questionKeys.length).toBe(30);
+  });
+
+  it("forgets every stored question at sign-out or an account switch", () => {
+    const ref = stashAnswerQuestion("synthetic question before sign-out");
+    expect(readStashedAnswerQuestion(ref)).toBe("synthetic question before sign-out");
+    clearAccountScopedBrowserStorage();
+    expect(readStashedAnswerQuestion(ref)).toBeNull();
+    expect(Object.keys(window.sessionStorage).filter((key) => key.startsWith("clinical.answer-question."))).toEqual([]);
   });
 
   it("still keeps the question out of the address when storage throws", () => {
