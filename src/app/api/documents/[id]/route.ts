@@ -69,7 +69,7 @@ const LEFTOVER_IMAGE_SWEEP_LIMIT = 5000;
 async function listLeftoverImagePaths(
   supabase: ReturnType<typeof createAdminClient>,
   documentId: string,
-): Promise<{ paths: string[]; error: unknown }> {
+): Promise<{ paths: string[]; error: unknown; truncated: boolean }> {
   const paths: string[] = [];
   const folders: Array<{ prefix: string; depth: number }> = [{ prefix: documentId, depth: 1 }];
   while (folders.length > 0 && paths.length < LEFTOVER_IMAGE_SWEEP_LIMIT) {
@@ -78,7 +78,7 @@ async function listLeftoverImagePaths(
       const { data, error } = await supabase.storage
         .from(env.SUPABASE_IMAGE_BUCKET)
         .list(folder.prefix, { limit: 1000, offset });
-      if (error) return { paths, error };
+      if (error) return { paths, error, truncated: false };
       for (const entry of data ?? []) {
         // Storage lists a sub-folder as an entry without an id.
         if (entry.id === null) {
@@ -92,7 +92,8 @@ async function listLeftoverImagePaths(
       if ((data ?? []).length < 1000) break;
     }
   }
-  return { paths, error: null };
+  // Stopping at the limit leaves files behind, so it must never read as a complete sweep.
+  return { paths, error: null, truncated: paths.length >= LEFTOVER_IMAGE_SWEEP_LIMIT };
 }
 
 async function removeStorageObjects(args: {
@@ -115,6 +116,11 @@ async function removeStorageObjects(args: {
 
   const leftover = await listLeftoverImagePaths(args.supabase, args.documentId);
   if (leftover.error) warnings.push(storageWarningsFrom(leftover.error, "Leftover images"));
+  if (leftover.truncated) {
+    warnings.push(
+      `Leftover images: stopped after ${LEFTOVER_IMAGE_SWEEP_LIMIT} files, so some extracted images remain.`,
+    );
+  }
   const uniqueImagePaths = Array.from(new Set([...args.imagePaths, ...leftover.paths].filter(Boolean)));
   for (let start = 0; start < uniqueImagePaths.length; start += 1000) {
     const paths = uniqueImagePaths.slice(start, start + 1000);

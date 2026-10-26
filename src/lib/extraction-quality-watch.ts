@@ -38,15 +38,19 @@ function countOrNull(value: unknown): number | null {
 }
 
 /** Reads the four `quality_extraction_*` counts from a reindex-health payload's `counts`. */
+/** Whole-library counts use "quality_extraction_"; the recent cohort uses RECENT_QUALITY_COUNT_PREFIX. */
+export const RECENT_QUALITY_COUNT_PREFIX = "quality_recent_extraction_";
+
 export function extractionQualityCountsFrom(
   counts: Record<string, number | null> | undefined,
+  prefix = "quality_extraction_",
 ): ExtractionQualityCounts | null {
-  if (!counts || !Object.hasOwn(counts, "quality_extraction_poor")) return null;
+  if (!counts || !Object.hasOwn(counts, `${prefix}poor`)) return null;
   return {
-    good: countOrNull(counts.quality_extraction_good),
-    partial: countOrNull(counts.quality_extraction_partial),
-    poor: countOrNull(counts.quality_extraction_poor),
-    unknown: countOrNull(counts.quality_extraction_unknown),
+    good: countOrNull(counts[`${prefix}good`]),
+    partial: countOrNull(counts[`${prefix}partial`]),
+    poor: countOrNull(counts[`${prefix}poor`]),
+    unknown: countOrNull(counts[`${prefix}unknown`]),
   };
 }
 
@@ -69,7 +73,9 @@ export function assessExtractionQuality(
     typeof baseline === "number" &&
     Number.isFinite(baseline) &&
     baseline >= 0 &&
-    poorShare - baseline >= POOR_SHARE_RISE_WARNING
+    // Compared in whole tenths of a percent, so a rise of exactly the threshold (0.15 - 0.10)
+    // is not lost to floating-point rounding.
+    Math.round((poorShare - baseline) * 1000) >= Math.round(POOR_SHARE_RISE_WARNING * 1000)
   ) {
     return {
       assessed,

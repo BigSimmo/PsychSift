@@ -1,7 +1,11 @@
 import { spawnSync } from "node:child_process";
 import { appendFileSync } from "node:fs";
 
-import { assessExtractionQuality, extractionQualityCountsFrom } from "@/lib/extraction-quality-watch";
+import {
+  assessExtractionQuality,
+  extractionQualityCountsFrom,
+  RECENT_QUALITY_COUNT_PREFIX,
+} from "@/lib/extraction-quality-watch";
 
 // ingestion-autopilot — self-healing loop for a stuck ingestion queue.
 //
@@ -206,6 +210,10 @@ export function assessIngestionHealth(
 export function describeExtractionQuality(health: IngestionHealth): string | null {
   const counts = extractionQualityCountsFrom(health.counts);
   if (!counts) return null;
+  // A bad recent batch is invisible in the whole-library share, so it is checked first.
+  const recentCounts = extractionQualityCountsFrom(health.counts, RECENT_QUALITY_COUNT_PREFIX);
+  const recentWarning = recentCounts ? assessExtractionQuality(recentCounts).warning : null;
+  if (recentWarning) return `[autopilot] WARNING extraction quality (recently assessed): ${recentWarning}`;
   const verdict = assessExtractionQuality(counts);
   if (verdict.warning) return `[autopilot] WARNING extraction quality: ${verdict.warning}`;
   if (verdict.assessed === 0) return "[autopilot] extraction quality: no documents assessed yet";

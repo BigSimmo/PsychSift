@@ -279,26 +279,39 @@ async function main() {
   console.log(`\nBackup of ${changed.length} rows written to ${backupPath}`);
 
   let updated = 0;
-  for (const row of changed) {
-    const patch: Record<string, string | null> = {};
-    if (row.content_changed) patch.content = row.new_content;
-    if (row.heading_changed) patch.section_heading = row.new_section_heading;
-    if (row.synopsis_changed) patch.retrieval_synopsis = row.new_retrieval_synopsis;
-    const { error } = (await supabase.from("document_chunks").update(patch).eq("id", row.id)) as {
-      error: { message: string } | null;
-    };
-    if (error) throw new Error(`Update failed for chunk ${row.id}: ${error.message}`);
-    updated += 1;
-    if (updated % 250 === 0) console.log(`  updated ${updated}/${changed.length}`);
+  // Every document whose chunks may have changed, so a run that fails part-way still invalidates
+  // the caches for the edits it did make (the finally block below).
+  const touchedDocumentIds = new Set<string>();
+  try {
+    for (const row of changed) {
+      const patch: Record<string, string | null> = {};
+      if (row.content_changed) patch.content = row.new_content;
+      if (row.heading_changed) patch.section_heading = row.new_section_heading;
+      if (row.synopsis_changed) patch.retrieval_synopsis = row.new_retrieval_synopsis;
+      touchedDocumentIds.add(row.document_id);
+      const { error } = (await supabase.from("document_chunks").update(patch).eq("id", row.id)) as {
+        error: { message: string } | null;
+      };
+      if (error) throw new Error(`Update failed for chunk ${row.id}: ${error.message}`);
+      updated += 1;
+      if (updated % 250 === 0) console.log(`  updated ${updated}/${changed.length}`);
+    }
+    console.log(`\nDone. Updated ${updated} chunks in place (no embeddings changed).`);
+  } finally {
+    if (touchedDocumentIds.size > 0) await invalidateEvidenceCaches(supabase, [...touchedDocumentIds]);
   }
+}
 
-  console.log(`\nDone. Updated ${updated} chunks in place (no embeddings changed).`);
-
-  // Whole-codebase audit 2026-10-24: chunk edits do not touch the documents row, so cached
-  // answers quoting the old text stayed valid. Bump each edited document's evidence revision
-  // (part of every app copy's cache scope revision) and clear the shared answer and search cache.
-  const cacheClient = supabase as unknown as CacheInvalidationClient;
-  const documentIds = [...new Set(changed.map((row) => row.document_id))];
+/**
+ * Whole-codebase audit 2026-10-24: chunk edits do not touch the documents row, so cached answers
+ * quoting the old text stayed valid. Bump each edited document's evidence revision (part of every
+ * app copy's cache scope revision) and clear the shared answer and search cache. The revision is
+ * read then written, so a label or image edit landing in the same moment can lose one increment;
+ * the shared-cache clear below still drops every stored answer. A true database-side increment
+ * needs a grant on bump_document_evidence_revisions, which is a database change.
+ */
+async function invalidateEvidenceCaches(supabase: unknown, documentIds: string[]) {
+  const cacheClient = supabase as CacheInvalidationClient;
   for (let index = 0; index < documentIds.length; index += 200) {
     const batch = documentIds.slice(index, index + 200);
     const { data: revisions, error: readError } = await cacheClient

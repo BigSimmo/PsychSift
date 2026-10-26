@@ -25,6 +25,7 @@ import {
   mergeLegacyGenerations,
   parseRollbackArgs,
   runReindexRollback,
+  staleEnrichmentAfterRollback,
   type RollbackScope,
   type RollbackStore,
 } from "@/lib/reindex-rollback";
@@ -157,8 +158,18 @@ function supabaseRollbackStore(supabase: AdminClient): RollbackStore {
         p_target_generation: targetGeneration,
       });
       if (error) throw new Error(error.message);
-      const result = (data ?? {}) as { ok?: boolean; reason?: string };
-      return { ok: result.ok === true, reason: result.reason };
+      const result = (data ?? {}) as {
+        ok?: boolean;
+        reason?: string;
+        summary_restored?: boolean;
+        labels_restored?: boolean;
+      };
+      return {
+        ok: result.ok === true,
+        reason: result.reason,
+        summaryRestored: result.summary_restored,
+        labelsRestored: result.labels_restored,
+      };
     },
   };
 }
@@ -204,14 +215,17 @@ async function main() {
   const applied = await applyRollbackPlans(store, preview);
   for (const outcome of applied) console.log(formatRollbackOutcome(outcome, true));
   const failed = applied.filter((outcome) => !outcome.refusal && !outcome.applied).length;
-  // Audit DB-N1 (24 Oct 2026): the rollback restores passages, pages and quality, but the
-  // document summary, clinical specifics and generated topic labels still come from the newer
-  // version until the document's enrichment is rebuilt.
-  const rolledBack = applied.filter((outcome) => outcome.applied);
-  if (rolledBack.length > 0) {
+  // Audit DB-N1 (24 Oct 2026): the rollback restores the summary, clinical specifics and labels only
+  // when the target generation's snapshot holds them (generations committed after migration
+  // 20261025170000). Name only the fields that still come from the newer version.
+  const stale = applied
+    .map((outcome) => ({ documentId: outcome.documentId, fields: staleEnrichmentAfterRollback(outcome) }))
+    .filter((entry) => entry.fields.length > 0);
+  if (stale.length > 0) {
     console.log(
-      `\nNote: ${rolledBack.length} rolled-back document(s) still show the newer version's summary, clinical specifics and topic labels. Rebuild their enrichment (see docs/reindex-runbook.md, "Rolling back a reindex").`,
+      `\nNote: ${stale.length} rolled-back document(s) still show the newer version's enrichment. Rebuild it (see docs/reindex-runbook.md, "Rolling back a reindex"):`,
     );
+    for (const entry of stale) console.log(`  ${entry.documentId}: ${entry.fields.join(", ")}`);
   }
   if (failed > 0) process.exitCode = 1;
 }

@@ -33,6 +33,12 @@ describe("extraction quality watch (audit 2026-10-24 EM-N6)", () => {
     ).toBeNull();
   });
 
+  it("warns on a rise of exactly the threshold despite floating-point rounding", () => {
+    expect(
+      assessExtractionQuality({ good: 85, partial: 0, poor: 15, unknown: 0 }, { baselinePoorShare: 0.1 }).warning,
+    ).toBe("poor extractions rose from 10% to 15% of 100 assessed documents");
+  });
+
   it("never lets an unreadable count read as no poor documents", () => {
     expect(assessExtractionQuality({ good: 10, partial: 0, poor: null, unknown: 0 })).toEqual({
       assessed: null,
@@ -75,5 +81,23 @@ describe("extraction quality watch (audit 2026-10-24 EM-N6)", () => {
       "[autopilot] WARNING extraction quality: 5 of 15 assessed documents (33%) have a poor extraction",
     );
     expect(describeExtractionQuality({ counts: {} })).toBeNull();
+  });
+
+  it("warns on a poor recent batch that the whole-library share hides", () => {
+    const health = {
+      counts: {
+        quality_extraction_good: 10_000,
+        quality_extraction_partial: 0,
+        quality_extraction_poor: 100,
+        quality_extraction_unknown: 0,
+        quality_recent_extraction_good: 20,
+        quality_recent_extraction_partial: 0,
+        quality_recent_extraction_poor: 100,
+        quality_recent_extraction_unknown: 0,
+      },
+    };
+    expect(describeExtractionQuality(health)).toMatch(
+      /^\[autopilot\] WARNING extraction quality \(recently assessed\)/,
+    );
   });
 });

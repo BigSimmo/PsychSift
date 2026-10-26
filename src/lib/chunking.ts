@@ -714,11 +714,19 @@ function chunkTableBlock(block: string, chunkSize: number, caption = "", footnot
   // Chunker 1.3.3 (audit EXT-07): a short note such as "Note: not recommended in severe renal
   // impairment" is repeated on every piece of a split table, like the header, so the pieces that
   // hold most of the dose rows carry the warning. A longer note keeps the old placement below.
-  const repeatedNote = footnote && footnote.length <= maxRepeatedTableNoteLength ? footnote : "";
+  // The note is repeated only when the header, one minimum-width row and the note all fit, so a
+  // wide header never pushes a piece over the size cap.
+  const minimumRowBudget = 40;
+  const repeatedNote =
+    footnote &&
+    footnote.length <= maxRepeatedTableNoteLength &&
+    header.length + 1 + minimumRowBudget + 1 + footnote.length <= chunkSize
+      ? footnote
+      : "";
   const groupSize = repeatedNote ? chunkSize - repeatedNote.length - 1 : chunkSize;
   // Chunker 1.3.1: a single row longer than the room left under the header is
   // split at word boundaries into pieces that each repeat the header.
-  const rowBudget = Math.max(40, groupSize - header.length - 1);
+  const rowBudget = Math.max(minimumRowBudget, groupSize - header.length - 1);
 
   const chunks: string[] = [];
   let current = header;
@@ -831,6 +839,16 @@ function unpunctuatedBreak(clean: string, start: number, chunkSize: number, fall
   return space >= minimum ? start + space : fallback;
 }
 
+// The opening line of an unpunctuated span ("Do not give with:") governs every row under it, so
+// when it states a prohibition each later piece of the span repeats it (capped at this length).
+const maxGoverningLeadLength = 200;
+
+function governingLeadOf(clean: string, spanStart: number) {
+  const lineEnd = clean.indexOf("\n", spanStart);
+  const line = clean.slice(spanStart, lineEnd < 0 ? clean.length : lineEnd).trim();
+  return line && line.length <= maxGoverningLeadLength && clinicalProhibitionPattern.test(line) ? line : "";
+}
+
 function chunkTextBySentence(clean: string, chunkSize: number, overlap: number) {
   const chunks: string[] = [];
   // Record actual offsets once; never scan the remaining document for every chunk.
@@ -839,6 +857,7 @@ function chunkTextBySentence(clean: string, chunkSize: number, overlap: number) 
   let boundaryIndex = 0;
   let start = 0;
   let unpunctuatedUntil = -1;
+  let governingLead = "";
 
   while (start < clean.length) {
     const nominalEnd = Math.min(start + chunkSize, clean.length);
@@ -853,13 +872,21 @@ function chunkTextBySentence(clean: string, chunkSize: number, overlap: number) 
     // used to become one passage several times the intended size. A span far longer than any
     // plausible sentence now breaks at the last line break, or failing that the last space, inside
     // the budget. Shorter overlong sentences stay whole as before (CHK-01).
-    if (sentenceEnd - start > Math.max(chunkSize * 2, unpunctuatedSpanMinimum)) unpunctuatedUntil = sentenceEnd;
+    if (sentenceEnd - start > Math.max(chunkSize * 2, unpunctuatedSpanMinimum) && sentenceEnd > unpunctuatedUntil) {
+      unpunctuatedUntil = sentenceEnd;
+      governingLead = governingLeadOf(clean, start);
+    }
     const end =
       sentenceEnd <= unpunctuatedUntil && sentenceEnd - start > chunkSize * 1.35
         ? unpunctuatedBreak(clean, start, chunkSize, sentenceEnd)
         : sentenceEnd;
 
-    const chunk = clean.slice(start, end).trim();
+    const piece = clean.slice(start, end).trim();
+    // A later piece of a prohibition-led span must not read as the bare rows without the negation.
+    const chunk =
+      piece && governingLead && end <= unpunctuatedUntil && !piece.startsWith(governingLead)
+        ? `${governingLead}\n${piece}`
+        : piece;
     if (chunk) chunks.push(chunk);
     if (end >= clean.length) break;
     if (end - start > chunkSize * 1.35) {

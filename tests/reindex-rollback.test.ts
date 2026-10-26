@@ -8,6 +8,7 @@ import {
   planReindexRollback,
   parseRollbackArgs,
   runReindexRollback,
+  staleEnrichmentAfterRollback,
   type CommittedGeneration,
   type RollbackScope,
   type RollbackStore,
@@ -259,6 +260,20 @@ describe("parseRollbackArgs", () => {
     expect(repoint).toHaveBeenCalledWith(DOC_A, "gen-new", "gen-old");
     expect(outcome).toMatchObject({ applied: false, applyError: "pointer_moved" });
     expect(documents[DOC_A].current).toBe("gen-newer");
+  });
+});
+
+describe("enrichment left stale after a rollback (DB-N1)", () => {
+  const base = { documentId: DOC_A, applied: true, applyError: null } as unknown as Parameters<
+    typeof staleEnrichmentAfterRollback
+  >[0];
+  it("names only the fields the rollback did not restore", () => {
+    expect(staleEnrichmentAfterRollback({ ...base, summaryRestored: true, labelsRestored: true })).toEqual([]);
+    expect(staleEnrichmentAfterRollback({ ...base, summaryRestored: true, labelsRestored: false })).toEqual([
+      "topic labels",
+    ]);
+    expect(staleEnrichmentAfterRollback(base)).toEqual(["summary and clinical specifics", "topic labels"]);
+    expect(staleEnrichmentAfterRollback({ ...base, applied: false })).toEqual([]);
   });
 });
 

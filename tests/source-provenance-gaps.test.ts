@@ -22,6 +22,17 @@ describe("source provenance gaps (audit 2026-10-24 E2E-10)", () => {
     ]);
   });
 
+  it("counts a licence still under review as no licence basis", () => {
+    expect(
+      sourceProvenanceGaps({
+        id: "r",
+        title: "R",
+        status: "indexed",
+        metadata: { ...complete, licence_policy: "review_required" },
+      }),
+    ).toEqual(["no_licence_basis"]);
+  });
+
   it("puts a still-searchable document whose licence forbids indexing first", () => {
     const report = buildSourceProvenanceGapReport([
       { id: "fresh", title: "Fresh upload", status: "indexed", metadata: {} },

@@ -4811,6 +4811,40 @@ describe("private document API access", () => {
     expect(client.storageMocks.remove).toHaveBeenCalledWith([recorded, orphan]);
   });
 
+  it("does not report a leftover-image sweep that hit its limit as complete (audit ING-A-08)", async () => {
+    const client = createSupabaseMock(() => ok([]));
+    client.rpc.mockImplementation(async (name: string) =>
+      name === "delete_document_if_idle"
+        ? ok({
+            outcome: "deleted",
+            cleanup_job_id: "55555555-5555-4555-8555-555555555555",
+            document_title: "Owned",
+            source_path: null,
+            image_paths: [],
+          })
+        : ok([]),
+    );
+    // Every page of the document's prefix is full, so the bounded sweep stops with files left.
+    client.storageMocks.list.mockImplementation(async (_prefix: string, options: { offset: number }) => ({
+      data: Array.from({ length: 1000 }, (_, index) => ({
+        id: `file-${options.offset + index}`,
+        name: `${options.offset + index}.png`,
+      })),
+      error: null,
+    }));
+    mockRuntime(client);
+    const { DELETE } = await import("../src/app/api/documents/[id]/route");
+
+    const response = await DELETE(authenticatedRequest(`/api/documents/${documentId}`, { method: "DELETE" }), {
+      params: Promise.resolve({ id: documentId }),
+    });
+    expect(response.status).toBe(200);
+    const body = (await payload(response)) as { storageWarnings: string[] };
+    expect(body.storageWarnings.some((warning) => warning.startsWith("Leftover images: stopped after 5000"))).toBe(
+      true,
+    );
+  });
+
   it("does not touch storage when transactional deletion fails", async () => {
     const client = createSupabaseMock((call) => {
       if (call.table === "documents" && call.operation === "select") {

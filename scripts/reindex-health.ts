@@ -1,5 +1,9 @@
 import { loadEnvConfig } from "@next/env";
-import { assessExtractionQuality, extractionQualityCountsFrom } from "@/lib/extraction-quality-watch";
+import {
+  assessExtractionQuality,
+  extractionQualityCountsFrom,
+  RECENT_QUALITY_COUNT_PREFIX,
+} from "@/lib/extraction-quality-watch";
 import { formatSupabaseUnavailableError, isSupabaseUnavailableError, probeSupabaseHealth } from "@/lib/supabase/health";
 
 loadEnvConfig(process.cwd());
@@ -172,8 +176,15 @@ async function main() {
 
   // Audit 2026-10-24 EM-N6: how well documents were read, watched on a schedule. Reported beside the
   // integrity counts but never as an integrity problem, so it cannot trigger queue recovery.
-  const qualityCounts = await Promise.all(
-    (["good", "partial", "poor", "unknown"] as const).map((quality) =>
+  // The whole library hides a bad recent batch (100 poor new documents barely move 10,000 good
+  // ones), so the same counts are also taken for documents assessed in the last N days.
+  const recentDaysIndex = process.argv.indexOf("--quality-recent-days");
+  const recentDaysArg = recentDaysIndex >= 0 ? Number(process.argv[recentDaysIndex + 1] ?? "") : Number.NaN;
+  const recentDays = Number.isFinite(recentDaysArg) && recentDaysArg > 0 ? recentDaysArg : 30;
+  const recentSince = new Date(Date.now() - recentDays * 86_400_000).toISOString();
+  const qualityLevels = ["good", "partial", "poor", "unknown"] as const;
+  const qualityCounts = await Promise.all([
+    ...qualityLevels.map((quality) =>
       safeCount(
         `quality_extraction_${quality}`,
         supabase
@@ -182,7 +193,17 @@ async function main() {
           .eq("extraction_quality", quality),
       ),
     ),
-  );
+    ...qualityLevels.map((quality) =>
+      safeCount(
+        `${RECENT_QUALITY_COUNT_PREFIX}${quality}`,
+        supabase
+          .from("document_index_quality")
+          .select("document_id", { count: "exact", head: true })
+          .eq("extraction_quality", quality)
+          .gte("updated_at", recentSince),
+      ),
+    ),
+  ]);
   const baselineIndex = process.argv.indexOf("--baseline-poor-share");
   const baselineArg = baselineIndex >= 0 ? Number(process.argv[baselineIndex + 1] ?? "") : Number.NaN;
   const qualityCountMap = Object.fromEntries(qualityCounts.map((item) => [item.label, item.count]));
@@ -191,6 +212,10 @@ async function main() {
     ? assessExtractionQuality(extractionQualityCounts, {
         baselinePoorShare: Number.isFinite(baselineArg) ? baselineArg : null,
       })
+    : null;
+  const recentQualityCounts = extractionQualityCountsFrom(qualityCountMap, RECENT_QUALITY_COUNT_PREFIX);
+  const recentExtractionQuality = recentQualityCounts
+    ? { days: recentDays, ...assessExtractionQuality(recentQualityCounts) }
     : null;
   const integrityProblems = integrityCounts
     .filter((item) => Number(item.count ?? 0) > 0)
@@ -208,9 +233,14 @@ async function main() {
     strandedQueued,
     chunksWithSynopsis,
   ];
-  const countErrors = [...counts, ...integrityCounts, ...qualityCounts].filter((item) => item.error);
+  // Quality reads are advisory: a failed one is reported, but never blocks the queue-recovery verdict.
+  const countErrors = [...counts, ...integrityCounts].filter((item) => item.error);
+  const qualityErrors = qualityCounts.filter((item) => item.error);
   const errors = [
-    ...countErrors.map((item) => ({ label: item.label, error: unavailableMessage(item.error) ?? item.error })),
+    ...[...countErrors, ...qualityErrors].map((item) => ({
+      label: item.label,
+      error: unavailableMessage(item.error) ?? item.error,
+    })),
     ...(jobsError ? [{ label: "open_jobs", error: unavailableMessage(jobsError.message) ?? jobsError.message }] : []),
   ];
 
@@ -224,6 +254,7 @@ async function main() {
         ),
         integrityProblems,
         extractionQuality,
+        recentExtractionQuality,
         errors,
         openJobs: openJobs ?? [],
         recommendation:

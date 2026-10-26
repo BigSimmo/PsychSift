@@ -104,6 +104,7 @@ Also catalogued (2026-09-04):
 - `check-chain-mirror-parity.ts` (`check:chain-mirror-parity`) — replays the migration chain and diffs the result against `supabase/schema.sql`, catching drift that "chain applies" and "manifest is not stale" checks both miss.
 - `check-dependency-drift.mjs` (`check:dependency-drift`) — flags a surface whose transitive import closure changed even though the files a staleness check names directly did not.
 - `check-design-drift-ratchet.mjs` (`check:design-drift-ratchet`) — ratchet guard for two design-token drift metrics (bypass-prone inline `style={{ }}` under `src/**`; design-system components with zero product importers).
+- `run-next-build.mjs` (part of `build:internal`) — cross-platform `next build --webpack` step: keeps an existing `NODE_OPTIONS`, otherwise defaults it to `--max-old-space-size=8192`, so `npm run build` works in cmd and PowerShell as well as bash (`#NM9S1V`).
 - `stamp-service-worker.mjs` (part of `build:internal`) — gives `public/sw.js` a different body on every build so the browser's byte comparison detects an update and fires `updatefound`/`activate`.
 
 use `verify:phone-chrome` before the broad UI gate. It checks installed-lock parity, then selects focused contracts and Playwright owners from the changed paths; shared foundations add `verify:ui` last. Documentation-only scopes run only documentation guards. `audit:final-merge` is local-only unless both `--providers` and `ALLOW_PROVIDER_READS=true` are supplied.

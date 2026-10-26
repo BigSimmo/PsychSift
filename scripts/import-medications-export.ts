@@ -42,8 +42,8 @@ function provenancePath() {
 }
 
 /**
- * The Medications checkout's HEAD commit, or null when the source is not inside a Medications
- * checkout (for example an export saved in this repository) or git is missing.
+ * The Medications checkout's HEAD commit, or null when the source is not a committed, unchanged
+ * file in a Medications checkout (for example an export saved in this repository) or git is missing.
  */
 function upstreamCommitFor(source: string): string | null {
   const git = (args: string[]) =>
@@ -53,6 +53,11 @@ function upstreamCommitFor(source: string): string | null {
     }).trim();
   try {
     if (!isMedicationsRemote(git(["remote", "get-url", "origin"]))) return null;
+    // HEAD only identifies the source when the file matches it: an untracked or edited export
+    // is newer than any commit.
+    const fileName = path.basename(source);
+    if (git(["ls-files", "--", fileName]) === "") return null;
+    if (git(["status", "--porcelain", "--", fileName]) !== "") return null;
     return git(["rev-parse", "HEAD"]);
   } catch {
     return null;

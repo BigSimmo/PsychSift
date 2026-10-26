@@ -35,7 +35,8 @@ export function sourceProvenanceGaps(row: SourceProvenanceRow): SourceProvenance
   const source = normalizeSourceMetadata(row.metadata);
   const gaps: SourceProvenanceGap[] = [];
   if (source.licence_policy && FORBIDDING_LICENCES.has(source.licence_policy)) gaps.push("licence_forbids_indexing");
-  if (!source.licence_policy) gaps.push("no_licence_basis");
+  // review_required means the licence has not been decided yet, so it is no basis either.
+  if (!source.licence_policy || source.licence_policy === "review_required") gaps.push("no_licence_basis");
   if (!source.publication_date) gaps.push("no_publication_date");
   if (source.clinical_validation_status !== "locally_reviewed" && source.clinical_validation_status !== "approved") {
     gaps.push("not_reviewed");
