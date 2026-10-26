@@ -363,14 +363,11 @@ export function SourcesCatalogueClient({
   // one of those controls a lie. It used to `router.push(appModeHomeHref("sources"))`,
   // which left the catalogue entirely and dropped every filter with it — the same
   // reasoning already applied to the Topics and Publishers browse view.
-  const clearQuery = () => {
-    const next = new URLSearchParams();
-    for (const [candidateKey, candidateValue] of searchParams.entries()) {
-      if (candidateKey !== "q" && candidateKey !== "page") next.append(candidateKey, candidateValue);
-    }
-    const suffix = next.toString();
-    router.push(`${pathname}${suffix ? `?${suffix}` : ""}`);
-  };
+  const clearQueryParams = new URLSearchParams(searchParams.toString());
+  clearQueryParams.delete("q");
+  clearQueryParams.delete("page");
+  const clearQuerySuffix = clearQueryParams.toString();
+  const clearQueryHref = `${pathname}${clearQuerySuffix ? `?${clearQuerySuffix}` : ""}`;
 
   const clearFilters = () => {
     const next = new URLSearchParams();
@@ -476,7 +473,7 @@ export function SourcesCatalogueClient({
           query={filters.q}
           appliedFilters={appliedFilters}
           onClearFilters={activeFilterCount > 0 ? clearFilters : undefined}
-          onClearSearch={filters.q ? clearQuery : undefined}
+          clearSearchHref={filters.q ? clearQueryHref : undefined}
           onTryExample={(example) => router.push(appModeHomeHref("sources", { query: example, run: true }))}
         />
       )}
