@@ -4887,6 +4887,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-26-crisis-routing-under-18-youth-and-000.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/decisions/2026-10-26-sign-in-keeps-signed-out-shift-work.md",
         "section": "decisions",
         "catalogued": true

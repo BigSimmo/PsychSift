@@ -776,6 +776,7 @@
       },
       "testFiles": [
         "tests/answer-render-policy.test.ts",
+        "tests/citation-title-receptor-brackets.test.ts",
         "tests/citations.test.ts",
         "tests/clinical-ask-external-evidence.test.ts",
         "tests/design-sync-visual-exports.test.ts",
