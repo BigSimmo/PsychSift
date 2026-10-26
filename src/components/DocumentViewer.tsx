@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  checkSearchTextPatientDetail,
+  SearchHeldBack,
+} from "@/components/clinical-dashboard/search-patient-detail-guard";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -827,10 +831,16 @@ export function DocumentViewer({
     const timeout = window.setTimeout(() => {
       setSearchingDocument(true);
       setDocumentSearchError(null);
-      fetch(`/api/documents/${documentId}/search?q=${encodeURIComponent(query)}&limit=30`, {
-        signal: controller.signal,
-        headers: clientDemoMode ? undefined : authorizationHeader,
-      })
+      // Typed text is checked for patient details before it leaves the page (privacy audit CA-02).
+      // A held-back search shows the held-back sentence through the error line below.
+      checkSearchTextPatientDetail(query)
+        .then((refusal) => {
+          if (refusal) throw new SearchHeldBack(refusal);
+          return fetch(`/api/documents/${documentId}/search?q=${encodeURIComponent(query)}&limit=30`, {
+            signal: controller.signal,
+            headers: clientDemoMode ? undefined : authorizationHeader,
+          });
+        })
         .then(async (response) => {
           if (response.status === 401) markSessionExpired();
           if (!response.ok) throw await parseApiErrorResponse(response);

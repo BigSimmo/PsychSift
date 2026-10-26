@@ -166,6 +166,11 @@ describe("page search boxes route through the check before writing ?q= (CA-01, C
       /void checkSearchTextPatientDetail\(crossQuery\)\.then\(\(refusal\) => \{[\s\S]{0,200}?if \(refusal\) \{[\s\S]{0,120}?return;[\s\S]{0,40}?\}\s*latestNavigateCrossModeSearch\(mode, crossQuery\);/,
     ],
     [
+      "In-document search (CA-02)",
+      "src/components/DocumentViewer.tsx",
+      /checkSearchTextPatientDetail\(query\)\s*\.then\(\(refusal\) => \{\s*if \(refusal\) throw new SearchHeldBack\(refusal\);\s*return fetch\(`\/api\/documents\/\$\{documentId\}\/search\?q=/,
+    ],
+    [
       "Shared deep links on every search page",
       "src/components/clinical-dashboard/global-search-shell.tsx",
       /void checkSearchTextPatientDetail\(requestedQuery\)\.then\(\(refusal\) => \{[\s\S]{0,400}?url\.searchParams\.delete\("q"\);[\s\S]{0,300}?router\.replace\(/,
