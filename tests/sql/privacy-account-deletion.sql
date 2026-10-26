@@ -7,8 +7,9 @@
 --          only the owner gets the address back, a changed address re-seals the same secret, the
 --          app cannot repoint a link at another secret, and removing a link or the account
 --          removes its encrypted copy;
---   DB-05  deleting an account deletes its questions, answers, search logs and answer feedback,
---          keeps its audit-log rows with the owner cleared, and leaves another doctor's rows alone.
+--   DB-05  deleting an account deletes its questions, answers and search logs, keeps its answer
+--          feedback as an unnamed report with the free-text note emptied, keeps its audit-log rows
+--          with the owner cleared, and leaves another doctor's rows alone.
 -- Synthetic rows only; everything rolls back.
 \set ON_ERROR_STOP on
 begin;
@@ -57,7 +58,9 @@ insert into public.roster_calendar_links(id, owner_id, url, workplace) values
   ('d4000000-0000-4000-8000-000000000012', 'd0000000-0000-4000-8000-000000000001',
    'https://Calendar.Example.net:443/x?token=two', 'Example Clinic'),
   ('d4000000-0000-4000-8000-000000000021', 'd0000000-0000-4000-8000-000000000002',
-   'https://roster.example.org/feed/stayer.ics', null);
+   'https://roster.example.org/feed/stayer.ics', null),
+  ('d4000000-0000-4000-8000-000000000022', 'd0000000-0000-4000-8000-000000000002',
+   'https://[2001:DB8::1]/feed.ics?token=three', 'Example IPv6');
 
 select pg_temp.assert_true((select url_host from public.roster_calendar_links
     where id = 'd4000000-0000-4000-8000-000000000011') = 'roster.example.org',
@@ -65,6 +68,9 @@ select pg_temp.assert_true((select url_host from public.roster_calendar_links
 select pg_temp.assert_true((select url_host from public.roster_calendar_links
     where id = 'd4000000-0000-4000-8000-000000000012') = 'calendar.example.net',
   'the host must drop the port and be lower case');
+select pg_temp.assert_true((select url_host from public.roster_calendar_links
+    where id = 'd4000000-0000-4000-8000-000000000022') = '[2001:db8::1]',
+  'an IPv6 host must keep its brackets and drop the path and token');
 select pg_temp.assert_true((select s.secret <> l.url and s.decrypted_secret = l.url
     from public.roster_calendar_links l join vault.decrypted_secrets s on s.id = l.url_secret_id
     where l.id = 'd4000000-0000-4000-8000-000000000011'),
@@ -103,7 +109,7 @@ select pg_temp.assert_true((select u.url = 'https://new.example.org/feed.ics' an
       'd0000000-0000-4000-8000-000000000001', array[l.id]) u
     where l.id = 'd4000000-0000-4000-8000-000000000012'),
   'a changed address must be re-sealed');
-select pg_temp.assert_true((select count(*) = 3 from vault.secrets s
+select pg_temp.assert_true((select count(*) = 4 from vault.secrets s
     join public.roster_calendar_links l on l.url_secret_id = s.id), 'one secret per link');
 
 create temp table leaver_secrets on commit drop as
@@ -156,7 +162,9 @@ select pg_temp.assert_true((select count(*) = 1 from public.cme_evidence), 'only
 
 select pg_temp.assert_true(not exists (select 1 from vault.secrets where id in (select id from leaver_secrets)),
   'deleting the account must remove the encrypted copies of its calendar links');
-select pg_temp.assert_true((select count(*) = 1 from public.roster_calendar_links), 'only the other doctor''s link remains');
+select pg_temp.assert_true((select count(*) = 2 from public.roster_calendar_links
+    where owner_id = 'd0000000-0000-4000-8000-000000000002')
+    and (select count(*) = 2 from public.roster_calendar_links), 'only the other doctor''s links remain');
 
 select pg_temp.assert_true(not exists (select 1 from public.rag_queries where query = 'synthetic question one'),
   'the deleted account''s questions must go');
@@ -166,12 +174,15 @@ select pg_temp.assert_true((select count(*) from public.rag_query_misses where q
   'only the deleted account''s search misses must go');
 select pg_temp.assert_true((select count(*) from public.rag_retrieval_logs where query = 'synthetic search') = 1,
   'only the deleted account''s search logs must go');
-select pg_temp.assert_true(not exists (select 1 from public.rag_answer_feedback where answer_hash = 'h1')
-    and exists (select 1 from public.rag_answer_feedback where answer_hash = 'h2'),
-  'only the deleted account''s feedback must go');
+select pg_temp.assert_true((select owner_id is null and note is null and feedback_category = 'needs_correction'
+    from public.rag_answer_feedback where answer_hash = 'h1'),
+  'the deleted account''s problem report must stay as an unnamed signal, with its note gone');
+select pg_temp.assert_true((select owner_id = 'd0000000-0000-4000-8000-000000000002'
+    from public.rag_answer_feedback where answer_hash = 'h2'),
+  'another doctor''s feedback must stay as it was');
 select pg_temp.assert_true((select count(*) = 1 from public.audit_logs
     where action = 'synthetic.action' and owner_id is null),
   'the audit-log row must stay with the owner cleared');
 
-\echo PRIVACY_ACCOUNT_DELETION_SQL_PASS: CPD files queued, calendar links sealed and owner-only, question logs and feedback deleted with the account, audit rows kept
+\echo PRIVACY_ACCOUNT_DELETION_SQL_PASS: CPD files queued, calendar links sealed and owner-only, question logs deleted and feedback notes emptied with the account, audit rows kept
 rollback;

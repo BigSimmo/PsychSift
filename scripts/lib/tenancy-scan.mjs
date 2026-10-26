@@ -170,70 +170,49 @@ export function relativeToRepo(repoRoot, file) {
  * tenancy tiers. Generalises the older `ownerIdTablesFromDatabaseTypes()`; the parse is
  * bounded to the `public.Tables` block so RPC (`Functions`) entries cannot be mistaken
  * for tables.
+ *
+ * Reads the TypeScript syntax tree, not lines, so a table written as
+ * `GeneratedTable<{ ... }>` or with its whole `Row` on one line is tiered like any other
+ * (privacy audit DB-01: a line-based parse skipped 21 such tables and mis-tiered two).
  */
 export function tableTiersFromDatabaseTypes(text) {
-  const lines = text.split(/\r?\n/);
   const direct = new Set();
   const userKeyed = new Set();
   const derived = new Set();
   const all = new Set();
 
-  let inPublic = false;
-  let inTables = false;
-  let table = null;
-  let inRow = false;
-  let columns = null;
+  const sourceFile = ts.createSourceFile("database.types.ts", text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const memberNamed = (typeNode, name) =>
+    typeNode && ts.isTypeLiteralNode(typeNode)
+      ? typeNode.members.find(
+          (member) => ts.isPropertySignature(member) && member.name && propertyNameText(member.name) === name,
+        )?.type
+      : undefined;
 
-  const flush = () => {
-    if (!table || !columns) return;
+  let tables;
+  for (const statement of sourceFile.statements) {
+    if (ts.isTypeAliasDeclaration(statement) && statement.name.text === "Database") {
+      tables = memberNamed(memberNamed(statement.type, "public"), "Tables");
+    }
+  }
+  if (!tables || !ts.isTypeLiteralNode(tables)) return { direct, userKeyed, derived, all };
+
+  for (const member of tables.members) {
+    if (!ts.isPropertySignature(member) || !member.name || !member.type) continue;
+    const table = propertyNameText(member.name);
+    // `{ Row: {...}; Insert: ...}` or `GeneratedTable<{...row...}, ...>`.
+    const row = ts.isTypeReferenceNode(member.type) ? member.type.typeArguments?.[0] : memberNamed(member.type, "Row");
+    if (!table || !row || !ts.isTypeLiteralNode(row)) continue;
+    const columns = new Set(
+      row.members
+        .filter((column) => ts.isPropertySignature(column) && column.name)
+        .map((column) => propertyNameText(column.name)),
+    );
     all.add(table);
     if (columns.has("owner_id")) direct.add(table);
     else if (columns.has("user_id")) userKeyed.add(table);
     else if (columns.has("document_id")) derived.add(table);
-    table = null;
-    columns = null;
-  };
-
-  for (const line of lines) {
-    if (/^  public: \{$/.test(line)) {
-      inPublic = true;
-      continue;
-    }
-    if (!inPublic) continue;
-    if (/^    Tables: \{$/.test(line)) {
-      inTables = true;
-      continue;
-    }
-    if (/^    (Views|Functions|Enums|CompositeTypes): /.test(line)) {
-      flush();
-      inTables = false;
-      inPublic = false;
-      continue;
-    }
-    if (!inTables) continue;
-
-    const tableMatch = line.match(/^      ([a-z0-9_]+): \{$/);
-    if (tableMatch) {
-      flush();
-      table = tableMatch[1];
-      columns = new Set();
-      inRow = false;
-      continue;
-    }
-    if (!table) continue;
-    if (/^        Row: \{$/.test(line)) {
-      inRow = true;
-      continue;
-    }
-    if (/^        (Insert|Update|Relationships): /.test(line)) {
-      inRow = false;
-      continue;
-    }
-    if (!inRow) continue;
-    const column = line.match(/^          ([a-z0-9_]+)\??:/);
-    if (column) columns.add(column[1]);
   }
-  flush();
 
   // NOTE: a tenancy column under a FOURTH name (the way `clinical_quality_feedback_triage`
   // carries `owner_user_id`) puts its table in `all` and in no tier — which is exactly what
@@ -241,6 +220,10 @@ export function tableTiersFromDatabaseTypes(text) {
   // `document_id` on an existing table would likewise drop it out of its tier silently, and
   // the untiered list would then be the only thing that notices.
   return { direct, userKeyed, derived, all };
+}
+
+function propertyNameText(name) {
+  return ts.isIdentifier(name) || ts.isStringLiteral(name) ? name.text : undefined;
 }
 
 /* ------------------------------------------------------------- AST helpers */
@@ -1220,6 +1203,14 @@ const WORK_HOSPITAL_VIEW_REASON =
   'Hospital-wide Medical Workforce view. The function refuses first unless can(context, capability, { kind: "hospital", hospitalId }) passes, where context comes from loadWorkRoleContext for the authenticated user in its /api/work/hospital/* route; for starters.view, sick.inbox and staffing.overview at hospital scope only the site administrator (re-read from Auth) or a Medical Workforce grant for that same hospital passes. Every query is then limited by service_id to the teams work_hospital_teams links to that hospital. Short-staffed returns counts and team names only; starters returns names and New job progress only for members who chose to share it; sick calls return names, shift times and cover status, never a reason. Declared 2026-10-26 (privacy audit DB-01).';
 const WORK_PEOPLE_REASON =
   "People and roles for one hospital. readPeople lists only hospitals that canManagePeople allows (roles.grant or assessments.administer at hospital scope: site administrator, or a Medical Workforce or DCT grant for that hospital), refuses a requested hospital outside that list, and filters every team query by service_id to the teams linked to the chosen hospital (or, for team names, to service ids on that hospital's own grants). readUnlinkedTeams runs only for the site administrator and returns team ids and names. The context comes from loadWorkRoleContext for the authenticated user in /api/work/people. Declared 2026-10-26 (privacy audit DB-01).";
+const WORK_HOSPITAL_STRUCTURE_REASON =
+  "Organisation structure, not personal data: work_hospitals holds a hospital's id, name and archive time, and work_hospital_teams links a team id to a hospital. Every write is administrator-only (isAdministrator(context), re-read from Auth in loadWorkRoleContext, before link-team, create-hospital, move-team, rename-hospital and archive-hospital; a hospital name that looks like a patient detail is refused). Reads list hospitals and team links so the caller's own role grants can be resolved (addGrantedRoles, for hospital ids on the session user's own `.eq(\"user_id\", userId)` grants) or so readPeople can filter to the hospitals canManagePeople allows. Nothing here names a person. Declared 2026-10-26 when the tier parser started reading GeneratedTable<...> tables (privacy audit DB-01).";
+const WORK_ROLE_GRANT_WRITE_REASON =
+  "Role management for another person, by design. grant inserts a row whose user_id is the person receiving the role, and only after decideGrantWorkRole(context.grants, context.userId, ...) allows the session user to give that role at that hospital (never to themselves), with every named trainee checked as an active member of a team linked to that hospital. revoke reads the grant by id, refuses unless the same rule would let the session user give it, and updates only that row while it is still active. The context comes from loadWorkRoleContext for the authenticated user in /api/work/people. Declared 2026-10-26 (privacy audit DB-01).";
+const ROSTER_ROTATION_ROUND_REASON =
+  "Team-scoped rotation rounds. readRotations filters by service_id to the session user's own teams (readMyTeams) and the teams canManageRotations allows, or reads all for the site administrator only. createRotationRound inserts for a team the caller was just checked to manage. loadRoundRow reads one round by id, and its only caller runRoundCommand then refuses with not-found unless the session user is an active member of that round's team, and refuses every manager action unless canManageRotations passes. fetchPublishedPlacementsFor filters to the feed owner's own active teams and published rounds. Declared 2026-10-26 when the tier parser started reading GeneratedTable<...> tables (privacy audit DB-01).";
+const ROSTER_ROTATION_PREFERENCES_REASON =
+  "Doctors' ranked rotation preferences, read by round. A round's administrator reads every preference in rounds readRotations put in managedIds (canManageRotations for that team, or the site administrator), which is how allocation works; everyone else, and every save or withdraw, passes onlyUserId so the chain gets `.eq(\"user_id\", onlyUserId)` for the session user. runRoundCommand reads all of a round's preferences only after canManageRotations on the round's own team. Declared 2026-10-26 (privacy audit DB-01).";
 const SETUP_STATUS_REASON =
   "Local-origin-gated setup/health existence probe. It returns status booleans and counts only, never owner rows, so a fresh deployment can diagnose missing setup before any corpus exists (tenancy review §3 / TEN-N1).";
 
@@ -1228,6 +1219,38 @@ const SETUP_STATUS_REASON =
  * query chain. Every entry names its proof; the mechanical kinds are re-checked in the AST.
  */
 export const SCOPE_EXEMPTIONS = [
+  {
+    file: "src/lib/roster/rotations/repository.ts",
+    table: "roster_rotation_preferences",
+    fn: "loadPreferences",
+    queries: 1,
+    proof: PROOF_KINDS.REVIEWED_INDIRECT,
+    reason: ROSTER_ROTATION_PREFERENCES_REASON,
+  },
+  {
+    file: "src/lib/work-roles/people.ts",
+    table: "work_role_grants",
+    fn: "readPeople",
+    queries: 1,
+    proof: PROOF_KINDS.REVIEWED_INDIRECT,
+    reason: WORK_PEOPLE_REASON,
+  },
+  {
+    file: "src/lib/work-roles/people.ts",
+    table: "work_role_grants",
+    fn: "grant",
+    queries: 1,
+    proof: PROOF_KINDS.REVIEWED_INDIRECT,
+    reason: WORK_ROLE_GRANT_WRITE_REASON,
+  },
+  {
+    file: "src/lib/work-roles/people.ts",
+    table: "work_role_grants",
+    fn: "revoke",
+    queries: 2,
+    proof: PROOF_KINDS.REVIEWED_INDIRECT,
+    reason: WORK_ROLE_GRANT_WRITE_REASON,
+  },
   {
     file: "src/lib/roster/owner/teams.ts",
     table: "on_call_service_members",
@@ -1888,6 +1911,190 @@ export const DERIVED_QUERY_INVENTORY = [
  */
 export const UNTIERED_TABLE_DECLARATIONS = [
   {
+    file: "src/lib/work-roles/hospital-short-staffed.ts",
+    table: "work_hospitals",
+    fn: "readHospitalShortStaffed",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_HOSPITAL_VIEW_REASON,
+  },
+  {
+    file: "src/lib/work-roles/hospital-short-staffed.ts",
+    table: "work_hospital_teams",
+    fn: "readHospitalShortStaffed",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_HOSPITAL_VIEW_REASON,
+  },
+  {
+    file: "src/lib/work-roles/hospital-sick.ts",
+    table: "work_hospitals",
+    fn: "readHospitalSickCalls",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_HOSPITAL_VIEW_REASON,
+  },
+  {
+    file: "src/lib/work-roles/hospital-sick.ts",
+    table: "work_hospital_teams",
+    fn: "readHospitalSickCalls",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_HOSPITAL_VIEW_REASON,
+  },
+  {
+    file: "src/lib/work-roles/hospital-starters.ts",
+    table: "work_hospitals",
+    fn: "readHospitalStarters",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_HOSPITAL_VIEW_REASON,
+  },
+  {
+    file: "src/lib/work-roles/hospital-starters.ts",
+    table: "work_hospital_teams",
+    fn: "readHospitalStarters",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_HOSPITAL_VIEW_REASON,
+  },
+  {
+    file: "src/lib/work-roles/people.ts",
+    table: "work_hospitals",
+    fn: "hospitalsFor",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_HOSPITAL_STRUCTURE_REASON,
+  },
+  {
+    file: "src/lib/work-roles/people.ts",
+    table: "work_hospital_teams",
+    fn: "readPeople",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_HOSPITAL_STRUCTURE_REASON,
+  },
+  {
+    file: "src/lib/work-roles/people.ts",
+    table: "work_hospital_teams",
+    fn: "readUnlinkedTeams",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_HOSPITAL_STRUCTURE_REASON,
+  },
+  {
+    file: "src/lib/work-roles/people.ts",
+    table: "work_hospital_teams",
+    fn: "hospitalTeamIds",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_HOSPITAL_STRUCTURE_REASON,
+  },
+  {
+    file: "src/lib/work-roles/people.ts",
+    table: "work_hospital_teams",
+    fn: "moveTeam",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_HOSPITAL_STRUCTURE_REASON,
+  },
+  {
+    file: "src/lib/work-roles/people.ts",
+    table: "work_hospitals",
+    fn: "moveTeam",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_HOSPITAL_STRUCTURE_REASON,
+  },
+  {
+    file: "src/lib/work-roles/people.ts",
+    table: "work_hospitals",
+    fn: "renameHospital",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_HOSPITAL_STRUCTURE_REASON,
+  },
+  {
+    file: "src/lib/work-roles/people.ts",
+    table: "work_hospitals",
+    fn: "archiveHospital",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_HOSPITAL_STRUCTURE_REASON,
+  },
+  {
+    file: "src/lib/work-roles/people.ts",
+    table: "work_hospital_teams",
+    fn: "applyPeopleChange",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_HOSPITAL_STRUCTURE_REASON,
+  },
+  {
+    file: "src/lib/work-roles/people.ts",
+    table: "work_hospitals",
+    fn: "applyPeopleChange",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_HOSPITAL_STRUCTURE_REASON,
+  },
+  {
+    file: "src/lib/work-roles/server.ts",
+    table: "work_hospital_teams",
+    fn: "addGrantedRoles",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_HOSPITAL_STRUCTURE_REASON,
+  },
+  {
+    file: "src/lib/work-roles/server.ts",
+    table: "work_hospitals",
+    fn: "addGrantedRoles",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_HOSPITAL_STRUCTURE_REASON,
+  },
+  {
+    file: "src/lib/roster/rotations/repository.ts",
+    table: "roster_rotation_rounds",
+    fn: "readRotations",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: ROSTER_ROTATION_ROUND_REASON,
+  },
+  {
+    file: "src/lib/roster/rotations/repository.ts",
+    table: "roster_rotation_rounds",
+    fn: "createRotationRound",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: ROSTER_ROTATION_ROUND_REASON,
+  },
+  {
+    file: "src/lib/roster/rotations/repository.ts",
+    table: "roster_rotation_rounds",
+    fn: "loadRoundRow",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: ROSTER_ROTATION_ROUND_REASON,
+  },
+  {
+    file: "src/lib/roster/rotations/repository.ts",
+    table: "roster_rotation_rounds",
+    fn: "runRoundCommand",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: ROSTER_ROTATION_ROUND_REASON,
+  },
+  {
+    file: "src/lib/roster/rotations/repository.ts",
+    table: "roster_rotation_rounds",
+    fn: "fetchPublishedPlacementsFor",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: ROSTER_ROTATION_ROUND_REASON,
+  },
+  {
     file: "src/lib/roster/alerts/recipients.ts",
     table: "roster_swaps",
     fn: "swapParties",
@@ -1960,15 +2167,6 @@ export const UNTIERED_TABLE_DECLARATIONS = [
     proof: PROOF_KINDS.UNTIERED_TABLE,
     reason:
       "Team-scoped by service_id, which the query filters on. requireActiveMember runs first and calls roster_read (overview) for the session actor, which raises unless the actor is an active, unrevoked member of a verified or demo team, exactly as for every other team read. The projection is weekday, date, kind, grade, site id and count only: no row id, user id or name (tenancy review §6).",
-  },
-  {
-    file: "src/lib/teaching/repository.ts",
-    table: "teaching_calendar_optins",
-    fn: "readWeek",
-    queries: 1,
-    proof: PROOF_KINDS.UNTIERED_TABLE,
-    reason:
-      'Not really untiered: the table carries `user_id`, but database.types.ts declares its Row on one line, which tableTiersFromDatabaseTypes does not parse, so it lands in no tier. The query is user-scoped on its own chain (`.eq("user_id", actorId)`) and further limited to the team ids the teaching_command week.read RPC returned for that actor; actorId is the authenticated user id from withTeachingApi. Declared 2026-10-26 (privacy audit DB-01); remove this entry once the tier parser reads one-line Row types.',
   },
   {
     file: "src/lib/work-roles/hospital-short-staffed.ts",

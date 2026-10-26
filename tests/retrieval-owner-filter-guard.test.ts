@@ -461,7 +461,9 @@ describe("tenancy table tiers", () => {
     // appear here and NOT in the queried-tables assertion below. The Roster tables and the
     // membership audit table (the combined Roster database change) are the same shape: a
     // `user_id` column, reached only through `roster_read` / `roster_command` or
-    // `on_call_service_command`.
+    // `on_call_service_command`. `roster_rotation_preferences`, `teaching_calendar_optins` and
+    // `work_role_grants` joined this list on 2026-10-26, when the tier parser started reading
+    // `GeneratedTable<...>` tables and one-line `Row` types (privacy audit DB-01).
     expect([...tiers.userKeyed].sort()).toEqual([
       "on_call_service_member_events",
       "on_call_service_members",
@@ -471,10 +473,13 @@ describe("tenancy table tiers", () => {
       "roster_draft_assignments",
       "roster_member_roles",
       "roster_publication_seen",
+      "roster_rotation_preferences",
       "roster_unavailability",
+      "teaching_calendar_optins",
       "user_favourite_sets",
       "user_favourites",
       "user_preferences",
+      "work_role_grants",
     ]);
     // The user-keyed tier ACTUALLY QUERIED by scanned files is small and fully enumerated:
     // withOwnerReadScope cannot be used on it (it filters owner_id), so every call site
@@ -484,14 +489,20 @@ describe("tenancy table tiers", () => {
     // Roster view and the rotation team list, each a declared scope exemption (added 2026-10-21).
     // `roster_assignments` is read for the linked teams of one hospital by the Medical Workforce
     // short-staffed view, a declared scope exemption (privacy audit DB-01, added 2026-10-26).
+    // `roster_rotation_preferences`, `teaching_calendar_optins` and `work_role_grants` were always
+    // queried but sat outside every tier until the parser read their `GeneratedTable<...>` or one-line
+    // `Row` types (DB-01, 2026-10-26): each is scoped on its chain or a declared scope exemption.
     expect(userKeyed).toEqual([
       "on_call_service_members",
       "roster_assignments",
       "roster_member_roles",
+      "roster_rotation_preferences",
       "roster_unavailability",
+      "teaching_calendar_optins",
       "user_favourite_sets",
       "user_favourites",
       "user_preferences",
+      "work_role_grants",
     ]);
   });
 });

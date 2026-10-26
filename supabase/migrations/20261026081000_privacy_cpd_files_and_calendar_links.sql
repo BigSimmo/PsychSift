@@ -53,10 +53,11 @@ alter table public.roster_calendar_links
   add column url_secret_id uuid,
   add column url_host text check (url_host is null or char_length(url_host) <= 253);
 
--- Seal the links that already exist (at most 3 per doctor), before the triggers exist.
+-- Seal the links that already exist (at most 3 per doctor), before the triggers exist. The host is
+-- the name only (an IPv6 literal keeps its brackets), never the path or the query string.
 update public.roster_calendar_links
 set url_secret_id = vault.create_secret(url, null, 'roster calendar link'),
-    url_host = lower(substring(url from '^https://([^/?#:@]+)'))
+    url_host = lower(substring(url from '^https://(\[[0-9A-Fa-f:.]+\]|[^/?#:@\[]+)'))
 where url_secret_id is null;
 
 alter table public.roster_calendar_links alter column url_secret_id set not null;
@@ -77,7 +78,7 @@ begin
   else
     new.url_secret_id := vault.create_secret(new.url, null, 'roster calendar link');
   end if;
-  new.url_host := lower(substring(new.url from '^https://([^/?#:@]+)'));
+  new.url_host := lower(substring(new.url from '^https://(\[[0-9A-Fa-f:.]+\]|[^/?#:@\[]+)'));
   return new;
 end $$;
 alter function public.roster_calendar_links_seal_url() owner to postgres;
