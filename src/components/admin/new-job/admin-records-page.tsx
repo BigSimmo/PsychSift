@@ -62,8 +62,11 @@ function RecordRow({ row }: { row: AdminRecordsRow }) {
 
 function RecordGroup({ section, expandAll }: { section: AdminRecordsSection; expandAll: boolean }) {
   const id = SECTION_ID[section.label];
+  // The Admin area band is already a region called "Admin", and two regions with one
+  // name confuse landmark lists (A11Y-07), so this group is named "Other admin".
+  const regionName = section.label === "Admin" ? "Other admin" : section.label;
   return (
-    <section id={id} className={cn(inPageAnchor, adminStyles.section)} aria-label={section.label}>
+    <section id={id} className={cn(inPageAnchor, adminStyles.section)} aria-label={regionName}>
       <WorkSectionLabel>
         {section.label}
         <span className="tabular-nums" data-testid={`${id}-count`}>{` · ${section.rows.length}`}</span>

@@ -402,7 +402,7 @@ describe("work area mode pill", () => {
   it("keeps the page over the area while the band still names a page", () => {
     act(() => setWorkFramePill({ modeId: "my-day", area: "My Day", page: "Week" }));
     render(<MasterSearchHeader {...headerProps()} searchMode="my-day" />);
-    const trigger = screen.getByRole("button", { name: "Mode My Day, page Week" });
+    const trigger = screen.getByRole("button", { name: "Mode My Day: Week, My Day" });
     expect(within(trigger).queryByTestId("universal-header-mode-area-only")).toBeNull();
     expect(trigger).not.toHaveAttribute("data-area-only");
     expect(trigger.querySelector(".universal-header-mode-badge")?.className).not.toContain("max-sm:hidden");

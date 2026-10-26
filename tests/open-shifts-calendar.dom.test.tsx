@@ -32,11 +32,11 @@ describe("Open shifts Browse calendar", () => {
     draw();
     expect(
       screen.getByRole("button", {
-        name: "Friday 9 October, 3 shifts match, includes an urgent shift",
+        name: "Friday 9, 3 shifts match, includes an urgent shift",
       }),
     ).toBeTruthy();
     // The urgent day carries the shared amber dot, never the overdue triangle.
-    const urgentDay = screen.getByRole("button", { name: /^Friday 9 October/ });
+    const urgentDay = screen.getByRole("button", { name: /^Friday 9, / });
     expect(urgentDay.querySelector('[data-mark="dot"]')).not.toBeNull();
     expect(urgentDay.querySelector("svg.lucide-triangle-alert")).toBeNull();
     expect(screen.getByRole("button", { name: "Monday 12 October, you're rostered" })).toBeTruthy();
@@ -49,7 +49,7 @@ describe("Open shifts Browse calendar", () => {
 
   it("lets you choose a day in the window only", () => {
     const onSelect = draw();
-    fireEvent.click(screen.getByRole("button", { name: /^Friday 9 October/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Friday 9, / }));
     expect(onSelect).toHaveBeenCalledWith("2026-10-09");
     expect(screen.getByRole("button", { name: "Wednesday 21 October" })).toHaveProperty("disabled", true);
     expect(screen.getByRole("button", { name: "Tuesday 6 October" })).toHaveProperty("disabled", true);

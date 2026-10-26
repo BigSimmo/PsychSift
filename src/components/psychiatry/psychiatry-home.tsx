@@ -267,7 +267,6 @@ function ResumeRow({ latest, now }: { readonly latest: PsychiatryVisit; readonly
         href={latest.href}
         icon={visitIcon(latest.kind)}
         title={latest.title}
-        ariaLabel={`Open ${latest.title}`}
         testId="psychiatry-resume-open"
         subtitle={["Pick up where you left off", now ? formatPsychiatryVisitWhen(latest.at, now.getTime()) : null]
           .filter(Boolean)

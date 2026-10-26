@@ -63,7 +63,7 @@ for (const colorScheme of ["light", "dark"] as const) {
 
       // "Didn't connect" is marked from the number's own sheet, not a button on every row.
       await expect(main.getByRole("button", { name: /^Didn't connect/ })).toHaveCount(0);
-      await clickWhenHydrated(main.getByRole("button", { name: /^Switchboard, .*Dialling details$/ }));
+      await clickWhenHydrated(main.getByRole("button", { name: /^Switchboard\b.*Dialling details$/ }));
       const sheet = page.getByRole("dialog", { name: "Switchboard" });
       await expect(sheet).toBeVisible();
       await sheet.getByRole("button", { name: "Didn't connect: Switchboard" }).click();

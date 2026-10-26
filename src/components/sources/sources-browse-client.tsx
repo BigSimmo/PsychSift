@@ -97,7 +97,8 @@ const kindCopy = {
     filterLabel: "Filter topics",
     filterDescription:
       "Narrow the topics by the jurisdiction, quality band or application usage of the sources behind them.",
-    resultsLabel: "Source topics",
+    // Not the band's own name: two regions with one name confuse landmark lists (A11Y-07).
+    resultsLabel: "Source topics list",
     param: "topic",
     icon: BookOpenText,
   },
@@ -110,7 +111,8 @@ const kindCopy = {
     filterLabel: "Filter publishers",
     filterDescription:
       "Narrow the publishers by jurisdiction, the quality of their sources, or where PsychSift uses them.",
-    resultsLabel: "Source publishers",
+    // Not the band's own name: two regions with one name confuse landmark lists (A11Y-07).
+    resultsLabel: "Source publishers list",
     param: "publisher",
     icon: Landmark,
   },

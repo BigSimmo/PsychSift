@@ -329,8 +329,8 @@ describe("Admin > Renewals header menu", () => {
       expect(screen.queryByTestId("on-call-page-menu-trigger")).toBeNull();
       expect(screen.getByRole("heading", { level: 1, name: "Renewals" })).toBeInTheDocument();
       fireEvent.click(screen.getByRole("button", { name: "More actions" }));
-      expect(screen.getByRole("button", { name: "Copy for workforce" })).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Add all to my calendar" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /^Copy for workforce\b/ })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /^Add all to my calendar\b/ })).toBeInTheDocument();
       expect(screen.queryByTestId("on-call-page-menu-add")).toBeNull();
       expect(screen.getAllByTestId("admin-renewals-add")).toHaveLength(1);
     } finally {

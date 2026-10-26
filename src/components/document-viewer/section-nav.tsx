@@ -165,7 +165,8 @@ export function DocumentViewDensityToggle({
       type="button"
       data-testid="document-view-density-toggle"
       aria-pressed={compact}
-      aria-label={compact ? "Show full document content" : "Condense document content"}
+      // Named by the words it shows, with the pressed state saying whether it is on
+      // (WCAG 2.5.3, A11Y-02).
       title={compact ? "Show the full indexed text" : "Collapse long document sections"}
       onClick={() => onCompactChange(!compact)}
       className={cn(
@@ -179,11 +180,11 @@ export function DocumentViewDensityToggle({
     >
       <ListCollapse aria-hidden="true" className="h-4 w-4 shrink-0" />
       <span className="min-w-0 flex-1">
-        <span className="block text-xs font-bold">{compact ? "Condensed view" : "Full view"}</span>
+        <span className="block text-xs font-bold">{compact ? "Condensed view" : "Full view"}</span>{" "}
         <span className="block truncate text-3xs font-semibold">
           {compact ? "Long sections collapsed" : "All indexed text shown"}
         </span>
-      </span>
+      </span>{" "}
       <span className="text-3xs font-black uppercase tracking-eyebrow">{compact ? "On" : "Off"}</span>
     </button>
   );

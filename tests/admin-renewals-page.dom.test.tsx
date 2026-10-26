@@ -161,7 +161,7 @@ describe("AdminRenewalsPage — the checklist", () => {
     expect(october.compareDocumentPosition(undated) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     const registration = within(groups).getByTestId("admin-renewals-checklist-group-registration-toggle");
     expect(registration).toHaveAttribute("aria-expanded", "false");
-    expect(registration).toHaveAccessibleName("Registration · 2");
+    expect(registration).toHaveAccessibleName(/^Registration · 2 /);
     expect(within(groups).queryByText("Medical registration renewal")).toBeNull();
     fireEvent.click(registration);
     expect(registration).toHaveAttribute("aria-expanded", "true");

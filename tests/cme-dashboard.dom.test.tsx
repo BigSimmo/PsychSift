@@ -393,6 +393,6 @@ describe("the dashboard", () => {
     expect(within(due).getByRole("heading", { name: "To log" })).toBeInTheDocument();
     expect(due).toHaveTextContent("Peer review groupMonthly · usually 1 h");
     expect(within(due).getByRole("button", { name: "Log 1 h" })).toBeInTheDocument();
-    expect(within(due).getByRole("button", { name: "Snooze for a week: CPD routines due" })).toBeInTheDocument();
+    expect(within(due).getByRole("button", { name: "Snooze a week: CPD routines due" })).toBeInTheDocument();
   });
 });

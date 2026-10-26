@@ -274,7 +274,7 @@ describe("Empirical Challenger M4 Stress Test Harness", () => {
 
       // Open workspace by clicking the workspace selection button
       const selectBtn = screen.getByRole("button", {
-        name: /Select Service crisis-team for workspace/i,
+        name: /Select Service crisis-team\b.* for workspace/i,
       });
       await user.click(selectBtn);
 
@@ -300,7 +300,7 @@ describe("Empirical Challenger M4 Stress Test Harness", () => {
       render(<FavouritesCommandLibraryPage demoMode={false} />);
 
       const selectBtn = screen.getByRole("button", {
-        name: /Select Service crisis-team for workspace/i,
+        name: /Select Service crisis-team\b.* for workspace/i,
       });
       await user.click(selectBtn);
 

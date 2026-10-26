@@ -152,7 +152,7 @@ describe("Invited service handbook through the actual UI", () => {
     const contact = within(screen.getByTestId(`service-entry-${contactId}`));
     // One formatter (kit 1.2): the hospital's own list writes the number short,
     // the link still dials 08, and its name speaks the digits one by one.
-    const call = contact.getByRole("link", { name: /^Call .*, 5 5 5 5, 0 1 0 0$/ });
+    const call = contact.getByRole("link", { name: /^Call 5555 0100 \(5 5 5 5, 0 1 0 0\), / });
     expect(call).toHaveAttribute("href", "tel:0855550100");
     expect(call).toHaveTextContent("Call 5555 0100");
     expect(contact.getByRole("link", { name: "Official local source" })).toHaveAttribute(

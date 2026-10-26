@@ -271,9 +271,11 @@ describe("Roster Shifts", () => {
     expect(row).toHaveTextContent("Night");
     expect(screen.getByRole("heading", { name: /This week\s*12 to 18 Oct · 1 shift/ })).toBeInTheDocument();
     // The morning the night ends is a day off that says so.
-    expect(screen.getAllByTestId("roster-shifts-off").map((item) => item.textContent)).toContain(
-      "Fri16Fri 16, OffNight shift ends 08:00",
-    );
+    expect(
+      screen
+        .getAllByTestId("roster-shifts-off")
+        .some((item) => /^Fri16Fri 16, Off\s+Night shift ends 08:00\s*$/.test(item.textContent ?? "")),
+    ).toBe(true);
   });
 
   it("leads with the next shift, and on a night shift with when it ends and the rest after it", async () => {

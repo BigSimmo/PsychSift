@@ -933,7 +933,7 @@ export function SpecifierBuilderPage({ initialSpecifiers = [] }: { initialSpecif
           ) : null}
         </div>
 
-        <aside className="grid min-w-0 content-start gap-4 xl:sticky xl:top-20">
+        <aside aria-label="Working diagnosis" className="grid min-w-0 content-start gap-4 xl:sticky xl:top-20">
           <section className="min-w-0 overflow-hidden rounded-xl border border-[color:var(--clinical-accent-border)] bg-[color:var(--surface)] shadow-[var(--e2)]">
             <div className="flex min-w-0 items-center gap-3 border-b border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] px-4 py-3">
               <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[color:var(--clinical-accent)] text-[color:var(--clinical-accent-contrast)]">

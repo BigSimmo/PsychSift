@@ -38,7 +38,8 @@ export function TodayAtAGlance({ counts }: { counts: Record<RenewalsShowFilter, 
           <li key={filter} className="min-w-0">
             <Link
               href={renewalsShowHref(filter)}
-              aria-label={`${label}: ${count}`}
+              // Starts with the words it shows, so voice control can say them (WCAG 2.5.3, A11Y-02).
+              aria-label={`${count} ${TALLY_WORDS[filter].toLowerCase()}. ${label}`}
               className={adminStyles.glanceWord}
               data-testid={`admin-today-at-a-glance-${filter}`}
               data-zero={count === 0 ? "" : undefined}

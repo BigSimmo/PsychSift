@@ -346,7 +346,7 @@ it("lists leave with the HR status the doctor marked, and opens it for review", 
   render(<RosterRequestsPage />);
   expect(await screen.findByText("Wed 7 Oct · 1 day · you marked it: not yet lodged in HR")).toBeTruthy();
   expect(screen.getByText("HR status is what you mark yourself. PsychSift does not talk to HR.")).toBeTruthy();
-  await user.click(screen.getByRole("button", { name: /^Review annual leave/ }));
+  await user.click(screen.getByRole("button", { name: /^Annual leave .*\. Review$/ }));
   expect(await screen.findByRole("dialog")).toBeTruthy();
 });
 

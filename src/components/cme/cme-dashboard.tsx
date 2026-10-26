@@ -285,7 +285,7 @@ export function CmeDashboard({
       <button
         type="button"
         className={LABEL_ACTION}
-        aria-label={`Snooze for a week: ${REMINDER_TYPE_LABELS[type]}`}
+        aria-label={`Snooze a week: ${REMINDER_TYPE_LABELS[type]}`}
         onClick={() => onSnoozeReminder(type)}
       >
         Snooze a week
