@@ -10,23 +10,34 @@ import {
 describe("extractiveFallbackRiskReason", () => {
   const base = { routeReason: "strong_routine_retrieval; generation_fallback:generation_quality_failed" };
 
-  it("sends dose and threshold quoted fallbacks for review", () => {
+  it("sends a dose or threshold quote about another medicine for review", () => {
     expect(
       extractiveFallbackRiskReason({
         ...base,
-        query: "What thiamine dose should be given to prevent Wernicke's encephalopathy?",
+        query: "Is zuranolone approved in Australia for postnatal depression and what is the dose?",
         queryClass: "medication_dose_risk",
-        answerText: "Thiamine 100 mg orally daily.",
+        answerText: "Bupropion 150 mg once daily, increasing to 300 mg.",
       }),
-    ).toBe("high_risk_extractive_after_failed_generation");
+    ).toBe("answer_names_unasked_medication");
     expect(
       extractiveFallbackRiskReason({
         ...base,
-        query: "At what CIWA-Ar score should diazepam be given?",
+        query: "How many days of missed clozapine doses means I need to re-titrate?",
         queryClass: "table_threshold",
-        answerText: "Monitor hourly.",
+        answerText: "Lithium levels are taken 12 hours after the last dose.",
       }),
-    ).toBe("high_risk_extractive_after_failed_generation");
+    ).toBe("medication_subject_not_in_answer");
+  });
+
+  it("keeps a dose quote about the medicine asked for", () => {
+    expect(
+      extractiveFallbackRiskReason({
+        ...base,
+        query: "When should I take a lithium level after the last dose?",
+        queryClass: "medication_dose_risk",
+        answerText: "Lithium blood samples should be taken 12 hours after the last dose.",
+      }),
+    ).toBeNull();
   });
 
   it("sends weak-retrieval quoted fallbacks for review", () => {

@@ -24,6 +24,20 @@ export function doseWithoutNamedMedicationReason(answerText: string, queryClass:
   return medicationSafetyEntitiesInText(answerText).length === 0 ? "dose_without_named_medication" : null;
 }
 
+/**
+ * A dose or threshold quote about a different medicine from the one asked about: the asked-for
+ * medicine is missing, or the question names none and the quote names one (a bupropion card for
+ * a zuranolone question, where zuranolone is not yet a recognised medicine).
+ */
+export function medicationSubjectMismatchReason(query: string, answerText: string) {
+  const queryMedications = medicationSafetyEntitiesInText(query);
+  const answerMedications = new Set(medicationSafetyEntitiesInText(answerText));
+  if (queryMedications.length) {
+    return queryMedications.some((entity) => answerMedications.has(entity)) ? null : "medication_subject_not_in_answer";
+  }
+  return answerMedications.size ? "answer_names_unasked_medication" : null;
+}
+
 /** A distinctive query acronym the shown quoted answer never mentions. */
 export function querySubjectNotInAnswerReason(query: string, answerText: string) {
   const acronyms = Array.from(new Set(query.match(queryAcronymPattern) ?? [])).filter(
@@ -39,8 +53,8 @@ export function querySubjectNotInAnswerReason(query: string, answerText: string)
 
 /**
  * Why a quoted passage chosen after a failed AI draft must be shown for review rather than as
- * a sourced answer. Dose and threshold questions, and any route that already reported weak or
- * conflicting retrieval, never present a lone quoted passage as the answer.
+ * a sourced answer: a dose or threshold quote about another medicine, any route that already
+ * reported weak or conflicting retrieval, a dose with no medicine named, or a missing subject.
  */
 export function extractiveFallbackRiskReason(args: {
   query: string;
@@ -48,7 +62,10 @@ export function extractiveFallbackRiskReason(args: {
   routeReason: string;
   answerText: string;
 }) {
-  if (highRiskQueryClasses.has(args.queryClass)) return "high_risk_extractive_after_failed_generation";
+  if (highRiskQueryClasses.has(args.queryClass)) {
+    const medicationReason = medicationSubjectMismatchReason(args.query, args.answerText);
+    if (medicationReason) return medicationReason;
+  }
   if (weakRetrievalRouteReason.test(args.routeReason)) return "weak_retrieval_extractive_after_failed_generation";
   return (
     doseWithoutNamedMedicationReason(args.answerText, args.queryClass) ??

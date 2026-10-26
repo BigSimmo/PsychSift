@@ -4065,7 +4065,10 @@ ${buildContextSourceBlock(contextResults, { query: answerFocusQuery, queryClass 
             query: args.query,
             queryClass,
             routeReason: route.reason,
-            answerText: extractiveFallbackAnswer.answer ?? "",
+            answerText: [
+              extractiveFallbackAnswer.answer ?? "",
+              ...(extractiveFallbackAnswer.answerSections ?? []).map((section) => section.body),
+            ].join("\n"),
           }))
       : null;
     const generationFallbackAnswer = comparisonFallbackAnswer
