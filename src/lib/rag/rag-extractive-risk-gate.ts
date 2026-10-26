@@ -16,6 +16,8 @@ const doseFigurePattern = /\b\d+(?:\.\d+)?\s*(?:mg|mcg|micrograms?|g|mL|units?)\
 // unit and place abbreviations are excluded because answers rarely repeat them.
 const queryAcronymPattern = /\b[A-Z][A-Z0-9]{1,5}\b/g;
 const ignoredQueryAcronyms = new Set(["IM", "IV", "PO", "SC", "UK", "US", "AU", "WA", "NSW", "OK", "PRN", "MG"]);
+// Clinical acronyms people often type in lower case.
+const lowercaseQueryAcronyms = /\b(?:ect|cto|ciwa|nms|ssri|snri|maoi|tca|rtms)\b/g;
 
 const genericDoseQueryWords = new Set([
   "about",
@@ -72,9 +74,12 @@ export function medicationSubjectMismatchReason(query: string, answerText: strin
 
 /** A distinctive query acronym the shown quoted answer never mentions. */
 export function querySubjectNotInAnswerReason(query: string, answerText: string) {
-  const acronyms = Array.from(new Set(query.match(queryAcronymPattern) ?? [])).filter(
-    (token) => !ignoredQueryAcronyms.has(token),
-  );
+  const acronyms = Array.from(
+    new Set([
+      ...(query.match(queryAcronymPattern) ?? []),
+      ...(query.toLowerCase().match(lowercaseQueryAcronyms) ?? []).map((token) => token.toUpperCase()),
+    ]),
+  ).filter((token) => !ignoredQueryAcronyms.has(token));
   if (!acronyms.length) return null;
   const haystack = answerText.toLowerCase();
   const missing = acronyms.filter(

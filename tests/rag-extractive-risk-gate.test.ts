@@ -110,5 +110,9 @@ describe("querySubjectNotInAnswerReason", () => {
     expect(querySubjectNotInAnswerReason("When is a CTO confirmed?", "A doctor must review.")).toBe(
       "query_subject_not_in_answer",
     );
+    expect(querySubjectNotInAnswerReason("anaesthetic for ect in pregnancy", "Refer to gynae.")).toBe(
+      "query_subject_not_in_answer",
+    );
+    expect(querySubjectNotInAnswerReason("anaesthetic for ect in pregnancy", "For ECT, propofol is used.")).toBeNull();
   });
 });
