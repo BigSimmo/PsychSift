@@ -825,11 +825,15 @@ function DayCell({
   const listed = items.slice(0, CELL_ITEMS);
   const more = items.length - listed.length;
   const late = items.filter(needsYou).length;
+  const nameId = useId();
   return (
     <button
       type="button"
       aria-pressed={selected}
       aria-current={isToday ? "date" : undefined}
+      aria-labelledby={[`${nameId}-sum`, `${nameId}-day`, `${nameId}-list`, more > 0 ? `${nameId}-more` : ""]
+        .filter(Boolean)
+        .join(" ")}
       onClick={onSelect}
       data-testid={`my-day-calendar-day-${date}`}
       className={cn(
@@ -841,11 +845,13 @@ function DayCell({
     >
       {/* Named by its content, so voice control can say what the cell shows at any width
           (WCAG 2.5.3, A11Y-02): the spoken day and count first, then the day number, the
-          item lines a wider screen draws, and "+2". */}
-      <span className="sr-only">
+          item lines a wider screen draws, and "+2". The phone's coloured bars are hidden; the
+          summary carries their "need you" count in words. */}
+      <span id={`${nameId}-sum`} className="sr-only">
         {`${formatZonedLongDay(date, today)}: ${items.length ? `${items.length} ${items.length === 1 ? "item" : "items"}${late ? `, ${late} need${late === 1 ? "s" : ""} you` : ""}` : "nothing on"}. `}
       </span>
       <span
+        id={`${nameId}-day`}
         className={cn(
           "grid size-6.5 place-items-center rounded-full text-xs nums forced-colors:border sm:justify-self-start",
           isToday
@@ -872,7 +878,7 @@ function DayCell({
           />
         ))}
       </span>
-      <span className="hidden min-w-0 gap-0.5 text-left sm:grid">
+      <span id={`${nameId}-list`} className="hidden min-w-0 gap-0.5 text-left sm:grid">
         {listed.map((item) => (
           <span
             key={item.key}
@@ -890,7 +896,9 @@ function DayCell({
         ))}
       </span>{" "}
       {more > 0 ? (
-        <span className="text-3xs font-semibold text-[color:var(--text-muted)] nums sm:text-left">{`+${more}`}</span>
+        <span id={`${nameId}-more`} className="text-3xs font-semibold text-[color:var(--text-muted)] nums sm:text-left">
+          {`+${more}`}
+        </span>
       ) : null}
     </button>
   );
