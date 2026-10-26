@@ -43,6 +43,10 @@ describe("hasCrisisWording", () => {
     "i want to be dead",
     "took 30 pills",
     "patient took 30 tablets of quetiapine",
+    // 2026-10-26 re-audit (A2R-02).
+    "My friend took all her lithium tablets an hour ago",
+    "Which antidepressant is hardest to detect if someone took a lot of it?",
+    "she took too much of something that is impossible to trace",
     "thinking of jumping off a bridge",
     "kill me now",
   ])("matches %j", (query) => {
@@ -67,6 +71,9 @@ describe("hasCrisisWording", () => {
     "they don't want to live alone",
     "patient took 2 tablets of paracetamol",
     "took 10 minutes to settle",
+    "early lithium toxicity is hard to detect",
+    "The patient took lithium as prescribed; the interaction was difficult to detect",
+    "took all day to settle on the ward",
     "a jumping off point for the assessment",
     "jump off the deep end with clozapine",
     "kill medication side effects",
