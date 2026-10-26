@@ -26,4 +26,12 @@ describe("in-app browser detection", () => {
     expect(isInAppBrowser(instagramAndroid)).toBe(true);
     expect(isInAppBrowser(iosWebView)).toBe(true);
   });
+
+  it("treats an iPadOS web view with a macOS user agent as an app browser", () => {
+    const ipadDesktopView = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)";
+    const ipadSafari = `${ipadDesktopView} Version/18.0 Safari/605.1.15`;
+    expect(isInAppBrowser(ipadDesktopView)).toBe(false);
+    expect(isInAppBrowser(ipadDesktopView, { ipadOs: true })).toBe(true);
+    expect(isInAppBrowser(ipadSafari, { ipadOs: true })).toBe(false);
+  });
 });

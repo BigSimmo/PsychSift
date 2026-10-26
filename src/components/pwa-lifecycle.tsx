@@ -121,7 +121,7 @@ function accountSetupOpenOnServer() {
 
 /** Installing is impossible inside another app's browser, so no install notice there. */
 function canOfferInstall() {
-  return !isStandaloneDisplay() && !isInAppBrowser(window.navigator.userAgent);
+  return !isStandaloneDisplay() && !isInAppBrowser(window.navigator.userAgent, { ipadOs: isIosBrowser() });
 }
 
 function isIosBrowser() {

@@ -79,17 +79,23 @@ export function EmailAuthForm({
   const [pending, setPending] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
   const [attempted, setAttempted] = useState(false);
+  // Clear the password fields on every tab change, including ones made by the
+  // switch above the providers. Email and the remember tick are kept.
+  const [shownMode, setShownMode] = useState(mode);
+  if (shownMode !== mode) {
+    setShownMode(mode);
+    setPassword("");
+    setConfirmation("");
+    setShowPassword(false);
+    setLocalError(null);
+    setAttempted(false);
+  }
   const rememberId = useId();
   const busy = pending || disabled || auth.status === "loading";
 
   function changeMode(next: EmailMode) {
     if (controlledMode === undefined) setOwnMode(next);
     onModeChange?.(next);
-    setPassword("");
-    setConfirmation("");
-    setShowPassword(false);
-    setLocalError(null);
-    setAttempted(false);
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {

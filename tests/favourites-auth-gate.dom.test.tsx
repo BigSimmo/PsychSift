@@ -317,6 +317,26 @@ describe("favourites auth gate DOM", () => {
     expect(screen.getByRole("radio", { name: "Sign in" })).toBeChecked();
   });
 
+  it("keeps the favourites heading in step with the chosen tab", async () => {
+    const user = userEvent.setup();
+    render(<AccountSetupDialog open onClose={() => undefined} intent="favourites" />);
+    expect(screen.getByRole("heading", { name: "Sign up to save favourites" })).toBeVisible();
+    await user.click(screen.getByRole("radio", { name: "Sign in" }));
+    expect(screen.getByRole("heading", { name: "Sign in to save favourites" })).toBeVisible();
+  });
+
+  it("clears a typed and revealed password when the top tab switches", async () => {
+    const user = userEvent.setup();
+    render(<AccountSetupDialog open onClose={() => undefined} />);
+    await user.type(screen.getByLabelText(/Email address/), "person@example.com");
+    await user.type(screen.getByLabelText(/^Password/), "existing-passphrase");
+    await user.click(screen.getByRole("button", { name: "Show password" }));
+    await user.click(screen.getByRole("radio", { name: "Create account" }));
+    expect(screen.getByLabelText(/^Create a password/)).toHaveValue("");
+    expect(screen.getByLabelText(/^Create a password/)).toHaveAttribute("type", "password");
+    expect(screen.getByLabelText(/Email address/)).toHaveValue("person@example.com");
+  });
+
   it("leads with and wires Apple, Google, and Microsoft OAuth", async () => {
     const user = userEvent.setup();
     render(<AccountSetupDialog open onClose={() => undefined} />);

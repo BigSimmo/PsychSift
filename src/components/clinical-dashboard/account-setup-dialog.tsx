@@ -77,7 +77,9 @@ export function AccountSetupDialog({
   const actionBusy = busy || pendingProvider !== null;
   const isFavouritesIntent = intent === "favourites";
   const title = isFavouritesIntent
-    ? "Sign up to save favourites"
+    ? tab === "signup"
+      ? "Sign up to save favourites"
+      : "Sign in to save favourites"
     : tab === "signup"
       ? "Create your account"
       : "Welcome back";
