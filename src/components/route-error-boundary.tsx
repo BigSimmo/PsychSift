@@ -5,7 +5,11 @@ import { useRouter } from "next/navigation";
 import { TriangleAlert, RefreshCw, ClipboardCopy, Check } from "lucide-react";
 
 import { cn, commandControl } from "@/components/ui-primitives";
+import { isChunkLoadError, reloadOnceForChunkLoadError } from "@/lib/chunk-load-recovery";
 import { useCopyDiagnostics } from "@/lib/use-copy-diagnostics";
+
+// Re-exported so existing imports keep working; the detector lives with the recovery.
+export { isChunkLoadError };
 
 export type RouteErrorBoundaryProps = {
   /** The error thrown by the segment, forwarded by Next.js. */
@@ -28,19 +32,6 @@ export type RouteErrorBoundaryProps = {
    */
   landmark?: boolean;
 };
-
-const CHUNK_LOAD_MESSAGE =
-  /Loading (?:CSS )?chunk [\w-]+ failed|Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module/i;
-
-/**
- * True for a failure to download part of the app's own code — a dropped connection, or a
- * deploy that replaced the file mid-session (audit F11). "Try again" re-renders from the same
- * missing file and fails again; only a full reload fetches it, so such errors get their own copy.
- */
-export function isChunkLoadError(error: unknown): boolean {
-  if (!(error instanceof Error)) return false;
-  return error.name === "ChunkLoadError" || CHUNK_LOAD_MESSAGE.test(error.message);
-}
 
 function useOptionalRouter() {
   try {
@@ -79,8 +70,11 @@ export function RouteErrorBoundary({
 
   useEffect(() => {
     console.error(logLabel, error);
+    // A stale page after a deploy (the usual cause) is fixed by one reload, so do it rather
+    // than ask. The card stays as the fallback when a reload already failed to help.
+    if (chunkLoad && reloadOnceForChunkLoadError()) return;
     headingRef.current?.focus({ preventScroll: true });
-  }, [error, logLabel]);
+  }, [chunkLoad, error, logLabel]);
 
   return (
     <Container
