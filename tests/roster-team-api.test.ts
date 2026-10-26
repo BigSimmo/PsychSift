@@ -475,47 +475,25 @@ describe("writing to a team", () => {
     }
   });
 
-  it("reads the claimer before an open-shift decline, and still declines if that read fails", async () => {
-    mocks.rpc.mockImplementation(async (name: string) =>
-      name === "roster_read"
-        ? {
-            data: {
-              swaps: [],
-              openShifts: [
-                {
-                  id: OPEN,
-                  status: "claimed",
-                  urgent: false,
-                  startsAt: "2026-10-20T13:30:00+00:00",
-                  endsAt: "2026-10-21T00:00:00+00:00",
-                  shiftCode: "N",
-                  kind: "night",
-                  minGrade: "resident",
-                  siteId: null,
-                  postedBy: ALEX,
-                  claimedBy: USER,
-                  claimedAt: "2026-10-01T00:00:00+00:00",
-                },
-              ],
-              seen: null,
-            },
-            error: null,
-          }
-        : { data: { openShiftId: OPEN, status: "open" }, error: null },
-    );
+  it("declines through roster_open_decline and alerts the claimer it cleared, without a separate read", async () => {
+    mocks.rpc.mockResolvedValue({ data: { openShiftId: OPEN, status: "open", declinedClaimedBy: USER }, error: null });
     await POST(jsonRequest({ action: "open.decline", openShiftId: OPEN }), ctx());
+    expect(mocks.rpc).toHaveBeenCalledWith("roster_open_decline", {
+      p_actor_id: expect.any(String),
+      p_service_id: expect.any(String),
+      p_open_shift_id: OPEN,
+    });
+    expect(mocks.rpc.mock.calls.map(([name]) => name)).not.toContain("roster_read");
     await vi.waitFor(() => expect(mocks.dispatch).toHaveBeenCalled());
-    expect(mocks.dispatch.mock.calls[0][1].before).toEqual({ claimedBy: USER });
+    expect(mocks.dispatch.mock.calls[0][1].result).toMatchObject({ declinedClaimedBy: USER });
+    expect(mocks.dispatch.mock.calls[0][1]).not.toHaveProperty("before");
+  });
 
-    mocks.dispatch.mockClear();
-    mocks.rpc.mockImplementation(async (name: string) =>
-      name === "roster_read"
-        ? { data: null, error: { message: "roster_role_denied", code: "P0001" } }
-        : { data: { openShiftId: OPEN, status: "open" }, error: null },
-    );
-    expect((await POST(jsonRequest({ action: "open.decline", openShiftId: OPEN }), ctx())).status).toBe(200);
-    await vi.waitFor(() => expect(mocks.dispatch).toHaveBeenCalled());
-    expect(mocks.dispatch.mock.calls[0][1].before).toBeUndefined();
+  it("surfaces a failed decline instead of swallowing it", async () => {
+    mocks.rpc.mockResolvedValue({ data: null, error: { message: "roster_role_denied", code: "P0001" } });
+    const response = await POST(jsonRequest({ action: "open.decline", openShiftId: OPEN }), ctx());
+    expect(response.status).not.toBe(200);
+    expect(mocks.dispatch).not.toHaveBeenCalled();
   });
 
   it("keeps the saved change when an alert fails", async () => {
