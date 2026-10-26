@@ -25,6 +25,7 @@ vi.mock("@supabase/ssr", () => ({
 }));
 
 import { AuthProvider, useAuthSession } from "@/lib/supabase/client";
+import { patientLabelsOnDevice, writePatientLabels } from "@/lib/patient-label-storage";
 
 function Probe() {
   const auth = useAuthSession();
@@ -48,6 +49,13 @@ function Probe() {
         Sign out
       </button>
       <p data-testid="cleared">{auth.deviceDataClearedAt ? "cleared" : "kept"}</p>
+      <p data-testid="held">{auth.signedOutWorkHeld ? "held" : "not held"}</p>
+      <button type="button" onClick={() => auth.resolveSignedOutWork?.(false)}>
+        Clear held
+      </button>
+      <button type="button" onClick={() => auth.resolveSignedOutWork?.(true)}>
+        Keep held
+      </button>
     </>
   );
 }
@@ -181,6 +189,67 @@ describe("provider login requests", () => {
       for (const listener of authState.listeners) listener("SIGNED_OUT", null);
     });
     expect(screen.getByTestId("cleared")).toHaveTextContent("cleared");
+  });
+
+  // D26-02: signing in from signed out asks about this shift's signed-out work instead of wiping it.
+  it("holds signed-out patient labels at sign-in until told to keep or clear them", async () => {
+    const user = userEvent.setup();
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    );
+    await screen.findByText("signed_out");
+    writePatientLabels("fixture", "SYNTHETIC Bed 4");
+    act(() => {
+      for (const listener of authState.listeners)
+        listener("SIGNED_IN", { user: { id: "synthetic-user" }, access_token: "synthetic-token" });
+    });
+    await screen.findByText("authenticated");
+    expect(screen.getByTestId("held")).toHaveTextContent("held");
+    expect(patientLabelsOnDevice()).toBe(true);
+    await user.click(screen.getByRole("button", { name: "Clear held" }));
+    expect(screen.getByTestId("held")).toHaveTextContent("not held");
+    expect(patientLabelsOnDevice()).toBe(false);
+  });
+
+  it("keeps held work when told to, and never holds anything across an account switch", async () => {
+    const user = userEvent.setup();
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    );
+    await screen.findByText("signed_out");
+    act(() => {
+      for (const listener of authState.listeners)
+        listener("SIGNED_IN", { user: { id: "synthetic-user" }, access_token: "synthetic-token" });
+    });
+    await screen.findByText("authenticated");
+    // Nothing on the phone at sign-in: nothing to ask about.
+    expect(screen.getByTestId("held")).toHaveTextContent("not held");
+
+    writePatientLabels("fixture", "SYNTHETIC Bed 4");
+    act(() => {
+      for (const listener of authState.listeners)
+        listener("SIGNED_IN", { user: { id: "another-synthetic-user" }, access_token: "synthetic-token-2" });
+    });
+    expect(screen.getByTestId("held")).toHaveTextContent("not held");
+    expect(patientLabelsOnDevice()).toBe(false);
+
+    act(() => {
+      for (const listener of authState.listeners) listener("SIGNED_OUT", null);
+    });
+    writePatientLabels("fixture", "SYNTHETIC Bed 7");
+    act(() => {
+      for (const listener of authState.listeners)
+        listener("SIGNED_IN", { user: { id: "synthetic-user" }, access_token: "synthetic-token" });
+    });
+    expect(screen.getByTestId("held")).toHaveTextContent("held");
+    await user.click(screen.getByRole("button", { name: "Keep held" }));
+    expect(screen.getByTestId("held")).toHaveTextContent("not held");
+    expect(patientLabelsOnDevice()).toBe(true);
+    window.localStorage.clear();
   });
 
   it("settles a rejected password request so the user can retry", async () => {

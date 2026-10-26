@@ -32,7 +32,7 @@
  * goes; name it here anyway, because the name is where its contents are written down.
  */
 
-import { sweepAccountDeviceData } from "@/lib/account-device-sweep";
+import { type AccountDeviceSweepOptions, sweepAccountDeviceData } from "@/lib/account-device-sweep";
 import { WORK_MODE_PREFERENCE_COOKIE } from "@/lib/work-mode-launch/launch";
 
 export const ACCOUNT_TRANSITION_EVENT = "clinical-kb-account-transition";
@@ -249,7 +249,7 @@ function removeQuietly(storage: () => Storage, key: string): void {
  * Remove every account-scoped key this module names, then dispatch one
  * `ACCOUNT_TRANSITION_EVENT` on `window`. Safe to call on the server (no-op).
  */
-export function clearAccountScopedBrowserStorage(): void {
+export function clearAccountScopedBrowserStorage(options: AccountDeviceSweepOptions = {}): void {
   if (typeof window === "undefined") return;
   // Cookie — the classic or new work view choice: the person's, so the next person starts on the default.
   try {
@@ -316,7 +316,7 @@ export function clearAccountScopedBrowserStorage(): void {
   stripAccountScopedPreferences();
   // The catch-all: every other `psychsift:` key, the clinical drafts, IndexedDB,
   // page caches and PsychSift's notifications (see account-device-sweep.ts).
-  sweepAccountDeviceData();
+  sweepAccountDeviceData(options);
   window.dispatchEvent(new Event(ACCOUNT_TRANSITION_EVENT));
 }
 
