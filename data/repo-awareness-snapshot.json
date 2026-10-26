@@ -2862,6 +2862,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-26-privacy-page-operator-and-contact.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/decisions/2026-10-21-normal-merge-documentation-alignment.md",
         "section": "decisions",
         "catalogued": true
@@ -3544,6 +3549,11 @@
       {
         "path": "docs/archive/source-governance-status-2026-07-08.md",
         "section": "archive",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-26-feedback-notes-deleted-after-30-days.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
