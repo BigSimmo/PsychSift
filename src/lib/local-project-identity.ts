@@ -14,8 +14,31 @@ export type LocalProjectIdentityPayload = {
   };
 };
 
+/**
+ * The deployed site answers /api/local-project-id with 404 (it is local tooling only), so a
+ * production build treats that 404 as "not a local checkout": the hosted origin is the right one.
+ */
+function deployedSiteIdentity(): LocalProjectIdentityPayload {
+  return {
+    appName: "PsychSift",
+    projectId: "deployed",
+    identityPath: "/api/local-project-id",
+    localServer: {
+      currentUrl: null,
+      currentPort: null,
+      projectPortStart: 0,
+      projectPortEnd: 0,
+      safeLocalOrigin: true,
+      requestOrigin: null,
+      requestReferer: null,
+      unsafeLocalCaller: null,
+    },
+  };
+}
+
 export async function readLocalProjectIdentity() {
   const response = await fetch("/api/local-project-id", { cache: "no-store" });
+  if (response.status === 404 && process.env.NODE_ENV === "production") return deployedSiteIdentity();
   if (!response.ok) return null;
   return (await response.json()) as LocalProjectIdentityPayload;
 }

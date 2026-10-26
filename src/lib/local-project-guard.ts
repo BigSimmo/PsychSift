@@ -72,6 +72,33 @@ export function localProjectRequestIdentityPayload(request: Request): LocalProje
   };
 }
 
+const deployedRuntimeMarkers = [
+  "RAILWAY_ENVIRONMENT_NAME",
+  "RAILWAY_ENVIRONMENT",
+  "RAILWAY_PROJECT_ID",
+  "RAILWAY_SERVICE_ID",
+];
+
+/**
+ * Whether /api/local-project-id may answer this request. It needs no sign-in and echoes the
+ * caller's Origin/Referer plus this checkout's project identity, so it only answers local tooling:
+ *
+ * - `next dev` and unit tests (NODE_ENV is not "production") always answer.
+ * - A production build answers only when it is clearly a local `next start` (boot smoke, Playwright,
+ *   Lighthouse): not on Railway, addressed to a loopback host, and not behind a forwarding proxy.
+ * - Everything else (the deployed site) gets a plain 404.
+ */
+export function isLocalProjectIdentityEndpointEnabled(request: Request, env: NodeJS.ProcessEnv = process.env) {
+  if (env.NODE_ENV !== "production") return true;
+  if (deployedRuntimeMarkers.some((name) => Boolean(env[name]?.trim()))) return false;
+  if (request.headers.get("x-forwarded-for")) return false;
+  try {
+    return isLocalUrl(new URL(request.url));
+  } catch {
+    return false;
+  }
+}
+
 export function isSafeLocalProjectRequest(request: Request) {
   return localProjectRequestIdentityPayload(request).localServer.safeLocalOrigin;
 }
