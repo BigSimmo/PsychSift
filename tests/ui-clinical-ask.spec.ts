@@ -247,7 +247,7 @@ test("@critical keeps the one-composer Smart cue accessible across phone and des
     await expect(page.locator('[data-testid="global-search-input"]:visible')).toHaveCount(1);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(2);
 
-    const axe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
+    const axe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]).analyze();
     await testInfo.attach(`smart-search-axe-${width}`, {
       body: JSON.stringify(axe.violations),
       contentType: "application/json",

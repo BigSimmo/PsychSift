@@ -6930,7 +6930,7 @@ test.describe("PsychSift UI smoke coverage", () => {
 
     const axeResults = await new AxeBuilder({ page })
       .include('[data-testid="clinical-kb-guide-centre"]')
-      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
       .analyze();
     expect(
       axeResults.violations

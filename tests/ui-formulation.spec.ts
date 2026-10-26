@@ -4,7 +4,7 @@ import { stubZeroTouchPoints } from "./helpers/zero-touch";
 import { readPrimaryScrollGeometry } from "./playwright-scroll";
 import { clickWhenSettled, visibleByTestId, visibleByText } from "./playwright-settlement";
 
-const axeWcagTags = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
+const axeWcagTags = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 const axeBlockingImpacts = new Set(["critical", "serious"]);
 
 async function blockExternalRequests(page: Page) {

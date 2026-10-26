@@ -148,7 +148,8 @@ async function openScopeControl(page: Page) {
   });
 }
 
-const axeWcagTags = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
+// wcag22aa adds Target Size (2.5.8), which the admin pages missed before (A11Y-18).
+const axeWcagTags = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 // Advisory gate: only fail on the impacts a clinician-facing release must not ship.
 // Lower-impact findings stay visible in the attached report without blocking the lane.
 const axeBlockingImpacts = new Set(["critical", "serious"]);
@@ -526,13 +527,9 @@ test.describe("PsychSift accessibility coverage", () => {
       await blockExternalRequests(page);
       await gotoWorkAreaHome(page, home.path);
 
-      // label-content-name-mismatch is excluded here only. The first scan of these homes found
-      // existing controls whose visible text is not part of their accessible name: roster day
-      // cells ("2 N" vs "Fri 2 Oct: Night"), on-call dial rows (the coverage note), the CPD
-      // catch-up and snooze buttons, and the header mode button on Open shifts ("Roster" vs
-      // "Mode Open shifts"). Fixing those changes screen-reader wording across several areas,
-      // so it is tracked separately rather than folded into this scan.
-      await expectNoBlockingAxeViolations(page, testInfo, { disableRules: ["label-content-name-mismatch"] });
+      // Label in Name (2.5.3) is checked here too: roster day cells, on-call dial rows, the
+      // CPD buttons and the header mode pill now say the words they show (A11Y-02).
+      await expectNoBlockingAxeViolations(page, testInfo);
     });
   }
 
