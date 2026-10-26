@@ -440,9 +440,7 @@ export function useMedicationDetail(slug?: string): MedicationDetailState {
         setState({
           data: null,
           loading: false,
-          error: isOffline
-            ? "You are offline. Connect to view this medication."
-            : medicationRecordErrorMessage(error),
+          error: isOffline ? "You are offline. Connect to view this medication." : medicationRecordErrorMessage(error),
           notFoundCode:
             error instanceof MedicationRequestError && error.status === 404 && error.code === "medication_not_found",
         });
