@@ -317,6 +317,14 @@ describe("clinicalQuestionPatientDetail: public numbers and document dates (PD-0
     "guideline born 01/02/1990",
     "DOB: 01/02/1990 lithium",
     "seen 01/02/2024 lithium level",
+    // Review findings on PR #3834: service-number digits as a labelled record number or an email,
+    // and a visit verb with no document word.
+    "lithium MRN: 1300555788",
+    "1300555788@example.com clozapine",
+    "patient reviewed 01/02/1990",
+    "reviewed patient 01/02/1990 lithium",
+    "updated 01/02/1990 lithium",
+    "guideline reviewed patient 01/02/1990",
   ])("still refuses %s", (question) => {
     expect(clinicalQuestionPatientDetail(question), question).not.toBeNull();
   });
