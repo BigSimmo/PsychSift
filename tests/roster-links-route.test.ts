@@ -11,18 +11,24 @@ const mocks = vi.hoisted(() => ({
   from: vi.fn(),
   rpc: vi.fn(),
   linkUrls: vi.fn(),
+  linkAdd: vi.fn(),
   auth: vi.fn(),
   demo: vi.fn(),
   rate: vi.fn(),
   fetchLink: vi.fn(),
 }));
 vi.mock("server-only", () => ({}));
-// The database decrypts a link's address (roster_calendar_link_urls); every other rpc is a save.
+// The database adds a link sealed (roster_calendar_link_add) and decrypts one for a refresh
+// (roster_calendar_link_urls); every other rpc is a save.
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: () => ({
     from: mocks.from,
     rpc: (name: string, args: Record<string, unknown>) =>
-      name === "roster_calendar_link_urls" ? mocks.linkUrls(args) : mocks.rpc(name, args),
+      name === "roster_calendar_link_urls"
+        ? mocks.linkUrls(args)
+        : name === "roster_calendar_link_add"
+          ? mocks.linkAdd(args)
+          : mocks.rpc(name, args),
   }),
 }));
 vi.mock("@/lib/supabase/auth", () => ({
@@ -75,6 +81,35 @@ function fakeSupabase(
       .map(({ id, url }) => ({ id, url })),
     error: null,
   }));
+  // Like the database function: one insert for the caller, answered with the host only.
+  mocks.linkAdd.mockImplementation(
+    ({ p_owner_id, p_url, p_workplace }: { p_owner_id: string; p_url: string; p_workplace: string | null }) => {
+      const call: Recorded = {
+        table: "roster_calendar_links",
+        op: "insert",
+        eq: [],
+        insertedRow: { owner_id: p_owner_id, url: p_url, workplace: p_workplace },
+      };
+      calls.push(call);
+      return {
+        single: async () => {
+          const failure = options.insertError?.("roster_calendar_links");
+          if (failure) return { data: null, error: failure };
+          return {
+            data: {
+              id: linkId,
+              url_host: new URL(p_url).hostname,
+              workplace: p_workplace,
+              last_fetched_at: null,
+              last_error: null,
+              created_at: "2026-09-26T00:00:00.000Z",
+            },
+            error: null,
+          };
+        },
+      };
+    },
+  );
   mocks.from.mockImplementation((table: string) => {
     const call: Recorded = { table, op: "select", eq: [] };
     calls.push(call);
@@ -258,6 +293,9 @@ describe("POST /api/roster/links", () => {
     expect(response.status).toBe(200);
     const insert = calls.find((call) => call.op === "insert");
     expect(insert?.insertedRow).toMatchObject({ owner_id: ownerId, workplace: "Example Hospital" });
+    // Added only through the database's sealing function, never a direct insert of the address.
+    expect(mocks.linkAdd).toHaveBeenCalledTimes(1);
+    expect(mocks.from).not.toHaveBeenCalledWith("roster_calendar_links");
     const text = JSON.stringify(await response.json());
     expect(text).not.toContain("t=abc");
   });

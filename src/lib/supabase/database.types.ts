@@ -4233,7 +4233,7 @@ export type Database = {
           last_fetched_at: string | null;
           owner_id: string;
           updated_at: string;
-          url: string;
+          url: string | null;
           url_host: string | null;
           url_secret_id: string;
           workplace: string | null;
@@ -4245,7 +4245,7 @@ export type Database = {
           last_fetched_at?: string | null;
           owner_id: string;
           updated_at?: string;
-          url: string;
+          url?: string | null;
           url_host?: string | null;
           url_secret_id?: string;
           workplace?: string | null;
@@ -4257,7 +4257,7 @@ export type Database = {
           last_fetched_at?: string | null;
           owner_id?: string;
           updated_at?: string;
-          url?: string;
+          url?: string | null;
           url_host?: string | null;
           url_secret_id?: string;
           workplace?: string | null;
@@ -5021,6 +5021,17 @@ export type Database = {
           p_removed: number;
         };
         Returns: string;
+      };
+      roster_calendar_link_add: {
+        Args: { p_owner_id: string; p_url: string; p_workplace: string | null };
+        Returns: {
+          id: string;
+          url_host: string | null;
+          workplace: string | null;
+          last_fetched_at: string | null;
+          last_error: string | null;
+          created_at: string;
+        }[];
       };
       roster_calendar_link_urls: {
         Args: { p_owner_id: string; p_ids: string[] };

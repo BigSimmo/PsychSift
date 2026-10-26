@@ -109,6 +109,33 @@ select pg_temp.assert_true((select u.url = 'https://new.example.org/feed.ics' an
       'd0000000-0000-4000-8000-000000000001', array[l.id]) u
     where l.id = 'd4000000-0000-4000-8000-000000000012'),
   'a changed address must be re-sealed');
+-- Adding a link through roster_calendar_link_add keeps the same rules as a direct insert, and
+-- stores no plain text, only the sealed copy.
+do $$ begin
+  perform public.roster_calendar_link_add('d0000000-0000-4000-8000-000000000002',
+    'https://another.example.org/x.ics', 'Example IPv6');
+  raise exception 'a second link for the same workplace must be refused';
+exception when unique_violation then null;
+end $$;
+set local role service_role;
+create temp table added_link on commit drop as
+select * from public.roster_calendar_link_add('d0000000-0000-4000-8000-000000000002',
+  'https://added.example.org/feed.ics?token=four', 'Example Added');
+reset role;
+select pg_temp.assert_true((select a.url_host = 'added.example.org' and l.url is null
+    and u.url = 'https://added.example.org/feed.ics?token=four'
+    from added_link a join public.roster_calendar_links l on l.id = a.id
+    cross join lateral public.roster_calendar_link_urls('d0000000-0000-4000-8000-000000000002', array[a.id]) u),
+  'an added link must be stored sealed, with no plain-text copy');
+do $$ begin
+  perform public.roster_calendar_link_add('d0000000-0000-4000-8000-000000000002',
+    'https://fourth.example.org/x.ics', 'Example Fourth');
+  raise exception 'a fourth link must be refused';
+exception when raise_exception then
+  if sqlerrm <> 'roster_limit' then raise; end if;
+end $$;
+delete from public.roster_calendar_links where id = (select id from added_link);
+
 select pg_temp.assert_true((select count(*) = 4 from vault.secrets s
     join public.roster_calendar_links l on l.url_secret_id = s.id), 'one secret per link');
 
@@ -125,6 +152,7 @@ select pg_temp.assert_true(not has_function_privilege(r.role, f.fn::regprocedure
 from (values ('anon'), ('authenticated')) r(role)
 cross join (values ('public.roster_calendar_link_urls(uuid,uuid[])'),
   ('public.roster_calendar_links_seal_url()'), ('public.roster_calendar_links_drop_secret()'),
+  ('public.roster_calendar_link_add(uuid,text,text)'),
   ('public.cme_evidence_queue_file_cleanup()')) f(fn);
 
 -- DB-05 --------------------------------------------------------------------------------------

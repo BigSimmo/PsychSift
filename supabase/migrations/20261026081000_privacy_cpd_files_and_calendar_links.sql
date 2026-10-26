@@ -12,9 +12,11 @@
 --          token in it) was stored as plain text. It is now also kept encrypted in Supabase Vault,
 --          and the app reads it back only through a service-role function that checks the owner.
 --          The list screen uses a new url_host column (the host name only) and never needs the
---          address. This is step 1 of 2: the plain-text column stays for now so the app that is
---          still running during the deploy keeps working. Step 2, a separate later change, empties
---          and then drops it once this app version is live.
+--          address. A link added through the new roster_calendar_link_add function is stored
+--          encrypted only: its plain-text column is left empty. This is step 1 of 2: the plain
+--          text of links that already exist stays for now, so the app that is still running during
+--          the deploy keeps working. Step 2, a separate later change, empties and then drops the
+--          column once this app version is live.
 set local lock_timeout = '5s';
 set local statement_timeout = '30s';
 
@@ -61,6 +63,9 @@ set url_secret_id = vault.create_secret(url, null, 'roster calendar link'),
 where url_secret_id is null;
 
 alter table public.roster_calendar_links alter column url_secret_id set not null;
+-- New links keep no plain text (roster_calendar_link_add). The existing check still applies to
+-- any address that is stored.
+alter table public.roster_calendar_links alter column url drop not null;
 
 -- Keeps the encrypted copy in step with the address. The app never sets url_secret_id or
 -- url_host itself; both are derived here, so a write cannot point a link at another secret.
@@ -115,3 +120,28 @@ $$;
 alter function public.roster_calendar_link_urls(uuid, uuid[]) owner to postgres;
 revoke all on function public.roster_calendar_link_urls(uuid, uuid[]) from public, anon, authenticated;
 grant execute on function public.roster_calendar_link_urls(uuid, uuid[]) to service_role;
+
+-- The only way the app adds a link. The address is sealed by the trigger above in the same
+-- statement as the insert, and the plain-text copy is emptied before the transaction commits, so
+-- it is never stored. The 3-link cap (roster_limit) and the one-link-per-workplace rule (23505)
+-- raise exactly as a direct insert did.
+create function public.roster_calendar_link_add(p_owner_id uuid, p_url text, p_workplace text)
+returns table (id uuid, url_host text, workplace text, last_fetched_at timestamptz, last_error text,
+  created_at timestamptz)
+language plpgsql volatile security definer set search_path = '' as $$
+#variable_conflict use_column
+declare
+  v_id uuid;
+begin
+  if p_owner_id is null then raise exception 'roster_auth_required'; end if;
+  insert into public.roster_calendar_links(owner_id, url, workplace)
+  values (p_owner_id, p_url, p_workplace)
+  returning public.roster_calendar_links.id into v_id;
+  update public.roster_calendar_links l set url = null where l.id = v_id;
+  return query
+    select l.id, l.url_host, l.workplace, l.last_fetched_at, l.last_error, l.created_at
+    from public.roster_calendar_links l where l.id = v_id;
+end $$;
+alter function public.roster_calendar_link_add(uuid, text, text) owner to postgres;
+revoke all on function public.roster_calendar_link_add(uuid, text, text) from public, anon, authenticated;
+grant execute on function public.roster_calendar_link_add(uuid, text, text) to service_role;

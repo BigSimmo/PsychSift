@@ -144,10 +144,9 @@ export async function addCalendarLink(
 ): Promise<RosterCalendarLink> {
   requireOwner(ownerId);
   const url = assertAddableLink(rawUrl);
+  // The database seals the address in Vault and keeps no plain-text copy (privacy audit DB-04).
   const { data, error } = await supabase
-    .from("roster_calendar_links")
-    .insert({ owner_id: ownerId, url: url.toString(), workplace })
-    .select(LINK_COLUMNS)
+    .rpc("roster_calendar_link_add", { p_owner_id: ownerId, p_url: url.toString(), p_workplace: workplace })
     .single();
   if (error) {
     if (error.message === "roster_limit") {
@@ -162,7 +161,7 @@ export async function addCalendarLink(
     }
     throw error;
   }
-  return rowToLink(data);
+  return rowToLink(data as LinkRow);
 }
 
 /** Remove one calendar link. Returns false when it does not exist, or isn't the caller's. */
