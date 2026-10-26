@@ -33,16 +33,16 @@ const IMMEDIATE_DANGER =
 // lines; an alcohol-withdrawal seizure keeps the Alcohol and Drug Support Line after 000.
 const MEDICAL_EMERGENCY =
   /\b(?:seizures?|seizing|convuls\w*|unconscious(?:ness)?|loss of consciousness|unresponsive|not breathing|stopped breathing|collaps(?:e|ed|ing)|anaphyla\w*|status\s+epilepticus|(?:patient|pt|person|someone|he|she|they|child|is|are|was|still|keeps?|started|now)\s+(?:is\s+)?fitting|fitting\s+(?:now|again|for\b)|having\s+(?:a\s+)?(?:fits?|seizures?)|(?:having\s+a|acute|suspected)\s+stroke|stroke\s+(?:symptoms|signs)|(?:signs|symptoms)\s+of\s+(?:a\s+)?stroke|chest\s+pain|crushing\s+chest|severe\s+allergic\s+reaction|bleeding\s+(?:heavily|badly|a\s+lot)|(?:heavy|severe|uncontrolled)\s+bleeding|(?:can['’]?t|cannot|won['’]?t)\s+(?:wake|rouse)\s+(?:him|her|them|up)|blue\s+lips)\b/i;
-// Wording that says the person is under 18: CAMHS Crisis Connect alone. Age shorthand such as
-// "16yo", "16 y/o" and "15 y.o." counts the same as "16 year old"; the lookahead stands in for
-// `\b` because "y.o." ends on a full stop. Owner decision 2026-10-26 (D5) added "aged 15",
+// Wording that says the person is under 18: CAMHS Crisis Connect without the adult MHERL line.
+// Age shorthand such as "16yo", "16 y/o" and "15 y.o." counts the same as "16 year old"; the
+// lookahead stands in for `\b` because "y.o." ends on a full stop. Owner decision 2026-10-26 (D5) added "aged 15",
 // "age 12", "15 yo boy", "14 girl", "year 10 student" and "high school student"; "aged 75",
 // "aged 15 mg" and "aged care" stay adult.
 const CHILD =
   /(?:\b(?:child(?:ren)?|kids?|teen(?:ager)?s?|adolescents?|minors?|under[- ]?18|(?:[0-9]|1[0-7])\s*[- ]?\s*(?:year|yr)s?[- ]?old|aged?\s+(?:[0-9]|1[0-7])(?!\s*(?:mg|kg|cm|m|%|years?\s+ago|weeks?|months?))|(?:[5-9]|1[0-7])\s*(?:yo|y\/o)?\s*(?:boy|girl|son|daughter)|year\s+(?:[1-9]|1[0-2])\s+(?:student|pupil|boy|girl)|(?:primary|high)\s+school(?:er|\s+(?:student|kid|boy|girl))?s?)\b|\b(?:[0-9]|1[0-7])\s*[- ]?\s*(?:y\s*\/\s*o|y\.?\s*o\.?)(?![a-z0-9])|<\s*18\b)/i;
 // Owner decision 15 (Josh, 2026-09-25): plain youth wording does not say whether the person is
 // under or over 18, so a youth crisis pins both CAMHS Crisis Connect and the adult MHERL line,
-// CAMHS first. Explicit under-18 wording (CHILD) in the same query settles the age: CAMHS alone.
+// CAMHS first. Explicit under-18 wording (CHILD) in the same query settles the age: no MHERL.
 // Owner decision 2026-10-26 (D6): "15M", "16F" and "(14)" probably mean a person under 18, but
 // "15m" can also be metres, so they count as youth wording (CAMHS first, adult line kept) rather
 // than definite under-18 wording.
