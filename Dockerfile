@@ -135,10 +135,12 @@ ENV ALLOW_LOW_RAM_BUILD=${ALLOW_LOW_RAM_BUILD}
 # into the parity guard's checker-only name, then remove MAX_UPLOAD_MB from the
 # Next build process so application env validation cannot mistake an empty
 # build argument for a runtime value.
+RUN UPLOAD_LIMIT_PARITY_SERVER_MB="${MAX_UPLOAD_MB}" env -u MAX_UPLOAD_MB npm run build
 # Nothing uploads here, so browser maps (only built when SENTRY_ORG/SENTRY_PROJECT are set) must
-# not reach the runner stage, which copies .next and would serve them publicly.
-RUN UPLOAD_LIMIT_PARITY_SERVER_MB="${MAX_UPLOAD_MB}" env -u MAX_UPLOAD_MB npm run build \
-    && find .next/static -name '*.map' -delete
+# not reach the runner stage, which copies .next and would serve them publicly. A separate RUN
+# keeps the build line exactly as scripts/check-upload-limit-parity.mjs expects; the build stage
+# is never published, and the runner stage only copies the pruned .next.
+RUN find .next/static -name '*.map' -delete
 
 FROM node-base AS prod-deps
 WORKDIR /app
