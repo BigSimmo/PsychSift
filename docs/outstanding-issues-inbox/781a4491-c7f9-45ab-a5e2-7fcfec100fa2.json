@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "id": "781a4491-c7f9-45ab-a5e2-7fcfec100fa2",
+  "createdOn": "2026-10-26",
+  "action": "update",
+  "payload": {
+    "id": "#6X06YS",
+    "summary": "MHAS record SVC-LEG-004 awaits owner review and Zonta House stays held; SARC counselling is already covered",
+    "source": "Revalidated against main 9ab09f7d0 on 2026-10-27 (issues report revalidation)",
+    "baseRowFingerprint": "1855125177ba5f8ce3b21bb1225cd9f4d7d9c55e2312971c5a15a9c03d2f2b98",
+    "targetUlid": "01M2MSJY9Q6X06YSV30566X5Z7"
+  }
+}

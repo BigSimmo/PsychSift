@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "id": "f9b6c288-d16c-4d94-a7d9-eac3e52cbe2c",
+  "createdOn": "2026-10-26",
+  "action": "update",
+  "payload": {
+    "id": "#J8SJQ9",
+    "summary": "Answer release residual: the admission-discharge paraphrase case misses its expected source in the top five; metabolic stubs and prose are tracked under E9F5GW and X203BM",
+    "source": "Revalidated against main 9ab09f7d0 on 2026-10-27 (issues report revalidation)",
+    "baseRowFingerprint": "4de6aed317d25f93e3050319561e9e81d6d8917466c06203883fd614bb9b7665",
+    "targetUlid": "01M0NBN19QJ8SJQ9V3D7Y09DKK"
+  }
+}
