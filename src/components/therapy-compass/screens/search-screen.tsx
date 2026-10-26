@@ -270,15 +270,19 @@ export function SearchScreen() {
               onClearSearch={b.clearSearch}
             />
           ) : results.length > 0 ? (
-            // One hairline card with divided compact rows (no cards inside cards).
-            <ul
-              data-testid="therapy-result-list"
-              className="m-0 list-none divide-y divide-[color:var(--border)] overflow-hidden rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] p-0"
-            >
-              {shown.map((t, index) => (
-                <CompactResultRow key={t.slug} therapy={t} featured={!browsing && hasRankedQuery && index === 0} />
-              ))}
-            </ul>
+            // One hairline card with divided compact rows (no cards inside cards). The hidden
+            // heading keeps the rows' h3 titles from skipping a level (a11y A11Y-12).
+            <>
+              <h2 className="sr-only">Matching therapies</h2>
+              <ul
+                data-testid="therapy-result-list"
+                className="m-0 list-none divide-y divide-[color:var(--border)] overflow-hidden rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] p-0"
+              >
+                {shown.map((t, index) => (
+                  <CompactResultRow key={t.slug} therapy={t} featured={!browsing && hasRankedQuery && index === 0} />
+                ))}
+              </ul>
+            </>
           ) : null}
           {outside.length > 0 ? (
             <div data-testid="therapy-outside-filter" className="mt-2 grid gap-2">
