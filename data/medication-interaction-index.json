@@ -6257,10 +6257,17 @@
           "rowKey": "Pharmacodynamic",
           "rowIndex": 3,
           "severity": "high",
-          "counterparties": ["adrenaline-epinephrine", "noradrenaline"],
+          "counterparties": [
+            "adrenaline-epinephrine",
+            "dexamfetamine",
+            "lisdexamfetamine",
+            "metaraminol",
+            "methylphenidate",
+            "noradrenaline"
+          ],
           "termIds": [],
           "resolved": true,
-          "note": "HIGH — Sympathomimetics and vasopressors (pseudoephedrine, adrenaline, noradrenaline, dopamine, dobutamine). MAO inhibition can enhance pressor responses and raise blood pressure. Monitor closely (e.g. blood pressure); seek specialist or source guidance."
+          "note": "HIGH — Directly and indirectly acting sympathomimetics, including pseudoephedrine and stimulants such as dexamfetamine, lisdexamfetamine and methylphenidate, and vasopressors (metaraminol, adrenaline, noradrenaline, dopamine, dobutamine). MAO inhibition can enhance pressor responses and raise blood pressure. Monitor closely (e.g. blood pressure); seek specialist or source guidance."
         },
         {
           "rowKey": "Food",
