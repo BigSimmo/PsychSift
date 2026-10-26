@@ -11,27 +11,42 @@ export type ServiceUrgentIntent =
   | "family_violence"
   | "sexual_assault"
   | "suicide_aftercare"
-  | "suicide_postvention";
+  | "suicide_postvention"
+  | "youth_crisis_lines";
 
 // `self[- ]?harm\w*` so "self harming", "self-harmed" and "selfharm" are all crisis wording.
 const CRISIS =
-  /\b(?:suicid\w*|crisis|acute|unsafe|self[- ]?harm\w*|mental health emergency|kill (?:myself|oneself|themselves|himself|herself)|end (?:my|one['’]?s|their|his|her) life|take (?:my|one['’]?s|their|his|her) own life|hang (?:myself|oneself|themselves|himself|herself)|bottle of pills)\b/i;
+  /\b(?:suicid\w*|crisis|acute|unsafe|self[- ]?harm\w*|mental health emergency|kill (?:myself|oneself|themselves|himself|herself)|end (?:my|one['’]?s|their|his|her) life|take (?:my|one['’]?s|their|his|her) own life|hang (?:myself|oneself|themselves|himself|herself)|bottle of pills|(?:want(?:s|ed|ing)?|wanna)\s+to\s+(?:die|be\s+dead)|wanna\s+die)\b/i;
+// Swallowing an amount of medicine ("took a handful of pills", "swallowed a whole packet of
+// paracetamol", "took 20 tablets") is an overdose until shown otherwise, so it pins 000 first like
+// the word "overdose" does. Owner decision 2026-10-26 (D7). A one-digit count ("took 2 tablets")
+// and dosing wording ("take 10 x 5 mg") stay quiet.
+const SWALLOWED_AMOUNT =
+  /\b(?:took|taken|swallow(?:ed|ing)?|ingest(?:ed|ing)?)\s+(?:a\s+handful\s+of|(?:a|the|my|his|her|their)\s+(?:whole|entire)\s+(?:bottle|packet|pack|box|blister\s+pack|strip|script|prescription|supply)|(?:a|the)\s+(?:bottle|packet|pack|box|blister\s+pack|strip)\s+of|(?:all|a\s+lot)\s+of\s+(?:my|his|her|their|the)\s+(?:pills?|tablets?|meds?|medications?)|all\s+(?:my|his|her|their)\s+(?:pills?|tablets?|meds?|medications?)|\d{2,}\s*x\s*\d|\d{2,}\s+(?:\w+\s+){0,2}?(?:pills?|tablets?|tabs|capsules?|caps|panadol|paracetamol)\b)/i;
 const IMMEDIATE_DANGER =
   /\b(?:actively suicidal|immediate danger|life[- ]?threatening|severe injury|overdose|about to (?:kill|harm)|cannot keep (?:myself|them|him|her|the patient) safe|emergency (?:now|in progress)|strangl\w*|chok(?:ing|ed)?|can[’']?t breathe|cannot breathe)\b/i;
 // Medical emergencies (a seizure, collapse, unconsciousness, not breathing) pin Emergency
-// services (000) first. Unlike IMMEDIATE_DANGER they do not also pin the mental-health crisis
+// services (000) first. Owner decision 2026-10-26 (D8) added status epilepticus, a patient who
+// is fitting, a stroke that is happening, chest pain, a severe allergic reaction, heavy bleeding
+// and a person who cannot be woken. Plain "stroke" and "fitting" stay quiet, because "stroke
+// risk" and "fitting the criteria" are routine clinical wording. Unlike IMMEDIATE_DANGER they do not also pin the mental-health crisis
 // lines; an alcohol-withdrawal seizure keeps the Alcohol and Drug Support Line after 000.
 const MEDICAL_EMERGENCY =
-  /\b(?:seizures?|seizing|convuls\w*|unconscious(?:ness)?|loss of consciousness|unresponsive|not breathing|stopped breathing|collaps(?:e|ed|ing)|anaphyla\w*)\b/i;
+  /\b(?:seizures?|seizing|convuls\w*|unconscious(?:ness)?|loss of consciousness|unresponsive|not breathing|stopped breathing|collaps(?:e|ed|ing)|anaphyla\w*|status\s+epilepticus|(?:patient|pt|person|someone|he|she|they|child|is|are|was|still|keeps?|started|now)\s+(?:is\s+)?fitting|fitting\s+(?:now|again|for\b)|having\s+(?:a\s+)?(?:fits?|seizures?)|(?:having\s+a|acute|suspected)\s+stroke|stroke\s+(?:symptoms|signs)|(?:signs|symptoms)\s+of\s+(?:a\s+)?stroke|chest\s+pain|crushing\s+chest|severe\s+allergic\s+reaction|bleeding\s+(?:heavily|badly|a\s+lot)|(?:heavy|severe|uncontrolled)\s+bleeding|(?:can['’]?t|cannot|won['’]?t)\s+(?:wake|rouse)\s+(?:him|her|them|up)|blue\s+lips)\b/i;
 // Wording that says the person is under 18: CAMHS Crisis Connect alone. Age shorthand such as
 // "16yo", "16 y/o" and "15 y.o." counts the same as "16 year old"; the lookahead stands in for
-// `\b` because "y.o." ends on a full stop.
+// `\b` because "y.o." ends on a full stop. Owner decision 2026-10-26 (D5) added "aged 15",
+// "age 12", "15 yo boy", "14 girl", "year 10 student" and "high school student"; "aged 75",
+// "aged 15 mg" and "aged care" stay adult.
 const CHILD =
-  /(?:\b(?:child(?:ren)?|kids?|teen(?:ager)?s?|adolescents?|minors?|under[- ]?18|(?:[0-9]|1[0-7])\s*[- ]?\s*(?:year|yr)s?[- ]?old)\b|\b(?:[0-9]|1[0-7])\s*[- ]?\s*(?:y\s*\/\s*o|y\.?\s*o\.?)(?![a-z0-9])|<\s*18\b)/i;
+  /(?:\b(?:child(?:ren)?|kids?|teen(?:ager)?s?|adolescents?|minors?|under[- ]?18|(?:[0-9]|1[0-7])\s*[- ]?\s*(?:year|yr)s?[- ]?old|aged?\s+(?:[0-9]|1[0-7])(?!\s*(?:mg|kg|cm|m|%|years?\s+ago|weeks?|months?))|(?:[5-9]|1[0-7])\s*(?:yo|y\/o)?\s*(?:boy|girl|son|daughter)|year\s+(?:[1-9]|1[0-2])\s+(?:student|pupil|boy|girl)|(?:primary|high)\s+school(?:er|\s+(?:student|kid|boy|girl))?s?)\b|\b(?:[0-9]|1[0-7])\s*[- ]?\s*(?:y\s*\/\s*o|y\.?\s*o\.?)(?![a-z0-9])|<\s*18\b)/i;
 // Owner decision 15 (Josh, 2026-09-25): plain youth wording does not say whether the person is
 // under or over 18, so a youth crisis pins both CAMHS Crisis Connect and the adult MHERL line,
 // CAMHS first. Explicit under-18 wording (CHILD) in the same query settles the age: CAMHS alone.
-const YOUTH = /\b(?:youths?|young (?:person|people))\b/i;
+// Owner decision 2026-10-26 (D6): "15M", "16F" and "(14)" probably mean a person under 18, but
+// "15m" can also be metres, so they count as youth wording (CAMHS first, adult line kept) rather
+// than definite under-18 wording.
+const YOUTH = /\b(?:youths?|young (?:person|people)|1[2-7][mf])\b|\((?:[5-9]|1[0-7])\)/i;
 const REGIONAL_WA =
   /\b(?:regional|rural|remote|bunbury|albany|geraldton|kalgoorlie|karratha|broome|port hedland|esperance|great southern|pilbara|kimberley|south west|wheatbelt|mid west|goldfields|kununurra|busselton|carnarvon|northam|derby|newman|katanning|merredin|exmouth)\b/i;
 // Keyword-only signal. A stated clock time is judged separately, by
@@ -172,18 +187,25 @@ function detectWaRegionForDaytime(clean: string): string | undefined {
   return undefined;
 }
 
+/** True when the wording says the person is under 18 ("16yo", "aged 15", "my 14 year old"). */
+export function hasUnder18Wording(text: string | null | undefined): boolean {
+  if (!text) return false;
+  return CHILD.test(text.normalize("NFKC"));
+}
+
 export function detectServiceUrgentIntents(query: string): ServiceUrgentIntent[] {
   const clean = query.trim();
   if (!clean) return [];
 
   const intents: ServiceUrgentIntent[] = [];
   const crisis = CRISIS.test(clean);
-  const immediateDanger = IMMEDIATE_DANGER.test(clean);
+  const immediateDanger = IMMEDIATE_DANGER.test(clean) || SWALLOWED_AMOUNT.test(clean);
   const medicalEmergency = MEDICAL_EMERGENCY.test(clean);
   const postvention = POSTVENTION.test(clean);
   const child = CHILD.test(clean);
   const youthAnyAge = !child && YOUTH.test(clean);
   const acuteCrisis = crisis && !postvention && !AFTERCARE.test(clean);
+  const childOrYouthCrisis = (crisis || immediateDanger) && (child || youthAnyAge);
 
   const isRegional = REGIONAL_WA.test(clean);
   const region = isRegional ? detectWaRegionForDaytime(clean) : undefined;
@@ -203,19 +225,20 @@ export function detectServiceUrgentIntents(query: string): ServiceUrgentIntent[]
     intents.push("regional_after_hours");
   }
 
-  // Emergency (000): immediate danger, a medical emergency, or acute crisis (adult/youth) where a
-  // local daytime clinic is not handling it
-  if (
-    immediateDanger ||
-    medicalEmergency ||
-    (acuteCrisis && !child && !youthAnyAge && !(isRegional && region && !isAfterHours))
-  ) {
+  // Emergency (000): immediate danger, a medical emergency, or acute crisis where a local daytime
+  // clinic is not handling it. Owner decision 2026-10-26 (D4): an under-18 or youth crisis pins
+  // CAMHS Crisis Connect first and 000 straight after it; immediate danger or a medical emergency
+  // still puts 000 first.
+  const needsEmergency =
+    immediateDanger || medicalEmergency || (acuteCrisis && !(isRegional && region && !isAfterHours));
+  if (needsEmergency && !(childOrYouthCrisis && !immediateDanger && !medicalEmergency)) {
     if (!intents.includes("emergency")) {
       intents.push("emergency");
     }
   }
 
-  if (crisis && (child || youthAnyAge)) intents.push("camhs_crisis");
+  if (childOrYouthCrisis) intents.push("camhs_crisis");
+  if (needsEmergency && !intents.includes("emergency")) intents.push("emergency");
   if (ABORIGINAL.test(clean) && crisis) intents.push("aboriginal_crisis");
   if (FAMILY_VIOLENCE_NAMED.test(clean) || FAMILY_VIOLENCE_DESCRIBED.test(clean)) intents.push("family_violence");
   if (SEXUAL_ASSAULT.test(clean)) intents.push("sexual_assault");
@@ -226,12 +249,17 @@ export function detectServiceUrgentIntents(query: string): ServiceUrgentIntent[]
     }
   }
 
-  // IMMEDIATE_DANGER phrases always pin adult_metro_crisis (MHERL / Lifeline WA) alongside emergency (000)
-  if ((acuteCrisis && !child) || immediateDanger) {
+  // IMMEDIATE_DANGER phrases pin adult_metro_crisis (MHERL / Lifeline WA) alongside emergency (000),
+  // except for explicit under-18 wording, which keeps CAMHS Crisis Connect as its crisis line.
+  if (!child && (acuteCrisis || immediateDanger)) {
     if (!intents.includes("adult_metro_crisis")) {
       intents.push("adult_metro_crisis");
     }
   }
+
+  // Owner decision 2026-10-26 (D9, #8CKX6F): an under-18 or youth crisis also pins Kids Helpline
+  // and Lifeline WA after the crisis lines above.
+  if (childOrYouthCrisis && !postvention && !AFTERCARE.test(clean)) intents.push("youth_crisis_lines");
 
   if (AOD_TERMS.test(clean) && AOD_URGENCY.test(clean)) intents.push("aod_urgent");
   if (!immediateDanger && !postvention && AFTERCARE.test(clean)) intents.push("suicide_aftercare");
@@ -255,6 +283,7 @@ const TITLE_MATCHERS: Record<ServiceUrgentIntent, RegExp[]> = {
   sexual_assault: [/Sexual Assault Resource Centre/i, /\bSARC\b/i],
   suicide_aftercare: [/Aftercare/i],
   suicide_postvention: [/postvention/i, /StandBy/i, /support after suicide/i, /suicide bereavement/i],
+  youth_crisis_lines: [/^Kids Helpline$/i],
 };
 
 const TAG_MATCHERS: Record<ServiceUrgentIntent, RegExp[]> = {
@@ -269,6 +298,7 @@ const TAG_MATCHERS: Record<ServiceUrgentIntent, RegExp[]> = {
   sexual_assault: [/Recent sexual assault/i, /Sexual violence support/i],
   suicide_aftercare: [/aftercare/i, /post-discharge.*suicid/i],
   suicide_postvention: [/postvention/i, /bereavement.*suicid/i, /support after suicide/i],
+  youth_crisis_lines: [],
 };
 
 // Intents that pin an ordered list of named records rather than a single first match. Each
@@ -283,6 +313,9 @@ const TAG_MATCHERS: Record<ServiceUrgentIntent, RegExp[]> = {
 const PINNED_TITLE_SEQUENCES: Partial<Record<ServiceUrgentIntent, readonly RegExp[]>> = {
   family_violence: [/^Women[’']?s Domestic Violence Helpline$/i, /^1800RESPECT$/i],
   adult_metro_crisis: [/Mental Health Emergency Response Line|\bMHERL\b/i, /^Lifeline WA$/i],
+  // Owner decision 2026-10-26 (D9): Kids Helpline (ages 5 to 25), then Lifeline WA. A youth search
+  // has already pinned Lifeline WA through adult_metro_crisis, so it adds Kids Helpline only.
+  youth_crisis_lines: [/^Kids Helpline$/i, /^Lifeline WA$/i],
 };
 
 // Score step between successive pins of one intent. Every pin of an intent must stay above the
