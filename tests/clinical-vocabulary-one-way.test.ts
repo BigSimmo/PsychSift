@@ -32,6 +32,13 @@ describe("one-way symptom expansion", () => {
     );
   });
 
+  it("keeps every previously emitted feature (no slot lost to spelling variants)", () => {
+    expect(expandClinicalVocabularyText("serotonin syndrome")).toContain("seizures");
+    expect(expandClinicalVocabularyText("metabolic syndrome")).toEqual(
+      expect.arrayContaining(["hypertension", "waist circumference"]),
+    );
+  });
+
   it("includes AU spellings", () => {
     expect(expandClinicalVocabularyText("metabolic syndrome")).toEqual(
       expect.arrayContaining(["hyperglycaemia", "dyslipidaemia"]),

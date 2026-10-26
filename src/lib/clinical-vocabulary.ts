@@ -322,7 +322,9 @@ export function expandClinicalVocabularyText(text: string, limit = 48) {
   const additions = new Set<string>();
   for (const entry of clinicalVocabularyMatches(text, limit)) {
     additions.add(entry.canonical);
-    for (const alias of [...entry.aliases, ...(entry.relatedTerms ?? [])].slice(0, 6)) additions.add(alias);
+    for (const alias of entry.aliases.slice(0, 6)) additions.add(alias);
+    // Related terms get their own budget so AU/US spelling pairs never push out a feature.
+    for (const term of (entry.relatedTerms ?? []).slice(0, 8)) additions.add(term);
   }
   return Array.from(additions).slice(0, limit);
 }
