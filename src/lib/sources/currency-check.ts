@@ -83,6 +83,12 @@ function upcomingDate(entry: ClinicalSourceClientEntry, today: string, windowEnd
   return null;
 }
 
+/** Statuses on the "Needs review first" list, in reading order. `current` is absent. */
+const NEEDS_REVIEW_RANK: Partial<Record<SourceCurrencyStatus, number>> = { outdated: 0, review_due: 1, unknown: 2 };
+
+/** The statuses `needsReview` holds, for links that filter the catalogue to the same set. */
+export const NEEDS_REVIEW_STATUSES: readonly SourceCurrencyStatus[] = ["outdated", "review_due", "unknown"];
+
 function byTitle(left: ClinicalSourceClientEntry, right: ClinicalSourceClientEntry) {
   return left.title.localeCompare(right.title, "en-AU");
 }
@@ -114,16 +120,15 @@ export function deriveSourceCurrencyCheck(
   const replaced = entries.filter((entry) => entry.supersededBy.length > 0).sort(byTitle);
   const replacedIds = new Set(replaced.map((entry) => entry.id));
 
-  // Outdated before review due: the more serious state is read first, matching
-  // the catalogue's own "Needs review first" order.
+  // Outdated, then review due, then not reviewed: the more serious state is read
+  // first, matching the catalogue's own "Needs review first" order. A source nobody
+  // has reviewed ("unknown", shown as "Not reviewed") needs review too; leaving it
+  // out let an unreviewed source sit off this list indefinitely (audit 26 Oct 2026).
   const needsReview = entries
-    .filter(
-      (entry) =>
-        !replacedIds.has(entry.id) && (entry.documentStatus === "outdated" || entry.documentStatus === "review_due"),
-    )
+    .filter((entry) => !replacedIds.has(entry.id) && NEEDS_REVIEW_RANK[entry.documentStatus] !== undefined)
     .sort(
       (left, right) =>
-        (left.documentStatus === "outdated" ? 0 : 1) - (right.documentStatus === "outdated" ? 0 : 1) ||
+        (NEEDS_REVIEW_RANK[left.documentStatus] ?? 0) - (NEEDS_REVIEW_RANK[right.documentStatus] ?? 0) ||
         byTitle(left, right),
     );
 
