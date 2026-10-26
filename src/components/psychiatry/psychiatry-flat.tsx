@@ -138,9 +138,9 @@ export function FlatRow({
           )}
         >
           {title}
-        </span>
+        </span>{" "}
         {subtitle ? <span className="break-words text-xs text-[color:var(--dash-muted)]">{subtitle}</span> : null}
-      </span>
+      </span>{" "}
       {end ??
         (href || renderLink ? (
           <ChevronRight aria-hidden="true" className="size-icon-sm text-[color:var(--dash-faint)]" />

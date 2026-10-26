@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "82f95758-3211-499d-b8df-d4e2d71a0b2b",
+  "createdOn": "2026-10-23",
+  "action": "update",
+  "payload": {
+    "id": "#QP7H3X",
+    "summary": "Reviewed differential source candidates: reconcile duplicate identities, adoption and remaining evidence debt",
+    "detail": "REVALIDATED 2026-10-23 at df1e07db04. The four named records now say locally_reviewed and candidate, so unverified/no-review wording is stale. Retain duplicate canonical-URL reconciliation, adoption and any held passage/mapping debt. Recorded review fields are not a new clinical sign-off. Source inspection only; no fresh application/provider execution or clinical sign-off. Evidence: src/data/source-acquisitions.json. PRIOR DETAIL: REVIEW 2026-09-25 (offline audit of current main; no provider access): The RANZCP mood guideline is now unverified (PR #2815 reset), so 'preserving the 2026-09-06 review' no longer holds and it needs a fresh review. Two of the three candidates duplicate records already in the ledger with the same canonical URL: ps-diff-src-au-ausprescr-movement-2019 = dictionary-australian-prescriber-movement-2019, and ps-diff-src-au-ausprescr-lithium-2020 = australian-prescriber-lithium-therapy-and-its-interactions. Reconcile the duplicates before sign-off. Absorbs the remainder of closed #MTY1J2. The '20 held / 357 of 385' counts were not re-verified. PRIOR DETAIL: Commit d3f29a95f added three metadata-only candidates to src/data/source-acquisitions.json from the 2026-09-16 Differentials handover: ps-diff-src-who-icd11-cddr-2024 (WHO ICD-11 CDDR), ps-diff-src-au-ausprescr-movement-2019 and ps-diff-src-au-ausprescr-lithium-2020 (Australian Prescriber). All three sit at D band as candidate/unverified/link_only and cannot be cited by clinical content until reviewed. The same commit corrected ranzcp-mood-disorders-clinical-practice-guideline from documentStatus current to outdated against the publisher's own page, preserving the 2026-09-06 review. Next action: owner reviews each of the three against its publisher page and records the outcome, and confirms the RANZCP currentness correction. Also outstanding from the same handover and NOT applied: 20 held source records awaiting publication evidence, and 357 of 385 staged claims with no checked source passage.",
+    "source": "Current-state issue revalidation 2026-10-23 at df1e07db04; PsychSift Differentials handover reconciliation 2026-09-16; docs/audit/psychsift-differentials-handover-reconciliation-2026-09-16.md",
+    "baseRowFingerprint": "5cffe990de2e80bc134e49798c3435f0f6ba20bd7765fd013468f903c8499715",
+    "targetUlid": "01M2MRG1PCQP7H3XF4ZHWBSNXS"
+  }
+}

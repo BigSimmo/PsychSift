@@ -46,7 +46,15 @@ const ROUTES = ["/", "/therapy-compass", "/documents/search", "/dsm", "/forms"];
  * as `/`, so their removal costs duplication rather than coverage. My Day, On Call
  * and the MHA clock joined on 2026-10-26 (performance audit M3).
  */
-const COMMITTED_ROUTES = ["/", "/documents/search", "/my-day", "/on-call", "/psychiatry/mha-clock"];
+const COMMITTED_ROUTES = [
+  "/",
+  "/documents/search",
+  "/my-day",
+  "/on-call",
+  "/psychiatry/mha-clock",
+  "/roster",
+  "/open-shifts",
+];
 
 const budget = (overrides: Record<string, unknown> = {}) => ({
   enforce: true,

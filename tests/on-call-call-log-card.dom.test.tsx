@@ -3,7 +3,14 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { OnCallCallLogCard } from "@/components/on-call/handover/call-log";
-import { PATIENT_LABEL_EXPIRY_STORAGE_KEY, writePatientLabels } from "@/lib/patient-label-storage";
+import { ToastProvider } from "@/components/ui/toast";
+import { addOnCallCallLogEntry, readOnCallCallLog } from "@/lib/on-call/call-log";
+import {
+  PATIENT_LABEL_EXPIRY_STORAGE_KEY,
+  SHIFT_LABELS_CLEARED_AT_STORAGE_KEY,
+  clearExpiredPatientLabels,
+  writePatientLabels,
+} from "@/lib/patient-label-storage";
 
 afterEach(() => {
   cleanup();
@@ -107,5 +114,34 @@ describe("OnCallCallLogCard cross-tab clearing", () => {
       window.dispatchEvent(new StorageEvent("storage", { key: "other", newValue: null }));
     });
     expect(screen.getByTestId("on-call-call-log-note")).toHaveValue("keep me");
+  });
+});
+
+// D26-25: delete has a short Undo, and the end-of-shift wipe is said, not silent.
+describe("OnCallCallLogCard delete and shift clearing", () => {
+  it("deletes a note at once and puts it back from the toast's Undo", () => {
+    const added = addOnCallCallLogEntry({ label: "4B-12", caller: "Ward nurse", note: "SYNTHETIC", followUp: "" });
+    if (!added.ok) throw new Error("setup failed");
+    render(
+      <ToastProvider>
+        <OnCallCallLogCard />
+      </ToastProvider>,
+    );
+    fireEvent.click(screen.getByTestId("on-call-call-log-delete"));
+    expect(readOnCallCallLog()).toEqual([]);
+    expect(screen.getByText(/note deleted/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    expect(readOnCallCallLog().map((entry) => entry.id)).toEqual([added.entry.id]);
+  });
+
+  it("says when the last shift's notes were cleared, until dismissed", () => {
+    const start = Date.now() - 13 * 60 * 60 * 1000;
+    writePatientLabels("fixture", "SYNTHETIC", { now: start });
+    clearExpiredPatientLabels();
+    render(<OnCallCallLogCard />);
+    expect(screen.getByTestId("on-call-shift-cleared").textContent).toMatch(/were cleared at .*when the shift ended/);
+    fireEvent.click(screen.getByTestId("on-call-shift-cleared-dismiss"));
+    expect(screen.queryByTestId("on-call-shift-cleared")).toBeNull();
+    expect(window.localStorage.getItem(SHIFT_LABELS_CLEARED_AT_STORAGE_KEY)).toBeNull();
   });
 });

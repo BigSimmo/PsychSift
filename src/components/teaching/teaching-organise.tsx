@@ -1,7 +1,7 @@
 "use client";
 
 import { CalendarDays, Clock, Download, Network, Plus, Upload, Users, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { TeachingAccountPage } from "@/components/teaching/teaching-depth-page";
 import { TeachingSupervisionAdmin } from "@/components/teaching/teaching-supervision-admin";
 
@@ -57,6 +57,7 @@ import { useTeachingNow } from "@/components/teaching/use-teaching-now";
 import { useTeachingResource } from "@/components/teaching/use-teaching-resource";
 import { useTeachingWeek } from "@/components/teaching/use-teaching-week";
 import { Select } from "@/components/ui/select";
+import { useHoldWhileEngaged } from "@/components/use-hold-while-engaged";
 import { teachingErrorMessage, teachingGet, teachingServiceUrl } from "@/lib/teaching/client";
 import { demoOrganise } from "@/lib/teaching/demo-organise";
 import {
@@ -160,6 +161,10 @@ function TeachingOrganiseContent({ demoMode }: { demoMode: boolean }) {
   const [notice, setNotice] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
   const delayed = useDelayedPost();
+  // The send waits while someone is on the Undo bar (WCAG 2.2.1).
+  const { held: undoHeld, holdProps: undoHoldProps } = useHoldWhileEngaged(Boolean(delayed.pending));
+  const holdDelayed = delayed.hold;
+  useEffect(() => holdDelayed(undoHeld), [holdDelayed, undoHeld]);
   // R9: the change reaches the session's series' groups, and the occurrence read names its series.
   const changing = open?.kind === "change" ? open.session : null;
   const changingDetail = useSessionDetail(demoMode ? null : (changing?.occurrenceId ?? null), demoMode, now);
@@ -596,7 +601,7 @@ function TeachingOrganiseContent({ demoMode }: { demoMode: boolean }) {
         </T5Page>
       </div>
       {delayed.pending ? (
-        <TeachingUndoBar testId="teaching-organise-pending" onUndo={delayed.undo}>
+        <TeachingUndoBar testId="teaching-organise-pending" onUndo={delayed.undo} holdProps={undoHoldProps}>
           {delayed.pending}. Leaving this page cancels the unsent change.
         </TeachingUndoBar>
       ) : null}

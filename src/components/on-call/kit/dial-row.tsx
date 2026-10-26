@@ -96,8 +96,8 @@ function SecondaryLine({ parts }: { readonly parts: readonly ReactNode[] }) {
           <span key={`part-${index}`} className="inline-flex min-w-0 items-center">
             <span aria-hidden="true" className="inline-block w-3 shrink-0 text-center">
               ·
-            </span>
-            {part}
+            </span>{" "}
+            {part}{" "}
           </span>
         ))}
       </span>
@@ -250,7 +250,6 @@ export function OnCallDialRow({
         <button
           type="button"
           aria-haspopup="dialog"
-          aria-label={`${title}, ${dial.display}. Dialling details`}
           onClick={() => setSheetOpen(true)}
           data-dial-row-title=""
           className={cn(
@@ -286,8 +285,10 @@ export function OnCallDialRow({
             >
               {title}
             </span>
-          </span>
+          </span>{" "}
           {lineParts.length > 0 ? <SecondaryLine parts={lineParts} /> : null}
+          {/* Named by the name and line it shows, then what it opens (WCAG 2.5.3, A11Y-02). */}
+          <span className="sr-only">. Dialling details</span>
         </button>
       ) : (
         // No number: plain text, never a dimmed button.

@@ -178,8 +178,8 @@ describe("favourites page actions", () => {
     renderPage();
 
     await user.click(screen.getByRole("button", { name: "Select" }));
-    await user.click(screen.getByRole("button", { name: "Select Service crisis-team" }));
-    await user.click(screen.getByRole("button", { name: "Select Service perinatal" }));
+    await user.click(screen.getByRole("button", { name: /^Select Service crisis-team\b(?!.* for workspace$)/ }));
+    await user.click(screen.getByRole("button", { name: /^Select Service perinatal\b(?!.* for workspace$)/ }));
     const bar = screen.getByRole("group", { name: "Selected favourites" });
     expect(within(bar).getByText("2 selected")).toBeInTheDocument();
     await user.click(within(bar).getByRole("button", { name: "Move" }));
@@ -197,10 +197,10 @@ describe("favourites page actions", () => {
   it("gives each browse-mode copy of a row's details its own id", () => {
     renderPage();
     const row = rowFor("perinatal");
-    const wide = within(row).getByRole("button", { name: "Select Service perinatal for workspace" });
-    const narrow = within(row).getByRole("link", { name: "Open Service perinatal" });
-    const wideId = wide.getAttribute("aria-describedby")!;
-    const narrowId = narrow.getAttribute("aria-describedby")!;
+    const wide = within(row).getByRole("button", { name: /^Select Service perinatal\b.* for workspace$/ });
+    const narrow = within(row).getByRole("link", { name: /^Open Service perinatal\b/ });
+    const wideId = wide.querySelector("[id]")!.id;
+    const narrowId = narrow.querySelector("[id]")!.id;
 
     expect(wideId).not.toBe(narrowId);
     expect(row.querySelectorAll(`[id="${wideId}"]`)).toHaveLength(1);
@@ -212,7 +212,7 @@ describe("favourites page actions", () => {
   it("shows Continue for the last favourite opened", () => {
     account.openedSlug = "older-adult";
     renderPage();
-    const continueCard = screen.getByRole("link", { name: "Continue Service older-adult" });
+    const continueCard = screen.getByRole("link", { name: /^Continue Service older-adult\b/ });
     expect(continueCard).toHaveAttribute("href", "/services/older-adult");
     expect(within(continueCard).getByText(/Service · opened \d{2}:\d{2}/)).toBeInTheDocument();
   });
@@ -223,7 +223,7 @@ describe("favourites page actions", () => {
     renderPage();
 
     await user.click(
-      within(screen.getByTestId("favourites-set-chips")).getByRole("button", { name: "Ward round, 2 favourites" }),
+      within(screen.getByTestId("favourites-set-chips")).getByRole("button", { name: "Ward round 2 favourites" }),
     );
     expect(screen.getByTestId("favourites-set-bar")).toHaveTextContent("Ward round");
     await user.click(screen.getByRole("button", { name: "Reorder" }));
@@ -242,7 +242,7 @@ describe("favourites page actions", () => {
     const user = userEvent.setup();
     renderPage();
     await user.click(
-      within(screen.getByTestId("favourites-set-chips")).getByRole("button", { name: "Ward round, 2 favourites" }),
+      within(screen.getByTestId("favourites-set-chips")).getByRole("button", { name: "Ward round 2 favourites" }),
     );
     await user.click(screen.getByRole("button", { name: "Reorder" }));
     const grip = rowFor("crisis-team").querySelector<HTMLElement>("[data-drag-handle]");
@@ -265,7 +265,7 @@ describe("favourites page actions", () => {
     const user = userEvent.setup();
     renderPage();
     await user.click(
-      within(screen.getByTestId("favourites-set-chips")).getByRole("button", { name: "Ward round, 1 favourite" }),
+      within(screen.getByTestId("favourites-set-chips")).getByRole("button", { name: "Ward round 1 favourite" }),
     );
     await user.click(screen.getByRole("button", { name: "Delete Ward round set" }));
     const dialog = screen.getByRole("dialog", { name: "Delete Ward round?" });

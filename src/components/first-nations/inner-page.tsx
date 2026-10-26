@@ -54,7 +54,15 @@ export function InnerPageView({
         <OfflineState />
         <CrisisStrip />
         {sections.map((section) => (
-          <section key={section.id} id={section.id} aria-label={section.tab} className="grid scroll-mt-28 gap-3">
+          // A named group, not a region: each module inside is already a region, often with
+          // the same name as its tab, and two regions with one name confuse landmark lists (A11Y-07).
+          <section
+            key={section.id}
+            id={section.id}
+            role="group"
+            aria-label={section.tab}
+            className="grid scroll-mt-28 gap-3"
+          >
             {section.modules.map((m) => (
               <ModuleBody key={m.id} module={m} model={model} mapSource={mapSource} />
             ))}

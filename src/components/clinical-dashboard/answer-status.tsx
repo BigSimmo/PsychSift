@@ -49,7 +49,7 @@ export { AnswerSkeleton } from "@/components/clinical-dashboard/answer-skeleton"
  */
 const sharedHomeCatalogueChips: Partial<Record<AppModeId, { label?: string; ariaLabel: string }>> = {
   calculators: { ariaLabel: "Show all calculators" },
-  sources: { label: "Browse catalogue", ariaLabel: "Browse the source catalogue" },
+  sources: { label: "Browse catalogue", ariaLabel: "Browse catalogue of sources" },
 };
 
 export function SharedHomeEmptyState({

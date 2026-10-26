@@ -64,12 +64,16 @@ import {
   PATIENT_LABEL_KEY_PREFIX,
   PATIENT_LABEL_MAX_LIFETIME_MS,
   PATIENT_LABEL_WATCH_INTERVAL_MS,
+  SHIFT_LABELS_CLEARED_AT_STORAGE_KEY,
   clearExpiredPatientLabels,
   clearPatientLabels,
+  dismissShiftLabelsClearedNotice,
   patientLabelStorageKey,
   patientLabelsExpireAt,
   readPatientLabels,
+  readShiftLabelsClearedAt,
   removePatientLabels,
+  startPatientLabelRetention,
   subscribePatientLabelsCleared,
   watchPatientLabelExpiry,
   writePatientLabels,
@@ -303,6 +307,33 @@ describe("the wipe removes patient labels and nothing else", () => {
     expect(clearExpiredPatientLabels(T0 + 8 * HOUR)).toBe(true);
     expect(labelKeyCount()).toBe(0);
     expectUnrelatedIntact();
+  });
+
+  // D26-25: the end-of-shift wipe often runs while the page is closed, so it leaves the time it
+  // ran (never a label) for On Call to say "were cleared at".
+  it("records when the end of a shift wiped the labels, and forgets it at the next shift or sign-out", () => {
+    writePatientLabels("timers", "Bed 4", { now: T0, shiftEndsAt: T0 + 8 * HOUR });
+    expect(readShiftLabelsClearedAt()).toBeNull();
+    expect(clearExpiredPatientLabels(T0 + 9 * HOUR)).toBe(true);
+    expect(readShiftLabelsClearedAt()).toBe(T0 + 8 * HOUR);
+    expect(SHIFT_LABELS_CLEARED_AT_STORAGE_KEY.startsWith(PATIENT_LABEL_KEY_PREFIX)).toBe(false);
+
+    writePatientLabels("timers", "Bed 7", { now: T0 + 20 * HOUR });
+    expect(readShiftLabelsClearedAt()).toBeNull();
+
+    window.localStorage.setItem(SHIFT_LABELS_CLEARED_AT_STORAGE_KEY, String(T0));
+    clearPatientLabels("account-transition");
+    expect(readShiftLabelsClearedAt()).toBeNull();
+
+    window.localStorage.setItem(SHIFT_LABELS_CLEARED_AT_STORAGE_KEY, String(T0));
+    dismissShiftLabelsClearedNotice();
+    expect(readShiftLabelsClearedAt()).toBeNull();
+  });
+
+  it("records no cleared time when the ended shift held only its expiry stamp", () => {
+    startPatientLabelRetention({ now: T0, shiftEndsAt: T0 + 8 * HOUR });
+    clearExpiredPatientLabels(T0 + 9 * HOUR);
+    expect(readShiftLabelsClearedAt()).toBeNull();
   });
 
   it("has nothing to do when no labels are stored", () => {

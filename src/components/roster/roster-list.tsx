@@ -210,7 +210,7 @@ export function RosterRow({
           )}
         >
           {title}
-        </span>
+        </span>{" "}
         {sub ? (
           <span
             className={cn(
@@ -221,7 +221,7 @@ export function RosterRow({
             {sub}
           </span>
         ) : null}
-      </span>
+      </span>{" "}
       {trail ? (
         <span className="shrink-0 whitespace-nowrap text-2xs font-semibold text-[color:var(--text-muted)]">
           {trail}

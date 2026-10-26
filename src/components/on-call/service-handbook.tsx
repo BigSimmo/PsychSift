@@ -180,7 +180,8 @@ function ServiceEntryCard({
             {dial.tel ? (
               <a
                 href={dial.tel}
-                aria-label={`Call ${entry.content.title}, ${spokenOnCallNumber(dial.display)}`}
+                // Opens with the words the button shows ("Call 5550 0000"), then who (A11Y-02).
+                aria-label={`Call ${dial.display} (${spokenOnCallNumber(dial.display)}), ${entry.content.title}`}
                 className={cn(buttonFaceClass({ variant: "primary", size: "sm" }), focusRing, "min-w-0 no-underline")}
               >
                 <Phone aria-hidden="true" className="size-icon-sm shrink-0" />

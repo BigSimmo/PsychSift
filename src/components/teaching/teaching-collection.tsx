@@ -4,7 +4,7 @@ import { T5Button } from "@/components/teaching/t5-kit";
 
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import { InformationPageShell } from "@/components/information-page-shell";
@@ -31,6 +31,7 @@ import { useTeachingResource } from "@/components/teaching/use-teaching-resource
 import { useTeachingWeek } from "@/components/teaching/use-teaching-week";
 import { TextField } from "@/components/ui/text-field";
 import { cn, textMuted } from "@/components/ui-primitives";
+import { useHoldWhileEngaged } from "@/components/use-hold-while-engaged";
 import type { CollectionRead, ResourceRow } from "@/lib/teaching/model";
 import {
   useSignedOutSampleRead,
@@ -97,6 +98,10 @@ export function TeachingCollection({
   const [error, setError] = useState<string | null>(null);
   const [hidden, setHidden] = useState<string | null>(null);
   const delayed = useDelayedPost();
+  // The send waits while someone is on the Undo bar (WCAG 2.2.1).
+  const { held: undoHeld, holdProps: undoHoldProps } = useHoldWhileEngaged(Boolean(delayed.pending));
+  const holdDelayed = delayed.hold;
+  useEffect(() => holdDelayed(undoHeld), [holdDelayed, undoHeld]);
   const shown = useMemo(
     () => filterResources(read.data?.items ?? [], type, filter).filter((item) => item.resourceId !== hidden),
     [read.data, type, filter, hidden],
@@ -234,7 +239,7 @@ export function TeachingCollection({
         {body}
       </div>
       {delayed.pending ? (
-        <TeachingUndoBar testId="teaching-collection-pending" onUndo={undoRemove}>
+        <TeachingUndoBar testId="teaching-collection-pending" onUndo={undoRemove} holdProps={undoHoldProps}>
           {delayed.pending}. Leaving this page cancels it.
         </TeachingUndoBar>
       ) : null}

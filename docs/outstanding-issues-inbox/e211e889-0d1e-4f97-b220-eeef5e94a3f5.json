@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "e211e889-0d1e-4f97-b220-eeef5e94a3f5",
+  "createdOn": "2026-10-23",
+  "action": "update",
+  "payload": {
+    "id": "#H69FNZ",
+    "summary": "Separate hydration from ranking and validate cache/zero-generation timing attribution",
+    "detail": "REVALIDATED 2026-10-23 at df1e07db04. The rerank timing windows include hydration. Consolidate the remaining GCB0DV/T9PRB9 questions here: separate database hydration from ranking, explain the historical zero-generation measurement (cache/reuse versus omitted telemetry), and validate representative queries before attribution/tuning. The newer cold-cache database evidence stays in AZXEDC. Do not change ranking to fix telemetry or infer that latency is resolved. Source inspection only; no fresh application/provider execution or clinical sign-off. Evidence: src/lib/rag/rag.ts; src/lib/rag/rag-hydration.ts; src/lib/server-timing.ts. PRIOR DETAIL: src/lib/rag/rag.ts starts rerankStartedAt at line 1453 and adds the elapsed time at 1484 and 1531, and src/lib/rag/rag-hydration.ts:137 does the same. Those windows include metadata hydration, memory-card hydration and visual-evidence hydration, which are Supabase round trips (Singapore to Sydney). The deterministic second-stage rerank itself is in-process arithmetic, and the semantic reranker is off by default (RAG_SEMANTIC_RERANK_ENABLED=false). So in the #T9PRB9 probe (search 9.2 s = rpc 4.2 s + rerank 4.1 s), nearly all search time is database work. Consequence: #CWWH2E (27 to 45 round trips per search, currently P3) is the first latency lever, not reranking. Also note: the 1.4 s rate-limit figure in #T9PRB9 predates 5c1ac4f87 (2026-09-26, one-round-trip anonymous rate limit), which has not been re-measured live. Next action: split rerank_latency_ms so hydration round trips are timed separately from ranking. This is RAG telemetry on a protected surface: flag before editing and write a RAG impact line (no ordering change expected). Then re-run scripts/probe-answer-timing.mjs from Perth (provider-backed, owner approval) to confirm.",
+    "source": "Current-state issue revalidation 2026-10-23 at df1e07db04; Latency, network, Railway and wiring review 2026-09-27 (Claude Code session claude/repo-latency-network-review-zcqd5c), offline code read against main 7f8312f2c; no provider access",
+    "baseRowFingerprint": "f2d9430e52b68b702436496aebac89d78b642fe0bbd8525bfdcec6f02a503bec",
+    "targetUlid": "01M3GND2FBH69FNZ9NC7EK5XWT"
+  }
+}

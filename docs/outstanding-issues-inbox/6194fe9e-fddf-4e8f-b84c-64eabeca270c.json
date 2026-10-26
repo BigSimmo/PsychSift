@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "6194fe9e-fddf-4e8f-b84c-64eabeca270c",
+  "createdOn": "2026-10-23",
+  "action": "done",
+  "payload": {
+    "id": "#ZPHK2F",
+    "outcome": "Revalidated 23 October 2026 at df1e07db04. Archive the settled first-publication-versus-adoption decision as superseded work. The unfinished first-publication implementation and approved batches remain under HTZPQ8; no publication or clinical acceptance is claimed. Evidence: docs/site-content-publication-handover.md.",
+    "baseRowFingerprint": "206f0c8a3d7cf6b427ec13973c62d9c06ad39206d84fc51b3485d89f84c5d62b",
+    "targetUlid": "01M2ZWB0JAZPHK2FRCYN41VQM9"
+  }
+}

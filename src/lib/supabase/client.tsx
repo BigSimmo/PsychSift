@@ -11,7 +11,12 @@ import { clearOnCallEntryCache } from "@/lib/on-call/entry-cache-keys";
 import { clearOnCallChecklists } from "@/lib/on-call/checklist-storage-keys";
 import { clearOnCallDeviceState } from "@/lib/on-call/device-state-keys";
 import { clearOnCallRecent } from "@/lib/on-call/recent-storage-keys";
-import { clearPatientLabels, watchPatientLabelExpiry } from "@/lib/patient-label-storage";
+import {
+  PATIENT_LABEL_KEY_PREFIX,
+  clearPatientLabels,
+  patientLabelsOnDevice,
+  watchPatientLabelExpiry,
+} from "@/lib/patient-label-storage";
 import { clearMhaClocks } from "@/lib/psychiatry-hub/mha-clocks";
 import { clearPatientProfile } from "@/lib/patient-profile-storage";
 import { clearRecentQueries } from "@/lib/recent-query-storage";
@@ -48,6 +53,14 @@ type AuthContextValue = {
    * because the clearing itself is silent (design audit D-04, owner yes 19 Oct 2026).
    */
   deviceDataClearedAt?: number | null;
+  /**
+   * True while a sign-in on this tab is holding the bed numbers and initials made on this phone
+   * before it (call notes, handover drafts, timers), until the person says to keep or clear them.
+   * Before this the sign-in cleared them without a word (design audit D26-02).
+   */
+  signedOutWorkHeld?: boolean;
+  /** Answer the question above: keep the work with this account for the shift, or clear it now. */
+  resolveSignedOutWork?: (keep: boolean) => void;
 };
 
 export const AUTH_EMAIL_STORAGE_KEY = "clinical.dashboard.lastAuthEmail";
@@ -78,7 +91,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
  * answer-thread snapshot (see `initializeSession`). The one boot case that IS a
  * transition, a stored session the auth server rejects, calls this too.
  */
-function clearAccountScopedBrowserState() {
+function clearAccountScopedBrowserState({ keepPatientLabels = false }: { readonly keepPatientLabels?: boolean } = {}) {
   // First, so a store that restarts on any clear below (On Call's epoch) never
   // joins the previous account's read still in flight (src/lib/shared-get.ts).
   resetSharedGets();
@@ -89,7 +102,8 @@ function clearAccountScopedBrowserState() {
   clearPatientProfile();
   // Bed numbers and initials (timers, call notes, handover drafts). They also
   // expire at the end of the shift; see the watcher in AuthProvider.
-  clearPatientLabels("account-transition");
+  // Kept only while a first sign-in asks whether this shift's signed-out work stays (D26-02).
+  if (!keepPatientLabels) clearPatientLabels("account-transition");
   // On Call entries are the owner's own ward numbers, escalation contacts and
   // personal lines (added on main while this branch was open). A shared ward
   // computer switches accounts without ever signing out, so without this the
@@ -113,7 +127,7 @@ function clearAccountScopedBrowserState() {
   // plan draft left by the retired Caring Contacts prototype (audit L6).
   // The raw keys are removed here, synchronously, whether or not those modules
   // are loaded in this page; the stores drop their caches on the event it fires.
-  clearAccountScopedBrowserStorage();
+  clearAccountScopedBrowserStorage(keepPatientLabels ? { keepPrefix: PATIENT_LABEL_KEY_PREFIX } : {});
   // Phone alerts belong to the person too. Sign-out has already awaited this so
   // it can say if it failed; expiry and an account switch drop it here in the
   // background, so the next person at a shared computer gets nothing of theirs.
@@ -287,6 +301,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [deviceDataClearedAt, setDeviceDataClearedAt] = useState<number | null>(null);
+  const [signedOutWorkHeld, setSignedOutWorkHeld] = useState(false);
   const callbackErrorRef = useRef<string | null | undefined>(undefined);
   const authRequestsRef = useRef(createAuthRequestLifecycle());
   const authFingerprintRef = useRef<string | null>(null);
@@ -457,7 +472,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // switch; sign-out and expiry null the ref themselves, so a later sign-in
       // as a different user still clears.
       if (initialSessionPublishedRef.current && publishedUserIdRef.current !== nextUserId) {
-        clearAccountScopedBrowserState();
+        // Signing in from signed out, with this shift's labels on the phone: they were made here,
+        // signed out, so ask before clearing them (D26-02). Every other store still clears now, and
+        // any other change (sign-out, expiry, an account switch) clears the labels as before.
+        const holdSignedOutWork = publishedUserIdRef.current === null && nextUserId !== null && patientLabelsOnDevice();
+        clearAccountScopedBrowserState({ keepPatientLabels: holdSignedOutWork });
+        setSignedOutWorkHeld(holdSignedOutWork);
         // A session that ended without this tab's Sign out (a refresh the auth
         // server refused) cleared this device too, so the notice says so.
         if (!nextUserId && !userSignOutRef.current) setDeviceDataClearedAt(Date.now());
@@ -623,6 +643,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     userSignOutRef.current = false;
     clearAccountScopedBrowserState();
+    setSignedOutWorkHeld(false);
     publishedUserIdRef.current = null;
     setSession(null);
     setStatus("signed_out");
@@ -648,6 +669,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // failure is reported as expiry — accepted: a stale profile surviving to the
     // next sign-in is the worse failure on a shared workstation.
     clearAccountScopedBrowserState();
+    setSignedOutWorkHeld(false);
     setDeviceDataClearedAt(Date.now());
     publishedUserIdRef.current = null;
     setSession(null);
@@ -655,6 +677,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setNotice(null);
     setError("Your session expired. Sign in again to use account features.");
   }, [invalidateAuthRequests]);
+
+  const resolveSignedOutWork = useCallback((keep: boolean) => {
+    if (!keep) clearPatientLabels("account-transition");
+    setSignedOutWorkHeld(false);
+  }, []);
 
   const accessToken = session?.access_token ?? null;
   const authorizationHeader = useMemo(() => authorizationHeadersForAccessToken(accessToken), [accessToken]);
@@ -694,6 +721,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut,
       markSessionExpired,
       deviceDataClearedAt,
+      signedOutWorkHeld,
+      resolveSignedOutWork,
     }),
     [
       client,
@@ -713,6 +742,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut,
       markSessionExpired,
       deviceDataClearedAt,
+      signedOutWorkHeld,
+      resolveSignedOutWork,
     ],
   );
 

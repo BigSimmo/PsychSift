@@ -243,7 +243,7 @@ describe("Call page", () => {
     handbook.state = ready(items([{ id: "i", title: "ICU: Registrar", phone: "4456" }]));
     render(<OnCallCallPage />);
     await userEvent.click(screen.getByRole("switch", { name: "I'm on a hospital phone" }));
-    await userEvent.click(screen.getByRole("button", { name: /^Registrar, .*Dialling details$/ }));
+    await userEvent.click(screen.getByRole("button", { name: /^Registrar\b.*Dialling details$/ }));
 
     const sheet = screen.getByTestId("on-call-call-row-i-sheet-body");
     expect(within(sheet).getByText("Not recorded")).toBeInTheDocument();

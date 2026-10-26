@@ -4,7 +4,7 @@ import { AlertTriangle, Check, CheckCheck, ClipboardCopy, RotateCcw, type Lucide
 import { useId, useState } from "react";
 
 import { ClinicalSignInNotice } from "@/components/mode-kit/clinical-sign-in-notice";
-import { useClinicalToolAccess } from "@/components/mode-kit/use-clinical-tool-access";
+import { clinicalToolLocked, useClinicalToolAccess } from "@/components/mode-kit/use-clinical-tool-access";
 import { cn, controlDisabled, ignoreUnavailableActivation } from "@/components/ui-primitives";
 import { announce } from "@/components/ui/live-announcer";
 import { useCopyToast } from "@/components/ui/toast";
@@ -710,8 +710,9 @@ export function CalculatorItems({
   // Entering answers and getting a score is for signed-in health professionals (see
   // useClinicalToolAccess). Signed out, the questions stay readable with no way to
   // answer them; the score panel beside them keeps the bands, scoring note and sources.
-  const signedOut = useClinicalToolAccess() === "sign-in-required";
-  if (signedOut) {
+  // A signed-in account without the declaration (D26-07) gets the same read-only view.
+  const locked = clinicalToolLocked(useClinicalToolAccess());
+  if (locked) {
     return (
       <section aria-label={`${calc.abbrev} items`} className="grid min-w-0 content-start gap-2">
         <ClinicalSignInNotice copy={CLINICAL_SIGN_IN_COPY.scoring} testId="calculator-scoring-sign-in" />
