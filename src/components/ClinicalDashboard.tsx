@@ -96,6 +96,7 @@ import { DashboardSearchErrorState } from "@/components/clinical-dashboard/dashb
 import { useDashboardShellActions } from "@/components/clinical-dashboard/use-dashboard-shell-actions";
 import { useDashboardSearchExecution } from "@/components/clinical-dashboard/use-dashboard-search-execution";
 import {
+  checkSearchTextPatientDetail,
   searchTextPatientDetailRefusal,
   usePreloadSearchPatientCheck,
 } from "@/components/clinical-dashboard/search-patient-detail-guard";
@@ -1202,6 +1203,20 @@ function ClinicalDashboardContent({
         if (submittedSeq !== searchRequestSeqRef.current) return;
         if ("notice" in checked) {
           setActionNotice({ tone: "warning", message: checked.notice });
+          return;
+        }
+        latestNavigateCrossModeSearch(mode, crossQuery);
+      });
+      return;
+    }
+    // Every other mode writes the text into the address bar, history and recent searches too,
+    // so a patient detail is held back here as well (privacy audit CA-01, 2026-10-26).
+    if (crossQuery.trim()) {
+      const submittedSeq = searchRequestSeqRef.current;
+      void checkSearchTextPatientDetail(crossQuery).then((refusal) => {
+        if (submittedSeq !== searchRequestSeqRef.current) return;
+        if (refusal) {
+          setActionNotice({ tone: "warning", message: refusal });
           return;
         }
         latestNavigateCrossModeSearch(mode, crossQuery);

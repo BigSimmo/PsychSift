@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "02aaea82-0ef9-4416-be1c-0126e849b7bd",
+  "createdOn": "2026-10-26",
+  "action": "done",
+  "payload": {
+    "id": "#2X90V6",
+    "outcome": "Closed 2026-10-26 without changing the record (S9). The record now sits in docs/archive/branch-review-records/a7be2760026da4bc040fa90bf847382bdcded2a8a7510ceaf7be4ac49c042211.record.md, which is archived and read-only, and the ledger tool has no correct command. The correction is kept here: PR #3570's head branch was claude/reconcile-ledger-20261016, not claude/reconcile-inbox-20261016. SHAs and merge state in the record were already right.",
+    "baseRowFingerprint": "655d45524463c0126ceddee7aa69baa203c4cb2eb3c1c5dc333fdd62c64553e0",
+    "targetUlid": "01M551BST62X90V6VK3DEP4C7S"
+  }
+}

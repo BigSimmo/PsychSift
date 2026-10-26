@@ -44,10 +44,54 @@ philippa phoebe priya rachel rebecca rhys richard robert roberta rodney rosemary
 samantha samuel sarah scott sean shane shannon sharon shaun sheila simon simone sophia sophie stephanie
 stephen steven stuart susan tamara tanya teresa theresa thomas timothy toby todd tracey tracy trevor
 troy valerie vanessa vincent warren wayne wendy william xavier yvonne zachary zoe
+mary jack ben sam kate alex chris tom tim dan jake josh beth jess liz tess rosie millie levi ezra theo leo
+jayden jaxon tahlia talia shania kayla mikayla jordan tyson brodie cody riley harley kobe zac zach hayden
+mick steve dave mike pete ken jon
+minh thanh duc huy linh hai trang tuan khanh phuong quang thuy hoa
+bao lin wei ming jing yan hui xin jun lei hao xiao ying lili mei ling jian zhen qing
+arjun rahul rohan raj ravi vikram sanjay ajay amit anil sunil deepak suresh ramesh rajesh mahesh ganesh
+kiran priyanka anjali deepika kavya neha pooja sneha divya lakshmi meera nisha sunita anita rekha shreya ananya
+aditi aditya arun vijay harpreet gurpreet manpreet jaspreet simran navneet aarav ishaan vivek nikhil
+omar ali mohammad muhammed mohamad hassan hussein ibrahim yusuf youssef khalid karim tariq bilal hamza mustafa mahmoud ahmad amir ayesha
+aisha fatima fatma mariam maryam zainab layla leila noor nour yasmin samira amina hiba rania salma khadija
+kwame kofi abena chidi chinedu chukwuemeka emeka ngozi adaeze amara tunde femi yemi amadou mamadou fatou
+aminata abdi fatuma hodan deng achol garang mohamed mohamud
+aroha rangi tane wiremu hemi manaia nikau sione mele tevita malia
+siobhan niamh aoife ciaran declan jarrah kirra bindi marlee jedda kalinda kaya tanika
+giulia giuseppe giovanni marco luca matteo alessandro francesca chiara lorenzo sofia joao pedro carlos
+juan jose luis miguel javier diego lucia ines nikolai ivan sergei olga natalia katarina anastasia marek
+dmitri piotr tomasz agnieszka katarzyna stefan andreas klaus ingrid astrid lars sven erik nils elif mehmet emre
+hiroshi yuki haruto sakura kenji takeshi akira hana jin hyun
 `
     .split(/\s+/)
     .filter(Boolean),
 );
+
+/**
+ * Surnames common in Australia that anchor a name from the other side: a surname-first name
+ * ("Nguyen Thi Lan", "Chen Wei"), or a given name the list above does not hold ("Wei Chen" is
+ * caught either way, "Xiaoling Chen" only by this). Surnames that are also eponyms, everyday words
+ * or a test name ("Wilson", "Williams", "Turner", "Brown", "Young", "Hamilton", "Bell", "Park",
+ * "Li") are left out, so "Wilson disease" and "Young Mania Rating Scale" pass.
+ */
+const SURNAMES: ReadonlySet<string> = new Set(
+  `
+nguyen tran pham huynh hoang phan bui ngo duong vu vo dang
+chen wang zhang liu yang huang zhao zhou xu zhu guo luo gao liang zheng xie cao deng
+singh kaur patel sharma kumar gupta khan ahmed hussain rahman siddiqui
+okafor obi diallo mensah haddad nasser khoury
+kim lee choi kang cho yoon tanaka sato suzuki takahashi watanabe yamamoto nakamura kobayashi
+smith jones taylor thompson anderson walker thomas jackson harris robinson clarke ryan kelly murphy
+campbell stewart mitchell roberts johnson evans edwards davis
+garcia rodriguez martinez lopez hernandez gonzalez silva santos ferreira costa rossi russo bianchi romano
+ivanov petrov kowalski nowak muller schmidt fischer weber yilmaz
+`
+    .split(/\s+/)
+    .filter(Boolean),
+);
+
+/** Exported for the lexicon test only: the surnames that anchor a bare name. */
+export const BARE_NAME_SURNAMES: readonly string[] = [...SURNAMES];
 
 /** Exported for the lexicon test only: the given names a bare name must start with. */
 export const BARE_NAME_GIVEN_NAMES: readonly string[] = [...GIVEN_NAMES];
@@ -82,6 +126,8 @@ const EPONYM_SURNAMES: ReadonlySet<string> = new Set([
   "freud",
   "jung",
   "maudsley",
+  "magenis",
+  "cade",
 ]);
 
 /**
@@ -103,6 +149,13 @@ const KNOWN_PAIRS: readonly string[] = [
   "charles darwin",
   "thomas embling",
   "graham farmer",
+  "john cade",
+  "mary jane",
+  "sally anne",
+  "lee silverman",
+  "miller fisher",
+  "kurt schneider",
+  "marsha linehan",
 ];
 
 /** Words that name a place, a service or a tool rather than finish a person's name ("Alma Street", "Marian Centre"). */
@@ -212,7 +265,7 @@ const FUNCTION_WORDS: ReadonlySet<string> = new Set([
  * Gairdner", "King Edward", "Princess Margaret", "Lake Joondalup"). The pair is read past.
  */
 const PLACE_PREFIX =
-  /(?<![\p{L}\p{N}'’-])(?:St|Saint|Sir|Dame|Lady|King|Queen|Prince|Princess|Mount|Mt|Port|Lake|Cape|Fort)\.?\s+\p{L}+/giu;
+  /(?<![\p{L}\p{N}'’-])(?:St|Saint|Sir|Dame|Lady|King|Queen|Prince|Princess|Royal|Mount|Mt|Port|Lake|Cape|Fort)\.?\s+\p{L}+/giu;
 
 /** A word and the word after it, overlapping, so every adjacent pair is read. */
 const WORD_PAIR = /(?<![\p{L}'’-])(\p{L}+)(?=\s+(\p{L}[\p{L}'’-]*))/gu;
@@ -231,28 +284,81 @@ function fold(word: string): string {
   return word.normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase();
 }
 
-function readsAsName(given: string, surname: string): boolean {
-  const givenCase = caseOf(given);
-  const surnameWord = surname.replace(/['’]s$/u, "");
-  const surnameCase = caseOf(surnameWord);
-  const folded = fold(surnameWord);
-  if (!GIVEN_NAMES.has(fold(given))) return false;
-  if (EPONYM_SURNAMES.has(folded) || NOT_A_SURNAME.has(folded) || FUNCTION_WORDS.has(folded)) return false;
-  if (folded.length < 2) return false;
-  if (givenCase === "capitalised") return surnameCase === "capitalised";
-  if (givenCase === "lower") return surnameCase === "lower";
-  // In capitals only when both are words, not short capitals such as "ECT".
-  if (givenCase === "upper") return surnameCase === "upper" && given.length >= 4 && surnameWord.length >= 3;
+/** True when the word could finish a name beside a given name or a listed surname. */
+function couldBeNamePart(word: string): boolean {
+  const folded = fold(word);
+  return (
+    folded.length >= 2 && !EPONYM_SURNAMES.has(folded) && !NOT_A_SURNAME.has(folded) && !FUNCTION_WORDS.has(folded)
+  );
+}
+
+/** Both words in the same case: "Sarah Jones", "sarah jones", or in capitals when both are words, not short capitals such as "ECT". */
+function sameNameCase(first: string, second: string): boolean {
+  const firstCase = caseOf(first);
+  if (firstCase !== caseOf(second)) return false;
+  if (firstCase === "capitalised" || firstCase === "lower") return true;
+  return firstCase === "upper" && first.length >= 4 && second.length >= 3;
+}
+
+function readsAsName(first: string, second: string): boolean {
+  const secondWord = second.replace(/['’]s$/u, "");
+  if (!sameNameCase(first, secondWord)) return false;
+  const firstFolded = fold(first);
+  const secondFolded = fold(secondWord);
+  // A given name and then a surname ("Sarah Jones"), or a listed surname on either side ("Nguyen Thi", "Xiaoling Chen").
+  if (GIVEN_NAMES.has(firstFolded) && couldBeNamePart(secondWord)) return true;
+  if (SURNAMES.has(firstFolded) && couldBeNamePart(secondWord)) return true;
+  if (SURNAMES.has(secondFolded) && couldBeNamePart(first) && !SENTENCE_WORDS.has(firstFolded)) return true;
   return false;
 }
+
+/**
+ * Words that start a question or sit before a name without being part of it ("Can Sarah", "Ask
+ * Jane", "Plain Jane"). A surname then a given name ("Testpatient Jane") is read only when the
+ * first word is not one of these.
+ */
+const SENTENCE_WORDS: ReadonlySet<string> = new Set(
+  `
+can could should would will does did do is are was were what when where which why how give start stop tell ask
+call see dear hi hello hey thanks thank ok okay plain calamity if then so also just only does
+`
+    .split(/\s+/)
+    .filter(Boolean),
+);
+
+/** A surname then a given name, both capitalised: "Testpatient Jane clozapine", "Hartley Jane". */
+function readsAsReversedName(first: string, second: string): boolean {
+  if (caseOf(first) !== "capitalised" || caseOf(second) !== "capitalised") return false;
+  if (!GIVEN_NAMES.has(fold(second))) return false;
+  const firstFolded = fold(first);
+  return (
+    first.length >= 3 && couldBeNamePart(first) && !SENTENCE_WORDS.has(firstFolded) && !GIVEN_NAMES.has(firstFolded)
+  );
+}
+
+/** A capitalised given name in a shape that holds only a person: "Jane T.", "Jane (Testpatient)", "Jane's lithium". */
+const GIVEN_NAME_SHAPE =
+  /(?<![\p{L}'’-])(\p{Lu}\p{Ll}+)(?:\s+\p{Lu}\.(?=\s|$|[,;:)])|\s*\(\s*\p{Lu}[\p{L}'’-]+\s*\)|['’]s(?!\s+wort)(?![\p{L}]))/gu;
+
+/** A senior title that holds a person's name ("Prof Testpatient", "Sr Okafor"), unless the name is an eponym. */
+const SENIOR_TITLE = /(?<![\p{L}'’-])(?:Prof|Professor|Sr)\.?\s+(\p{Lu}[\p{L}'’-]+)/gu;
+
+/** A title and one letter typed in lower case ("mrs t on lithium"); a millisecond reading ("480 ms a") is not one. */
+const TITLE_AND_LETTER = /(?<!\d\s*)\b(?:[Mm][Rr][Ss]?|[Mm][Xx]|[Mm]iss|ms|Ms)\.?\s+\p{L}(?=$|[\s,.;:)])/u;
 
 function hasBareName(text: string): boolean {
   let read = text.replace(PLACE_PREFIX, " ");
   for (const pair of KNOWN_PAIRS) read = read.replace(new RegExp(`\\b${pair.replace(" ", "\\s+")}\\b`, "giu"), " ");
   for (const match of read.matchAll(WORD_PAIR)) {
-    if (readsAsName(match[1]!, match[2]!)) return true;
+    if (readsAsName(match[1]!, match[2]!) || readsAsReversedName(match[1]!, match[2]!)) return true;
   }
-  return false;
+  for (const match of read.matchAll(GIVEN_NAME_SHAPE)) {
+    if (GIVEN_NAMES.has(fold(match[1]!))) return true;
+  }
+  for (const match of read.matchAll(SENIOR_TITLE)) {
+    if (couldBeNamePart(match[1]!.replace(/['’]s$/u, ""))) return true;
+  }
+  return TITLE_AND_LETTER.test(read);
 }
 
 /** Amounts and times that come between a number and a capitalised word ("4 Hours", "300 Mg"); never a street name. */

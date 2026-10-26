@@ -67,7 +67,9 @@ export type ApiRateLimitBucket =
   | "roster"
   | "work_sync"
   | "account_sync"
-  | "work_bookings";
+  | "work_bookings"
+  | "teaching_magic_link_read"
+  | "teaching_magic_link_write";
 
 export type ApiRateLimitResult = {
   limited: boolean;
@@ -129,6 +131,10 @@ const apiRateLimitDefaults = {
   // Admin Bookings: booking or cancelling a place, and an organiser posting or changing a
   // course. Each is one small write; same shape as work_sync.
   work_bookings: { limit: 60, windowSeconds: 60 },
+  // Signed-out external-supervisor EPA magic-link reads and writes. Same 60/20 per minute the
+  // route kept in process memory before it moved onto this shared limiter.
+  teaching_magic_link_read: { limit: 60, windowSeconds: 60 },
+  teaching_magic_link_write: { limit: 20, windowSeconds: 60 },
 } as const satisfies Record<ApiRateLimitBucket, { limit: number; windowSeconds: number }>;
 
 const anonymousApiRateLimitDefaults: Partial<Record<ApiRateLimitBucket, { limit: number; windowSeconds: number }>> = {
@@ -148,6 +154,9 @@ const anonymousApiRateLimitDefaults: Partial<Record<ApiRateLimitBucket, { limit:
   // one network address, and the scanned code cannot be guessed, so this is load protection
   // only: generous enough for a full room scanning in the same minute.
   teaching_code: { limit: 300, windowSeconds: 60 },
+  // External supervisors open the magic link signed out; keep the same per-caller numbers.
+  teaching_magic_link_read: { limit: 60, windowSeconds: 60 },
+  teaching_magic_link_write: { limit: 20, windowSeconds: 60 },
 };
 
 /**
