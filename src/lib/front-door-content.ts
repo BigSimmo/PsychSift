@@ -173,8 +173,9 @@ export const TERMS_PROMPT_POINTS = [
 export const TERMS_PROMPT_ACCEPT_LABEL = "I'm a health professional and I accept the Terms";
 export const TERMS_PROMPT_LATER_LABEL = "Not now";
 export const TERMS_PROMPT_LATER_NOTE = "If you choose Not now, we will ask again next time you open PsychSift.";
+// The owner approved this save error, the declaration card below and the privacy sign-in note on 26 Oct 2026.
 export const TERMS_PROMPT_SAVE_ERROR =
-  "Your acceptance could not be saved to your account, so it is remembered on this device only.";
+  "Your acceptance could not be saved to your account, so we will ask again next time you open PsychSift.";
 /** Shown when the Terms step at the first Ask cannot save to the account; Answer stays unsent. */
 export const ASK_TERMS_SAVE_ERROR =
   "Your acceptance could not be saved to your account, so Answer can't run yet. Try again.";
@@ -248,11 +249,22 @@ export const CLINICAL_SIGN_IN_COPY = {
     body: "Library documents are for health professionals. Sign in to read the text, search it and open the original.",
   },
 } as const satisfies Record<string, ClinicalSignInCopy>;
+/**
+ * D26-07 (26 Oct 2026): the card a clinical tool shows a signed-in account that chose Not now
+ * on the first-open declaration. Its button opens the Terms prompt again.
+ */
+export const CLINICAL_DECLARATION_COPY = {
+  title: "Accept the Terms to use this",
+  body: "PsychSift's clinical tools are for health professionals. Accept the Terms once and every tool opens.",
+  action: "Review the Terms",
+} as const;
 export const CLINICAL_SIGN_IN_INVITE_NOTE =
   "No account? You can create one from Sign in. PsychSift is for health professionals only.";
 
 /** Shown under the sign-in and create-account forms. */
 export const TERMS_SIGN_IN_NOTE = "By signing in or creating an account, you agree to the";
+/** PD-03 (26 Oct 2026): the sign-up form links the privacy notice beside the Terms. */
+export const PRIVACY_SIGN_IN_NOTE = "How we handle your data is in the";
 
 /* ------------------------------------------------------- First-run guide */
 

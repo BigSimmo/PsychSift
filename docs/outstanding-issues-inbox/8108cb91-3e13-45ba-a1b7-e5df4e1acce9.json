@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "8108cb91-3e13-45ba-a1b7-e5df4e1acce9",
+  "createdOn": "2026-10-23",
+  "action": "update",
+  "payload": {
+    "id": "#J9F1ZM",
+    "summary": "Validate relational table facts without depending on a full-library re-index",
+    "detail": "REVALIDATED 2026-10-23 at df1e07db04. Retain semantic relationship checks using the existing table-facts producer. Remove the dependency on an unapproved full-library re-index; the pilot is narrow and not execution evidence. Source inspection only; no fresh application/provider execution or clinical sign-off. Evidence: worker/table-facts.ts; docs/decisions/2026-10-23-reindex-pilot-approved.md. PRIOR DETAIL: Words/numbers can be extracted correctly while parameter-threshold-action relationships are wrong. Revisit after the #GJHKYC re-index shows whether the reading-order fix was sufficient. First check what worker/table-facts.ts already produces before designing anything new. Structured-evidence producer: RAG-protected.",
+    "source": "Current-state issue revalidation 2026-10-23 at df1e07db04; Ultimate Audit Master Report 2026-09-25 (owner-supplied .docx), reviewed offline against main 955996146 in session claude/review-assessment-4s1w86; no provider access",
+    "baseRowFingerprint": "1cfe7bc21ec80c968ede582ff0fecbcf5ec588e99141f7de8c23c96ad9246cc0",
+    "targetUlid": "01M3CHC3BTJ9F1ZM7Q2GBJFXQ5"
+  }
+}

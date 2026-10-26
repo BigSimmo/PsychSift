@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "9e2bdcb7-37ad-4ee6-b5a9-3ee26bba2bbb",
+  "createdOn": "2026-10-23",
+  "action": "done",
+  "payload": {
+    "id": "#T9PRB9",
+    "outcome": "Revalidated 23 October 2026 at df1e07db04. Archive the historical single timing capture as evidence, not a separate active defect. H69FNZ retains timing-label/zero-generation attribution and AZXEDC retains cache-sensitive search performance; no latency fix claimed. Evidence: docs/audit/2026-10-21-database-performance-evidence.md; src/lib/server-timing.ts.",
+    "baseRowFingerprint": "9eafd4128a53a6d42d11cfe36b68146f631094b10cc38ae30c5676364a105e49",
+    "targetUlid": "01M3DV2W4JT9PRB9KYWMTQJEYX"
+  }
+}

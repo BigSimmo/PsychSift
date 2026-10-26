@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "87f62b7b-386d-4822-b852-705333946019",
+  "createdOn": "2026-10-23",
+  "action": "done",
+  "payload": {
+    "id": "#PYWRTX",
+    "outcome": "Revalidated 23 October 2026 at df1e07db04. The dedicated synthetic suite exists with seven cases covering scope/owner refusal, baseline behaviour, successful binding, mismatches, supplier failure and cancellation. Close the missing-test claim, not overall answer/runtime/clinical acceptance. No private capture was used. Evidence: tests/registered-public-answer-options.test.ts.",
+    "baseRowFingerprint": "8f1834fc593ab8c8a155c59afed0d774e4a51af874ec48de0af41714cb9f4adf",
+    "targetUlid": "01M5D78WBAPYWRTXRAZD3HT5Y2"
+  }
+}

@@ -28,7 +28,7 @@ export type AuthenticatedUserContext = {
 type PublicationClient = {
   auth: {
     getUser: () => PromiseLike<{
-      data: { user: { id: string; app_metadata?: Record<string, unknown> } | null };
+      data: { user: { id: string; app_metadata?: Record<string, unknown>; banned_until?: string | null } | null };
       error: unknown;
     }>;
   };
@@ -138,9 +138,20 @@ function extractSessionAccessToken(request: Request): string | null {
   );
 }
 
+/**
+ * A blocked account still holds a valid access token until it expires, so a live lookup that
+ * finds the account banned refuses it rather than trusting the token (PP-04, 26 Oct 2026).
+ */
+export function isBannedNow(user: { banned_until?: string | null }, now = Date.now()): boolean {
+  if (!user.banned_until) return false;
+  const until = Date.parse(user.banned_until);
+  // An unreadable ban date still means the account was blocked, so it fails closed.
+  return Number.isNaN(until) || until > now;
+}
+
 async function getUserFromAccessToken(supabase: AdminClient, token: string): Promise<AuthenticatedUser | null> {
   const { data, error } = await supabase.auth.getUser(token);
-  if (error || !data.user?.id) return null;
+  if (error || !data.user?.id || isBannedNow(data.user)) return null;
   return { id: data.user.id, appMetadata: data.user.app_metadata ?? {} };
 }
 
@@ -187,7 +198,7 @@ async function getUserFromRequestCookies(request: Request): Promise<Authenticate
   });
 
   const { data, error } = await client.auth.getUser();
-  if (error || !data.user?.id) {
+  if (error || !data.user?.id || isBannedNow(data.user)) {
     return null;
   }
   return { id: data.user.id, appMetadata: data.user.app_metadata ?? {} };
@@ -284,6 +295,17 @@ export async function resolveOptionalAuthentication(
   return hasLegacySessionCookie(request) ? { status: "invalid" } : { status: "absent" };
 }
 
+const READ_ONLY_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+
+function isStateChangingRequest(request: Request): boolean {
+  return !READ_ONLY_METHODS.has(request.method.toUpperCase());
+}
+
+/** Mirrors the order in `resolveOptionalAuthentication`: a bearer header is checked live already. */
+function usedProxyClaims(request: Request): boolean {
+  return !request.headers.has("authorization") && extractProxyAuthenticatedUser(request) !== null;
+}
+
 export async function requireAuthenticatedUser(
   request: Request,
   supabase: AdminClient,
@@ -296,9 +318,12 @@ export async function requireAuthenticatedUser(
     );
   }
   let { user } = authentication;
-  if (requirement.administrator) {
+  if (requirement.administrator || (isStateChangingRequest(request) && usedProxyClaims(request))) {
     // Administrator routes never trust proxy-forwarded claims. A missing live
-    // Auth user fails closed (401) instead of keeping a signed header.
+    // Auth user fails closed (401) instead of keeping a signed header. Saves and
+    // deletes recheck the same way: the proxy verifies the access token locally,
+    // so a signed-out or blocked session would otherwise keep writing until the
+    // token expires, up to an hour later (PP-04, 26 Oct 2026).
     const token = extractSessionAccessToken(request);
     const freshUser =
       (token ? await getUserFromAccessToken(supabase, token) : null) ?? (await getUserFromRequestCookies(request));
@@ -339,7 +364,7 @@ export async function requireAuthenticatedUserContext(
     if (hasCurrentSessionCookie(request)) {
       publicationClient = publicationClientFromCookies(request);
       const result = await publicationClient.auth.getUser();
-      if (result.error || !result.data.user?.id) {
+      if (result.error || !result.data.user?.id || isBannedNow(result.data.user)) {
         throw new AuthenticationError("Invalid authentication credentials.");
       }
       user = { id: result.data.user.id, appMetadata: result.data.user.app_metadata ?? {} };

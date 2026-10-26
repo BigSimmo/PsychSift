@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "6384878f-3e6f-46aa-8b42-94ecebd188cf",
+  "createdOn": "2026-10-23",
+  "action": "update",
+  "payload": {
+    "id": "#ZZ4RAP",
+    "summary": "High-risk evaluation: 18 cases wired; two source-dependent cases remain",
+    "detail": "REVALIDATED 2026-10-23 at df1e07db04. 18 high-risk cases are wired; breastfeeding-lithium and hepatic-valproate remain source-dependent. Remove the blanket no-high-risk-cases wording; do not approve draft facts or execute providers. Source inspection only; no fresh application/provider execution or clinical sign-off. Evidence: tests/high-risk-eval-cases-draft.test.ts; src/lib/rag/rag-eval-cases.ts. PRIOR DETAIL: UPDATE 2026-10-21 (answer safety hardening thread, verified offline on main 81ba5aefa): 18 of the 20 cases are wired into answerQualityEvalCases as high-risk-<id> on the owner go-ahead of 2026-10-10, with verbatim evidence pinned by tests/high-risk-eval-cases-draft.test.ts. Two stay out as source_needed: breastfeeding-lithium and hepatic-valproate, because no WA passage for either is held in the repository. Draft expected facts for both were sent to the owner for correction on 2026-10-21 (not approved). Next: owner corrects the drafts and approves a free read-only fetch of the KEMH lithium breastfeeding and CG.MHSP.Valproate passages into a fixture, then the two cases are wired in. PRIOR DETAIL: OWNER DECISION 2026-09-25: approved. Engineering drafts the 20 cases (question, key facts a correct answer must contain, facts it must not state, expected source); the owner reviews and corrects them before any are added to the harness. A first draft of all 20 was delivered to the owner on 2026-09-25 as a Word document (not committed: clinical content awaiting review). Verified offline by topic count over src/lib/rag/rag-eval-cases.ts (101 cases): hepatic 0, older adult/elderly 0, drug interaction 0, unsafe/false premise 0, Mental Health Act 1, QTc 2, pregnancy 3, paediatric 2. Owner recommendation (2026-09-25): start with ~20 clinician-reviewed cases (3 pregnancy/breastfeeding, 3 renal/hepatic, 2 older adults, 2 QTc, 2 lithium/clozapine monitoring, 2 overdose, 2 interactions, 2 MHA, 2 false-premise where the right answer corrects the premise); engineering drafts expected key facts + source, owner reviews. Adding golden cases touches the eval harness (RAG-protected surface): flag before editing, and live canary dispatches need approval.",
+    "source": "Current-state issue revalidation 2026-10-23 at df1e07db04; Ultimate Audit Master Report 2026-09-25 (owner-supplied .docx), reviewed offline against main 955996146 in session claude/review-assessment-4s1w86; no provider access",
+    "baseRowFingerprint": "c9211754f96eb1b6d3a46144a9a568bafeef9fe8d9d33e5430e1607245bf38d2",
+    "targetUlid": "01M3CJ78GDZZ4RAPXAS64MSVYH"
+  }
+}

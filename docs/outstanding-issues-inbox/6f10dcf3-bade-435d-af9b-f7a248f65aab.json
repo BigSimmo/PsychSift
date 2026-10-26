@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "6f10dcf3-bade-435d-af9b-f7a248f65aab",
+  "createdOn": "2026-10-23",
+  "action": "update",
+  "payload": {
+    "id": "#F9HZEG",
+    "summary": "Obtain successful two-user staging isolation proof for CME and On Call",
+    "detail": "REVALIDATED 2026-10-23 at df1e07db04. The harness already includes broader domains; the missing result is successful dispatched two-user staging proof. Preserve the half-built staging blocker and do not count tolerated scheduled failure as a pass. Source inspection only; no fresh application/provider execution or clinical sign-off. Evidence: .github/workflows/staging-tenancy.yml; docs/staging-tenancy-release-evidence.md. PRIOR DETAIL: UPDATE 2026-10-18 (GitHub Actions run read reported by the coordinating session; no provider access from this branch): the nightly staging-tenancy.yml workflow shows success, but its harness step actually fails, because continue-on-error applies on schedule runs. Run 39059127896 on 2026-10-17 logged 'GET /api/on-call/services returned 503'. So CME and On Call two-user isolation is still unproven on staging, and stays unproven until staging tracks main or is redeployed to the run's SHA (#057). Next action: deploy one exact candidate to staging and dispatch the workflow from that SHA (a dispatched run fails loudly), per docs/operator-rehearsal-plan.md step 3a. PRIOR DETAIL: UPDATE 2026-10-06: Two-user CME/On Call write probe offline test suite tests/cross-tenant-write-probe.test.ts fully passing (9/9 tests). Owner authorized live staging execution via staging-tenancy.yml workflow dispatch.",
+    "source": "Current-state issue revalidation 2026-10-23 at df1e07db04; Ultimate Audit Master Report 2026-09-25 (owner-supplied .docx), reviewed offline against main 955996146 in session claude/review-assessment-4s1w86; no provider access",
+    "baseRowFingerprint": "d6b79b5c7b7e3fc6ec11669c7d971380ec9cc4caf524d7e1a7e5ce4ec0f50c7e",
+    "targetUlid": "01M3CHC1JDF9HZEG738N2MBN2W"
+  }
+}

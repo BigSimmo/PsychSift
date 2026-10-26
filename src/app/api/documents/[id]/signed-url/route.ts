@@ -10,6 +10,7 @@ import { normalizeSourceMetadata } from "@/lib/source-metadata";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError, unauthorizedResponse } from "@/lib/supabase/auth";
 import { requireSignedInClinicalAccess } from "@/lib/clinical-access";
+import { requireOriginalDocumentAccess } from "@/lib/original-document-access";
 import { enforceDocumentReadRateLimit, withOwnerReadScope } from "@/lib/public-api-access";
 
 export const runtime = "nodejs";
@@ -42,7 +43,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       return rateLimitJsonResponse("Document requests are rate limited. Try again shortly.", rateLimit);
     }
     const { data: document, error } = await withOwnerReadScope(
-      supabase.from("documents").select("storage_path,file_type,metadata").eq("id", id),
+      supabase.from("documents").select("owner_id,storage_path,file_type,metadata").eq("id", id),
       access.ownerId,
     ).maybeSingle();
 
@@ -75,6 +76,9 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
         409,
       );
     }
+
+    // Only the original file is gated here; registry summaries above open their public page.
+    await requireOriginalDocumentAccess(access, document, supabase);
 
     const storage = supabase.storage.from(env.SUPABASE_DOCUMENT_BUCKET);
     const signed = shouldDownload

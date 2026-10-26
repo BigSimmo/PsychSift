@@ -4,12 +4,29 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // Answer, Patient details, therapy ranking, scoring and the originals need sign-in from
 // 1 November 2026 (docs/decisions/2026-10-20-clinical-decision-tools-need-sign-in.md).
 
-const auth = vi.hoisted(() => ({ status: "signed_out" as string }));
+// A signed-in reader holds the current health professional declaration unless a test clears it
+// (D26-07: the declaration moved to first open, before any clinical tool).
+const auth = vi.hoisted(() => ({ status: "signed_out" as string, declared: true }));
 
-vi.mock("@/lib/supabase/client", () => ({
-  useAuthSession: () => ({ status: auth.status }),
-  useOptionalAuthSession: () => ({ status: auth.status }),
-}));
+vi.mock("@/lib/supabase/client", async () => {
+  const { TERMS_VERSION } = await import("@/lib/front-door-content");
+  const { TERMS_METADATA_KEY } = await import("@/lib/terms-acceptance");
+  const session = () => ({
+    user: {
+      id: "synthetic-user",
+      user_metadata: auth.declared
+        ? { [TERMS_METADATA_KEY]: { version: TERMS_VERSION, acceptedAt: "2026-10-26T00:00:00.000Z" } }
+        : {},
+    },
+  });
+  return {
+    useAuthSession: () => ({ status: auth.status, session: auth.status === "authenticated" ? session() : null }),
+    useOptionalAuthSession: () => ({
+      status: auth.status,
+      session: auth.status === "authenticated" ? session() : null,
+    }),
+  };
+});
 vi.mock("@/components/clinical-dashboard/signed-image", () => ({
   SignedImage: () => <div data-testid="signed-image-stub" />,
 }));
@@ -25,8 +42,18 @@ import { calculators } from "@/components/calculators/calculator-fixtures";
 import { useSignedOutSessionReset } from "@/components/calculators/use-signed-out-session-reset";
 import { DocumentImage } from "@/components/document-viewer/source-panels";
 import type { ImageRow } from "@/components/document-viewer/types";
-import { clinicalToolAccessForStatus } from "@/components/mode-kit/use-clinical-tool-access";
-import { CLINICAL_SIGN_IN_COPY, CLINICAL_SIGN_IN_INVITE_NOTE } from "@/lib/front-door-content";
+import {
+  clinicalToolAccessForSession,
+  clinicalToolAccessForStatus,
+  clinicalToolLocked,
+} from "@/components/mode-kit/use-clinical-tool-access";
+import {
+  CLINICAL_DECLARATION_COPY,
+  CLINICAL_SIGN_IN_COPY,
+  CLINICAL_SIGN_IN_INVITE_NOTE,
+  TERMS_VERSION,
+} from "@/lib/front-door-content";
+import { TERMS_METADATA_KEY, TERMS_PROMPT_REQUEST_EVENT } from "@/lib/terms-acceptance";
 import { resetPatientProfile, writePatientProfile, EMPTY_PATIENT_PROFILE } from "@/lib/patient-profile-storage";
 
 beforeEach(() => {
@@ -37,6 +64,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   auth.status = "signed_out";
+  auth.declared = true;
 });
 
 describe("clinicalToolAccessForStatus", () => {
@@ -46,11 +74,83 @@ describe("clinicalToolAccessForStatus", () => {
     expect(clinicalToolAccessForStatus(null)).toBe("allowed");
   });
 
+  it("fails closed in a production build with no Supabase config unless it is a demo deploy (N-03)", () => {
+    const previous = process.env.NEXT_PUBLIC_DEMO_MODE;
+    try {
+      delete process.env.NEXT_PUBLIC_DEMO_MODE;
+      expect(clinicalToolAccessForStatus("unconfigured", "production")).toBe("sign-in-required");
+      expect(clinicalToolAccessForStatus("authenticated", "production")).toBe("allowed");
+      process.env.NEXT_PUBLIC_DEMO_MODE = "true";
+      expect(clinicalToolAccessForStatus("unconfigured", "production")).toBe("allowed");
+    } finally {
+      if (previous === undefined) delete process.env.NEXT_PUBLIC_DEMO_MODE;
+      else process.env.NEXT_PUBLIC_DEMO_MODE = previous;
+    }
+  });
+
   it("waits while the session loads and asks everyone else to sign in", () => {
     expect(clinicalToolAccessForStatus("loading")).toBe("checking");
     expect(clinicalToolAccessForStatus("signed_out")).toBe("sign-in-required");
     expect(clinicalToolAccessForStatus("expired")).toBe("sign-in-required");
     expect(clinicalToolAccessForStatus("error")).toBe("sign-in-required");
+  });
+});
+
+describe("clinicalToolAccessForSession (D26-07)", () => {
+  const declared = { [TERMS_METADATA_KEY]: { version: TERMS_VERSION, acceptedAt: "2026-10-26T00:00:00.000Z" } };
+
+  it("holds a signed-in account at the declaration until its account record has the current version", () => {
+    expect(clinicalToolAccessForSession("authenticated", declared)).toBe("allowed");
+    expect(clinicalToolAccessForSession("authenticated", {})).toBe("declaration-required");
+    expect(clinicalToolAccessForSession("authenticated", undefined)).toBe("declaration-required");
+    expect(
+      clinicalToolAccessForSession("authenticated", {
+        [TERMS_METADATA_KEY]: { version: "2020-01-01", acceptedAt: "2020-01-01T00:00:00.000Z" },
+      }),
+    ).toBe("declaration-required");
+  });
+
+  it("leaves sign-in, loading, demo and bare renders as they were", () => {
+    expect(clinicalToolAccessForSession("signed_out", declared)).toBe("sign-in-required");
+    expect(clinicalToolAccessForSession("loading", undefined)).toBe("checking");
+    expect(clinicalToolAccessForSession("unconfigured", undefined)).toBe("allowed");
+    expect(clinicalToolAccessForSession(null, undefined)).toBe("allowed");
+  });
+
+  it("counts both refusals as locked", () => {
+    expect(clinicalToolLocked("sign-in-required")).toBe(true);
+    expect(clinicalToolLocked("declaration-required")).toBe(true);
+    expect(clinicalToolLocked("checking")).toBe(false);
+    expect(clinicalToolLocked("allowed")).toBe(false);
+  });
+
+  it("shows the declaration card, not Sign in, and its button reopens the Terms prompt", () => {
+    auth.status = "authenticated";
+    auth.declared = false;
+    const opened = vi.fn();
+    window.addEventListener(TERMS_PROMPT_REQUEST_EVENT, opened);
+    try {
+      render(
+        <PatientDetailsGate>
+          <p>patient form</p>
+        </PatientDetailsGate>,
+      );
+      expect(screen.queryByText("patient form")).toBeNull();
+      expect(screen.getByText(CLINICAL_DECLARATION_COPY.title)).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Sign in" })).toBeNull();
+      fireEvent.click(screen.getByRole("button", { name: CLINICAL_DECLARATION_COPY.action }));
+      expect(opened).toHaveBeenCalledTimes(1);
+    } finally {
+      window.removeEventListener(TERMS_PROMPT_REQUEST_EVENT, opened);
+    }
+  });
+
+  it("keeps scoring read-only for an account without the declaration", () => {
+    auth.status = "authenticated";
+    auth.declared = false;
+    render(<CalculatorItems calc={calculators[0]!} answers={{}} onAnswersChange={vi.fn()} />);
+    expect(screen.getByTestId("calculator-items-read-only")).toBeInTheDocument();
+    expect(screen.getByText(CLINICAL_DECLARATION_COPY.title)).toBeInTheDocument();
   });
 });
 
