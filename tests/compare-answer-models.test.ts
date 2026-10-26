@@ -1,6 +1,6 @@
 import { readFile, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   comparisonConfig,
@@ -37,7 +37,7 @@ const identity = {
 const approval = (overrides: Partial<Approval> = {}): Approval => ({
   version: 1,
   approvalReference: "synthetic-offline-test-only",
-  outputDirectory: "output/answer-model-comparison/approved-single-run",
+  outputDirectory: resolve("output/answer-model-comparison/approved-single-run"),
   approvedAt: "2026-01-01T00:00:00Z",
   expiresAt: "2099-01-01T00:00:00Z",
   ...identity,
@@ -99,7 +99,7 @@ const transport = async (
 describe("offline-first answer model comparison", () => {
   it("consumes an approval once and rejects reuse with the same or another output", async () => {
     const root = await mkdtemp(join(tmpdir(), "sol61-approval-"));
-    const approved = approval();
+    const approved = approval({ outputDirectory: join(root, "output/answer-model-comparison/approved-single-run") });
     const out = comparisonOutputPath(approved.outputDirectory, root);
     try {
       await consumeComparisonApproval(approved, out, root);
@@ -159,6 +159,13 @@ describe("offline-first answer model comparison", () => {
     expect(() => validateApproval(approval({ maxInputTokens: 1_000_001 }), identity, "e".repeat(64))).toThrow();
     expect(() => validateApproval(approval({ maxOutputTokens: 400_001 }), identity, "e".repeat(64))).toThrow();
     expect(() => validateApproval(approval({ expiresAt: "2020-01-01" }), identity, "e".repeat(64))).toThrow();
+    expect(() =>
+      validateApproval(
+        approval({ outputDirectory: "output/answer-model-comparison/replay" }),
+        identity,
+        "e".repeat(64),
+      ),
+    ).toThrow();
   });
 
   it("fails closed on missing published model limits or cache-write pricing", () => {

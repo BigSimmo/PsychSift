@@ -84,7 +84,7 @@ run and inspect the harness's approval manifest and reservations. The planned ce
 150 requests including recovery, one million input tokens, 400,000 output tokens including reasoning,
 and concurrency one. Conservative admission can stop the experiment before all cases complete;
 an incomplete comparison never passes. No credentials or production content belong in a manifest.
-The manifest's `outputDirectory` binds it to one new ignored run directory. That directory is
+The manifest's absolute `outputDirectory` binds it to one new ignored run directory in this checkout. That directory is
 atomically consumed and a durable approval receipt is written before transport; an interrupted
 or failed run cannot reuse it. Run the harness from its own checkout root so the approved hashes
 identify the code that actually executes.

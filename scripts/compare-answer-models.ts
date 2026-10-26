@@ -194,6 +194,7 @@ export function validateApproval(
     !value.approvalReference.trim() ||
     typeof value.outputDirectory !== "string" ||
     !value.outputDirectory.trim() ||
+    !isAbsolute(value.outputDirectory) ||
     !Number.isFinite(Date.parse(String(value.approvedAt))) ||
     Date.parse(String(value.approvedAt)) > now ||
     !Number.isFinite(Date.parse(String(value.expiresAt))) ||
