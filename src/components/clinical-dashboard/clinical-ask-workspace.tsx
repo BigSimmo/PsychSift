@@ -10,6 +10,27 @@ import { ClinicalAskAnswerSurface } from "./clinical-ask-answer-surface";
 import { useClinicalAskSession } from "./clinical-ask-session-context";
 import { clinicalAskWorkspaceVisible } from "./use-clinical-ask-shell-state";
 
+/** How long a Clinical Ask may run with no result before the reader is offered a choice (D26-10). */
+export const CLINICAL_ASK_STALL_PROMPT_MS = 45_000;
+
+/**
+ * True once a submitted Clinical Ask has waited `CLINICAL_ASK_STALL_PROMPT_MS` with no result.
+ * Keep waiting restarts the wait. Before this a stalled answer spun with no end (design audit D26-10).
+ */
+function useClinicalAskStall(waiting: boolean) {
+  const [stalled, setStalled] = useState(false);
+  const [round, setRound] = useState(0);
+  useEffect(() => {
+    if (!waiting) return;
+    const timer = window.setTimeout(() => setStalled(true), CLINICAL_ASK_STALL_PROMPT_MS);
+    return () => {
+      window.clearTimeout(timer);
+      setStalled(false);
+    };
+  }, [waiting, round]);
+  return { stalled: waiting && stalled, keepWaiting: () => setRound((value) => value + 1) };
+}
+
 /** What a screen reader hears when each kind of Clinical Ask result lands. */
 const responseAnnouncements: Record<ClinicalAskResponse["state"], string> = {
   answered: "Clinical Ask answer ready.",
@@ -32,6 +53,7 @@ export function ClinicalAskWorkspace({
   const [contextOpen, setContextOpen] = useState(false);
   const contextTriggerRef = useRef<HTMLButtonElement>(null);
   const visible = clinicalAskWorkspaceVisible(session);
+  const stall = useClinicalAskStall(visible && session.submitted && !session.response);
   // Stage changes go through the app's single announcer. A status node inserted
   // with its text already inside is often not read, and the result replaced it
   // with no live region at all, so a screen-reader user heard nothing either way.
@@ -68,6 +90,21 @@ export function ClinicalAskWorkspace({
         <p role="alert">Remove identifiable details before using Smart mode.</p>
       ) : null}
       {session.submitted ? <p>Clinical Ask is gathering governed evidence…</p> : null}
+      {stall.stalled ? (
+        <div role="status" data-testid="clinical-ask-stall">
+          <p>
+            <strong>This is taking longer than usual.</strong> The service may be busy.
+          </p>
+          <div className="flex gap-2">
+            <button type="button" onClick={stall.keepWaiting}>
+              Keep waiting
+            </button>
+            <button type="button" onClick={session.cancel}>
+              Stop
+            </button>
+          </div>
+        </div>
+      ) : null}
       {session.response ? (
         <ClinicalAskAnswerSurface
           response={session.response}

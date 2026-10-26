@@ -58,6 +58,9 @@ import { isDashboardModeHref } from "@/lib/search-route-ownership";
 import type { SearchScopeFilters } from "@/lib/search-scope";
 import type { SourceGovernanceWarning } from "@/lib/source-governance";
 import { errorCopy } from "@/lib/ui-copy";
+// A question is never sent unchecked: when the check cannot load (a dropped connection),
+// Ask stops with this and the next Ask tries the download again.
+import { patientCheckUnavailableMessage } from "@/lib/patient-check-unavailable-copy";
 import type {
   ClinicalQueryMode,
   DocumentMatch,
@@ -72,10 +75,6 @@ function loadClinicalQuestionPatientCheck() {
   return import("@/lib/clinical-question-patient-check");
 }
 
-// A question is never sent unchecked: when the check cannot load (a dropped connection),
-// Ask stops with this and the next Ask tries the download again.
-const PATIENT_CHECK_UNAVAILABLE =
-  "Could not check your question for patient details. Check your connection and try again.";
 /** Longest Retry-After the client waits out before reporting the service's busy message instead. */
 const maxClientRetryWaitMs = 10_000;
 
@@ -150,6 +149,8 @@ type DashboardSearchExecutionDeps = {
   setRestoredAnswerSavedAt: Dispatch<SetStateAction<number | null>>;
   setError: Dispatch<SetStateAction<string | null>>;
   setErrorKind: Dispatch<SetStateAction<AnswerErrorKind | null>>;
+  /** The server's own words behind a failure, keyed to the message they belong to (D26-08). */
+  setErrorDetail: Dispatch<SetStateAction<{ message: string; detail: string } | null>>;
   setLastFailedQuery: Dispatch<SetStateAction<string | null>>;
   setDemoMode: Dispatch<SetStateAction<boolean>>;
   setActionNotice: Dispatch<SetStateAction<DashboardActionNotice | null>>;
@@ -216,6 +217,7 @@ export function useDashboardSearchExecution(deps: DashboardSearchExecutionDeps) 
     setRestoredAnswerSavedAt,
     setError,
     setErrorKind,
+    setErrorDetail,
     setLastFailedQuery,
     setDemoMode,
     setActionNotice,
@@ -473,7 +475,7 @@ export function useDashboardSearchExecution(deps: DashboardSearchExecutionDeps) 
       const patientCheck = await loadClinicalQuestionPatientCheck().catch(() => null);
       if (submittedSeq !== searchRequestSeqRef.current) return;
       if (!patientCheck) {
-        setActionNotice({ tone: "warning", message: PATIENT_CHECK_UNAVAILABLE });
+        setActionNotice({ tone: "warning", message: patientCheckUnavailableMessage() });
         return;
       }
       const patientDetail = patientCheck.clinicalQuestionPatientDetail(trimmedQuery);
@@ -826,9 +828,14 @@ export function useDashboardSearchExecution(deps: DashboardSearchExecutionDeps) 
             : makeSearchError(searchTimedOutMessage("Search"), 408, false)
           : requestError;
         if (isAnswerRequest) dispatchAnswerLifecycle({ type: "fail" });
-        setError(surfacedError instanceof Error ? surfacedError.message : "Search failed");
+        const surfacedMessage = surfacedError instanceof Error ? surfacedError.message : "Search failed";
+        const surfacedDetail = (surfacedError as SearchError | null)?.detail;
+        setError(surfacedMessage);
         setErrorKind(classifyAnswerError(surfacedError));
+        setErrorDetail(surfacedDetail ? { message: surfacedMessage, detail: surfacedDetail } : null);
         setLastFailedQuery(trimmedQuery);
+        // An expired sign-in never sent the question: keep it in the box for Sign in and send (D26-05).
+        if (sessionExpired) setQuery(trimmedQuery);
       }
     } finally {
       answerWatchdog.cancel();
@@ -896,7 +903,7 @@ export function useDashboardSearchExecution(deps: DashboardSearchExecutionDeps) 
             : patientCheck.searchPatientDetailMessage(patientDetail);
         }
       } else if (sendsQueryToProvider) {
-        refusal = PATIENT_CHECK_UNAVAILABLE;
+        refusal = patientCheckUnavailableMessage();
       } else if (identifierShapeWarning(trimmedQuery)) {
         // Searches that stay on our servers still go ahead when the full check cannot load,
         // but never with a record number, date of birth, phone number or email in them.
