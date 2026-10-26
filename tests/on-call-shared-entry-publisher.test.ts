@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const OWNER = "00000000-0000-4000-8000-000000000001";
 const ENTRY_ID = "11111111-1111-4111-8111-111111111111";
+const OTHER_ADMINISTRATOR = "00000000-0000-4000-8000-000000000002";
 
 const mocks = vi.hoisted(() => ({
   user: { id: "", appMetadata: {} as Record<string, unknown> },
@@ -15,6 +16,8 @@ const mocks = vi.hoisted(() => ({
   from: vi.fn(),
   writes: [] as Array<{ kind: string; values?: unknown; filters: Array<[string, string, unknown]> }>,
   storedIsPersonal: false as boolean | null,
+  administrators: [] as string[],
+  foreignDemoRows: [] as unknown[],
 }));
 
 vi.mock("@/lib/env", async (importOriginal) => ({
@@ -26,7 +29,19 @@ vi.mock("@/lib/api-rate-limit", () => ({
   consumeSubjectApiRateLimit: vi.fn(async () => ({ limited: false })),
   rateLimitJsonResponse: () => new Response("limited", { status: 429 }),
 }));
-vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({ from: mocks.from }) }));
+vi.mock("@/lib/supabase/admin", () => ({
+  createAdminClient: () => ({
+    from: mocks.from,
+    auth: {
+      admin: {
+        listUsers: async () => ({
+          data: { users: mocks.administrators.map((id) => ({ id, app_metadata: { site_role: "administrator" } })) },
+          error: null,
+        }),
+      },
+    },
+  }),
+}));
 vi.mock("@/lib/supabase/auth", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/supabase/auth")>();
   const { PublicApiError } = await import("@/lib/http");
@@ -263,10 +278,16 @@ describe("verifying an On Call entry", () => {
 
 /** A table that answers every read with no rows and records what was written. */
 function demoContentTable() {
-  const result = Promise.resolve({ data: [] as unknown[], error: null });
+  // The cross-owner probe is the only read that filters out the caller with `neq`.
+  let probe = false;
   const chain: Record<string, unknown> = {};
-  for (const method of ["select", "eq", "neq", "in", "limit"]) chain[method] = vi.fn(() => chain);
-  chain.then = result.then.bind(result);
+  for (const method of ["select", "eq", "in", "limit"]) chain[method] = vi.fn(() => chain);
+  chain.neq = vi.fn(() => {
+    probe = true;
+    return chain;
+  });
+  chain.then = (resolve: (value: unknown) => unknown, reject?: (reason: unknown) => unknown) =>
+    Promise.resolve({ data: probe ? mocks.foreignDemoRows : [], error: null }).then(resolve, reject);
   chain.upsert = vi.fn((values: unknown[]) => {
     mocks.writes.push({ kind: "upsert", values, filters: [] });
     return { select: async () => ({ data: values.map((_, index) => ({ id: String(index) })), error: null }) };
@@ -279,6 +300,9 @@ describe("loading the example On Call content", () => {
   // (privacy audit PP-01). Only an administrator may (owner decision, 26 Oct 2026).
   beforeEach(() => {
     mocks.from.mockImplementation(() => demoContentTable());
+    resetSharedOnCallPublisherCacheForTests();
+    mocks.administrators = [OWNER];
+    mocks.foreignDemoRows = [];
   });
 
   it("refuses an account that is not an administrator, before writing", async () => {
@@ -307,6 +331,28 @@ describe("loading the example On Call content", () => {
     );
     expect(response.status).toBe(201);
     expect(mocks.writes.map((write) => write.kind)).toEqual(["upsert"]);
+  });
+
+  it("is refused while another administrator's copy is on the shared read", async () => {
+    signIn("administrator");
+    mocks.administrators = [OWNER, OTHER_ADMINISTRATOR];
+    mocks.foreignDemoRows = [{ slug: "demo-switchboard" }];
+    const response = await loadDemoContent(
+      new Request("http://localhost/api/on-call/demo-content", { method: "POST" }),
+    );
+    expect(response.status).toBe(409);
+    expect(mocks.writes).toEqual([]);
+  });
+
+  it("is not blocked by an ordinary account's copy, which no longer reaches the shared read", async () => {
+    // Only the caller is an administrator, so there is nobody else whose copy could be visible and
+    // the cross-owner probe never runs, whatever rows other accounts hold.
+    signIn("administrator");
+    mocks.foreignDemoRows = [{ slug: "demo-switchboard" }];
+    const response = await loadDemoContent(
+      new Request("http://localhost/api/on-call/demo-content", { method: "POST" }),
+    );
+    expect(response.status).toBe(201);
   });
 
   it("tells the control whether this account may load it", async () => {

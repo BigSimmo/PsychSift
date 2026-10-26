@@ -15,7 +15,11 @@ import {
 } from "@/lib/on-call/demo-content-identity";
 import { DEMO_ON_CALL_ENTRIES } from "@/lib/on-call/demo-entries";
 import { onCallEntryToRow } from "@/lib/on-call/repository";
-import { mayPublishSharedOnCallEntry, sharedOnCallEntryRefusedResponse } from "@/lib/on-call/shared-entry-publisher";
+import {
+  mayPublishSharedOnCallEntry,
+  sharedOnCallEntryRefusedResponse,
+  sharedOnCallPublisherIds,
+} from "@/lib/on-call/shared-entry-publisher";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError, requireAuthenticatedUser, unauthorizedResponse } from "@/lib/supabase/auth";
 
@@ -174,18 +178,26 @@ export async function POST(request: Request) {
     // own rows.
     // Selects `slug`, not `owner_id`: the question is only "does a copy exist
     // elsewhere", so the answer does not need to name whose. This is a
-    // deliberately cross-owner read on an owner-scoped table and is declared
-    // as one in `scripts/lib/tenancy-scan.mjs`; keeping the projection free of
-    // any owner identity is what makes that declaration narrow.
-    const { data: foreign, error: foreignError } = await supabase
-      .from("on_call_entries")
-      .select("slug")
-      .neq("owner_id", user.id)
-      .eq("is_personal", false)
-      .in("slug", ON_CALL_DEMO_SLUGS)
-      .limit(1);
-    if (foreignError) throw new Error(foreignError.message);
-    if ((foreign ?? []).length > 0) {
+    // deliberately cross-owner read, limited to other administrators' rows, and
+    // it gates a write without returning anyone's data.
+    // Only another administrator's copy counts: an ordinary account's copy, loaded before loading
+    // became administrator-only, no longer reaches the shared read, so it must not block a
+    // visible one.
+    const otherPublishers = (await sharedOnCallPublisherIds(supabase)).filter((id) => id !== user.id);
+    let foreign: unknown[] = [];
+    if (otherPublishers.length > 0) {
+      const { data, error: foreignError } = await supabase
+        .from("on_call_entries")
+        .select("slug")
+        .neq("owner_id", user.id)
+        .in("owner_id", otherPublishers)
+        .eq("is_personal", false)
+        .in("slug", ON_CALL_DEMO_SLUGS)
+        .limit(1);
+      if (foreignError) throw new Error(foreignError.message);
+      foreign = data ?? [];
+    }
+    if (foreign.length > 0) {
       return publicErrorResponse(
         "Example content is already loaded by another account on this site, and it is visible to everyone. That account needs to remove it first.",
         409,

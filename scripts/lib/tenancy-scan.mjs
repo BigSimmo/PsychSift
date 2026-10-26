@@ -1174,8 +1174,6 @@ export const PROOF_KINDS = {
 
 const CLINICAL_QUALITY_REASON =
   "Administrator-gated cross-tenant governance aggregate. GET and PATCH call authorizeAndLimit before these helpers run and the response carries governance metadata only — never raw question, answer, excerpt, or patient text. Per-owner filtering would defeat the oversight purpose (tenancy review §6).";
-const ON_CALL_DEMO_CONTENT_COLLISION_REASON =
-  "Deliberately cross-owner existence probe, and it has to be: the example corpus it guards is published to every reader. `fetchSharedOnCallEntries` returns `is_personal = false` rows across ALL owners, and the loader's upsert key is (owner_id, section, slug), so a second account loading the corpus would not collide with the first — it would put a second, undeduplicated copy of the shared rows on the page of every signed-in reader, and repeated loads would walk toward ON_CALL_MAX_ENTRIES on the shared read where they would crowd out real entries. An owner-scoped query cannot detect that, because the thing being detected is by definition another owner's rows. Narrowness is the control: it selects `slug` only — never `owner_id`, never content — filters to `is_personal = false` and to the fixed demo slug list, takes `.limit(1)`, and the handler reads nothing but whether a row came back. So the only fact it can disclose, to an authenticated caller, is that example content exists somewhere on a site that already shows that content to every signed-in reader. It gates a write and never returns anyone's data. Added 2026-09-21 with the loader, after a Codex review found the duplicate-publication path.";
 const ROSTER_MANUAL_SHIFT_INSERT_REASON =
   "An insert, not a read: every row is built in the same function with `owner_id: ownerId`, and the payload is a flatMap over the doctor's own shifts and their weekly repeats, so the scanner cannot see the key at the payload's top level. requireOwner(ownerId) runs first, ownerId comes from the signed-in session in /api/roster/shifts/manual, and the table's own RLS keeps it service-role only. Added 2026-09-27 with Roster's hand-added shifts; pinned by tests/roster-shifts.test.ts.";
 const ROSTER_SITE_OWNER_REASON =
@@ -1250,14 +1248,6 @@ export const SCOPE_EXEMPTIONS = [
     queries: 1,
     proof: PROOF_KINDS.REVIEWED_INDIRECT,
     reason: ROSTER_MANUAL_SHIFT_INSERT_REASON,
-  },
-  {
-    file: "src/app/api/on-call/demo-content/route.ts",
-    table: "on_call_entries",
-    fn: "POST",
-    queries: 1,
-    proof: PROOF_KINDS.REVIEWED_INDIRECT,
-    reason: ON_CALL_DEMO_CONTENT_COLLISION_REASON,
   },
   {
     file: "src/app/api/clinical-quality/route.ts",
