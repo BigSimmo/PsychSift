@@ -1,5 +1,10 @@
 import type { ClinicalAskFinalPayload, ClinicalAskRequest, ClinicalAskStreamEvent } from "@/lib/clinical-ask/contracts";
 import { parseClinicalAskSseFrame } from "@/lib/clinical-ask-stream-contract";
+import {
+  ANSWER_DAILY_LIMIT_CODE,
+  answerBurstLimitMessage,
+  answerDailyLimitMessage,
+} from "@/lib/answer-limit-copy";
 
 type ClientFailureCode = "aborted" | "internal_error" | "unauthorized" | "rate_limited";
 
@@ -14,13 +19,14 @@ function failedPayload(
   request: ClinicalAskRequest,
   code: ClientFailureCode,
   message?: string,
+  retryable = code === "internal_error" || code === "rate_limited",
 ): ClinicalAskFinalPayload {
   return {
     response: {
       state: "failed",
       mode: request.mode,
       code,
-      retryable: code === "internal_error" || code === "rate_limited",
+      retryable,
       message: message ?? failureMessages[code],
     },
     feedback: null,
@@ -49,13 +55,23 @@ async function rejectedPayload(request: ClinicalAskRequest, response: Response):
   if (response.status === 401) return failedPayload(request, "unauthorized");
   if (response.status !== 429) return failedPayload(request, "internal_error");
   const body: unknown = await response.json().catch(() => null);
-  const serverMessage =
-    body && typeof body === "object" && "message" in body && typeof (body as { message: unknown }).message === "string"
-      ? (body as { message: string }).message.trim()
-      : "";
   const seconds = retryAfterSeconds(response, body);
-  const wait = seconds ? `Try again in ${seconds} seconds.` : "Try again shortly.";
-  return failedPayload(request, "rate_limited", `${serverMessage || failureMessages.rate_limited} ${wait}`);
+  const retryAfterMs = seconds ? seconds * 1000 : null;
+  // The daily cap cannot clear on Retry, so it is not offered, and the wait is a clock time
+  // rather than "Try again in 86400 seconds" (design audit D26-09, D26-10).
+  if (rateLimitCode(body) === ANSWER_DAILY_LIMIT_CODE) {
+    return failedPayload(request, "rate_limited", answerDailyLimitMessage(retryAfterMs), false);
+  }
+  return failedPayload(request, "rate_limited", answerBurstLimitMessage(retryAfterMs));
+}
+
+function rateLimitCode(body: unknown): string | null {
+  if (!body || typeof body !== "object") return null;
+  const code = (body as { code?: unknown }).code;
+  if (typeof code === "string") return code;
+  const details = (body as { details?: unknown }).details;
+  const detailsCode = details && typeof details === "object" ? (details as { code?: unknown }).code : undefined;
+  return typeof detailsCode === "string" ? detailsCode : null;
 }
 
 export async function streamClinicalAsk(

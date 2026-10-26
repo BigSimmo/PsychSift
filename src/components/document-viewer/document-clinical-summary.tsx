@@ -435,6 +435,14 @@ export function DocumentClinicalSummary({
               </span>
             ) : null}
           </div>
+          {/* A model wrote this summary and the priorities below when the file was indexed, so it is
+              labelled as AI, as answers are; unlabelled it read as the document's own words (D26-06). */}
+          <p data-testid="document-ai-summary-label" className={cn("mt-2 text-xs leading-5", textMuted)}>
+            <span className="mr-1.5 inline-flex min-h-6 items-center rounded-md bg-[color:var(--surface-subtle)] px-2 text-3xs font-bold uppercase tracking-label text-[color:var(--text-heading)]">
+              AI summary
+            </span>
+            Written by AI from this document when it was added. Check each point against the page it links to.
+          </p>
           {model.summary ? (
             <p
               className={cn(
@@ -548,7 +556,7 @@ export function DocumentClinicalSummary({
         onClose={() => setMobilePrioritiesOpen(false)}
         returnFocusRef={mobilePrioritiesButtonRef}
         title="Clinical priorities"
-        description="Expanded, source-linked clinical detail"
+        description="AI summary of this document. Check each point against the page it links to."
         headerLeading={
           <span className="grid h-9 w-9 place-items-center rounded-lg bg-[color:var(--clinical-accent)] text-[color:var(--clinical-accent-contrast)] shadow-[var(--e1)]">
             <ListChecks aria-hidden="true" className="h-4 w-4" strokeWidth={2} />
