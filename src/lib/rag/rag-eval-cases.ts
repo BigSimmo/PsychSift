@@ -76,6 +76,13 @@ export type RagEvalCase = {
    */
   acceptSourceOnly?: boolean;
   /**
+   * Owner-accepted conservative outcome for one named safety gate. When the answer is the
+   * "passages to review" fallback for exactly this extractive gate reason, the eval accepts it in
+   * place of a grounded, cited answer. Any other outcome is scored normally, so a grounded answer
+   * still has to meet every check. Set only with a recorded owner decision.
+   */
+  acceptedReviewFallbackReason?: "dose_without_named_medication";
+  /**
    * Optional programme gate expectations for the privacy-reviewed target slice.
    * The case remains in this canonical registry; later plans add diagnostics,
    * never a second list of questions.
@@ -1825,6 +1832,9 @@ export const ragEvalCases: RagEvalCase[] = [
     allowedRoutes: ["extractive", "fast", "strong"],
     minCitations: 1,
     latencyTargetMs: 2000,
+    // Owner decision 2026-10-26: the A2R-01 gate (#3799) holds this answer back for review
+    // because the quoted dose names no medicine. Canary run 40298163623 measured it.
+    acceptedReviewFallbackReason: "dose_without_named_medication",
   },
   {
     id: "admission-discharge-coverage-paraphrase",
