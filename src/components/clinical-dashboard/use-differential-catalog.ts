@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  checkSearchTextPatientDetail,
+  SearchHeldBack,
+} from "@/components/clinical-dashboard/search-patient-detail-guard";
 import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 
 import { authSessionFingerprint, createAuthRequestLifecycle } from "@/lib/auth-request-lifecycle";
@@ -23,6 +27,8 @@ export type DifferentialSearchState = {
    *  EITHER request degraded — a reader cannot tell which half of a merged
    *  result set a given row came from, so the caveat has to cover both. */
   degraded: boolean;
+  /** Set with status "error" when the typed text was held back for a patient detail and never sent; the sentence to show. */
+  heldBack?: string;
 };
 
 const emptyDifferentialMatches: DifferentialSearchMatches = { diagnoses: [], presentations: [] };
@@ -208,16 +214,21 @@ export function useDifferentialSearch(query: string): DifferentialSearchResult {
     const isCurrentRequest = () => requestLifecycle.isCurrent(registration.epoch);
     const timer = window.setTimeout(() => {
       const encoded = encodeURIComponent(requestKey);
-      Promise.all([
-        fetch(`/api/differentials?kind=diagnosis&q=${encoded}&limit=20`, {
-          headers: authorizationHeader,
-          signal: controller.signal,
-        }),
-        fetch(`/api/differentials?kind=presentation&q=${encoded}&limit=10`, {
-          headers: authorizationHeader,
-          signal: controller.signal,
-        }),
-      ])
+      // Typed text is checked for patient details before it leaves the page (privacy audit CA-02).
+      checkSearchTextPatientDetail(requestKey)
+        .then((refusal) => {
+          if (refusal) throw new SearchHeldBack(refusal);
+          return Promise.all([
+            fetch(`/api/differentials?kind=diagnosis&q=${encoded}&limit=20`, {
+              headers: authorizationHeader,
+              signal: controller.signal,
+            }),
+            fetch(`/api/differentials?kind=presentation&q=${encoded}&limit=10`, {
+              headers: authorizationHeader,
+              signal: controller.signal,
+            }),
+          ]);
+        })
         .then(async ([diagnosisResponse, presentationResponse]) => {
           if (controller.signal.aborted || !isCurrentRequest()) return;
           if (diagnosisResponse.status === 401 || presentationResponse.status === 401) {
@@ -262,7 +273,13 @@ export function useDifferentialSearch(query: string): DifferentialSearchResult {
             (error instanceof DOMException && error.name === "AbortError")
           )
             return;
-          setState({ status: "error", matches: emptyDifferentialMatches, demoMode: false, degraded: false });
+          setState({
+            status: "error",
+            matches: emptyDifferentialMatches,
+            demoMode: false,
+            degraded: false,
+            ...(error instanceof SearchHeldBack ? { heldBack: error.message } : {}),
+          });
         });
     }, debounceMs);
 

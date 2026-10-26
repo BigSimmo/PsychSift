@@ -6,6 +6,10 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { authSessionFingerprint, createAuthRequestLifecycle } from "@/lib/auth-request-lifecycle";
 import type { MedicationRecord, MedicationSearchResult } from "@/lib/medications";
 import { useAuthSession } from "@/lib/supabase/client";
+import {
+  checkSearchTextPatientDetail,
+  SearchHeldBack,
+} from "@/components/clinical-dashboard/search-patient-detail-guard";
 
 type MedicationCatalogMatch = {
   medication: MedicationRecord;
@@ -309,11 +313,22 @@ export function useMedicationCatalog(
           timedOut = true;
           controller.abort();
         }, MEDICATION_SEARCH_DEADLINE_MS);
-        fetchJson(url, authorizationHeader, controller.signal, parseMedicationCatalogResponse)
+        // Typed text is checked for patient details before it leaves the page, on every typing
+        // pause and on a deep link's first request (privacy audits D26-01, CA-02 and CA-05).
+        checkSearchTextPatientDetail(trimmed)
+          .then((refusal) => {
+            if (refusal) throw new SearchHeldBack(refusal);
+            return fetchJson(url, authorizationHeader, controller.signal, parseMedicationCatalogResponse);
+          })
           .then((data) => {
             if (!controller.signal.aborted && isCurrentRequest()) setState({ data, loading: false, error: null });
           })
           .catch((error) => {
+            if (error instanceof SearchHeldBack) {
+              if (!controller.signal.aborted && isCurrentRequest())
+                setState({ data: null, loading: false, error: error.message });
+              return;
+            }
             if (timedOut && isCurrentRequest()) {
               setState({ data: null, loading: false, error: medicationCatalogErrorMessage(error, true) });
               return;
