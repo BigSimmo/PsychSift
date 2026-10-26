@@ -136,6 +136,10 @@ export function OpenShiftsCalendar({
                   timeZone: "UTC",
                 }),
                 count ? `${count} ${count === 1 ? "shift matches" : "shifts match"}` : null,
+                // A day from the next or last month says its month after the count.
+                count && !inMonth
+                  ? new Date(`${date}T12:00:00Z`).toLocaleDateString("en-AU", { month: "long", timeZone: "UTC" })
+                  : null,
                 urgent ? "includes an urgent shift" : null,
                 rostered ? "you're rostered" : null,
                 isToday ? "today" : null,
