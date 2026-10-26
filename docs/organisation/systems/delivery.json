@@ -286,7 +286,6 @@
     "tests/repo-hygiene.test.ts",
     "tests/resolve-staging-deployment.test.ts",
     "tests/resolve-tsx-cli.test.ts",
-    "tests/run-next-build.test.ts",
     "tests/reviewed-commit-history.test.ts",
     "tests/run-next-build.test.ts",
     "tests/safe-number-concurrency.test.ts",
