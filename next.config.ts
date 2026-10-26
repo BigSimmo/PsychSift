@@ -284,9 +284,11 @@ export default async function loadNextConfig() {
     suppressOnRouterTransitionStartWarning: true,
     sourcemaps: {
       disable: false,
-      // Successor to the removed `hideSourceMaps` option: upload maps to
-      // Sentry, never serve them publicly.
-      deleteSourcemapsAfterUpload: true,
+      // Must stay false. The plugin deletes the maps in its build-end hook even when it skipped the
+      // upload for lack of a token, which would remove them before the separate
+      // sentry-sourcemaps.yml upload step can read them. Maps are kept out of the public runtime
+      // image by the Dockerfile's explicit `find .next/static -name '*.map' -delete`.
+      deleteSourcemapsAfterUpload: false,
     },
     widenClientFileUpload: true,
   });

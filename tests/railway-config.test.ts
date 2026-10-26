@@ -105,6 +105,15 @@ describe("Railway config as code", () => {
     expect(appDockerfile).toContain("find .next/static -name '*.map' -delete");
   });
 
+  it("keeps the Sentry plugin from deleting source maps before the separate CI upload step", () => {
+    // The plugin runs its delete hook even when it skipped the upload for lack of a token, so
+    // `deleteSourcemapsAfterUpload: true` would erase the maps the tokenless CI build must hand to
+    // sentry-sourcemaps.yml. The Dockerfile's explicit delete keeps them out of the runner image.
+    const nextConfig = readFileSync(new URL("../next.config.ts", import.meta.url), "utf8");
+    expect(nextConfig).toContain("deleteSourcemapsAfterUpload: false");
+    expect(nextConfig).not.toContain("deleteSourcemapsAfterUpload: true");
+  });
+
   it("uses the deep readiness endpoint for app rolling deploys", () => {
     expect(app.deploy).toMatchObject({
       healthcheckPath: "/api/health/ready",
