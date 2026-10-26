@@ -332,6 +332,7 @@
     "tests/helpers/phone-scroll.ts",
     "tests/home-canonical-metadata.test.ts",
     "tests/image-*",
+    "tests/in-app-browser.test.ts",
     "tests/in-page-*",
     "tests/indexed-source-formatting.test.ts",
     "tests/information-*",
