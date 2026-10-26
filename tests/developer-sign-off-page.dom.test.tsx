@@ -39,10 +39,10 @@ describe("clinical sign-off queue page", () => {
     // of rendered rows is the count of transferred rows.
     render(<SignOffQueuePageContent />);
 
-    // The default family is Forms. Its eight rows are the forms the 20 Oct 2026 clinical
-    // content audit edited and returned to drafted. Other families stay off this response.
+    // The default family is Forms. Its nine rows are the forms the 20 Oct and 26 Oct 2026
+    // clinical content audits edited and returned to drafted. Other families stay off this response.
     const formsList = screen.getByTestId(`developer-sign-off-rows-${first.id}`);
-    expect(within(formsList).queryAllByRole("listitem")).toHaveLength(8);
+    expect(within(formsList).queryAllByRole("listitem")).toHaveLength(9);
     expect(screen.queryByTestId(`developer-sign-off-rows-${dictionary.id}`)).toBeNull();
   });
 
@@ -90,7 +90,7 @@ describe("clinical sign-off queue page", () => {
     render(<SignOffQueuePageContent />);
 
     expect(screen.getByTestId("developer-sign-off-count-signed-value")).toHaveTextContent(String(ledger.totalSigned));
-    expect(screen.getByTestId("developer-sign-off-count-signable-now-value")).toHaveTextContent("244");
+    expect(screen.getByTestId("developer-sign-off-count-signable-now-value")).toHaveTextContent("246");
     expect(screen.getByTestId("developer-sign-off-count-indigenous-hold-value")).toHaveTextContent("26");
     expect(screen.getByTestId("developer-sign-off-count-prerequisites-value")).toHaveTextContent("582");
 
