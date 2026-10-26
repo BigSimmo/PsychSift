@@ -73,6 +73,7 @@ export function localProjectRequestIdentityPayload(request: Request): LocalProje
 }
 
 const loopbackAddresses = new Set(["127.0.0.1", "::1", "::ffff:127.0.0.1", "localhost"]);
+const wildcardBindHosts = new Set(["0.0.0.0", "[::]"]);
 const deployedRuntimeMarkers = [
   "RAILWAY_ENVIRONMENT_NAME",
   "RAILWAY_ENVIRONMENT",
@@ -99,7 +100,14 @@ export function isLocalProjectIdentityEndpointEnabled(request: Request, env: Nod
     return false;
   }
   try {
-    return isLocalUrl(new URL(request.url));
+    const url = new URL(request.url);
+    if (isLocalUrl(url)) return true;
+    // `next start --hostname 0.0.0.0` (Playwright, boot smoke) builds request.url from the bind
+    // address, not the Host header, so a wildcard bind says nothing about who was addressed.
+    // Only then fall back to the Host header, and still require it to name a loopback host.
+    if (!wildcardBindHosts.has(url.hostname.toLowerCase())) return false;
+    const host = request.headers.get("host");
+    return Boolean(host) && isLocalUrl(new URL(`http://${host}`));
   } catch {
     return false;
   }
