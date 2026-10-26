@@ -35,11 +35,12 @@ describe("clinical vocabulary structural invariants", () => {
     }
   });
 
-  it("has at least one alias per entry and no term that normalizes to nothing", () => {
+  it("has at least one alias or related term per entry and no term that normalizes to nothing", () => {
     for (const entry of entries) {
-      expect(entry.aliases.length, `${entry.canonical} has no aliases`).toBeGreaterThan(0);
+      const terms = [...entry.aliases, ...(entry.relatedTerms ?? [])];
+      expect(terms.length, `${entry.canonical} has no aliases`).toBeGreaterThan(0);
       expect(normalize(entry.canonical), `${entry.canonical} normalizes empty`).not.toBe("");
-      for (const alias of entry.aliases) {
+      for (const alias of terms) {
         expect(normalize(alias), `${entry.canonical} alias "${alias}" normalizes empty`).not.toBe("");
       }
     }
