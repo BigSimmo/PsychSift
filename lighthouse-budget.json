@@ -26,11 +26,25 @@
       "fcpMs": 418.627,
       "chromeVersion": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
     },
+    "desktop-open-shifts": {
+      "lcpMs": 2221.7356000000004,
+      "cls": 0.008849279124458837,
+      "tbtMs": 215.00000000000034,
+      "fcpMs": 419.3908,
+      "chromeVersion": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
+    },
     "desktop-root": {
       "lcpMs": 954.6389999999996,
       "cls": 0,
       "tbtMs": 63.99999999999977,
       "fcpMs": 416.377,
+      "chromeVersion": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
+    },
+    "desktop-roster": {
+      "lcpMs": 2600.6515500000014,
+      "cls": 0.002571218479117415,
+      "tbtMs": 206,
+      "fcpMs": 442.1139,
       "chromeVersion": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
     },
     "mobile-documents-search": {
@@ -40,11 +54,25 @@
       "fcpMs": 2000.411,
       "chromeVersion": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
     },
+    "mobile-open-shifts": {
+      "lcpMs": 9906.004,
+      "cls": 0.001110230781281134,
+      "tbtMs": 2610.245999999939,
+      "fcpMs": 2035.405,
+      "chromeVersion": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
+    },
     "mobile-root": {
       "lcpMs": 1958.359,
       "cls": 0.0002899582744253567,
       "tbtMs": 918.5019999999413,
       "fcpMs": 1958.359,
+      "chromeVersion": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
+    },
+    "mobile-roster": {
+      "lcpMs": 11291.499,
+      "cls": 0.001110230781281134,
+      "tbtMs": 2455.1769999999447,
+      "fcpMs": 2025.104,
       "chromeVersion": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
     }
   },
