@@ -180,6 +180,7 @@ levothyroxine
 lidocaine
 lignocaine
 linagliptin
+linezolid
 lisdexamfetamine
 lithium
 lithium carbonate

@@ -1913,7 +1913,7 @@
           },
           {
             "key": "Pharmacodynamic",
-            "val": "HIGH — Escitalopram. Both medicines can prolong the QT interval, and combined use may add to the risk of QT prolongation and torsades de pointes. Monitor closely (e.g. ECG and electrolytes); seek specialist or source guidance.",
+            "val": "HIGH — Escitalopram. Both medicines can prolong the QT interval, and combined use may add to the risk of QT prolongation and torsades de pointes. The UK MHRA (Drug Safety Update, Dec 2011) lists use of escitalopram with other medicines that prolong the QT interval as a contraindication; the Australian Lexapro PI does not carry that contraindication. Monitor closely (e.g. ECG and electrolytes); seek specialist or source guidance.",
             "tags": []
           },
           {
@@ -58324,6 +58324,155 @@
       {
         "label": "Clinical Pearl",
         "value": "Trimethoprim competitively blocks the exact same tubular transporter that secretes creatinine. Blood creatinine will artificially rise by ~20% within days. This is a harmless lab artefact. If the Urea is normal and K+ is stable, do not panic and diagnose AKI."
+      }
+    ]
+  },
+  {
+    "slug": "linezolid",
+    "name": "Linezolid",
+    "class": "Antibiotic",
+    "subclass": "Oxazolidinone",
+    "category": "Infectious Diseases - Oxazolidinones",
+    "accent": "#ea580c",
+    "tag": "OXAZOLIDINONE",
+    "schedule": "S4",
+    "stats": [
+      {
+        "label": "MAO Inhibition",
+        "value": "REVERSIBLE",
+        "cls": "warn",
+        "flag": "warn"
+      },
+      {
+        "label": "Serotonin Risk",
+        "value": "HIGH",
+        "cls": "hi",
+        "flag": "warn"
+      },
+      {
+        "label": "Pressor Risk",
+        "value": "CAUTION",
+        "cls": "warn",
+        "flag": ""
+      },
+      {
+        "label": "Record Scope",
+        "value": "INTERACTIONS ONLY",
+        "cls": "",
+        "flag": ""
+      }
+    ],
+    "sections": [
+      {
+        "title": "Rapid Summary",
+        "type": "summary",
+        "rows": [
+          {
+            "key": "Overview",
+            "val": "Oxazolidinone antibacterial that is also a reversible, non-selective inhibitor of monoamine oxidase (MAO). This record covers interactions only and carries no dose content.",
+            "tags": []
+          },
+          {
+            "key": "Clinical Focus",
+            "val": "Serotonin syndrome when combined with serotonergic medicines such as SSRIs (citalopram, escitalopram), and pressor responses with sympathomimetics or vasopressors. Monitor closely; seek specialist or source guidance.",
+            "tags": []
+          },
+          {
+            "key": "Bottom Line",
+            "val": "Linezolid behaves as an MAO inhibitor for interaction purposes; check every serotonergic or sympathomimetic co-medicine. Monitor closely; seek specialist or source guidance.",
+            "tags": []
+          }
+        ]
+      },
+      {
+        "title": "Contraindications & Populations",
+        "type": "contra",
+        "rows": [
+          {
+            "key": "Absolute",
+            "val": "Use with any medicine that inhibits MAO-A or MAO-B (e.g. phenelzine, moclobemide), or within two weeks of taking one, per the cited product labels.",
+            "tags": []
+          },
+          {
+            "key": "Cautions",
+            "val": "Labels advise against use with serotonergic medicines, sympathomimetics or vasopressors, uncontrolled hypertension, phaeochromocytoma, thyrotoxicosis or carcinoid syndrome unless the patient can be closely observed. Monitor closely; seek specialist or source guidance.",
+            "tags": []
+          }
+        ]
+      },
+      {
+        "title": "Key Interactions",
+        "type": "inter",
+        "rows": [
+          {
+            "key": "Pharmacodynamic",
+            "val": "CRITICAL — MAOIs, including moclobemide. Linezolid is itself a reversible, non-selective MAO inhibitor, and the cited product labels list use with another MAO inhibitor, or within two weeks of one, as a contraindication. Monitor closely; seek specialist or source guidance.",
+            "tags": []
+          },
+          {
+            "key": "Pharmacodynamic",
+            "val": "CRITICAL — Citalopram and Escitalopram. Serotonin syndrome has been reported when linezolid is combined with serotonergic antidepressants; the cited US Celexa and Lexapro labels list linezolid as a contraindication, and the Australian Cipramil and Lexapro PIs advise against the combination unless there is close observation. Monitor closely; seek specialist or source guidance.",
+            "tags": []
+          },
+          {
+            "key": "Pharmacodynamic",
+            "val": "HIGH — Other serotonergic agents named in the cited labels: other SSRIs and serotonin reuptake inhibitors, tricyclic antidepressants, triptans, pethidine, buspirone, and tramadol. Combined use may cause serotonin syndrome. Monitor closely; seek specialist or source guidance.",
+            "tags": []
+          },
+          {
+            "key": "Pharmacodynamic",
+            "val": "HIGH — Sympathomimetics and vasopressors (pseudoephedrine, adrenaline, noradrenaline, dopamine, dobutamine). MAO inhibition can enhance pressor responses and raise blood pressure. Monitor closely (e.g. blood pressure); seek specialist or source guidance.",
+            "tags": []
+          },
+          {
+            "key": "Food",
+            "val": "CAUTION — Large amounts of tyramine-rich food and drink (e.g. mature cheese, yeast extracts, undistilled alcoholic beverages, fermented soy products) may raise blood pressure. Monitor closely; seek specialist or source guidance.",
+            "tags": []
+          }
+        ]
+      },
+      {
+        "title": "Monitoring & Cautions",
+        "type": "mon",
+        "rows": [
+          {
+            "key": "Bedside",
+            "val": "With any serotonergic co-medicine, watch for serotonin syndrome (confusion, agitation, tremor, hyperreflexia, hyperpyrexia, sweating); with sympathomimetics or vasopressors, watch blood pressure. Monitor closely; seek specialist or source guidance.",
+            "tags": []
+          }
+        ]
+      },
+      {
+        "title": "Sources",
+        "type": "src",
+        "rows": [
+          {
+            "key": "Source Review",
+            "val": "Source Check - Interaction-only record checked 2026-10-26 against the US Zyvox (linezolid) label, US Celexa (citalopram) and Lexapro (escitalopram) labels, and the Australian TGA Zyvox PI (rev. 24 Jul 2026), Cipramil PI (rev. 4 Aug 2025) and Lexapro PI (rev. 23 Aug 2023) for interactions and contraindications only. No dosing, formulation, indication or PBS content reviewed; awaiting clinical sign-off."
+          }
+        ]
+      }
+    ],
+    "quick": [
+      {
+        "label": "Class & Role",
+        "value": "Oxazolidinone antibacterial with reversible, non-selective MAO-inhibitor activity (interaction-only record)."
+      },
+      {
+        "label": "Avoid / Cautions",
+        "value": "Other MAO inhibitors (including moclobemide) or within two weeks of one; serotonergic medicines and sympathomimetics unless closely observed."
+      },
+      {
+        "label": "Key Risks",
+        "value": "Serotonin syndrome; pressor responses / raised blood pressure."
+      },
+      {
+        "label": "Key Interactions",
+        "value": "MAOIs including moclobemide; citalopram, escitalopram and other serotonergic agents; sympathomimetics and vasopressors."
+      },
+      {
+        "label": "Monitoring",
+        "value": "Serotonin syndrome signs and blood pressure. Monitor closely; seek specialist or source guidance."
       }
     ]
   },
