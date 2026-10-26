@@ -1,7 +1,7 @@
 {
   "version": "repo-awareness-snapshot-v3",
   "captured_revision": {
-    "committed_at": "2026-10-25"
+    "committed_at": "2026-10-26"
   },
   "routes": {
     "modes": [
@@ -2384,6 +2384,11 @@
       {
         "path": "docs/superpowers/rag-upgrade/local/plans/2026-08-21-rag-repository-content-sync.md",
         "section": "superpowers",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-26-ai-answers-need-the-declaration.md",
+        "section": "decisions",
         "catalogued": true
       },
       {

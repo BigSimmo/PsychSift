@@ -1,5 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+// The health professional declaration check has its own tests
+// (tests/health-professional-declaration.test.ts); these route tests use accounts that hold it.
+vi.mock("@/lib/clinical-access", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/clinical-access")>()),
+  requireHealthProfessionalDeclaration: async () => undefined,
+}));
+
 /**
  * Admission-cost guard for the /api/answer preamble (latency audit 2026-07-28, L1-2).
  *

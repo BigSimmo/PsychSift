@@ -28,7 +28,7 @@ import { PublicApiError, jsonError } from "@/lib/http";
 import { logger } from "@/lib/logger";
 import { setAgentConversationId } from "@/lib/observability/agent-monitoring";
 import { resolveRetrievalAccessScope } from "@/lib/owner-scope";
-import { requireSignedInClinicalAccess } from "@/lib/clinical-access";
+import { requireHealthProfessionalDeclaration, requireSignedInClinicalAccess } from "@/lib/clinical-access";
 import { publicAccessContext } from "@/lib/public-api-access";
 import { safeErrorLogDetails } from "@/lib/privacy";
 import { buildServerTimingHeader, preambleServerTimingEntries } from "@/lib/server-timing";
@@ -198,6 +198,7 @@ export async function POST(request: Request) {
         bucket: "clinical_ask",
       });
     }
+    await requireHealthProfessionalDeclaration(access, supabase);
     const serverTiming = buildServerTimingHeader(preambleServerTimingEntries({ authMs, rateLimitMs }));
     if (!clinicalAskModeEnabled(body.mode)) {
       return errorStream("mode_unavailable", "Smart answers are not available for this mode.", serverTiming);

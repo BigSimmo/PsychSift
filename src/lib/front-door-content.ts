@@ -168,11 +168,16 @@ export const TERMS_PROMPT_POINTS = [
   "Always check an answer against its linked source before acting on it.",
   "Never enter patient-identifying details.",
 ];
-export const TERMS_PROMPT_ACCEPT_LABEL = "I accept the Terms of Use";
+// Matches the Ask step's signed-off label: both write the record the answer server reads as
+// the health professional declaration (regulatory re-audit R2-01, 26 Oct 2026).
+export const TERMS_PROMPT_ACCEPT_LABEL = "I'm a health professional and I accept the Terms";
 export const TERMS_PROMPT_LATER_LABEL = "Not now";
 export const TERMS_PROMPT_LATER_NOTE = "If you choose Not now, we will ask again next time you open PsychSift.";
 export const TERMS_PROMPT_SAVE_ERROR =
   "Your acceptance could not be saved to your account, so it is remembered on this device only.";
+/** Shown when the Terms step at the first Ask cannot save to the account; Answer stays unsent. */
+export const ASK_TERMS_SAVE_ERROR =
+  "Your acceptance could not be saved to your account, so Answer can't run yet. Try again.";
 
 /*
  * The Terms step at the first Ask (audit F-13). Shown before the first AI answer,

@@ -9,13 +9,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AskTermsStep } from "@/components/front-door/ask-terms-step";
 import { useAskTermsGate } from "@/components/front-door/use-ask-terms-gate";
 import {
+  ASK_TERMS_SAVE_ERROR,
   ASK_TERMS_STEP_ACCEPT_LABEL,
   ASK_TERMS_STEP_NOTE_ACCOUNT,
   ASK_TERMS_STEP_NOTE_DEVICE,
   ASK_TERMS_STEP_TITLE,
   TERMS_PROMPT_LATER_LABEL,
   TERMS_PROMPT_POINTS,
-  TERMS_PROMPT_SAVE_ERROR,
   TERMS_VERSION,
 } from "@/lib/front-door-content";
 import { DEVICE_TERMS_KEY, TERMS_METADATA_KEY } from "@/lib/terms-acceptance";
@@ -270,15 +270,26 @@ describe("Terms step at the first Ask", () => {
     expect(onSaveFailed).not.toHaveBeenCalled();
   });
 
-  it("still sends after a failed account save, keeps it on this device and says so", async () => {
+  it("sends nothing after a failed account save, keeps the step open and says so", async () => {
+    // The answer server reads only the account record (regulatory re-audit R2-01).
     signedIn();
     updateUser.mockRejectedValueOnce(new Error("synthetic network failure"));
     const { ask, sendAnswer, onSaveFailed } = setup();
     ask();
     fireEvent.click(screen.getByRole("button", { name: ASK_TERMS_STEP_ACCEPT_LABEL }));
-    await waitFor(() => expect(sendAnswer).toHaveBeenCalledWith(QUESTION));
-    expect(onSaveFailed).toHaveBeenCalledWith(TERMS_PROMPT_SAVE_ERROR);
-    expect(window.localStorage.getItem("psychsift:terms-accepted:user-1")).toBe(TERMS_VERSION);
+    await waitFor(() => expect(onSaveFailed).toHaveBeenCalledWith(ASK_TERMS_SAVE_ERROR));
+    expect(sendAnswer).not.toHaveBeenCalled();
+    expect(step()).toBeTruthy();
+    expect(window.localStorage.getItem("psychsift:terms-accepted:user-1")).toBeNull();
+  });
+
+  it("does not count this device's copy for a signed-in user whose account has no record", () => {
+    signedIn();
+    window.localStorage.setItem("psychsift:terms-accepted:user-1", TERMS_VERSION);
+    const { ask, sendAnswer } = setup();
+    ask();
+    expect(step()).toBeTruthy();
+    expect(sendAnswer).not.toHaveBeenCalled();
   });
 
   it("skips the step for a signed-in user whose account holds the current version", () => {
