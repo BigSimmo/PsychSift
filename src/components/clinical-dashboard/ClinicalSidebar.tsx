@@ -20,6 +20,7 @@ import {
   FileText,
   Heart,
   LayoutGrid,
+  LogIn,
   MonitorCog,
   MessageSquarePlus,
   MessageSquare,
@@ -101,8 +102,8 @@ export function deriveSidebarIdentity(email: string | null | undefined): Sidebar
 }
 
 function accountProfileLabel(identity: SidebarIdentity) {
-  const action = identity.signedIn ? "Open account profile" : "Set up workspace";
-  return `${identity.initials} ${identity.displayName} ${identity.detail}. ${action}`;
+  if (!identity.signedIn) return "Sign in or create an account";
+  return `${identity.initials} ${identity.displayName} ${identity.detail}. Open account profile`;
 }
 
 const sidebarToolItems = [
@@ -1168,15 +1169,15 @@ export function ClinicalSidebarContent({
           aria-label={accountLabel}
         >
           <span className="grid size-8 shrink-0 place-items-center rounded-full border border-[color:var(--clinical-accent-border)]/60 bg-[color:var(--clinical-accent-soft)] text-xs font-bold text-[color:var(--clinical-accent)]">
-            {identity.initials}
+            {identity.signedIn ? identity.initials : <LogIn aria-hidden="true" className="h-4 w-4" />}
           </span>
           <span className="min-w-0 flex-1">
             <span className="block truncate text-sm font-semibold text-[color:var(--text)]">
-              {identity.displayName}
+              {identity.signedIn ? identity.displayName : "Sign in"}
             </span>
             <span className={cn("flex items-center gap-1.5 text-xs", textMuted)}>
               {identity.signedIn ? <span className={statusDotReady} aria-hidden="true" /> : null}
-              <span className="truncate">{identity.detail}</span>
+              <span className="truncate">{identity.signedIn ? identity.detail : "or create an account"}</span>
             </span>
           </span>
           <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-[color:var(--text-muted)]" />
@@ -1562,15 +1563,19 @@ function ClinicalCollapsedRail({
         onFocus={onPrefetchAccount}
         data-testid="collapsed-account-settings"
         className={cn(railItem, "group")}
-        title={identity.signedIn ? identity.detail : "Set up workspace"}
+        title={identity.signedIn ? identity.detail : "Sign in or create an account"}
         aria-label={accountLabel}
       >
-        <span
-          aria-hidden="true"
-          className="grid size-9 place-items-center rounded-full border border-[color:var(--clinical-accent-border)]/60 bg-[color:var(--clinical-accent-soft)] text-xs font-bold text-[color:var(--clinical-accent)] transition group-hover:border-[color:var(--clinical-accent-border)]"
-        >
-          {identity.initials}
-        </span>
+        {identity.signedIn ? (
+          <span
+            aria-hidden="true"
+            className="grid size-9 place-items-center rounded-full border border-[color:var(--clinical-accent-border)]/60 bg-[color:var(--clinical-accent-soft)] text-xs font-bold text-[color:var(--clinical-accent)] transition group-hover:border-[color:var(--clinical-accent-border)]"
+          >
+            {identity.initials}
+          </span>
+        ) : (
+          <RailItemBody icon={LogIn} label="Sign in" />
+        )}
       </button>
       <SidebarModesEditorSheet
         open={modeEditorOpen}

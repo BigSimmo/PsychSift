@@ -113,6 +113,7 @@
     "src/lib/public-api-access.ts",
     "src/lib/query-privacy.ts",
     "src/lib/recovery-readiness-evidence.ts",
+    "src/lib/remembered-email.ts",
     "src/lib/safe-buffer.ts",
     "src/lib/security-headers.ts",
     "src/lib/server-timing.ts",

@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "d4bac1f7-74ed-4dd7-bcb2-19ee956540d0",
+  "createdOn": "2026-10-27",
+  "action": "done",
+  "payload": {
+    "id": "#CWWH2E",
+    "outcome": "Fixed on main by about 20 Oct 2026, checked against 8a81588da on 27 Oct. All four wastes are gone: (1) loadChunksForSignalMatches now does one joined document_chunks + documents!inner query (rag-candidate-sources.ts:1688); (2) attachPageVisualEvidence uses a request-scoped PageVisualCache (rag-hydration.ts:61-91, :361); (3) the indexing version is read once per request through cacheContext.indexingVersionAtRequestStart (rag.ts:1187, :2185), and the remaining fresh reads in rag-cache.ts are the deliberate revocation guard; (4) loadChunksForMemoryCards takes the shared ChunkLoadCache (rag-candidate-sources.ts:1419-1423, :2135), and the typo-correction recursion reuses the request caches via ??= (rag.ts:1156-1157). The remaining search-speed lead is #H69FNZ.",
+    "baseRowFingerprint": "ee66b00b6575f0ff90ca51f74c68569ca5595ca5dd762aed6c2437809ed7a853",
+    "targetUlid": "01M2QP9JQFCWWH2E1A74YP08HJ"
+  }
+}
