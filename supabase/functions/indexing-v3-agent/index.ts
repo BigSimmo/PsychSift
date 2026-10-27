@@ -46,6 +46,7 @@ import {
   edgeProviderEgressBinding,
   edgeProviderEgressFailure,
   ensureEdgeSummaryProjection,
+  resolveEdgeIndexingModel,
   runClaimedJobBatch,
   shouldRunVisualArtifacts,
   type CompletionGate,
@@ -683,8 +684,7 @@ async function ensureSummary(job: ClaimedJob): Promise<SourceAnchoredSummaryPayl
   const authority: SourceAnchoredSummaryAuthority = {
     documentId: job.document_id,
     indexGenerationId: generation,
-    expectedStructuredModel:
-      Deno.env.get("OPENAI_INDEXING_MODEL") ?? Deno.env.get("OPENAI_STRONG_ANSWER_MODEL") ?? "gpt-5.6-sol",
+    expectedStructuredModel: resolveEdgeIndexingModel((name) => Deno.env.get(name)),
     expectedStructuredModelVersion: SOURCE_ANCHORED_STRUCTURED_MODEL_VERSION,
     selectedChunks: chunks,
     selectedImages: images,

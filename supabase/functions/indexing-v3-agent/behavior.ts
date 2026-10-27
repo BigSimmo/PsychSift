@@ -29,6 +29,12 @@ import {
   type IngestionProviderEgressContext,
 } from "../_shared/ingestion-provider-egress.ts";
 
+export function resolveEdgeIndexingModel(readEnvironment: (name: string) => string | undefined): string {
+  // Match the Node worker's indexing fallback. Answer-only model activation must
+  // not invalidate persisted summaries or discard their source-anchored labels.
+  return readEnvironment("OPENAI_INDEXING_MODEL") ?? "gpt-5.6-sol";
+}
+
 export function edgeProviderEgressBinding(
   fence: IngestionFence,
   attemptCount: number,

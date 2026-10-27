@@ -6,6 +6,7 @@ import {
   runEdgeIngestionMutation,
   runEdgeIngestionTransport,
   ensureEdgeSummaryProjection,
+  resolveEdgeIndexingModel,
 } from "../supabase/functions/indexing-v3-agent/behavior";
 import {
   buildSourceAnchoredFallbackPayload,
@@ -120,8 +121,8 @@ describe("Edge source-anchored summary selection", () => {
     expect(persist).toHaveBeenCalledOnce();
   });
 
-  it("retains valid persisted structured anchors and order from a larger exact-generation corpus", async () => {
-    const sources = corpus();
+  it.each([false, true])("retains persisted indexing summaries with all-Sol answer overrides=%s", async (allSol) => {
+    const sources = { ...corpus(), expectedStructuredModel: "gpt-5.6-sol" };
     const selected = {
       ...sources,
       selectedChunks: [sources.selectedChunks[36], sources.selectedChunks[2]],
@@ -174,8 +175,26 @@ describe("Edge source-anchored summary selection", () => {
       },
     }));
     const persist = vi.fn(async () => ({ ok: true }));
-    expect(await ensureEdgeSummaryProjection({ authority: sources, existing, labels, persist })).toEqual(structured);
+    const settings: Record<string, string> = allSol
+      ? {
+          OPENAI_ANSWER_MODEL: "gpt-6.1-sol",
+          OPENAI_FAST_ANSWER_MODEL: "gpt-6.1-sol",
+          OPENAI_STRONG_ANSWER_MODEL: "gpt-6.1-sol",
+        }
+      : {};
+    const edgeAuthority = { ...sources, expectedStructuredModel: resolveEdgeIndexingModel((key) => settings[key]) };
+    expect(await ensureEdgeSummaryProjection({ authority: edgeAuthority, existing, labels, persist })).toEqual(
+      structured,
+    );
     expect(persist).not.toHaveBeenCalled();
+  });
+
+  it("preserves an explicit indexing override independently of answer models", () => {
+    const settings: Record<string, string> = {
+      OPENAI_INDEXING_MODEL: "gpt-5.6-terra",
+      OPENAI_STRONG_ANSWER_MODEL: "gpt-6.1-sol",
+    };
+    expect(resolveEdgeIndexingModel((key) => settings[key])).toBe("gpt-5.6-terra");
   });
 });
 const attempt = () => new IngestionAttempt(parseEdgeIngestionClaim(claim(), "edge-worker", now));
