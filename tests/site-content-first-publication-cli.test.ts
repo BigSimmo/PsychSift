@@ -69,19 +69,19 @@ function signedFormReviews(): ClinicalSignOffEntry[] {
 }
 
 describe("publish-site-content-first-catalogue CLI (#HTZPQ8 / #ZPHK2F)", () => {
-  it("accepts the 45 signed repository forms and refuses service sidecars while Indigenous or legacy records lack named sign-off", () => {
+  it("accepts the 47 signed repository forms and refuses service sidecars while Indigenous or legacy records lack named sign-off", () => {
     // The 20 Oct 2026 clinical content audit edited eight signed forms and the 26 Oct 2026
     // re-audit edited Form 3B; all nine went back to drafted until the owner signs each one
     // again. The whole catalogue is refused until then, naming exactly those nine; the 45
     // still signed are accepted on their own.
     expect(() => buildFirstPublicationCataloguePlan({ kind: "form" })).toThrow(
-      /First-publication plan refused: 9 record\(s\) lack a current clinical sign-off by a named person/,
+      /First-publication plan refused: 7 record\(s\) lack a current clinical sign-off by a named person/,
     );
     const signedForms = formRecords.filter(
       (form) => repositoryFormReview(formCodeForRecord(form)).status === "reviewed",
     );
     const formPlan = buildFirstPublicationCataloguePlan({ kind: "form", forms: signedForms });
-    expect(formPlan.counts.forms).toBe(45);
+    expect(formPlan.counts.forms).toBe(47);
     expect(() => buildFirstPublicationCataloguePlan({ kind: "service" })).toThrow(
       /First-publication plan refused: \d+ record\(s\) lack a current clinical sign-off by a named person/,
     );

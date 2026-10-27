@@ -9,12 +9,6 @@ if [ "${SKIP_DOCS_SYNC_HOOK:-}" = "1" ]; then
 fi
 
 staged_files=$(git diff --cached --name-only --diff-filter=ACMRD)
-working_files=$(
-  {
-    git diff --name-only --diff-filter=ACMRD
-    git ls-files --others --exclude-standard
-  } | sort -u
-)
 
 matches_staged() {
   printf '%s\n' "$staged_files" | grep -Eq "$1"
@@ -49,6 +43,14 @@ fi
 if [ "$sync_sitemap" = "0" ] && [ "$sync_inventory" = "0" ] && [ "$check_module_map" = "0" ] && [ "$sync_design_system_adoption" = "0" ] && [ "$sync_organisation_areas" = "0" ]; then
   exit 0
 fi
+
+# Only selected documentation tasks need working-tree enumeration.
+working_files=$(
+  {
+    git diff --name-only --diff-filter=ACMRD
+    git ls-files --others --exclude-standard
+  } | sort -u
+)
 
 # Generators read the working tree. Refuse to combine staged inputs with other
 # unstaged inputs that could make the generated docs describe the wrong commit.

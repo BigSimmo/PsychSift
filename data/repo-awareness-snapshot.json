@@ -2912,6 +2912,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-27-signed-out-examples-on-every-work-page.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/decisions/2026-10-19-rag-ts-split-deferred-until-after-launch.md",
         "section": "decisions",
         "catalogued": true
@@ -4264,6 +4269,11 @@
       {
         "path": "docs/superpowers/plans/2026-09-27-roster-mode-plan-a-database.md",
         "section": "superpowers",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-27-one-supervisor-list.md",
+        "section": "decisions",
         "catalogued": true
       },
       {

@@ -2257,3 +2257,32 @@ export const DEMO_ON_CALL_ENTRIES: readonly OnCallEntry[] = [
     lastVerifiedAt: NEVER_VERIFIED,
   }),
 ];
+
+/**
+ * The example contract, five months out, so Contract end shows its dates, reminders
+ * and questions to a signed-out visitor. It is only in the example data set
+ * (`onCall.entries`), never in the corpus above: "Load example content" must
+ * not give a real account a contract end date it did not enter.
+ */
+export const EXAMPLE_CONTRACT_END_ENTRY: OnCallEntry = entry({
+  id: id(141),
+  section: "logistics",
+  slug: "contract-end-example",
+  title: "Contract end",
+  subtitle: null,
+  body: null,
+  details: {
+    category: "Personal",
+    kind: "compliance",
+    expiresOn: demoDateKey(150),
+    leadTimeDays: 91,
+    issuingBody: "Example Health Service",
+    provenance: "typed",
+  },
+  linkedDocumentIds: [],
+  tags: [],
+  isPersonal: true,
+  includeOnCard: false,
+  sortOrder: 19,
+  lastVerifiedAt: VERIFIED_RECENTLY,
+});

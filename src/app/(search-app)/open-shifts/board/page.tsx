@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { OpenShiftsBoardPage } from "@/components/open-shifts/open-shifts-board-page";
+import { RosterSampleGate } from "@/components/roster/roster-sample-gate";
 
 export const metadata: Metadata = {
   title: "Board | Open shifts | PsychSift",
@@ -8,5 +9,9 @@ export const metadata: Metadata = {
 };
 
 export default function OpenShiftsBoardRoute() {
-  return <OpenShiftsBoardPage />;
+  return (
+    <RosterSampleGate>
+      <OpenShiftsBoardPage />
+    </RosterSampleGate>
+  );
 }

@@ -84,7 +84,7 @@ describe("Owner panel: Sign off today", () => {
   it("renders the organized clinical & rule sign-off register with signed counts, signers, purposes, and categorized remaining items", () => {
     render(<OwnerTodaySection today={today({ rows: [], waiting: 1185, signable: 0 })} />);
     const ledgerSection = screen.getByTestId("owner-panel-sign-off-ledger");
-    expect(ledgerSection).toHaveTextContent("531 items signed off across 13 governed domains");
+    expect(ledgerSection).toHaveTextContent("534 items signed off across 13 governed domains");
     expect(ledgerSection).toHaveTextContent("Josh Simpson (7)");
     expect(ledgerSection).toHaveTextContent("Psych Sift (66)");
     expect(ledgerSection).toHaveTextContent("PsychSift (458)");

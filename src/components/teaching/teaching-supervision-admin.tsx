@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { ModeNotice } from "@/components/mode-kit/notice";
 import { shortDayLabel } from "@/components/teaching/teaching-dates";
@@ -23,7 +24,7 @@ export function TeachingSupervisionAdmin({
   isAdmin: boolean;
   onSaved: () => void;
 }) {
-  const resource = useTeachingResource<{ pairings: SupervisionPairing[] }>(
+  const resource = useTeachingResource<{ pairings: SupervisionPairing[]; supervisorsFromPeople?: boolean }>(
     teachingDepthUrl(serviceId, { action: "supervision.read" }),
   );
   const [registrarId, setRegistrarId] = useState("");
@@ -35,6 +36,8 @@ export function TeachingSupervisionAdmin({
   const [role, setRole] = useState<TeachingRole>("doctor");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  // One supervisor list: in a service that belongs to a hospital, People and roles names the supervisor.
+  const fromPeople = resource.data?.supervisorsFromPeople === true;
   const field = "min-h-12 rounded border border-[color:var(--border)] bg-[color:var(--surface)] px-3";
   async function post(url: string, body: Record<string, unknown>) {
     setBusy(true);
@@ -53,10 +56,20 @@ export function TeachingSupervisionAdmin({
   return (
     <section className="grid gap-3 border-t border-[color:var(--border)] pt-3">
       <h2 className="text-base-minus font-medium text-[color:var(--text-heading)]">Supervision pairings</h2>
-      <ModeNotice>
-        A pairing involving the organiser must be set by a Teaching admin. Programme access never gives access to
-        private CPD.
-      </ModeNotice>
+      {fromPeople ? (
+        <ModeNotice>
+          Medical Workforce or the DCT names this service&apos;s supervisors in{" "}
+          <Link href="/admin/people" className="underline" data-testid="teaching-supervision-people-link">
+            People and roles
+          </Link>
+          . Each trainee&apos;s pairing starts and follows from there, and keeps its sessions here.
+        </ModeNotice>
+      ) : (
+        <ModeNotice>
+          A pairing involving the organiser must be set by a Teaching admin. Programme access never gives access to
+          private CPD.
+        </ModeNotice>
+      )}
       {resource.status === "ready" ? (
         <ul role="list" className="grid gap-1 text-sm text-[color:var(--text-heading)]">
           {resource.data?.pairings.map((pairing) => (
@@ -76,47 +89,66 @@ export function TeachingSupervisionAdmin({
           ) : null}
         </>
       )}
-      <form
-        className="grid gap-2"
-        onSubmit={(event) => {
-          event.preventDefault();
-          const parsed = teachingDepthActionSchema.safeParse(
-            pairingId
-              ? { action: "pairing.reassign", pairingId, supervisorId }
-              : { action: "pairing.save", registrarId, supervisorId, startsOn, endsOn },
-          );
-          if (!parsed.success) {
-            setMessage(parsed.error.issues[0]?.message ?? "Check the pairing.");
-            return;
-          }
-          void post(teachingDepthUrl(serviceId), parsed.data);
-        }}
-      >
-        <label className="grid gap-1">
-          New pairing or reassign
-          <select
-            className={field}
-            value={pairingId}
-            disabled={busy}
-            onChange={(event) => setPairingId(event.target.value)}
-          >
-            <option value="">New pairing</option>
-            {resource.data?.pairings.map((pairing) => (
-              <option key={pairing.pairingId} value={pairing.pairingId}>
-                {pairing.registrarName} — reassign supervisor
-              </option>
-            ))}
-          </select>
-        </label>
-        {!pairingId ? (
+      {fromPeople ? null : (
+        <form
+          className="grid gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const parsed = teachingDepthActionSchema.safeParse(
+              pairingId
+                ? { action: "pairing.reassign", pairingId, supervisorId }
+                : { action: "pairing.save", registrarId, supervisorId, startsOn, endsOn },
+            );
+            if (!parsed.success) {
+              setMessage(parsed.error.issues[0]?.message ?? "Check the pairing.");
+              return;
+            }
+            void post(teachingDepthUrl(serviceId), parsed.data);
+          }}
+        >
           <label className="grid gap-1">
-            Registrar
+            New pairing or reassign
             <select
               className={field}
-              value={registrarId}
+              value={pairingId}
+              disabled={busy}
+              onChange={(event) => setPairingId(event.target.value)}
+            >
+              <option value="">New pairing</option>
+              {resource.data?.pairings.map((pairing) => (
+                <option key={pairing.pairingId} value={pairing.pairingId}>
+                  {pairing.registrarName} — reassign supervisor
+                </option>
+              ))}
+            </select>
+          </label>
+          {!pairingId ? (
+            <label className="grid gap-1">
+              Registrar
+              <select
+                className={field}
+                value={registrarId}
+                required
+                disabled={busy}
+                onChange={(event) => setRegistrarId(event.target.value)}
+              >
+                <option value="">Choose a member</option>
+                {data.members.map((member) => (
+                  <option key={member.userId} value={member.userId}>
+                    {memberLabel(member)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+          <label className="grid gap-1">
+            Supervisor
+            <select
+              className={field}
+              value={supervisorId}
               required
               disabled={busy}
-              onChange={(event) => setRegistrarId(event.target.value)}
+              onChange={(event) => setSupervisorId(event.target.value)}
             >
               <option value="">Choose a member</option>
               {data.members.map((member) => (
@@ -126,57 +158,40 @@ export function TeachingSupervisionAdmin({
               ))}
             </select>
           </label>
-        ) : null}
-        <label className="grid gap-1">
-          Supervisor
-          <select
-            className={field}
-            value={supervisorId}
-            required
-            disabled={busy}
-            onChange={(event) => setSupervisorId(event.target.value)}
-          >
-            <option value="">Choose a member</option>
-            {data.members.map((member) => (
-              <option key={member.userId} value={member.userId}>
-                {memberLabel(member)}
-              </option>
-            ))}
-          </select>
-        </label>
-        {!pairingId ? (
-          <>
-            <label className="grid gap-1">
-              Starts on
-              <input
-                className={field}
-                type="date"
-                required
-                value={startsOn}
-                disabled={busy}
-                onChange={(event) => setStartsOn(event.target.value)}
-              />
-            </label>
-            <label className="grid gap-1">
-              Ends on
-              <input
-                className={field}
-                type="date"
-                required
-                min={startsOn}
-                value={endsOn}
-                disabled={busy}
-                onChange={(event) => setEndsOn(event.target.value)}
-              />
-            </label>
-          </>
-        ) : (
-          <p>Pending confirmations will move to the new supervisor. Existing confirmations stay in the record.</p>
-        )}
-        <Button type="submit" variant="primary" disabled={busy}>
-          {pairingId ? "Reassign supervisor" : "Create pairing"}
-        </Button>
-      </form>
+          {!pairingId ? (
+            <>
+              <label className="grid gap-1">
+                Starts on
+                <input
+                  className={field}
+                  type="date"
+                  required
+                  value={startsOn}
+                  disabled={busy}
+                  onChange={(event) => setStartsOn(event.target.value)}
+                />
+              </label>
+              <label className="grid gap-1">
+                Ends on
+                <input
+                  className={field}
+                  type="date"
+                  required
+                  min={startsOn}
+                  value={endsOn}
+                  disabled={busy}
+                  onChange={(event) => setEndsOn(event.target.value)}
+                />
+              </label>
+            </>
+          ) : (
+            <p>Pending confirmations will move to the new supervisor. Existing confirmations stay in the record.</p>
+          )}
+          <Button type="submit" variant="primary" disabled={busy}>
+            {pairingId ? "Reassign supervisor" : "Create pairing"}
+          </Button>
+        </form>
+      )}
       {isAdmin ? (
         <form
           className="grid gap-2"
