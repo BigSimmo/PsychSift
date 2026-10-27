@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "id": "61ce4207-3155-4745-bf7f-8fc6756d8d07",
+  "createdOn": "2026-10-27",
+  "action": "update",
+  "payload": {
+    "id": "#HGEC4B",
+    "summary": "Third-party publisher documents: downloads now admin-only; answer-corpus narrowing still waits on counsel",
+    "detail": "UPDATE 2026-10-27 (checked against main df306fc1): the download half (R-05) is done. Commits d6586d81 and 92ffcae5 (26 Oct, owner decision) limit third-party original files to administrators by default. Still open (R-06): third-party text stays in the public answer corpus. Narrowing public_corpus is a live database change that needs the owner's named yes, after counsel answers on licences. PRIOR DETAIL: Migration 20260706120000 made all indexed documents public. Narrowing public_corpus is a live database change needing the owner's named yes for that specific change; await counsel's answer on licences first. Findings R-05, R-06.",
+    "baseRowFingerprint": "57ec3f0447194c4271993a34abd50612aad46bdd8e152b04763ada0b04a8b789",
+    "targetUlid": "01M5D6CDX9HGEC4BJ1K39DPPY4"
+  }
+}

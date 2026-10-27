@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "id": "fedd43ac-7d3a-4036-bfac-f228f81c230b",
+  "createdOn": "2026-10-27",
+  "action": "update",
+  "payload": {
+    "id": "#F8Q9KK",
+    "summary": "Owner settings remain for GH_TOKEN: workflow half merged in PR #3780",
+    "detail": "UPDATE 2026-10-27 (checked against main df306fc1): the workflow half is on main, merged in PR #3780 (branch claude/project-thread-q5puw2). pr-batch-runner.yml runs in the production-secrets environment and reads GH_TOKEN from it. What remains is owner-only GitHub settings: add GH_TOKEN to the production-secrets environment if not already there, confirm one scheduled PR batch runner run passes, then delete the repository-level copy. PRIOR DETAIL: UPDATE 2026-10-24: workflow half done on branch claude/project-thread-q5puw2: pr-batch-runner.yml (reconcile) and ranking-snapshot-refresh.yml now run in the production-secrets environment, and the snapshot refresh pushes through gh auth setup-git after checking origin, with no token in any push URL (tests/ranking-snapshot-refresh-workflow.test.ts). Owner next: add GH_TOKEN to the production-secrets environment, then delete the repository copy after a scheduled PR batch runner run passes. Merge when no PR batch is mid-flight (control-file hash changes).",
+    "baseRowFingerprint": "24334c83263b549b1adcb93557df59f4cfb043231d592a27d25be1f4e1999f35",
+    "targetUlid": "01M5CVYDBJF8Q9KKNFAFRXXSSR"
+  }
+}
