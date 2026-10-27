@@ -173,7 +173,7 @@ export function PaperworkSampleNotice({
 export function PaperworkDemoNotice({ testId }: { readonly testId: string }) {
   return (
     <p role="status" data-testid={testId} className="text-sm text-[color:var(--text-muted)]">
-      Demo data. These are invented examples and nothing you change is kept.
+      These are example records. Nothing you change is kept.
     </p>
   );
 }

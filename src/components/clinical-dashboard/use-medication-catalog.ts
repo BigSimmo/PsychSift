@@ -209,6 +209,21 @@ function medicationCatalogErrorMessage(error: unknown, timedOut: boolean): strin
   return "Could not load medications. Try again in a moment.";
 }
 
+/**
+ * Plain words for a medicine record that would not load, with the status kept as a short code
+ * for reporting a fault. The record page shows this on its Details line, which used to read a
+ * bare "Request failed (503)" (design audit D26-12).
+ */
+function medicationRecordErrorMessage(error: unknown): string {
+  if (!(error instanceof MedicationRequestError)) return "Could not load this medicine.";
+  const code = `Code ${error.status}.`;
+  if (error.status === 401) return `Your sign-in has ended. Sign in again to view this medicine. ${code}`;
+  if (error.status === 429) return `Too many requests in a short time. Wait a moment, then try again. ${code}`;
+  if (error.status === 404 && error.code === "medication_not_found") return `This medicine wasn’t found. ${code}`;
+  if (error.status >= 500) return `The medicines service is busy or unavailable. Try again in a minute. ${code}`;
+  return `This medicine couldn’t be loaded. ${code}`;
+}
+
 async function responseErrorCode(response: Response): Promise<string | null> {
   try {
     const body = jsonObject(await response.json());
@@ -440,11 +455,7 @@ export function useMedicationDetail(slug?: string): MedicationDetailState {
         setState({
           data: null,
           loading: false,
-          error: isOffline
-            ? "You are offline. Connect to view this medication."
-            : error instanceof Error
-              ? error.message
-              : "Could not load medication.",
+          error: isOffline ? "You are offline. Connect to view this medication." : medicationRecordErrorMessage(error),
           notFoundCode:
             error instanceof MedicationRequestError && error.status === 404 && error.code === "medication_not_found",
         });

@@ -86,7 +86,8 @@ function EmergencyRoute({
         <a
           href={primary.tel}
           onClick={recordCall}
-          aria-label={`Call ${title}${primaryWhere ? ` ${primaryWhere}` : ""}, emergency, ${spokenOnCallNumber(primary.display)}`}
+          // Ends with the words the button shows, in order (A11Y-02).
+          aria-label={`Call ${title}, emergency: ${primary.display} (${spokenOnCallNumber(primary.display)})${primaryWhere ? ` ${primaryWhere}` : ""}`}
           data-testid={`${testId}-call`}
           className={cn(onCallFilledButton, focusRing, "justify-start py-1.5")}
         >
@@ -100,7 +101,7 @@ function EmergencyRoute({
                   {segment}
                 </span>
               ))}
-            </span>
+            </span>{" "}
             {primaryWhere ? <span className="text-sm font-normal">{primaryWhere}</span> : null}
           </span>
         </a>
@@ -117,7 +118,7 @@ function EmergencyRoute({
           className={cn(onCallOutlineButton, focusRing, "justify-start py-1.5")}
         >
           <Phone aria-hidden="true" strokeWidth={1.5} className="size-icon-md shrink-0" />
-          <span className="min-w-0 break-words text-left font-semibold">{dial.display}</span>
+          <span className="min-w-0 break-words text-left font-semibold">{dial.display}</span>{" "}
           <span className="text-sm font-normal text-[color:var(--text-muted)]">Dialling details</span>
         </button>
       ) : null}
@@ -131,7 +132,7 @@ function EmergencyRoute({
           className={cn(onCallOutlineButton, focusRing, "justify-start")}
         >
           <Phone aria-hidden="true" strokeWidth={1.5} className="size-icon-md shrink-0" />
-          <span className={cn(modeNumberText, "font-semibold")}>{`Dial ${dial.display}`}</span>
+          <span className={cn(modeNumberText, "font-semibold")}>{`Dial ${dial.display}`}</span>{" "}
           <span className="text-sm font-normal text-[color:var(--text-muted)]">from a ward phone</span>
         </button>
       ) : null}
@@ -139,11 +140,11 @@ function EmergencyRoute({
         <a
           href={mobile.tel}
           onClick={recordCall}
-          aria-label={`Call ${title} from a mobile, emergency, ${spokenOnCallNumber(mobile.display)}`}
+          aria-label={`Call ${title}, emergency: ${mobile.display} (${spokenOnCallNumber(mobile.display)}) from a mobile`}
           className={cn(onCallOutlineButton, focusRing, "justify-start")}
         >
           <Phone aria-hidden="true" strokeWidth={1.5} className="size-icon-md shrink-0" />
-          <span className={cn(modeNumberText, "font-semibold")}>{mobile.display}</span>
+          <span className={cn(modeNumberText, "font-semibold")}>{mobile.display}</span>{" "}
           <span className="text-sm font-normal text-[color:var(--text-muted)]">from a mobile</span>
         </a>
       ) : null}

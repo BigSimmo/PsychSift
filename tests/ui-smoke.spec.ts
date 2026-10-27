@@ -852,7 +852,7 @@ async function openMobileClinicalGuideMenu(page: Page) {
   await expect(menu.getByRole("button", { name: /^(Switch to )?(dark|light) mode$/i })).toHaveCount(0);
   await expect(menu.getByRole("button", { name: /Appearance Auto/ })).toBeVisible();
   await expect(menu.getByRole("button", { name: "Settings", exact: true })).toBeVisible();
-  await expect(menu.getByText("Guest")).toBeVisible();
+  await expect(menu.getByText("or create an account")).toBeVisible();
   await expect(page.getByRole("dialog", { name: "PsychSift guide" })).toHaveCount(0);
   await expectNoPageHorizontalOverflow(page);
   return menu;
@@ -1051,10 +1051,12 @@ async function expectMobileSettingsLayout(settings: Locator) {
 }
 
 async function expectAccountSetupSurface(setup: Locator) {
-  await expect(setup.getByRole("heading", { name: "Continue to your workspace" })).toBeVisible();
+  await expect(setup.getByRole("heading", { name: "Welcome back" })).toBeVisible();
+  await expect(setup.getByRole("radio", { name: "Sign in" })).toBeChecked();
+  await expect(setup.getByRole("radio", { name: "Create account" })).toBeVisible();
   await expect(setup.getByRole("heading", { name: "Your workspace, wherever you work." })).toBeVisible();
   await expect(setup.getByLabel("Email address")).toBeVisible();
-  await expect(setup.getByRole("button", { name: "Sign in with email" })).toBeVisible();
+  await expect(setup.getByRole("button", { name: "Sign in", exact: true })).toBeVisible();
   await expect(setup.getByRole("button", { name: "Continue with Apple" })).toBeEnabled();
   await expect(setup.getByRole("button", { name: "Continue with Google" })).toBeEnabled();
   await expect(setup.getByRole("button", { name: "Continue with Microsoft" })).toBeEnabled();
@@ -1395,9 +1397,7 @@ test.describe("PsychSift UI smoke coverage", () => {
     const expandSidebar = page.getByRole("button", { name: "Expand sidebar" });
     await expect(expandSidebar).toBeVisible();
     await expectMinTouchTarget(expandSidebar);
-    await expect(page.getByTestId("collapsed-account-settings")).toHaveAccessibleName(
-      /G Guest Not signed in\. Set up workspace/,
-    );
+    await expect(page.getByTestId("collapsed-account-settings")).toHaveAccessibleName("Sign in or create an account");
     await expect(sidebar).toHaveCount(0);
     await expandSidebar.click();
     await expect(sidebar).toBeVisible();
@@ -1408,9 +1408,7 @@ test.describe("PsychSift UI smoke coverage", () => {
       "href",
       "/psychiatry",
     );
-    await expect(sidebar.getByTestId("sidebar-account-settings")).toHaveAccessibleName(
-      /G Guest Not signed in\. Set up workspace/,
-    );
+    await expect(sidebar.getByTestId("sidebar-account-settings")).toHaveAccessibleName("Sign in or create an account");
 
     const collapseSidebar = page.getByRole("button", { name: "Collapse sidebar" });
     const guideSearch = sidebar.getByRole("button", { name: "Search PsychSift" });
@@ -1424,9 +1422,7 @@ test.describe("PsychSift UI smoke coverage", () => {
 
     await expectMinTouchTarget(collapseSidebar);
     await collapseSidebar.click();
-    await expect(page.getByTestId("collapsed-account-settings")).toHaveAccessibleName(
-      /G Guest Not signed in\. Set up workspace/,
-    );
+    await expect(page.getByTestId("collapsed-account-settings")).toHaveAccessibleName("Sign in or create an account");
 
     await expandSidebar.click();
     await sidebar.getByRole("link", { name: "Answer", exact: true }).click();
@@ -1872,7 +1868,7 @@ test.describe("PsychSift UI smoke coverage", () => {
 
     await page.setViewportSize({ width: 320, height: 700 });
     const setupEmail = setup.getByLabel("Email address");
-    const emailSubmit = setup.getByRole("button", { name: "Sign in with email" });
+    const emailSubmit = setup.getByRole("button", { name: "Sign in", exact: true });
     // Scroll to the lower of the pair. Scrolling to the field only worked where the engine centres
     // it (Chromium); WebKit scrolls to the nearest edge and leaves the button just below the fold.
     await emailSubmit.scrollIntoViewIfNeeded();
@@ -2041,11 +2037,13 @@ test.describe("PsychSift UI smoke coverage", () => {
     const modeOptions = appModeMenu.getByRole("menuitemradio");
     const modeCount = await modeOptions.count();
     expect(modeCount).toBeGreaterThanOrEqual(10);
-    await expect(appModeMenu.getByRole("heading", { name: "Search" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading", { name: "Psychiatry" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading", { name: "Medicines" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading", { name: "On Call" })).toHaveCount(0);
-    await expect(appModeMenu.getByRole("heading", { name: "My Day" })).toHaveCount(0);
+    // The group titles name their groups; a menu holds no headings (A11Y-01).
+    await expect(appModeMenu.getByRole("heading")).toHaveCount(0);
+    await expect(appModeMenu.getByRole("group", { name: "Search" })).toBeAttached();
+    await expect(appModeMenu.getByRole("group", { name: "Psychiatry" })).toBeAttached();
+    await expect(appModeMenu.getByRole("group", { name: "Medicines" })).toBeAttached();
+    await expect(appModeMenu.getByRole("group", { name: "On Call" })).toHaveCount(0);
+    await expect(appModeMenu.getByRole("group", { name: "My Day" })).toHaveCount(0);
     // Tools left the menu (audit item 8, 11 Oct 2026); `/tools` still opens for old links.
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Tools\b/ })).toHaveCount(0);
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Medication\b/ })).toBeAttached();
@@ -4945,11 +4943,12 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(modeDialog.getByRole("radio", { name: "Clinical" })).toBeChecked();
     await expect(modeDialog.getByRole("status")).toHaveText("18 in Clinical");
     await expect(appModeMenu.getByRole("menuitemradio")).toHaveCount(18);
-    await expect(appModeMenu.getByRole("heading", { name: "Search" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading", { name: "Psychiatry" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading", { name: "Mental Health Act" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading", { name: "Medicines" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading")).toHaveCount(4);
+    // Group titles name their groups rather than sitting as headings among menu items (A11Y-01).
+    await expect(appModeMenu.getByRole("group", { name: "Search", exact: true })).toBeAttached();
+    await expect(appModeMenu.getByRole("group", { name: "Psychiatry", exact: true })).toBeAttached();
+    await expect(appModeMenu.getByRole("group", { name: "Mental Health Act", exact: true })).toBeAttached();
+    await expect(appModeMenu.getByRole("group", { name: "Medicines", exact: true })).toBeAttached();
+    await expect(appModeMenu.getByRole("heading")).toHaveCount(0);
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Dictionary\b/ })).toBeAttached();
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^CPD\b/ })).toHaveCount(0);
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Roster\b/ })).toHaveCount(0);
@@ -5977,7 +5976,7 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(sectionSheet.getByRole("button", { name: /Indexed source text/ })).toBeVisible();
     const mobileDensityToggle = sectionSheet.getByTestId("document-view-density-toggle");
     await expect(mobileDensityToggle).toHaveAttribute("aria-pressed", "true");
-    await expect(mobileDensityToggle).toHaveAccessibleName("Show full document content");
+    await expect(mobileDensityToggle).toHaveAccessibleName(/^Condensed view\b/);
     await page.keyboard.press("Escape");
     await expect(sectionSheet).toHaveCount(0);
     await expect(page.getByRole("heading", { level: 1, name: "Synthetic lithium monitoring protocol" })).toBeVisible();
@@ -7000,7 +6999,7 @@ test.describe("PsychSift UI smoke coverage", () => {
 
     const axeResults = await new AxeBuilder({ page })
       .include('[data-testid="clinical-kb-guide-centre"]')
-      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
       .analyze();
     expect(
       axeResults.violations

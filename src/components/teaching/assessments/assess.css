@@ -727,7 +727,15 @@ a.assess-pair__top:focus-visible {
   font-weight: 650;
   line-height: var(--assess-leading-1-2);
   color: var(--work-ink-muted);
-  overflow-wrap: anywhere;
+  /* Wrap between words only: four tiles across broke "Undifferentiated" mid-word on a phone. */
+  overflow-wrap: normal;
+  word-break: normal;
+}
+/* Two tiles per row on a phone, so every label fits between word breaks (owner build, 27 Oct 2026). */
+@media (max-width: 559px) {
+  .assess-kinds {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 .assess-kinds > li[data-state="done"] b {
   background: var(--mode-identity);
@@ -1198,8 +1206,9 @@ select.assess-txt {
 .assess-word {
   display: flex;
   min-height: var(--spacing-tap, 3rem);
+  flex-direction: column;
   align-items: flex-start;
-  gap: calc(var(--spacing) * 2.5);
+  gap: calc(var(--spacing) * 0.5);
   padding: calc(var(--spacing) * 2.25) calc(var(--spacing) * 3);
   margin: 0;
 }
@@ -1207,21 +1216,14 @@ select.assess-txt {
   border-top: 1px solid var(--work-line);
 }
 .assess-word > dt {
-  width: 3.25rem;
   flex: none;
   font-size: var(--text-xs, 0.75rem);
   font-weight: 750;
   color: var(--mode-identity);
   overflow-wrap: normal;
 }
-/* A long term ("Assessment Review Panel") sits over its meaning instead of breaking mid-word. */
-.assess-word[data-long] {
-  flex-direction: column;
-  gap: calc(var(--spacing) * 0.5);
-}
-.assess-word[data-long] > dt {
-  width: auto;
-}
+/* Every term sits over its meaning, short or long, so the list reads as one column (owner build,
+   27 Oct 2026). Before, short terms sat beside their meaning and long ones above it. */
 
 /* A card's own heading row: label on the left, a key or count on the right. */
 .assess-card-head {

@@ -1424,6 +1424,21 @@ describe("SearchResultsEmptyState", () => {
     { id: "action", valueLabel: "Discharge", onRemove: vi.fn() },
   ];
 
+  it("offers native Clear search navigation when a destination is provided", () => {
+    render(
+      <SearchResultsEmptyState
+        modeId="sources"
+        query="unmatched source"
+        clearSearchHref="/sources/search?usedBy=dictionary"
+      />,
+    );
+
+    expect(screen.getByRole("link", { name: "Clear search" })).toHaveAttribute(
+      "href",
+      "/sources/search?usedBy=dictionary",
+    );
+  });
+
   it("leads with relaxing a filter when the set is empty because of them", async () => {
     const user = userEvent.setup();
     const onClearFilters = vi.fn();

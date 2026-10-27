@@ -1910,6 +1910,26 @@
             "key": "Pharmacokinetic",
             "val": "HIGH — CYP inducers such as rifampicin, phenytoin, carbamazepine, St John's Wort, and some antiretrovirals can lower methadone exposure and precipitate withdrawal. CNS depressants increase sedation/respiratory depression; QT-prolongers and electrolyte-lowering medicines increase torsade risk.",
             "tags": []
+          },
+          {
+            "key": "Pharmacodynamic",
+            "val": "HIGH — Citalopram. Both medicines can prolong the QT interval, and combined use may add to the risk of QT prolongation and torsades de pointes. Monitor closely (e.g. ECG and electrolytes); seek specialist or source guidance.",
+            "tags": []
+          },
+          {
+            "key": "Pharmacodynamic",
+            "val": "HIGH — Escitalopram. Both medicines can prolong the QT interval, and combined use may add to the risk of QT prolongation and torsades de pointes. The UK MHRA (Drug Safety Update, Dec 2011) lists use of escitalopram with other medicines that prolong the QT interval as a contraindication; the Australian Lexapro PI does not carry that contraindication. Monitor closely (e.g. ECG and electrolytes); seek specialist or source guidance.",
+            "tags": []
+          },
+          {
+            "key": "Pharmacodynamic",
+            "val": "HIGH — Quetiapine. Both medicines are associated with QT prolongation, and combined use may add to the risk of torsades de pointes. Monitor closely (e.g. ECG and electrolytes); seek specialist or source guidance.",
+            "tags": []
+          },
+          {
+            "key": "Pharmacokinetic",
+            "val": "HIGH — Fluconazole. May raise methadone concentrations by inhibiting its metabolism, which can increase methadone-related adverse effects and the risk of QT prolongation. Monitor closely; seek specialist or source guidance.",
+            "tags": []
           }
         ]
       },
@@ -9130,6 +9150,11 @@
           {
             "key": "Pharmacokinetic",
             "val": "HIGH — CYP2D6 inhibitors (Fluoxetine, Paroxetine) block conversion to the active M1 opioid metabolite, robbing the patient of opioid pain relief while increasing the SNRI seizure/serotonin risks.",
+            "tags": []
+          },
+          {
+            "key": "Pharmacodynamic",
+            "val": "CRITICAL — MAOIs, including moclobemide. Combined use can cause serotonin syndrome or other serious toxicity, and the cited product label lists use with an MAOI, or within 14 days of stopping one, as a contraindication. Monitor closely; seek specialist or source guidance.",
             "tags": []
           }
         ]
@@ -58339,6 +58364,160 @@
     ]
   },
   {
+    "slug": "linezolid",
+    "name": "Linezolid",
+    "class": "Antibiotic",
+    "subclass": "Oxazolidinone",
+    "category": "Infectious Diseases - Oxazolidinones",
+    "accent": "#ea580c",
+    "tag": "OXAZOLIDINONE",
+    "schedule": "S4",
+    "stats": [
+      {
+        "label": "MAO Inhibition",
+        "value": "REVERSIBLE",
+        "cls": "warn",
+        "flag": "warn"
+      },
+      {
+        "label": "Serotonin Risk",
+        "value": "HIGH",
+        "cls": "hi",
+        "flag": "warn"
+      },
+      {
+        "label": "Pressor Risk",
+        "value": "CAUTION",
+        "cls": "warn",
+        "flag": ""
+      },
+      {
+        "label": "Record Scope",
+        "value": "INTERACTIONS ONLY",
+        "cls": "",
+        "flag": ""
+      }
+    ],
+    "sections": [
+      {
+        "title": "Rapid Summary",
+        "type": "summary",
+        "rows": [
+          {
+            "key": "Overview",
+            "val": "Oxazolidinone antibacterial that is also a reversible, non-selective inhibitor of monoamine oxidase (MAO). This record covers interactions only and carries no dose content.",
+            "tags": []
+          },
+          {
+            "key": "Clinical Focus",
+            "val": "Serotonin syndrome when combined with serotonergic medicines such as SSRIs (citalopram, escitalopram), and pressor responses with sympathomimetics or vasopressors. Monitor closely; seek specialist or source guidance.",
+            "tags": []
+          },
+          {
+            "key": "Bottom Line",
+            "val": "Linezolid behaves as an MAO inhibitor for interaction purposes; check every serotonergic or sympathomimetic co-medicine. Monitor closely; seek specialist or source guidance.",
+            "tags": []
+          }
+        ]
+      },
+      {
+        "title": "Contraindications & Populations",
+        "type": "contra",
+        "rows": [
+          {
+            "key": "Absolute",
+            "val": "Use with any medicine that inhibits MAO-A or MAO-B (e.g. phenelzine, moclobemide), or within two weeks of taking one, per the cited product labels.",
+            "tags": []
+          },
+          {
+            "key": "Cautions",
+            "val": "Labels advise against use with serotonergic medicines, sympathomimetics or vasopressors, uncontrolled hypertension, phaeochromocytoma, thyrotoxicosis or carcinoid syndrome unless the patient can be closely observed. Monitor closely; seek specialist or source guidance.",
+            "tags": []
+          }
+        ]
+      },
+      {
+        "title": "Key Interactions",
+        "type": "inter",
+        "rows": [
+          {
+            "key": "Pharmacodynamic",
+            "val": "CRITICAL — MAOIs, including moclobemide. Linezolid is itself a reversible, non-selective MAO inhibitor, and the cited product labels list use with another MAO inhibitor, or within two weeks of one, as a contraindication. Monitor closely; seek specialist or source guidance.",
+            "tags": []
+          },
+          {
+            "key": "Pharmacodynamic",
+            "val": "HIGH — Citalopram and Escitalopram. Serotonin syndrome has been reported when linezolid is combined with serotonergic antidepressants. The cited US Celexa and Lexapro labels list linezolid as a contraindication; the Australian Zyvox, Cipramil and Lexapro PIs advise against the combination unless the patient is carefully observed for serotonin syndrome. Monitor closely; seek specialist or source guidance.",
+            "tags": []
+          },
+          {
+            "key": "Pharmacodynamic",
+            "val": "HIGH — Other serotonergic agents named in the cited labels: other SSRIs, SNRIs (venlafaxine, desvenlafaxine, duloxetine), tricyclic antidepressants, triptans (e.g. sumatriptan), pethidine, buspirone, and tramadol. Combined use may cause serotonin syndrome. Monitor closely; seek specialist or source guidance.",
+            "tags": []
+          },
+          {
+            "key": "Pharmacodynamic",
+            "val": "HIGH — Directly and indirectly acting sympathomimetics, including pseudoephedrine and stimulants such as dexamfetamine, lisdexamfetamine and methylphenidate, and vasopressors (metaraminol, adrenaline, noradrenaline, dopamine, dobutamine). MAO inhibition can enhance pressor responses and raise blood pressure. Monitor closely (e.g. blood pressure); seek specialist or source guidance.",
+            "tags": []
+          },
+          {
+            "key": "Pharmacodynamic",
+            "val": "HIGH — Atomoxetine, reboxetine and bupropion. Their Australian product information contraindicates use with an MAO inhibitor, and linezolid is a reversible, non-selective MAO inhibitor; the US atomoxetine and bupropion labels and the UK reboxetine SmPC name linezolid specifically. Combined use may raise blood pressure or cause other serious reactions. Monitor closely (e.g. blood pressure); seek specialist or source guidance.",
+            "tags": []
+          },
+          {
+            "key": "Food",
+            "val": "CAUTION — Large amounts of tyramine-rich food and drink (e.g. mature cheese, yeast extracts, undistilled alcoholic beverages, fermented soy products) may raise blood pressure. Monitor closely; seek specialist or source guidance.",
+            "tags": []
+          }
+        ]
+      },
+      {
+        "title": "Monitoring & Cautions",
+        "type": "mon",
+        "rows": [
+          {
+            "key": "Bedside",
+            "val": "With any serotonergic co-medicine, watch for serotonin syndrome (confusion, agitation, tremor, hyperreflexia, hyperpyrexia, sweating); with sympathomimetics or vasopressors, watch blood pressure. Monitor closely; seek specialist or source guidance.",
+            "tags": []
+          }
+        ]
+      },
+      {
+        "title": "Sources",
+        "type": "src",
+        "rows": [
+          {
+            "key": "Source Review",
+            "val": "Source Check - Interaction-only record checked 2026-10-26 against the US Zyvox (linezolid) label, US Celexa (citalopram) and Lexapro (escitalopram) labels, and the Australian TGA Zyvox PI (rev. 24 Jul 2026), Cipramil PI (rev. 4 Aug 2025) and Lexapro PI (rev. 23 Aug 2023) for interactions and contraindications only. No dosing, formulation, indication or PBS content reviewed; awaiting clinical sign-off."
+          }
+        ]
+      }
+    ],
+    "quick": [
+      {
+        "label": "Class & Role",
+        "value": "Oxazolidinone antibacterial with reversible, non-selective MAO-inhibitor activity (interaction-only record)."
+      },
+      {
+        "label": "Avoid / Cautions",
+        "value": "Other MAO inhibitors (including moclobemide) or within two weeks of one; serotonergic medicines and sympathomimetics unless closely observed."
+      },
+      {
+        "label": "Key Risks",
+        "value": "Serotonin syndrome; pressor responses / raised blood pressure."
+      },
+      {
+        "label": "Key Interactions",
+        "value": "MAOIs including moclobemide; citalopram, escitalopram and other serotonergic agents; sympathomimetics and vasopressors."
+      },
+      {
+        "label": "Monitoring",
+        "value": "Serotonin syndrome signs and blood pressure. Monitor closely; seek specialist or source guidance."
+      }
+    ]
+  },
+  {
     "slug": "allopurinol",
     "name": "Allopurinol",
     "class": "Gout",
@@ -79736,6 +79915,11 @@
           {
             "key": "Pharmacokinetic",
             "val": "HIGH — Ciprofloxacin and Fluvoxamine (potent CYP1A2 inhibitors) spike clozapine levels.",
+            "tags": []
+          },
+          {
+            "key": "Pharmacokinetic",
+            "val": "HIGH — Erythromycin. Inhibition of clozapine metabolism can raise clozapine levels and lead to adverse reactions; erythromycin can also prolong the QT interval. Monitor closely (e.g. clozapine levels and adverse effects); seek specialist or source guidance.",
             "tags": []
           }
         ]

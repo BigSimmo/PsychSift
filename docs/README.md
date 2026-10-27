@@ -193,6 +193,7 @@ Every remaining tracked document in this category (operations, plus the `rag-beh
 ## Governance, safety, privacy
 
 - [clinical-governance.md](clinical-governance.md) — deployment and source governance checklist
+- [access-roles.md](access-roles.md) — every account role (site, Work mode, On Call team), how it is given, what it opens, and the open gaps
 - [clinical-sign-off-how-to.md](clinical-sign-off-how-to.md) — plain-English guide for the clinical owner: signing off forms and Act-section summaries one at a time with `npm run clinical:review`, and sending the sign-offs
 - [source-acquisition-protocol.md](source-acquisition-protocol.md) — how a clinical source is found, captured, scored and indexed: the WA-first locality ladder, the capture register, the metadata floor, and clinical sign-off
 - [error-tracking.md](error-tracking.md) — privacy-safe, opt-in production exception tracking envelope

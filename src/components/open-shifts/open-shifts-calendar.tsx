@@ -125,14 +125,21 @@ export function OpenShiftsCalendar({
               const rostered = rosteredDays.has(date) && !past;
               const isSelected = date === selected;
               const isToday = date === today;
+              // A day with matches is named "Friday 9, 3 shifts match", keeping the day
+              // number and count the cell shows together so voice control can say them
+              // (WCAG 2.5.3, A11Y-02). The month is then in the calendar heading.
               const label = [
                 new Date(`${date}T12:00:00Z`).toLocaleDateString("en-AU", {
                   weekday: "long",
                   day: "numeric",
-                  month: "long",
+                  month: count ? undefined : "long",
                   timeZone: "UTC",
                 }),
                 count ? `${count} ${count === 1 ? "shift matches" : "shifts match"}` : null,
+                // A day from the next or last month says its month after the count.
+                count && !inMonth
+                  ? new Date(`${date}T12:00:00Z`).toLocaleDateString("en-AU", { month: "long", timeZone: "UTC" })
+                  : null,
                 urgent ? "includes an urgent shift" : null,
                 rostered ? "you're rostered" : null,
                 isToday ? "today" : null,
@@ -169,7 +176,7 @@ export function OpenShiftsCalendar({
                       )}
                     >
                       {Number(date.slice(8))}
-                    </b>
+                    </b>{" "}
                     {count || urgent ? (
                       <span
                         aria-hidden="true"

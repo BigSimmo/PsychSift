@@ -18,7 +18,7 @@ import { TERMS_VERSION } from "../src/lib/front-door-content";
  * 5. Deterministic execution: works against runner-owned local server or remote preview deployment (Vercel/Netlify).
  */
 
-const axeWcagTags = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
+const axeWcagTags = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 const axeBlockingImpacts = new Set(["critical", "serious"]);
 const syntheticFailure = "Synthetic answer service unavailable. Please retry.";
 const syntheticAnswerText = (query: string) =>
@@ -236,7 +236,7 @@ test.describe("Live Browser User Journeys", () => {
     );
     await expect(signInTrigger).toHaveCount(1);
     await expect(signInTrigger).toBeVisible();
-    await expect(signInTrigger).toHaveAccessibleName(/Guest Not signed in\. Set up workspace/);
+    await expect(signInTrigger).toHaveAccessibleName("Sign in or create an account");
     await expectHydratedHandler(signInTrigger, "onClick");
 
     // Trigger Account Setup dialog

@@ -14,6 +14,14 @@ export type RollbackScope =
 
 export type CommittedGeneration = { generationId: string; committedAt: string };
 
+export type RollbackPreflight = {
+  openIngestionJobs: number;
+  openEnrichmentJobs: number;
+  pageStorageMode: string;
+  targetPages: number;
+  unstampedPages: number;
+};
+
 /** summaryRestored/labelsRestored come from the RPC; absent means it did not say (an older RPC). */
 export type RepointResult = { ok: boolean; reason?: string; summaryRestored?: boolean; labelsRestored?: boolean };
 
@@ -28,6 +36,8 @@ export interface RollbackStore {
   committedGenerations(documentId: string): Promise<CommittedGeneration[]>;
   chunkCount(documentId: string, generationId: string): Promise<number>;
   chunkerVersions(documentId: string, generationId: string): Promise<string[]>;
+  /** Metadata only; the apply RPC repeats these checks under the document lock. */
+  preflight(documentId: string, targetGeneration: string): Promise<RollbackPreflight>;
   /** True when the generation has both the metadata and the quality snapshot a rollback restores (#3732). */
   hasGenerationSnapshot(documentId: string, generationId: string): Promise<boolean>;
   repoint(documentId: string, expectedGeneration: string, targetGeneration: string): Promise<RepointResult>;
@@ -42,6 +52,8 @@ export type RollbackRefusal =
   // Pass --roll-forward to mean it (audit ING-S-N2, 24 Oct 2026).
   | "previous_generation_is_newer"
   // The database function refuses these too; the dry run reports it so apply holds no surprise.
+  | "ingestion_in_progress"
+  | "target_not_committed"
   | "target_snapshot_missing";
 
 export type RollbackPlan = {
@@ -52,6 +64,7 @@ export type RollbackPlan = {
   previousGeneration: string | null;
   previousCommittedAt: string | null;
   previousChunks: number | null;
+  preflight: RollbackPreflight | null;
   refusal: RollbackRefusal | null;
 };
 
@@ -108,6 +121,8 @@ function byCommittedAtDesc(left: CommittedGeneration, right: CommittedGeneration
 
 export type RollbackPlanOptions = { allowRollForward?: boolean };
 
+type SelectedDocument = { currentGeneration: string | null; generations?: CommittedGeneration[] };
+
 function isNewerThan(candidate: string, reference: string | null) {
   return reference !== null && candidate.localeCompare(reference) > 0;
 }
@@ -115,6 +130,7 @@ function isNewerThan(candidate: string, reference: string | null) {
 async function planDocument(
   store: RollbackStore,
   documentId: string,
+  selected: SelectedDocument,
   options: RollbackPlanOptions = {},
 ): Promise<RollbackPlan> {
   const plan: RollbackPlan = {
@@ -125,12 +141,15 @@ async function planDocument(
     previousGeneration: null,
     previousCommittedAt: null,
     previousChunks: null,
+    preflight: null,
     refusal: null,
   };
-  const current = await store.currentGeneration(documentId);
+  const current = selected.currentGeneration;
   if (!current) return { ...plan, refusal: "document_not_found_or_no_current_generation" };
   plan.currentGeneration = current;
-  const generations = (await store.committedGenerations(documentId)).slice().sort(byCommittedAtDesc);
+  const generations = (selected.generations ?? (await store.committedGenerations(documentId)))
+    .slice()
+    .sort(byCommittedAtDesc);
   plan.currentCommittedAt = generations.find((entry) => entry.generationId === current)?.committedAt ?? null;
   plan.currentChunks = await store.chunkCount(documentId, current);
   const previous = generations.find((entry) => entry.generationId !== current);
@@ -139,6 +158,18 @@ async function planDocument(
   plan.previousCommittedAt = previous.committedAt;
   plan.previousChunks = await store.chunkCount(documentId, previous.generationId);
   if (plan.previousChunks === 0) return { ...plan, refusal: "previous_generation_has_no_chunks" };
+  plan.preflight = await store.preflight(documentId, previous.generationId);
+  if (plan.preflight.openIngestionJobs > 0 || plan.preflight.openEnrichmentJobs > 0) {
+    return { ...plan, refusal: "ingestion_in_progress" };
+  }
+  // Match rollback_document_index_generation: only a typed current document can fall back
+  // to retained unstamped pages when the target predates typed page generations.
+  if (
+    plan.preflight.targetPages === 0 &&
+    !(plan.preflight.pageStorageMode === "typed_exact" && plan.preflight.unstampedPages > 0)
+  ) {
+    return { ...plan, refusal: "target_not_committed" };
+  }
   // With no commit time for the current generation the order cannot be known, so the target could
   // be newer: refuse unless the operator means to roll forward.
   if (
@@ -153,14 +184,25 @@ async function planDocument(
   return plan;
 }
 
-async function inScope(store: RollbackStore, scope: RollbackScope, plan: RollbackPlan) {
-  if (scope.kind === "documents") return true;
-  if (!plan.currentGeneration) return false;
-  if (scope.kind === "committed-after") {
-    return plan.currentCommittedAt !== null && Date.parse(plan.currentCommittedAt) > Date.parse(scope.after);
+async function selectDocument(
+  store: RollbackStore,
+  scope: RollbackScope,
+  documentId: string,
+): Promise<SelectedDocument | null> {
+  // Capture once: filtering and the eventual expected-generation fence must name the same
+  // generation, even if another worker commits while these read-only queries are in flight.
+  const currentGeneration = await store.currentGeneration(documentId);
+  if (scope.kind === "documents") return { currentGeneration };
+  if (!currentGeneration) return null;
+  if (scope.kind === "chunker-version") {
+    const versions = await store.chunkerVersions(documentId, currentGeneration);
+    return versions.includes(scope.chunkerVersion) ? { currentGeneration } : null;
   }
-  const versions = await store.chunkerVersions(plan.documentId, plan.currentGeneration);
-  return versions.includes(scope.chunkerVersion);
+  // Commit-time proxies require the generation inventory, but not artifact counts, queue/page
+  // preflight or snapshots. Reuse that inventory when the candidate passes the cutoff.
+  const generations = await store.committedGenerations(documentId);
+  const committedAt = generations.find((entry) => entry.generationId === currentGeneration)?.committedAt;
+  return committedAt && Date.parse(committedAt) > Date.parse(scope.after) ? { currentGeneration, generations } : null;
 }
 
 export async function planReindexRollback(
@@ -175,10 +217,11 @@ export async function planReindexRollback(
   for await (const documentId of store.candidateDocumentIds(scope)) {
     if (seen.has(documentId)) continue;
     seen.add(documentId);
-    const plan = await planDocument(store, documentId, options);
+    const selected = await selectDocument(store, scope, documentId);
+    if (!selected) continue;
     // The limit counts in-scope documents only, so out-of-scope candidates (for example a
     // retained non-current generation that matches) never consume it.
-    if (await inScope(store, scope, plan)) plans.push(plan);
+    plans.push(await planDocument(store, documentId, selected, options));
     if (plans.length >= max) break;
   }
   return plans;
@@ -242,6 +285,11 @@ export function formatRollbackOutcome(outcome: RollbackOutcome, apply: boolean) 
     `${outcome.documentId}: ${status}`,
     `  current : ${outcome.currentGeneration ?? "none"} (${outcome.currentChunks ?? "?"} chunks, committed ${outcome.currentCommittedAt ?? "?"})`,
     `  previous: ${outcome.previousGeneration ?? "none"} (${outcome.previousChunks ?? "?"} chunks, committed ${outcome.previousCommittedAt ?? "?"})`,
+    ...(outcome.preflight
+      ? [
+          `  preflight: ${outcome.preflight.openIngestionJobs} open ingestion jobs, ${outcome.preflight.openEnrichmentJobs} open enrichment jobs; ${outcome.preflight.targetPages} target pages, ${outcome.preflight.unstampedPages} unstamped pages (${outcome.preflight.pageStorageMode})`,
+        ]
+      : []),
   ].join("\n");
 }
 

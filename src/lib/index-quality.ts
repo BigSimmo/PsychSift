@@ -48,6 +48,8 @@ export function assessDocumentIndexQuality(args: {
   sectionCount: number;
   memoryCardCount: number;
   documentEmbeddingFieldTypes?: string[];
+  /** Core promotion is assessed before optional sections/cards/document fields exist. */
+  includeOptionalEnrichment?: boolean;
 }) {
   const chunkCount = args.chunks.length;
   const headingCount = args.chunks.filter((chunk) => chunk.section_heading).length;
@@ -130,10 +132,12 @@ export function assessDocumentIndexQuality(args: {
     issues.push(
       `image-only pages not OCR'd (${needsOcrPageCount} of ${args.metrics.page_count}); install Python OCR prerequisites`,
     );
-  if (args.sectionCount === 0) issues.push("no structured sections");
-  if (args.memoryCardCount === 0) issues.push("no memory cards");
-  if (!fieldTypes.has("document_title")) issues.push("missing document title embedding");
-  if (!fieldTypes.has("document_summary")) issues.push("missing document summary embedding");
+  if (args.includeOptionalEnrichment !== false) {
+    if (args.sectionCount === 0) issues.push("no structured sections");
+    if (args.memoryCardCount === 0) issues.push("no memory cards");
+    if (!fieldTypes.has("document_title")) issues.push("missing document title embedding");
+    if (!fieldTypes.has("document_summary")) issues.push("missing document summary embedding");
+  }
 
   let qualityScore = 1;
   qualityScore -= issues.length * 0.055;

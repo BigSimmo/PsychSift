@@ -4,6 +4,7 @@ import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { clearAccountScopedBrowserStorage } from "@/lib/account-scoped-browser-state";
 import { clearAdminPins } from "@/lib/admin/pin-storage-keys";
+import { isChunkLoadError, reloadOnceForChunkLoadError } from "@/lib/chunk-load-recovery";
 import { removeThisDevicePushSubscription } from "@/lib/alerts/device-push";
 import { clearPersistedAnswerThread } from "@/lib/answer-thread-storage-keys";
 import { authSessionFingerprint, createAuthRequestLifecycle } from "@/lib/auth-request-lifecycle";
@@ -11,7 +12,12 @@ import { clearOnCallEntryCache } from "@/lib/on-call/entry-cache-keys";
 import { clearOnCallChecklists } from "@/lib/on-call/checklist-storage-keys";
 import { clearOnCallDeviceState } from "@/lib/on-call/device-state-keys";
 import { clearOnCallRecent } from "@/lib/on-call/recent-storage-keys";
-import { clearPatientLabels, watchPatientLabelExpiry } from "@/lib/patient-label-storage";
+import {
+  PATIENT_LABEL_KEY_PREFIX,
+  clearPatientLabels,
+  patientLabelsOnDevice,
+  watchPatientLabelExpiry,
+} from "@/lib/patient-label-storage";
 import { clearMhaClocks } from "@/lib/psychiatry-hub/mha-clocks";
 import { clearPatientProfile } from "@/lib/patient-profile-storage";
 import { clearRecentQueries } from "@/lib/recent-query-storage";
@@ -48,14 +54,57 @@ type AuthContextValue = {
    * because the clearing itself is silent (design audit D-04, owner yes 19 Oct 2026).
    */
   deviceDataClearedAt?: number | null;
+  /**
+   * True while a sign-in on this tab is holding the bed numbers and initials made on this phone
+   * before it (call notes, handover drafts, timers), until the person says to keep or clear them.
+   * Before this the sign-in cleared them without a word (design audit D26-02).
+   */
+  signedOutWorkHeld?: boolean;
+  /**
+   * Why the sign-in link or provider return that opened this page failed, once, for a notice
+   * on whatever page it landed on. Null when the page was not opened by a failed sign-in.
+   */
+  signInReturnError?: string | null;
+  /** Answer the question above: keep the work with this account for the shift, or clear it now. */
+  resolveSignedOutWork?: (keep: boolean) => void;
 };
 
 export const AUTH_EMAIL_STORAGE_KEY = "clinical.dashboard.lastAuthEmail";
 const AUTH_CALLBACK_PATH = "/auth/callback";
 const GENERIC_AUTH_ERROR = "Sign-in could not be completed. Please try again.";
+export const SIGN_IN_LINK_OTHER_BROWSER_ERROR =
+  "That sign-in link opened in a different browser from the one you asked for it in, so it could not sign you in. Open the link in the browser you used to request it, or sign in here with your password, Apple, Google or Microsoft.";
+export const ACCOUNT_BLOCKED_ERROR =
+  "This account has been blocked, so it can't sign in. If you think this is a mistake, contact the PsychSift administrator.";
 
-function safeCallbackError(value: string | null) {
+/** The auth server refuses a banned account with this code, or a message naming the ban. Exported for tests. */
+export function isBlockedAccountError(error: { readonly code?: string; readonly message?: string } | null | undefined) {
+  if (!error) return false;
+  return error.code === "user_banned" || /\bbanned\b/i.test(error.message ?? "");
+}
+export const SIGN_IN_LINK_EXPIRED_ERROR =
+  "That sign-in link has expired or was already used. Ask for a new one, or sign in with your password, Apple, Google or Microsoft.";
+
+/** Exported for tests. */
+export function safeCallbackError(value: string | null) {
   const normalized = value?.trim().toLowerCase();
+  // A PKCE link (email link, sign-up confirmation, provider return) only works in the browser
+  // that asked for it, because that browser holds the verifier. On a phone the email app often
+  // opens links in its own in-app browser, so this is the common way a link "does nothing".
+  if (normalized === "link_other_browser" || normalized?.includes("code verifier")) {
+    return SIGN_IN_LINK_OTHER_BROWSER_ERROR;
+  }
+  if (
+    normalized === "link_expired" ||
+    normalized === "otp_expired" ||
+    normalized?.includes("flow state") ||
+    normalized?.includes("invalid or has expired")
+  ) {
+    return SIGN_IN_LINK_EXPIRED_ERROR;
+  }
+  if (normalized === "account_blocked" || (normalized && /\bbanned\b/.test(normalized))) {
+    return ACCOUNT_BLOCKED_ERROR;
+  }
   if (normalized === "access_denied" || normalized?.includes("access denied")) {
     return "Sign-in was cancelled. You can try again.";
   }
@@ -78,7 +127,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
  * answer-thread snapshot (see `initializeSession`). The one boot case that IS a
  * transition, a stored session the auth server rejects, calls this too.
  */
-function clearAccountScopedBrowserState() {
+function clearAccountScopedBrowserState({ keepPatientLabels = false }: { readonly keepPatientLabels?: boolean } = {}) {
   // First, so a store that restarts on any clear below (On Call's epoch) never
   // joins the previous account's read still in flight (src/lib/shared-get.ts).
   resetSharedGets();
@@ -89,7 +138,8 @@ function clearAccountScopedBrowserState() {
   clearPatientProfile();
   // Bed numbers and initials (timers, call notes, handover drafts). They also
   // expire at the end of the shift; see the watcher in AuthProvider.
-  clearPatientLabels("account-transition");
+  // Kept only while a first sign-in asks whether this shift's signed-out work stays (D26-02).
+  if (!keepPatientLabels) clearPatientLabels("account-transition");
   // On Call entries are the owner's own ward numbers, escalation contacts and
   // personal lines (added on main while this branch was open). A shared ward
   // computer switches accounts without ever signing out, so without this the
@@ -113,7 +163,7 @@ function clearAccountScopedBrowserState() {
   // plan draft left by the retired Caring Contacts prototype (audit L6).
   // The raw keys are removed here, synchronously, whether or not those modules
   // are loaded in this page; the stores drop their caches on the event it fires.
-  clearAccountScopedBrowserStorage();
+  clearAccountScopedBrowserStorage(keepPatientLabels ? { keepPrefix: PATIENT_LABEL_KEY_PREFIX } : {});
   // Phone alerts belong to the person too. Sign-out has already awaited this so
   // it can say if it failed; expiry and an account switch drop it here in the
   // background, so the next person at a shared computer gets nothing of theirs.
@@ -287,7 +337,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [deviceDataClearedAt, setDeviceDataClearedAt] = useState<number | null>(null);
+  const [signedOutWorkHeld, setSignedOutWorkHeld] = useState(false);
   const callbackErrorRef = useRef<string | null | undefined>(undefined);
+  const [signInReturnError, setSignInReturnError] = useState<string | null>(null);
   const authRequestsRef = useRef(createAuthRequestLifecycle());
   const authFingerprintRef = useRef<string | null>(null);
   // Tracks the user id last published into context so onAuthStateChange can
@@ -319,6 +371,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!config) return Promise.resolve(null);
     clientLoadRef.current ??= loadBrowserSupabaseClient(config).catch((loadError: unknown) => {
       clientLoadRef.current = null;
+      // After a deploy the old build's library file is gone, so retrying the same import fails
+      // forever and sign-in silently does nothing. One reload picks up the current build.
+      if (isChunkLoadError(loadError)) reloadOnceForChunkLoadError();
       throw loadError;
     });
     return clientLoadRef.current;
@@ -389,6 +444,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         initialSessionPublishedRef.current = true;
         setSession(resolved.session);
         setStatus(resolved.status);
+        // Said on the page itself, not only inside the account dialog: a failed link used to
+        // land on the sign-in card with no word about why.
+        setSignInReturnError(callbackError);
         if (resolved.status === "authenticated") {
           setError(callbackError);
           setNotice(null);
@@ -457,7 +515,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // switch; sign-out and expiry null the ref themselves, so a later sign-in
       // as a different user still clears.
       if (initialSessionPublishedRef.current && publishedUserIdRef.current !== nextUserId) {
-        clearAccountScopedBrowserState();
+        // Signing in from signed out, with this shift's labels on the phone: they were made here,
+        // signed out, so ask before clearing them (D26-02). Every other store still clears now, and
+        // any other change (sign-out, expiry, an account switch) clears the labels as before.
+        const holdSignedOutWork = publishedUserIdRef.current === null && nextUserId !== null && patientLabelsOnDevice();
+        clearAccountScopedBrowserState({ keepPatientLabels: holdSignedOutWork });
+        setSignedOutWorkHeld(holdSignedOutWork);
         // A session that ended without this tab's Sign out (a refresh the auth
         // server refused) cleared this device too, so the notice says so.
         if (!nextUserId && !userSignOutRef.current) setDeviceDataClearedAt(Date.now());
@@ -516,7 +579,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .catch(() => ({ error: { message: "network_error" } }));
       if (signInError) {
         setStatus("error");
-        setError("Sign-in email could not be sent.");
+        setError(isBlockedAccountError(signInError) ? ACCOUNT_BLOCKED_ERROR : "Sign-in email could not be sent.");
         return;
       }
       setStatus("signed_out");
@@ -537,7 +600,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .catch(() => ({ error: { message: "network_error" } }));
       if (signInError) {
         setStatus("error");
-        setError("Sign-in failed. Check your email and password, or confirm your email address.");
+        setError(
+          isBlockedAccountError(signInError)
+            ? ACCOUNT_BLOCKED_ERROR
+            : "Sign-in failed. Check your email and password, or confirm your email address.",
+        );
         return;
       }
       // onAuthStateChange flips status to "authenticated" on success.
@@ -623,6 +690,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     userSignOutRef.current = false;
     clearAccountScopedBrowserState();
+    setSignedOutWorkHeld(false);
     publishedUserIdRef.current = null;
     setSession(null);
     setStatus("signed_out");
@@ -648,6 +716,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // failure is reported as expiry — accepted: a stale profile surviving to the
     // next sign-in is the worse failure on a shared workstation.
     clearAccountScopedBrowserState();
+    setSignedOutWorkHeld(false);
     setDeviceDataClearedAt(Date.now());
     publishedUserIdRef.current = null;
     setSession(null);
@@ -655,6 +724,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setNotice(null);
     setError("Your session expired. Sign in again to use account features.");
   }, [invalidateAuthRequests]);
+
+  const resolveSignedOutWork = useCallback((keep: boolean) => {
+    if (!keep) clearPatientLabels("account-transition");
+    setSignedOutWorkHeld(false);
+  }, []);
 
   const accessToken = session?.access_token ?? null;
   const authorizationHeader = useMemo(() => authorizationHeadersForAccessToken(accessToken), [accessToken]);
@@ -694,6 +768,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut,
       markSessionExpired,
       deviceDataClearedAt,
+      signedOutWorkHeld,
+      resolveSignedOutWork,
+      signInReturnError,
     }),
     [
       client,
@@ -713,6 +790,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut,
       markSessionExpired,
       deviceDataClearedAt,
+      signedOutWorkHeld,
+      resolveSignedOutWork,
+      signInReturnError,
     ],
   );
 

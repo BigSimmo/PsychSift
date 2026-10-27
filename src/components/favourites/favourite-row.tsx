@@ -68,24 +68,24 @@ function RowBody({
         <span className="flex min-w-0 items-start gap-1.5 [html[data-large-text]_&]:flex-wrap">
           <span className="line-clamp-2 min-w-0 text-sm font-bold leading-snug text-[color:var(--work-ink)]">
             {item.title}
-          </span>
+          </span>{" "}
           {item.example ? <FavouriteExampleTag /> : null}
-        </span>
+        </span>{" "}
         {item.note ? (
           <span className="block min-w-0 truncate text-xs text-[color:var(--text-muted)]">{item.note}</span>
-        ) : null}
+        ) : null}{" "}
         <span id={metaId} className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5">
           <span className="flex min-w-0 items-center gap-1 text-xs font-medium text-[color:var(--text-muted)] [html[data-large-text]_&]:flex-wrap">
             {item.pinned ? (
               <>
                 <Pin className="size-icon-xs shrink-0 text-[color:var(--clinical-accent)]" aria-hidden="true" />
-                <span className="sr-only">Pinned to My Day.</span>
+                <span className="sr-only">Pinned to My Day.</span>{" "}
               </>
             ) : null}
             {isSourceBacked(item) ? (
               <>
                 <ShieldCheck className="size-icon-xs shrink-0 text-[color:var(--success)]" aria-hidden="true" />
-                <span className="sr-only">Source-backed.</span>
+                <span className="sr-only">Source-backed.</span>{" "}
               </>
             ) : null}
             <span className="min-w-0 truncate">
@@ -94,7 +94,7 @@ function RowBody({
               {lead}
               {setLabel}
             </span>
-          </span>
+          </span>{" "}
           {isWork ? <WorkTag tone="neutral">This phone</WorkTag> : null}
         </span>
       </span>
@@ -247,8 +247,6 @@ export function FavouriteRow({
           <button
             type="button"
             aria-pressed={selected}
-            aria-label={`Select ${item.title}`}
-            aria-describedby={metaId}
             onClick={() => onToggleSelected(item)}
             className={cn(
               "flex min-h-tap min-w-0 flex-1 items-center gap-3 rounded-md py-2 pr-2 text-left",
@@ -256,6 +254,8 @@ export function FavouriteRow({
               insetFocus,
             )}
           >
+            {/* Named by everything the row shows (WCAG 2.5.3, A11Y-02), after what it does. */}
+            <span className="sr-only">Select</span>{" "}
             <RowBody item={item} view={view} showSet={showSet} time={time} metaId={metaId} />
             {/* The tick sits at the row's end, where the actions button sits while browsing. */}
             <span
@@ -295,9 +295,7 @@ export function FavouriteRow({
             <button
               type="button"
               onClick={() => onSelectForWorkspace(item)}
-              aria-label={`Select ${item.title} for workspace`}
               aria-pressed={workspaceSelected}
-              aria-describedby={`${metaId}-wide`}
               className={cn(
                 "hidden min-w-0 max-w-full items-center gap-2.5 rounded-md text-left xl:flex",
                 "flex-1 gap-3 py-2",
@@ -305,13 +303,13 @@ export function FavouriteRow({
                 insetFocus,
               )}
             >
-              <RowBody item={item} view={view} showSet={showSet} time={time} metaId={`${metaId}-wide`} />
+              <span className="sr-only">Select</span>{" "}
+              <RowBody item={item} view={view} showSet={showSet} time={time} metaId={`${metaId}-wide`} />{" "}
+              <span className="sr-only">for workspace</span>
             </button>
             <Link
               href={item.href}
               onClick={() => onOpen(item)}
-              aria-label={`Open ${item.title}`}
-              aria-describedby={`${metaId}-narrow`}
               draggable={false}
               className={cn(
                 "block min-w-0 max-w-full rounded-md text-left xl:hidden",
@@ -321,6 +319,7 @@ export function FavouriteRow({
                 stretchedRowLinkClass,
               )}
             >
+              <span className="sr-only">Open</span>{" "}
               <span className="flex min-w-0 items-center gap-3 [html[data-large-text]_&]:flex-wrap">
                 <RowBody item={item} view={view} showSet={showSet} time={time} metaId={`${metaId}-narrow`} />
               </span>

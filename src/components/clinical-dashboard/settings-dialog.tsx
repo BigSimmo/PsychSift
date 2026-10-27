@@ -93,6 +93,7 @@ import {
 import { ProviderBrandMark, type SsoProvider } from "@/components/clinical-dashboard/provider-brand-icons";
 import { ReminderSettingsBlock } from "@/components/clinical-dashboard/settings-reminders";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useSignOutConfirm } from "@/components/clinical-dashboard/sign-out-confirm";
 import { Select } from "@/components/ui/select";
 import { Sheet } from "@/components/ui/sheet";
 import { SegmentedControl } from "@/components/ui/segmented-control";
@@ -341,6 +342,10 @@ export function SettingsDialog({
   const [privacyNotice, setPrivacyNotice] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [pendingConfirm, setPendingConfirm] = useState<"clear-saved" | "reset" | null>(null);
+  const { requestSignOut, dialog: signOutConfirm } = useSignOutConfirm(() => {
+    onSignOut();
+    onClose();
+  });
   const [prevOpen, setPrevOpen] = useState(false);
 
   const settingsAuthBusy = auth.status === "loading";
@@ -1151,10 +1156,8 @@ export function SettingsDialog({
                     ) : (
                       <button
                         type="button"
-                        onClick={() => {
-                          onSignOut();
-                          onClose();
-                        }}
+                        onClick={requestSignOut}
+                        data-testid="settings-sign-out"
                         className={cn(
                           floatingControl,
                           "mt-3 w-full justify-center gap-2 rounded-lg text-sm md:w-auto md:px-4",
@@ -1588,6 +1591,7 @@ export function SettingsDialog({
         }
         confirmLabel="Reset everything"
       />
+      {signOutConfirm}
     </Sheet>
   );
 }

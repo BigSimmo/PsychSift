@@ -328,6 +328,7 @@ const routeDescriptions: Record<string, string> = {
 
 const publicRouteHandlerDescriptions: Record<string, string> = {
   "/auth/callback": "Authentication callback handler.",
+  "/auth/confirm": "Email link handler: shows a Continue button, then verifies the Supabase token hash on POST.",
   "/icons/[variant]": "Dynamically generated application icon handler.",
 };
 

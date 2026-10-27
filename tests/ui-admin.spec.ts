@@ -61,9 +61,10 @@ test.describe("Admin mode — redirects, pill identity and shared chrome", () =>
     // CI runs this in demo mode. The demo corpus links seven rows to catalogue
     // items (`src/lib/on-call/demo-entries.ts`), so the Registration and
     // Checks groups both hold a recorded row.
-    // `tests/admin-requirements.test.ts` pins that corpus property offline.
-    await expect(page.getByRole("heading", { name: /^Registration · \d+$/ })).toBeVisible();
-    await expect(page.getByRole("heading", { name: /^Checks · \d+$/ })).toBeVisible();
+    // `tests/admin-requirements.test.ts` pins that corpus property offline. Each group
+    // heading reads its count, then the summary line it shows (WCAG 2.5.3).
+    await expect(page.getByRole("heading", { name: /^Registration · \d+ / })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /^Checks · \d+ / })).toBeVisible();
     await expect(visibleByTestId(page, "admin-renewals-checklist-row-medical-registration-renewal")).toBeVisible();
 
     // By group is where the retired Compliance page now lives, and its old address redirects there.

@@ -166,6 +166,7 @@ export async function hydrateCandidatesWithMetadataAndMemory(args: {
   query: string;
   candidates: SearchResult[];
   queryEmbedding?: number[];
+  vectorOnly?: boolean;
   ownerId?: string;
   accessScope?: RetrievalAccessScope;
   documentIds?: string[];
@@ -185,6 +186,7 @@ export async function hydrateCandidatesWithMetadataAndMemory(args: {
         supabase: args.supabase,
         query: args.query,
         queryEmbedding: args.queryEmbedding,
+        vectorOnly: args.vectorOnly,
         ownerId: args.ownerId,
         accessScope: args.accessScope,
         documentIds: args.documentIds,

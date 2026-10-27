@@ -5,6 +5,7 @@ import {
   isAbortError,
 } from "@/components/clinical-dashboard/clinical-dashboard-helpers";
 import {
+  answerApiFailure,
   makeSearchError,
   readAnswerStream,
   SEARCH_SESSION_EXPIRED_MESSAGE,
@@ -73,7 +74,7 @@ export async function requestAnswerStream({
     throw makeSearchError(SEARCH_SESSION_EXPIRED_MESSAGE, 401, false);
   }
   if (!response.ok) {
-    throw await parseApiErrorResponse(response);
+    throw answerApiFailure(await parseApiErrorResponse(response));
   }
 
   try {

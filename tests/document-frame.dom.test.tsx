@@ -76,7 +76,7 @@ describe("DocumentFrame", () => {
 
     const toolbar = screen.getByRole("toolbar", { name: "Document viewing controls" });
     expect(toolbar).toHaveAttribute("data-print-hide");
-    expect(screen.getByRole("button", { name: "Fit document to width" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Fit width of document" })).toHaveAttribute("aria-pressed", "true");
     // Zoom renders twice by design: inline from 380px up, and inside the phone
     // overflow below it. CSS shows exactly one; jsdom sees both.
     const [inlineZoomOut] = screen.getAllByRole("button", { name: "Zoom out" });
@@ -87,8 +87,8 @@ describe("DocumentFrame", () => {
 
     fireEvent.click(inlineZoomOut);
     fireEvent.click(inlineZoomIn);
-    fireEvent.click(screen.getByRole("button", { name: "Fit document to width" }));
-    fireEvent.click(screen.getByRole("button", { name: "Reduce document surround glare" }));
+    fireEvent.click(screen.getByRole("button", { name: "Fit width of document" }));
+    fireEvent.click(screen.getByRole("button", { name: "Viewing aid: reduce glare around the document" }));
 
     expect(onZoomChange).toHaveBeenNthCalledWith(1, 0.85);
     expect(onZoomChange).toHaveBeenNthCalledWith(2, 1.15);
@@ -131,7 +131,7 @@ describe("DocumentFrame", () => {
     fireEvent.blur(screen.getByLabelText("Page number"));
     expect(onPageChange).toHaveBeenLastCalledWith(7);
 
-    expect(screen.getByRole("button", { name: "Fit document to width" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Fit width of document" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Enter fullscreen document view" })).toBeVisible();
     expect(screen.queryByRole("button", { name: "Fit page width and enter fullscreen" })).toBeNull();
   });

@@ -96,8 +96,8 @@ export function OnCallLegalField({
       </FieldLabel>
       <button
         type="button"
-        aria-labelledby={labelId}
-        aria-describedby={`${labelId}-value`}
+        // The name carries the shown value too, so voice control can say it (WCAG 2.5.3, A11Y-02).
+        aria-labelledby={`${labelId} ${labelId}-value`}
         aria-haspopup="dialog"
         onClick={() => setOpen(true)}
         className={cn(
@@ -109,7 +109,7 @@ export function OnCallLegalField({
         <span id={`${labelId}-value`} className="flex min-w-0 flex-1 items-center gap-3">
           {value ? (
             <>
-              {title ? <span className={codeBadge}>{value}</span> : null}
+              {title ? <span className={codeBadge}>{value}</span> : null}{" "}
               <span className="min-w-0 flex-1 break-words text-base-minus text-[color:var(--text-heading)]">
                 {title ?? value}
               </span>

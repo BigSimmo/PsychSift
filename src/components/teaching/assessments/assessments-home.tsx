@@ -138,13 +138,12 @@ export function AssessmentsHome({ s, openSheet, dct }: ScreenProps) {
         ring={
           <WorkRing
             value={weeks}
-            label={`of ${YEAR_WEEKS} wk`}
+            label={`of ${YEAR_WEEKS}`}
             fraction={weeks / YEAR_WEEKS}
             accessibleLabel={`${withUnit(weeks, "of")} ${withUnit(YEAR_WEEKS, "weeks")} done this year`}
           />
         }
         href={viewHref("reqs")}
-        aria-label={`Week ${withUnit(week, "of")} 10. ${withUnit(weeks, "of")} ${withUnit(YEAR_WEEKS, "weeks")} done this year. Open year requirements.`}
       />
 
       <SectionLabel end={<TextLink href={viewHref("term", { term: "t4" })}>Term details</TextLink>}>

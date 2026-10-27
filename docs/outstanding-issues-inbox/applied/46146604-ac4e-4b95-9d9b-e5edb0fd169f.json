@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "46146604-ac4e-4b95-9d9b-e5edb0fd169f",
+  "createdOn": "2026-10-23",
+  "action": "update",
+  "payload": {
+    "id": "#C4Q3T7",
+    "summary": "Assess remaining calculator mockup components and test dependencies after route retirement",
+    "detail": "CURRENT CORRECTION 24 October 2026: calculator mockup routes are already retired and removed (384eb663cd; mockups/README.md lists eight retired routes). Remaining candidates are src/components/calculator-mockups/index.ts and its component/fixture/pathway files, with real test dependencies including calculator-content-fidelity, calculator-completion-and-quarantine, calculator-mockup-clinical-safety and calculator-mockup-boundary. Assess reachability and the normal deletion safeguards before any removal; do not call the whole directory dead. This is distinct from the 13 November hold under #8Y9169. No code/test was deleted.\n\nHISTORICAL DETAIL (superseded where corrected above): #1WAA0Z was archived on 17 Oct after confirming only the On Call Education, Compliance and Logistics screens are live (audit L4D-05). The older calculator mockups under src/app/mockups (calculators-*) from audit M5-2 were not checked. Delete nothing without npm run check:dead-code-candidate (see docs/agents/dead-code-deletion.md).",
+    "source": "Independent current-source cross-check 24 October 2026 at df1e07db04; mockups/README.md and src/components/calculator-mockups.",
+    "baseRowFingerprint": "79b9c1e86708969afb10ccb5dfa416914b989d22c31a5ca9dac7afc8e10f9fb7",
+    "targetUlid": "01M54YEVVBC4Q3T76N15KMZVWV"
+  }
+}

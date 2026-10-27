@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-10-26T12:01:36.200Z",
+  "generated_at": "2026-10-26T17:21:29.185Z",
   "generator": "scripts/generate-drift-manifest.ts",
   "postgres_image": "supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83",
-  "schema_sha256": "c37bbc0227a82f048aa4037aa349bb593e74eff0cf0d09c51f61470411730688",
-  "replay_seconds": 22,
+  "schema_sha256": "52e1e20eec989674cf86ddcb77bad9c658df9fc6c574bc4b0b2a547e8c6d68ba",
+  "replay_seconds": 19,
   "snapshot": {
     "views": [
       {
@@ -8833,14 +8833,6 @@
             "generated": ""
           },
           {
-            "name": "url",
-            "type": "text",
-            "default": null,
-            "identity": "",
-            "not_null": false,
-            "generated": ""
-          },
-          {
             "name": "url_host",
             "type": "text",
             "default": null,
@@ -16434,6 +16426,12 @@
         "def_hash": "5b0baaf4607ffc2abeb7dcc985d153d0"
       },
       {
+        "def": "CREATE UNIQUE INDEX roster_calendar_links_url_secret_unique ON public.roster_calendar_links USING btree (url_secret_id)",
+        "name": "roster_calendar_links_url_secret_unique",
+        "table": "roster_calendar_links",
+        "def_hash": "ca53ec1f235811d6d6911225dcaac252"
+      },
+      {
         "def": "CREATE UNIQUE INDEX roster_change_agreements_pkey ON public.roster_change_agreements USING btree (change_id, user_id)",
         "name": "roster_change_agreements_pkey",
         "table": "roster_change_agreements",
@@ -18913,8 +18911,8 @@
         "table": "roster_calendar_links"
       },
       {
-        "def": "CREATE TRIGGER roster_calendar_links_seal_url BEFORE INSERT OR UPDATE ON public.roster_calendar_links FOR EACH ROW EXECUTE FUNCTION public.roster_calendar_links_seal_url()",
-        "name": "roster_calendar_links_seal_url",
+        "def": "CREATE TRIGGER roster_calendar_links_pin_secret BEFORE UPDATE ON public.roster_calendar_links FOR EACH ROW EXECUTE FUNCTION public.roster_calendar_links_pin_secret()",
+        "name": "roster_calendar_links_pin_secret",
         "table": "roster_calendar_links"
       },
       {
@@ -20806,7 +20804,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "3c2439733defbcd1dfe8273bc56de2ff",
+        "def_hash": "4ba043a0458fc8055bddce8ee7a01860",
         "signature": "public.roster_calendar_link_add(uuid,text,text)"
       },
       {
@@ -20835,8 +20833,8 @@
         "acl": [
           "postgres=X/postgres"
         ],
-        "def_hash": "719518bf4142ccf8ffe84fa0b985fec9",
-        "signature": "public.roster_calendar_links_seal_url()"
+        "def_hash": "225129d94188f7a622fead0e0e4a7aad",
+        "signature": "public.roster_calendar_links_pin_secret()"
       },
       {
         "acl": [
@@ -20851,7 +20849,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "439f7982b4a841ad6685fef4c2eb3764",
+        "def_hash": "ba8aa3de476fd7a7c02e870cd5c1ce5a",
         "signature": "public.roster_command(uuid,uuid,text,jsonb)"
       },
       {
@@ -21043,6 +21041,14 @@
         ],
         "def_hash": "88e1a65f5536d4f9c7be100661805c19",
         "signature": "public.roster_swap_accept_for_manager(uuid,uuid,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "138ead40994c9e25283a209196f939b7",
+        "signature": "public.roster_swap_breaks_team_rules(uuid,uuid,jsonb)"
       },
       {
         "acl": [
@@ -24511,13 +24517,13 @@
         "table": "roster_calendar_links"
       },
       {
-        "def": "CHECK (((url ~ '^https://'::text) AND (char_length(url) <= 2000)))",
-        "name": "roster_calendar_links_url_check",
+        "def": "CHECK (((url_host IS NULL) OR (char_length(url_host) <= 253)))",
+        "name": "roster_calendar_links_url_host_check",
         "table": "roster_calendar_links"
       },
       {
-        "def": "CHECK (((url_host IS NULL) OR (char_length(url_host) <= 253)))",
-        "name": "roster_calendar_links_url_host_check",
+        "def": "UNIQUE (url_secret_id)",
+        "name": "roster_calendar_links_url_secret_unique",
         "table": "roster_calendar_links"
       },
       {

@@ -39,6 +39,7 @@ import { countAllRecents, forgetAllRecents } from "@/lib/work-search/memory";
 import { FATIGUE_RULE_SET } from "@/lib/roster/fatigue-rules-source";
 import { ROSTER_GRADES } from "@/lib/roster/team/model";
 import { useAuthSession } from "@/lib/supabase/client";
+import { useSignOutConfirm } from "@/components/clinical-dashboard/sign-out-confirm";
 import {
   adminArea,
   cpdArea,
@@ -396,6 +397,7 @@ export function PrivacyPanel({
   readonly prefs: WorkProfilePreferences;
 }) {
   const { signOut } = useAuthSession();
+  const { requestSignOut, dialog: signOutConfirm } = useSignOutConfirm(() => void signOut());
   const [cleared, setCleared] = useState<string | null>(null);
   const teams = teamMemberships(
     data.teams.status === "ready" ? data.teams.value : [],
@@ -476,7 +478,8 @@ export function PrivacyPanel({
           href="/roster/settings"
         />
       </WorkProfileSection>
-      <SignOutBlock onSignOut={() => void signOut()} />
+      <SignOutBlock onSignOut={requestSignOut} />
+      {signOutConfirm}
     </div>
   );
 }

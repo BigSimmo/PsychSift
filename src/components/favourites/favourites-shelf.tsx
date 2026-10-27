@@ -28,6 +28,23 @@ function tileSub(item: FavouriteItem): string {
   return item.type === "Work page" ? (item.areaName ?? "Work") : item.type;
 }
 
+/**
+ * The tile's spoken name opens with the two lines it shows, so voice control can say
+ * them (WCAG 2.5.3, A11Y-02), then adds what the tile only hints at.
+ */
+function tileAccessibleName(item: FavouriteItem): string {
+  const shortTitle = item.shortTitle ?? item.title;
+  return [
+    shortTitle,
+    item.example ? "Example" : tileSub(item),
+    shortTitle !== item.title ? item.title : null,
+    item.example ? tileSub(item) : null,
+    item.pinned ? "pinned" : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
+}
+
 const tileClass = cn(
   "flex min-h-tap w-full min-w-0 select-none flex-col items-center gap-1.5 rounded-xl px-0.5 py-1.5 text-center [-webkit-touch-callout:none] active:bg-[color:var(--work-wash)]",
   focusRing,
@@ -58,7 +75,7 @@ function TileFace({ item }: { item: FavouriteItem }) {
           className="line-clamp-2 overflow-hidden text-ellipsis [overflow-wrap:normal] [word-break:normal] [html[data-large-text]_&]:[overflow-wrap:break-word] text-xs font-bold leading-tight text-[color:var(--work-ink)]"
         >
           {label}
-        </span>
+        </span>{" "}
         <span
           className={cn(
             "mt-0.5 block min-w-0 truncate text-2xs font-semibold text-[color:var(--text-muted)]",
@@ -79,7 +96,7 @@ function NumberTile({ item, onOpenNumber }: { item: FavouriteItem; onOpenNumber:
       <button
         type="button"
         aria-haspopup="dialog"
-        aria-label={`${item.title}, number ${item.phone ?? ""}${item.pinned ? ", pinned" : ""}`}
+        aria-label={tileAccessibleName(item)}
         data-testid="favourites-shelf-tile"
         onClick={() => onOpenNumber(item)}
         className={tileClass}
@@ -114,7 +131,7 @@ function ShelfTile({
       <Link
         href={item.href}
         draggable={false}
-        aria-label={`${item.title}, ${tileSub(item)}${item.pinned ? ", pinned" : ""}`}
+        aria-label={tileAccessibleName(item)}
         data-testid="favourites-shelf-tile"
         onPointerDown={
           onShowActions

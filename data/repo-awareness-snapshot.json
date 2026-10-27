@@ -1,7 +1,7 @@
 {
   "version": "repo-awareness-snapshot-v3",
   "captured_revision": {
-    "committed_at": "2026-10-26"
+    "committed_at": "2026-10-27"
   },
   "routes": {
     "modes": [
@@ -2122,6 +2122,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-26-sign-in-and-declaration-card-wording-approved.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/search-results-bar-decisions.md",
         "section": "root",
         "catalogued": true
@@ -2169,6 +2174,11 @@
       {
         "path": "docs/superpowers/plans/2026-08-23-platform-contracts-readiness.md",
         "section": "superpowers",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-26-supermemory-route-per-environment.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -2227,6 +2237,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/access-roles.md",
+        "section": "root",
+        "catalogued": true
+      },
+      {
         "path": "docs/codex/data-database-safety/README.md",
         "section": "codex",
         "catalogued": true
@@ -2268,6 +2283,11 @@
       },
       {
         "path": "docs/decisions/2026-10-16-original-section-delivery-scope.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-27-workforce-names-roster-managers.md",
         "section": "decisions",
         "catalogued": true
       },
@@ -2967,6 +2987,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-27-slow-sign-in-note.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/decisions/2026-10-19-citations-stay-pdf-first.md",
         "section": "decisions",
         "catalogued": true
@@ -2989,6 +3014,11 @@
       {
         "path": "docs/privacy-impact-assessment.md",
         "section": "root",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-26-accept-agitation-dose-review.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -3987,6 +4017,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-26-health-professional-declaration-at-first-open.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/rag-behaviour/canary-ledger.md",
         "section": "rag-behaviour",
         "catalogued": true
@@ -3994,6 +4029,11 @@
       {
         "path": "docs/superpowers/specs/2026-09-01-sources-mode-design.md",
         "section": "superpowers",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-27-work-mode-layout-fixes.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -4283,6 +4323,11 @@
       },
       {
         "path": "docs/decisions/2026-08-09-visual-baseline-off-pull-requests.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-27-defer-worker-malware-scanner.md",
         "section": "decisions",
         "catalogued": true
       },
@@ -4597,6 +4642,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-26-sign-in-and-create-account-separated.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/dictionary-editorial-drafts.md",
         "section": "root",
         "catalogued": true
@@ -4703,6 +4753,11 @@
       },
       {
         "path": "docs/decisions/2026-09-26-leave-extended-rag-telemetry-off.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-26-gentle-accessibility-options.md",
         "section": "decisions",
         "catalogued": true
       },
@@ -4943,6 +4998,11 @@
       },
       {
         "path": "docs/decisions/2026-10-26-crisis-routing-under-18-youth-and-000.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-26-sign-in-keeps-signed-out-shift-work.md",
         "section": "decisions",
         "catalogued": true
       },

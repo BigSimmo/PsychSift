@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "154fe509-696f-4604-95c5-62514eb5d7ec",
+  "createdOn": "2026-10-27",
+  "action": "done",
+  "payload": {
+    "id": "#NBJQD8",
+    "outcome": "Resolved 2026-10-26: the owner re-signed the interaction lexicon at mappings hash ad3e17bc by his own decision-card answer ('Re-sign as listed', 26 Oct 15:59Z), recorded in docs/medication-interaction-lexicon-review.md by commit e292761e. The only later change to the index (8ff36286, linezolid row) states the mappings hash is unchanged. That new linezolid interaction row needs its own owner sign-off, which is row-level content review, not this lexicon sign-off. Checked against main df306fc1 on 27 Oct.",
+    "baseRowFingerprint": "667bbcaa67f45cd7f26f7c62d443e4ec5f482830fe3422cdf775c3d306134c79",
+    "targetUlid": "01M4T65YMSNBJQD8DBMDCNM2SF"
+  }
+}

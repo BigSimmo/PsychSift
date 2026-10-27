@@ -6,10 +6,22 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const auth = vi.hoisted(() => ({ status: "signed_out" as string }));
 
-vi.mock("@/lib/supabase/client", () => ({
-  useAuthSession: () => ({ status: auth.status }),
-  useOptionalAuthSession: () => ({ status: auth.status }),
-}));
+// A signed-in reader here has made the health professional declaration (D26-07).
+vi.mock("@/lib/supabase/client", async () => {
+  const { TERMS_VERSION } = await import("@/lib/front-door-content");
+  const { TERMS_METADATA_KEY } = await import("@/lib/terms-acceptance");
+  const declaredSession = {
+    user: {
+      id: "synthetic-user",
+      user_metadata: { [TERMS_METADATA_KEY]: { version: TERMS_VERSION, acceptedAt: "2026-10-26T00:00:00.000Z" } },
+    },
+  };
+  const session = () => (auth.status === "authenticated" ? declaredSession : null);
+  return {
+    useAuthSession: () => ({ status: auth.status, session: session() }),
+    useOptionalAuthSession: () => ({ status: auth.status, session: session() }),
+  };
+});
 vi.mock("@/components/clinical-dashboard/account-setup-dialog", () => ({
   AccountSetupDialog: () => <div role="dialog" aria-label="Continue to your workspace" />,
 }));

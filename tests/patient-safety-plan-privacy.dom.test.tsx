@@ -124,7 +124,7 @@ describe("PatientSafetyPlan privacy contract", () => {
       target: { value: "Not sleeping" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Load example" }));
-    fireEvent.click(screen.getByRole("button", { name: "Clear all" }));
+    fireEvent.click(screen.getByRole("button", { name: "Clear the plan" }));
     fireEvent.click(screen.getByRole("button", { name: "Go back" }));
 
     expect(confirmSpy).toHaveBeenCalledOnce();

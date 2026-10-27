@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "3c82bfbc-4ada-4e67-a0d8-8f1c02ebaf6a",
+  "createdOn": "2026-10-23",
+  "action": "update",
+  "payload": {
+    "id": "#61GQYY",
+    "summary": "Held formulation source worklist (34 at last recorded reconciliation)",
+    "detail": "REVALIDATED 2026-10-23 at df1e07db04. Preserve held-source blockers; the last recorded remaining count is 34, not the title's 41. Treat the count as dated and require current per-source reconciliation before adoption. Source inspection only; no fresh application/provider execution or clinical sign-off. Evidence: src/data/source-acquisitions.json. PRIOR DETAIL: Publishers resolved for CCI, Phoenix Australia, and Monash in PR #2880; 34 sources held with named blockers.",
+    "source": "Current-state issue revalidation 2026-10-23 at df1e07db04; PR #2880 review",
+    "baseRowFingerprint": "9470a9597dc7f2372eb772f679ab35e6ccb8ba7a408c87efaca1c7f7a2587a04",
+    "targetUlid": "01M2N7NYVH61GQYYTNFBK6H4F9"
+  }
+}

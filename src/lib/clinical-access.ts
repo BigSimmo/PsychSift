@@ -49,6 +49,7 @@ export async function requireHealthProfessionalDeclaration(
   access: { authenticated: boolean; ownerId?: string },
   supabase: AdminClient,
   now: number = Date.now(),
+  requiredMessage: string = DECLARATION_REQUIRED_MESSAGE,
 ) {
   if (isLocalNoAuthMode()) return;
   if (!access.authenticated || !access.ownerId) throw new AuthenticationError("Sign in to use this.");
@@ -66,7 +67,7 @@ export async function requireHealthProfessionalDeclaration(
     throw new PublicApiError(DECLARATION_CHECK_FAILED_MESSAGE, 503, { code: "declaration_check_unavailable" });
   }
   if (readTermsAcceptance(metadata)?.version !== TERMS_VERSION) {
-    throw new PublicApiError(DECLARATION_REQUIRED_MESSAGE, 403, { code: "terms_acceptance_required" });
+    throw new PublicApiError(requiredMessage, 403, { code: "terms_acceptance_required" });
   }
   if (confirmedDeclarations.size >= DECLARATION_CACHE_MAX) confirmedDeclarations.clear();
   confirmedDeclarations.set(cacheKey, now + DECLARATION_CACHE_TTL_MS);

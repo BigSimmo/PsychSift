@@ -12,6 +12,7 @@ import {
   RotateCcw,
   ShieldCheck,
   UserCheck,
+  UserCog,
   UserPlus,
   Users,
 } from "lucide-react";
@@ -47,6 +48,7 @@ import {
   LinkTeamSheet,
   MoveTeamSheet,
   RenameHospitalSheet,
+  TeamManagersSheet,
   type PeopleRun,
 } from "@/components/work-screens/admin/people-sheets";
 import { useRegistryDataset } from "@/components/work-screens/use-registry-dataset";
@@ -67,6 +69,7 @@ import {
   exampleViewerGrants,
   isWholeTeamSupervisor,
   grantedLine,
+  mayNameManagers,
   mayRemoveGrant,
   peopleScreenAllowed,
   peopleSections,
@@ -438,6 +441,7 @@ type OpenSheet =
   | { readonly kind: "link" }
   | { readonly kind: "hospital" }
   | { readonly kind: "move"; readonly serviceId: string }
+  | { readonly kind: "managers"; readonly serviceId: string }
   | { readonly kind: "rename" }
   | { readonly kind: "archive" };
 
@@ -472,6 +476,7 @@ function PeopleView({
   const administrator = viewer.administrator;
   const modelGrants = useMemo(() => viewerGrants(viewer, grants), [viewer, grants]);
   const mayGive = hospital ? rolesViewerMayGive(modelGrants, viewer.userId, hospital.id, viewer.canGrant) : [];
+  const nameManagers = hospital ? mayNameManagers(modelGrants, hospital.id, viewer.canNameManagers) : false;
   const sections = useMemo(() => (hospital ? peopleSections(hospital) : null), [hospital]);
   const canWrite = example || online;
 
@@ -491,6 +496,8 @@ function PeopleView({
       : [];
   const moveTeam =
     sheet?.kind === "move" ? (hospital?.teams.find((team) => team.serviceId === sheet.serviceId) ?? null) : null;
+  const managersTeam =
+    sheet?.kind === "managers" ? (hospital?.teams.find((team) => team.serviceId === sheet.serviceId) ?? null) : null;
 
   return (
     <>
@@ -651,21 +658,31 @@ function PeopleView({
                   title={team.name}
                   sub={
                     team.needsManager
-                      ? administrator
+                      ? nameManagers
                         ? "No roster manager"
-                        : "No roster manager. Ask a site administrator to name one"
+                        : "No roster manager. Ask Medical Workforce or a site administrator to name one"
                       : `Roster ${team.managers.length === 1 ? "manager" : "managers"} ${team.managers.join(", ")}`
                   }
                   end={
-                    administrator ? (
+                    administrator || nameManagers ? (
                       <span className="flex items-center gap-1">
                         {team.needsManager ? <WorkTag tone="amber">Needs one</WorkTag> : null}
-                        <PaperworkIconButton
-                          icon={ArrowRightLeft}
-                          label={`Move ${team.name} to another hospital`}
-                          onClick={() => setSheet({ kind: "move", serviceId: team.serviceId })}
-                          testId="admin-people-team-move"
-                        />
+                        {nameManagers ? (
+                          <PaperworkIconButton
+                            icon={UserCog}
+                            label={`Roster managers for ${team.name}`}
+                            onClick={() => setSheet({ kind: "managers", serviceId: team.serviceId })}
+                            testId="admin-people-team-managers"
+                          />
+                        ) : null}
+                        {administrator ? (
+                          <PaperworkIconButton
+                            icon={ArrowRightLeft}
+                            label={`Move ${team.name} to another hospital`}
+                            onClick={() => setSheet({ kind: "move", serviceId: team.serviceId })}
+                            testId="admin-people-team-move"
+                          />
+                        ) : null}
                       </span>
                     ) : team.needsManager ? (
                       <WorkTag tone="amber">Needs one</WorkTag>
@@ -774,6 +791,18 @@ function PeopleView({
           supervisors={hospital.grants.filter((grant) => isWholeTeamSupervisor(grant, moveTeam.serviceId)).length}
           from={hospital}
           hospitals={data.hospitals}
+          online={canWrite}
+          run={run}
+          onClose={() => setSheet(null)}
+        />
+      ) : null}
+
+      {sheet?.kind === "managers" && hospital && nameManagers && managersTeam ? (
+        <TeamManagersSheet
+          hospital={hospital}
+          team={managersTeam}
+          viewerId={viewer.userId}
+          administrator={administrator}
           online={canWrite}
           run={run}
           onClose={() => setSheet(null)}

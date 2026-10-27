@@ -578,7 +578,7 @@ export function MyDayWeekDays({
             <span className="grid min-w-0 flex-1">
               <span className="text-sm-minus font-bold text-[color:var(--work-ink)] nums">
                 {`${hoursText(rosteredHours)} h rostered this week`}
-              </span>
+              </span>{" "}
               <span className="text-2xs text-[color:var(--text-muted)]">Hours by week and fortnight, not pay</span>
             </span>
             <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-[color:var(--text-muted)]" />
@@ -586,7 +586,6 @@ export function MyDayWeekDays({
         ) : null}
         <Link
           href="/roster"
-          aria-label="Open Roster: all your shifts, swaps, leave and your team"
           data-testid="my-day-week-footer"
           className={cn(
             quietCard,
@@ -596,7 +595,10 @@ export function MyDayWeekDays({
         >
           <AreaIcon mode="roster" icon={CalendarDays} />
           <span className="grid min-w-0 flex-1">
-            <span className="text-sm-minus font-bold text-[color:var(--work-ink)]">All your shifts are in Roster</span>
+            {/* Named by what it shows, so voice control can say it (WCAG 2.5.3, A11Y-02). */}
+            <span className="text-sm-minus font-bold text-[color:var(--work-ink)]">
+              All your shifts are in Roster
+            </span>{" "}
             <span className="text-2xs text-[color:var(--text-muted)]">Swaps, leave and your team</span>
           </span>
           <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-[color:var(--text-muted)]" />

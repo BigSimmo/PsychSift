@@ -59,11 +59,6 @@ export function longDay(date: string): string {
   return `${WEEKDAY_LONG[weekday]} ${Number(date.slice(8, 10))} ${MONTH_LONG[Number(date.slice(5, 7)) - 1]}`;
 }
 
-function shortDay(date: string): string {
-  const weekday = new Date(`${date}T00:00:00Z`).getUTCDay();
-  return `${WEEKDAY_SHORT[weekday]} ${Number(date.slice(8, 10))} ${MONTH_LONG[Number(date.slice(5, 7)) - 1]!.slice(0, 3)}`;
-}
-
 /**
  * The chip colours, from the shared shift tokens: a soft fill of the shift's
  * own colour with its letter in that colour. The letter is always there, so
@@ -286,8 +281,18 @@ export function RosterMonthGrid({
                 : kinds.length
                   ? kinds.map((kind) => SHIFT_KIND_LABEL[kind]).join(" and ")
                   : "Off";
+              // "Thu 8 D: Day": the day number and letters the cell shows lead the name, so
+              // voice control can say them (WCAG 2.5.3, A11Y-02). The month is the grid's name.
+              const chipKind = notLoaded ? null : (kinds[0] ?? entry?.ghost ?? null);
+              const shown = [
+                String(Number(date.slice(8, 10))),
+                chipKind ? SHIFT_LETTER[chipKind] : null,
+                holiday ? "PH" : null,
+              ]
+                .filter(Boolean)
+                .join(" ");
               const label = [
-                `${shortDay(date)}: ${words}`,
+                `${WEEKDAY_SHORT[new Date(`${date}T00:00:00Z`).getUTCDay()]} ${shown}: ${words}`,
                 entry?.swapAsked ? "swap asked" : null,
                 entry?.ghost && !kinds.length
                   ? `a swap would give you ${SHIFT_KIND_LABEL[entry.ghost].toLowerCase()}`
@@ -328,7 +333,7 @@ export function RosterMonthGrid({
                       )}
                     >
                       {Number(date.slice(8, 10))}
-                    </b>
+                    </b>{" "}
                     {notLoaded ? (
                       <i
                         aria-hidden="true"
@@ -342,7 +347,7 @@ export function RosterMonthGrid({
                         dashed={entry?.swapAsked || (!kinds.length && Boolean(entry?.ghost))}
                       />
                     )}
-                    {entry?.starts?.length ? <RosterStartDot className="absolute right-1 top-1" /> : null}
+                    {entry?.starts?.length ? <RosterStartDot className="absolute right-1 top-1" /> : null}{" "}
                     {holiday ? (
                       <span
                         aria-hidden="true"

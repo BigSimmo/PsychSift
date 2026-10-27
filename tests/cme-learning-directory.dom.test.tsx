@@ -46,7 +46,8 @@ describe("CME learning directory page", () => {
     expect(screen.queryByText("Past event")).toBeNull();
     expect(cards[1]).toHaveTextContent("Mon 2 Nov to Tue 3 Nov · Perth · Free for members");
     expect(cards[0]).toHaveTextContent("Thu 1 Oct, all day · Online · Free for members");
-    expect(main).toHaveTextContent("Western Australia. Checked Sunday 20 September.");
+    // The checked date lives once, in the title's small line, not again in the hint.
+    expect(main).not.toHaveTextContent("Western Australia. Checked");
     expect(main).toHaveTextContent(/not an endorsement/i);
     expect(main).toHaveTextContent(/confirm .* with the organiser/i);
     expect(screen.queryByTestId("cme-learning-stale")).toBeNull();

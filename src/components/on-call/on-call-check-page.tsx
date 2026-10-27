@@ -154,12 +154,11 @@ export function OnCallCheckPage({ now: nowProp }: { now?: Date } = {}) {
                       >
                         <Link
                           href={onCallEntryHref(entry)}
-                          aria-label={`${entry.title}. Open to edit`}
                           className="grid min-h-tap min-w-0 flex-1 content-center py-1.5 no-underline"
                         >
                           <span className="break-words text-sm font-semibold text-[color:var(--text)]">
                             {entry.title}
-                          </span>
+                          </span>{" "}
                           <span className={cn(textMuted, "break-words text-xs")}>
                             {[
                               ON_CALL_VIEW_TITLES[entry.view ?? onCallViewForEntry(entry)],
@@ -170,6 +169,8 @@ export function OnCallCheckPage({ now: nowProp }: { now?: Date } = {}) {
                                 : "Never checked",
                             ].join(" · ")}
                           </span>
+                          {/* Named by what it shows, then what it does (WCAG 2.5.3, A11Y-02). */}
+                          <span className="sr-only">. Open to edit</span>
                         </Link>
                         {demoMode ? null : (
                           <button

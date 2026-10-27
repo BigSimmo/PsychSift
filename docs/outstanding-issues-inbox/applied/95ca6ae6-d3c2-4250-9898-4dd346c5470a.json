@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "95ca6ae6-d3c2-4250-9898-4dd346c5470a",
+  "createdOn": "2026-10-23",
+  "action": "update",
+  "payload": {
+    "id": "#MT3PZ9",
+    "summary": "MHA s44 is pinned; Form 1A, second start input and day-counting decisions remain",
+    "detail": "CURRENT CORRECTION 24 October 2026: data/mha-2014-sections.source.json already pins s44 (1c0a1ee558), so do not repeat that prerequisite. Form 1A still has no entry in data/mha-timeframes.json; src/components/forms/mha-timeline-panel.tsx retains one start input, and src/lib/mha-timeline.ts still rejects day units pending the owner ruling. Retain the specification, implementation and owner-only statutory sign-off boundaries for those remaining pieces. No statutory wording or countdown approval was changed.\n\nHISTORICAL DETAIL (superseded where corrected above): (1) Form 1A 72-hour examination limit is absent because s 44 was not in the pinned Act text when drafted; s 44 may now be pinned. (2) Limits that run from an event other than making the form (3C, 3B, 1B, 4B, 6D, seclusion, restraint, review windows) were dropped rather than counted from the wrong time; adding them needs a second start-time input. (3) The contract rejects unit days until the owner rules whether within N days means same clock time N days later or end of the Nth day (WA Interpretation Act s 61). Owner rules; then a builder implements with verbatim quotes only.",
+    "source": "Independent current-source cross-check 24 October 2026 at df1e07db04; exact source paths retained in detail.",
+    "baseRowFingerprint": "d1061d7e5a795cd8e6c9965b43a31924cb0baf6879acb8e9f31fc69b70f450ac",
+    "targetUlid": "01M3CMBNP8MT3PZ9WGJ44YVST4"
+  }
+}

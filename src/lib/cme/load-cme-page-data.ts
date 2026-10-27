@@ -180,7 +180,7 @@ async function load(
       // The demo year is never closed; closing is refused in demo mode.
       close: null,
       goals: targetYear === DEMO_CME_YEAR.year ? DEMO_CME_PLAN_GOALS : [],
-      // Demo mode is read-only and has no drafts or missed sessions.
+      // These are example records, with no drafts or missed sessions.
       ...NO_RECORDS,
       trainingPosition: null,
       nextYearConfirmed: carryPreview ? carryPreview === "resume" : null,

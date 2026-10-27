@@ -57,7 +57,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     if (isDemoMode()) {
-      return publicErrorResponse("Demo mode is read-only. Sign in to record your training.", 400, {
+      return publicErrorResponse("These are example records. Sign in to record your training.", 400, {
         code: "demo_mode_unavailable",
       });
     }

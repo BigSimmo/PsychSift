@@ -279,7 +279,6 @@ function ProviderButton({
       type="button"
       onClick={onClick}
       disabled={busy}
-      aria-label={`Continue with ${provider}`}
       className={cn(
         controlDisabled,
         "flex min-h-tap w-full items-center gap-3 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-lux)] px-3 text-left text-sm font-semibold text-[color:var(--text-heading)] shadow-[var(--shadow-inset)] transition hover:border-[color:var(--border-strong)] hover:bg-[color:var(--surface-subtle)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] disabled:cursor-wait disabled:hover:border-[color:var(--border)] disabled:hover:bg-[color:var(--surface-lux)]",

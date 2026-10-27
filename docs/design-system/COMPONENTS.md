@@ -1069,7 +1069,7 @@ This generated snapshot is a local source-derived inventory. It does not assert 
 | `ChoiceChip`             | controls | yes   | yes                | inherited-global-root | yes            | no                 |               7 |
 | `Citation`               | source   | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
 | `CitationList`           | source   | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
-| `ConfirmDialog`          | layout   | yes   | yes                | inherited-global-root | yes            | no                 |              18 |
+| `ConfirmDialog`          | layout   | yes   | yes                | inherited-global-root | yes            | no                 |              20 |
 | `DateDisplay`            | source   | yes   | yes                | inherited-global-root | yes            | no                 |               4 |
 | `Disclosure`             | layout   | yes   | yes                | inherited-global-root | yes            | no                 |               3 |
 | `DisclosureGroup`        | layout   | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
@@ -1097,7 +1097,7 @@ This generated snapshot is a local source-derived inventory. It does not assert 
 | `RetrievalStateBanner`   | answer   | yes   | yes                | inherited-global-root | yes            | no                 |               2 |
 | `SafeBoldText`           | layout   | yes   | yes                | inherited-global-root | yes            | no                 |               8 |
 | `SearchField`            | controls | yes   | yes                | inherited-global-root | yes            | no                 |               5 |
-| `SegmentedControl`       | controls | yes   | yes                | inherited-global-root | yes            | no                 |              33 |
+| `SegmentedControl`       | controls | yes   | yes                | inherited-global-root | yes            | no                 |              34 |
 | `Select`                 | controls | yes   | yes                | inherited-global-root | yes            | no                 |              16 |
 | `Sheet`                  | layout   | yes   | yes                | inherited-global-root | yes            | no                 |             139 |
 | `Skeleton`               | feedback | yes   | yes                | inherited-global-root | yes            | no                 |              10 |

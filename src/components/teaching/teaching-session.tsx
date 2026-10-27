@@ -1,7 +1,7 @@
 "use client";
 
 import { CalendarX, Check, ClipboardList, MapPin, QrCode, UserRound, Video } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { InformationPageShell } from "@/components/information-page-shell";
 import { ModeGroupedList, ModeRow } from "@/components/mode-kit/grouped-list";
@@ -44,6 +44,7 @@ import {
   type RegisterRow,
 } from "@/lib/teaching/model";
 import { useTeachingDemoMode } from "@/components/teaching/use-teaching-sample";
+import { useHoldWhileEngaged } from "@/components/use-hold-while-engaged";
 
 /*
  * One session (spec §9, review focus 5): the phase module (Coming up; On now
@@ -431,6 +432,10 @@ function RegisterSheet({
   const [error, setError] = useState<string | null>(null);
   // Held for 10 seconds under Undo (the Organise pattern), then sent; `removing` covers the send itself.
   const delayed = useDelayedPost();
+  // The send waits while someone is on the Undo bar (WCAG 2.2.1).
+  const { held: undoHeld, holdProps: undoHoldProps } = useHoldWhileEngaged(Boolean(delayed.pending));
+  const holdDelayed = delayed.hold;
+  useEffect(() => holdDelayed(undoHeld), [holdDelayed, undoHeld]);
   const [removing, setRemoving] = useState<string | null>(null);
 
   function remove(userId: string, name: string) {
@@ -501,6 +506,7 @@ function RegisterSheet({
           <div
             role="status"
             data-testid="teaching-register-pending"
+            {...undoHoldProps}
             className="flex items-center justify-between gap-3 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)] py-1 pr-1 pl-3"
           >
             <span className="text-sm text-[color:var(--text-heading)]">{`${delayed.pending}.`}</span>

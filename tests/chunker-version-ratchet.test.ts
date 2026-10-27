@@ -75,6 +75,9 @@ const recorded: Record<string, string> = {
   // 1.3.3 splits the no-sentence-boundary sample above near the intended size (EXT-05) and
   // repeats the table sample's short footnote on every piece (EXT-07).
   "1.3.3-page|1.3.3-document": "b5498957bb9b6745a948fb402a420c48f3f9d4da723bb06b2c735535da0d4980",
+  // 1.3.4 preserves symbols and case during buildChunks deduplication. The text
+  // boundary corpus above is unchanged; symbol-pair regressions live in chunking.test.ts.
+  "1.3.4-page|1.3.4-document": "b5498957bb9b6745a948fb402a420c48f3f9d4da723bb06b2c735535da0d4980",
 };
 
 function fingerprint() {

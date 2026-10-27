@@ -1275,6 +1275,7 @@ describe("source-backed-review-fallback allowance must name real cases (#NPQJKP)
       "empty_after_sanitize",
       "generation_quality_failed",
       "invalid_model_citation_ids",
+      "dose_without_named_medication",
     ]);
     for (const allowed of qualityThresholds.ragSourceBackedReviewFallbackAllowance) {
       expect(emittable.has(allowed.reason)).toBe(true);

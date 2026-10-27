@@ -1949,6 +1949,7 @@ export async function searchEmbeddingFieldCandidates(args: {
   supabase: ReturnType<typeof createAdminClient>;
   query: string;
   queryEmbedding: number[];
+  vectorOnly?: boolean;
   ownerId?: string;
   accessScope?: RetrievalAccessScope;
   documentIds?: string[];
@@ -1964,7 +1965,7 @@ export async function searchEmbeddingFieldCandidates(args: {
     "match_document_embedding_fields_hybrid",
     {
       query_embedding: toPgVectorRpcParam(args.queryEmbedding),
-      query_text: buildClinicalTextSearchQuery(args.query),
+      query_text: args.vectorOnly ? "" : buildClinicalTextSearchQuery(args.query),
       match_count: args.matchCount,
       min_similarity: 0.12,
       document_filters: args.documentIds ?? undefined,
@@ -2010,6 +2011,7 @@ export async function searchIndexUnitCandidates(args: {
   supabase: ReturnType<typeof createAdminClient>;
   query: string;
   queryEmbedding: number[];
+  vectorOnly?: boolean;
   ownerId?: string;
   accessScope?: RetrievalAccessScope;
   documentIds?: string[];
@@ -2019,6 +2021,10 @@ export async function searchIndexUnitCandidates(args: {
   cache?: ChunkLoadCache;
   signal?: AbortSignal;
 }) {
+  throwIfAborted(args.signal);
+  // The current RPC selects candidates only through text/term matches; its cosine
+  // calculation scores that lexical pool rather than supplying a semantic lane.
+  if (args.vectorOnly) return [] as SearchResult[];
   const { data, error } = await callVersionedRetrievalRpc(
     args.supabase,
     "match_document_index_units_hybrid_v2",
@@ -2093,6 +2099,7 @@ export async function loadMemoryBoostArtifacts(args: {
   supabase: ReturnType<typeof createAdminClient>;
   query: string;
   queryEmbedding?: number[];
+  vectorOnly?: boolean;
   ownerId?: string;
   accessScope?: RetrievalAccessScope;
   documentIds?: string[];
@@ -2108,7 +2115,7 @@ export async function loadMemoryBoostArtifacts(args: {
     retrievalAccessScopeKey(retrievalAccessScopeForArgs(args)),
     documentScope,
     args.query,
-    args.queryEmbedding?.length ? "vec" : "text",
+    args.vectorOnly ? "vector-only" : args.queryEmbedding?.length ? "vec" : "text",
     effectiveMatchCount,
   ].join("\0");
   let cardsPromise = args.cardCache?.get(cacheKey);
@@ -2117,6 +2124,7 @@ export async function loadMemoryBoostArtifacts(args: {
       supabase: args.supabase,
       query: args.query,
       queryEmbedding: args.queryEmbedding,
+      vectorOnly: args.vectorOnly,
       ownerId: args.ownerId,
       accessScope: args.accessScope,
       documentIds: args.documentIds,

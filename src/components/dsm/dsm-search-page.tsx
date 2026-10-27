@@ -126,9 +126,10 @@ function DsmSearchResultCard({
       </button>
       <Link
         href={`/dsm/diagnoses/${result.slug}`}
-        aria-label={`Open ${result.title}`}
         className={cn("group min-w-0 rounded-md", focusRing, stretchedRowLinkClass)}
       >
+        {/* Named by what the card shows, after what it does (WCAG 2.5.3, A11Y-02). */}
+        <span className="sr-only">Open</span>{" "}
         {compact ? (
           <div className="flex min-h-12 min-w-0 items-center gap-2 sm:items-start">
             <div className="min-w-0 flex-1">
@@ -140,12 +141,12 @@ function DsmSearchResultCard({
                   )}
                 >
                   {result.title}
-                </h3>
+                </h3>{" "}
                 <span className={cn(metadataPill, codeText, "shrink-0")}>{result.icd_code}</span>
-              </div>
+              </div>{" "}
               <p className="mt-1.5 hidden text-xs font-medium leading-5 text-[color:var(--text-muted)] sm:line-clamp-2">
                 {result.summary}
-              </p>
+              </p>{" "}
               <div className="mt-2 hidden flex-wrap gap-2 sm:flex">
                 <span className={metadataPill}>{result.category.label}</span>
               </div>
@@ -165,12 +166,12 @@ function DsmSearchResultCard({
                 )}
               >
                 {result.title}
-              </h3>
+              </h3>{" "}
               <p className="mt-1.5 line-clamp-2 text-xs font-medium leading-5 text-[color:var(--text-muted)]">
                 {result.summary}
-              </p>
+              </p>{" "}
               <div className="mt-2 flex flex-wrap gap-2">
-                <span className={metadataPill}>{result.category.label}</span>
+                <span className={metadataPill}>{result.category.label}</span>{" "}
                 <span className={cn(metadataPill, codeText)}>{result.icd_code}</span>
               </div>
             </div>
@@ -509,6 +510,8 @@ export function DsmSearchPage({
                 </section>
               ) : (
                 <section aria-label="DSM diagnosis results" className="grid gap-3">
+                  {/* Keeps the cards' h3 titles from skipping a level (a11y A11Y-12). */}
+                  <h2 className="sr-only">Matching diagnoses</h2>
                   {results.map((result) => (
                     <DsmSearchResultCard
                       key={result.slug}

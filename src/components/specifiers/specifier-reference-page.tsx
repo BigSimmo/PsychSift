@@ -280,7 +280,7 @@ export function SpecifierReferencePage({ item }: { item: SpecifierCatalogItem })
             ) : null}
           </div>
 
-          <aside className="grid content-start gap-4 xl:sticky xl:top-20">
+          <aside aria-label="Review status" className="grid content-start gap-4 xl:sticky xl:top-20">
             <section className={cn(specifierCard, "overflow-hidden")}>
               <div className="border-b border-[color:var(--border)] px-4 py-3">
                 <p className={eyebrowText}>Review status</p>

@@ -11,7 +11,9 @@ import {
   onCallHandoverItems,
   onCallHandoverText,
   readOnCallCallLog,
+  deleteOnCallCallLogEntryForUndo,
   removeOnCallCallLogEntry,
+  restoreOnCallCallLogEntry,
   onCallCallLogStorageKey,
   setOnCallCallLogDone,
   visibleOnCallCallLog,
@@ -138,6 +140,49 @@ describe("the call log store", () => {
     expect(readOnCallCallLog(halfThree)).toHaveLength(1);
     clearOnCallCallLog();
     expect(window.localStorage.getItem(onCallCallLogStorageKey)).toBeNull();
+  });
+
+  it("puts a deleted note back for Undo, but never into the next shift", () => {
+    const first = addOnCallCallLogEntry(draft(), twoAm);
+    if (!first.ok) throw new Error("setup failed");
+    const undo = deleteOnCallCallLogEntryForUndo(first.entry, halfThree);
+    if (!undo) throw new Error("no undo");
+    expect(readOnCallCallLog(halfThree)).toEqual([]);
+    expect(restoreOnCallCallLogEntry(undo, halfThree)).toBe(true);
+    expect(readOnCallCallLog(halfThree).map((entry) => entry.id)).toEqual([first.entry.id]);
+    // A second Undo does not duplicate it.
+    expect(restoreOnCallCallLogEntry(undo, halfThree)).toBe(true);
+    expect(readOnCallCallLog(halfThree)).toHaveLength(1);
+
+    const again = deleteOnCallCallLogEntryForUndo(first.entry, halfThree);
+    if (!again) throw new Error("no undo");
+    const afterShift = new Date(twoAm.getTime() + 12 * 3_600_000);
+    clearExpiredPatientLabels(afterShift.getTime());
+    expect(restoreOnCallCallLogEntry(again, afterShift)).toBe(false);
+    expect(window.localStorage.getItem(onCallCallLogStorageKey)).toBeNull();
+  });
+
+  it("never puts a note back across a sign-out wipe into a new shift's labels", () => {
+    const first = addOnCallCallLogEntry(draft(), twoAm);
+    if (!first.ok) throw new Error("setup failed");
+    const undo = deleteOnCallCallLogEntryForUndo(first.entry, halfThree);
+    if (!undo) throw new Error("no undo");
+    clearPatientLabels("account-transition");
+    // The next person starts a shift before the toast closes.
+    const next = addOnCallCallLogEntry(draft({ label: "5A-3" }), halfThree);
+    if (!next.ok) throw new Error("setup failed");
+    expect(restoreOnCallCallLogEntry(undo, halfThree)).toBe(false);
+    expect(readOnCallCallLog(halfThree).map((entry) => entry.id)).toEqual([next.entry.id]);
+  });
+
+  it("does not bring a note back after the log was deliberately cleared", () => {
+    const first = addOnCallCallLogEntry(draft(), twoAm);
+    if (!first.ok) throw new Error("setup failed");
+    const undo = deleteOnCallCallLogEntryForUndo(first.entry, halfThree);
+    if (!undo) throw new Error("no undo");
+    clearOnCallCallLog();
+    expect(restoreOnCallCallLogEntry(undo, halfThree)).toBe(false);
+    expect(readOnCallCallLog(halfThree)).toEqual([]);
   });
 
   it("is kept only through the patient-label store, behind its expiry stamp", () => {

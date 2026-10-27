@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "24332fb8-c83b-4770-9133-d8f3329d9078",
+  "createdOn": "2026-10-23",
+  "action": "update",
+  "payload": {
+    "id": "#J9F1ZM",
+    "summary": "Local relational table-fact checks are drafted; retain semantic non-inferiority acceptance for extraction changes",
+    "detail": "LOCAL PROOF 24 October 2026: tests/relational-table-evidence.test.ts pins wrapped action/threshold/rate relationships, confirmed merged label inheritance, original blank cells, source chunk/image/page/owner provenance and group reset; existing table-facts/grouping/ranking checks also passed. No full-library re-index was needed or run. Remaining: integrate/review the regression contract and require these plus representative semantic non-inferiority evidence for a future extractor change. This is not a live pilot result or permission to change retrieval inputs.\n\nHISTORICAL DETAIL (superseded where corrected above): REVALIDATED 2026-10-23 at df1e07db04. Retain semantic relationship checks using the existing table-facts producer. Remove the dependency on an unapproved full-library re-index; the pilot is narrow and not execution evidence. Source inspection only; no fresh application/provider execution or clinical sign-off. Evidence: worker/table-facts.ts; docs/decisions/2026-10-23-reindex-pilot-approved.md. PRIOR DETAIL: Words/numbers can be extracted correctly while parameter-threshold-action relationships are wrong. Revisit after the #GJHKYC re-index shows whether the reading-order fix was sufficient. First check what worker/table-facts.ts already produces before designing anything new. Structured-evidence producer: RAG-protected.",
+    "source": "Current local execution 24 October 2026 at df1e07db04; prior source retained in historical detail.",
+    "baseRowFingerprint": "1cfe7bc21ec80c968ede582ff0fecbcf5ec588e99141f7de8c23c96ad9246cc0",
+    "targetUlid": "01M3CHC3BTJ9F1ZM7Q2GBJFXQ5"
+  }
+}

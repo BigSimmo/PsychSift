@@ -43,6 +43,15 @@ const document = {
 } as ClinicalDocument;
 
 describe("DocumentClinicalSummary", () => {
+  // D26-06: a model wrote the summary at indexing, so it must never read as the document's own words.
+  it("labels the summary as written by AI", () => {
+    render(<DocumentClinicalSummary document={document} pageHref={(page) => `?page=${page}`} onPageChange={vi.fn()} />);
+
+    const label = screen.getByTestId("document-ai-summary-label");
+    expect(label).toHaveTextContent("AI summary");
+    expect(label).toHaveTextContent("Written by AI from this document when it was added.");
+  });
+
   it("expands the mobile summary without introducing a visible control row", () => {
     render(<DocumentClinicalSummary document={document} pageHref={(page) => `?page=${page}`} onPageChange={vi.fn()} />);
 

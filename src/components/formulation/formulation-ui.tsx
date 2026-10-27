@@ -79,6 +79,7 @@ export function RecordReviewBadge({ state }: { state: FormulationReviewState }) 
 export function RecordReviewNote({ state }: { state: FormulationReviewState }) {
   return (
     <aside
+      aria-label="Review note"
       data-testid="formulation-review-note"
       data-reviewed={state.reviewed ? "true" : "false"}
       className={cn(

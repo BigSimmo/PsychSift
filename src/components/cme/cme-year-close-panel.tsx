@@ -230,7 +230,7 @@ export function CmeYearClosePanel({
         recorded as a dated amendment with your reason, beside the original. A closed year cannot be reopened.
       </p>
       {demoMode ? (
-        <InlineNotice tone="neutral">Demo mode is read-only. Sign in to close a private CPD year.</InlineNotice>
+        <InlineNotice tone="neutral">These are example records. Sign in to close a private CPD year.</InlineNotice>
       ) : !closable ? (
         <p className={textMuted} data-testid="cme-year-close-not-yet">
           You can close {year} from {cmeYearClosableFromLabel(year)}.
