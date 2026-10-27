@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "f0183939-5b05-46e3-b3af-e848b4d9c779",
+  "createdOn": "2026-10-27",
+  "action": "done",
+  "payload": {
+    "id": "#8CKX6F",
+    "outcome": "Resolved 2026-10-26 by the S7 crisis routing work (PR #3831, commit 7f0359eb, decision record 34cc9b2c). The owner approved the exact list on 26 Oct ('Go ahead with all recommendations', 08:10Z): under-18 and youth crisis searches now pin 000 after CAMHS Crisis Connect, then Kids Helpline and Lifeline WA (D4, D9). Suicide Call Back Service and 13YARN were not in the approved list and stay unpinned by that decision. Checked against main df306fc1 on 27 Oct.",
+    "baseRowFingerprint": "772806d5a194405e3f370e4290cb80dc13e9857148b842f7745e6f16d8b5da3c",
+    "targetUlid": "01M3CT4CFM8CKX6FCRKGSK2RRS"
+  }
+}
