@@ -85,6 +85,8 @@ describe("privacy UI", () => {
     expect(markup).toContain("Safety-plan working content is stricter again");
     expect(markup).toContain("OpenAI, in the United States");
     expect(markup).toContain("browser session replay is not enabled");
+    expect(markup).toContain("including error reports from the app in your browser");
+    expect(markup).toContain("typed text and exception messages stripped");
     expect(markup).toContain("rather than validated clinical decision support");
     expect(markup).toContain("degrades to a deterministic source-only answer");
     expect(markup).toContain("Clinical Ask accepts a typed or dictated question and non-identifying Case Context");

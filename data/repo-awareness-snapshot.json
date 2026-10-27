@@ -1794,6 +1794,10 @@
         "file": "src/app/api/roster/team/[serviceId]/route.ts"
       },
       {
+        "path": "/api/client-error",
+        "file": "src/app/api/client-error/route.ts"
+      },
+      {
         "path": "/api/ingestion/jobs",
         "file": "src/app/api/ingestion/jobs/route.ts"
       },
@@ -4118,6 +4122,11 @@
       },
       {
         "path": "docs/decisions/2026-10-15-database-changes-need-owner-permission.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-27-browser-error-reports.md",
         "section": "decisions",
         "catalogued": true
       },
