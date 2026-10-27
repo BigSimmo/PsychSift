@@ -17,8 +17,11 @@ import { usePhoneAlerts } from "@/components/alerts/use-phone-alerts";
 import { useRemindMe } from "@/components/alerts/use-remind-me";
 import { useAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
 import { ModeGroupedList, ModeRow } from "@/components/mode-kit/grouped-list";
+import { SignedOutSampleNotice } from "@/components/mode-kit/signed-out-sample";
+import { useSignedOut } from "@/components/mode-kit/use-signed-out-sample";
 import { WorkTag } from "@/components/mode-kit/work";
 import { MyDayFrame } from "@/components/my-day/my-day-frame";
+import { RosterSampleGate } from "@/components/roster/roster-sample-gate";
 import { useRosterSettings } from "@/components/roster/use-roster-settings";
 import { useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { ALERT_AREA_IDS, ALERT_AREAS, areaSummary, type AlertAreaId } from "@/lib/alerts/areas";
@@ -47,6 +50,9 @@ export function AlertsPage({
    */
   inFrame?: boolean;
 } = {}) {
+  // Signed out, the settings show as an example to look at (the frame adds it only while My Day shows
+  // example data). Signed in, they are always the reader's own, never an example.
+  const signedOut = useSignedOut();
   return (
     <MyDayFrame
       title={inFrame ? "Settings" : "Alerts"}
@@ -54,6 +60,7 @@ export function AlertsPage({
       now={now}
       wide
       subtitle={() => "What reaches your phone, and when"}
+      signedOutSample={signedOut ? { render: (at) => <AlertsSignedOutSample now={at} inFrame={inFrame} /> } : undefined}
       signedOut={{
         title: "Sign in to get alerts",
         body: "Alerts come from your own roster and records, so they need your account. Nothing is sent to this device while you're signed out.",
@@ -61,6 +68,25 @@ export function AlertsPage({
     >
       {(at) => <AlertsBody now={at} inFrame={inFrame} />}
     </MyDayFrame>
+  );
+}
+
+/**
+ * The settings as a signed-in doctor sees them, to look at only: `inert` keeps every switch and sheet
+ * shut, so nothing is changed on this device or sent. Roster's switches read Roster's example data.
+ */
+function AlertsSignedOutSample({ now, inFrame }: { now: Date; inFrame: boolean }) {
+  return (
+    <>
+      <SignedOutSampleNotice title="Sign in to choose your alerts" testId="alerts-signed-out-sample">
+        This is how the settings look. Signed in, you choose what reaches your phone, and when.
+      </SignedOutSampleNotice>
+      <RosterSampleGate>
+        <div inert data-testid="alerts-signed-out-sample-settings">
+          <AlertsBody now={now} inFrame={inFrame} />
+        </div>
+      </RosterSampleGate>
+    </>
   );
 }
 

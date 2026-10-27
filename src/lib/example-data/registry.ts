@@ -75,7 +75,10 @@ const LOADERS: { [K in ExampleDatasetKey]: Loader<K> } = {
   "roster.rotations": async (now) =>
     (await import("@/lib/example-data/datasets/roster-rotations")).exampleRotationRounds(now),
   "openShifts.listings": async (now) => (await import("@/lib/open-shifts/sample")).sampleListings(now),
-  "onCall.entries": async () => (await import("@/lib/on-call/demo-entries")).DEMO_ON_CALL_ENTRIES,
+  "onCall.entries": async () => {
+    const { DEMO_ON_CALL_ENTRIES, EXAMPLE_CONTRACT_END_ENTRY } = await import("@/lib/on-call/demo-entries");
+    return [...DEMO_ON_CALL_ENTRIES, EXAMPLE_CONTRACT_END_ENTRY];
+  },
   "teaching.sessions": async (now, zone) => {
     const today = zonedDateOf(now, zone);
     return (await import("@/lib/teaching/demo-programme")).demoTeachingSessions(

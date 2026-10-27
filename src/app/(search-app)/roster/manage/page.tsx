@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { RosterManagePage } from "@/components/roster/manage/roster-manage-page";
+import { RosterSampleGate } from "@/components/roster/roster-sample-gate";
 
 export const metadata: Metadata = {
   title: "Manage team | Roster | PsychSift",
@@ -8,5 +9,9 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <RosterManagePage />;
+  return (
+    <RosterSampleGate>
+      <RosterManagePage />
+    </RosterSampleGate>
+  );
 }

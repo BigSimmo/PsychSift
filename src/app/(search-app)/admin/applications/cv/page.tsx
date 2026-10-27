@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 
 import { ApplicationsCvPage } from "@/components/cme/applications/applications-cv-page";
 import { CmeStateNotice } from "@/components/cme/cme-state-notice";
+import { SignedOutExampleSwitch } from "@/components/mode-kit/signed-out-example-switch";
+import { DEMO_CME_ENTRIES, DEMO_CME_INSTANT } from "@/lib/cme/demo-year";
 import { loadCmePageData } from "@/lib/cme/load-cme-page-data";
 
 export const metadata: Metadata = {
@@ -14,9 +16,15 @@ export default async function CmeApplicationsCvRoute() {
   const data = await loadCmePageData(undefined, { allYears: true });
   if (data.state === "signed-out") {
     return (
-      <main className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6">
-        <CmeStateNotice state="signed-out" year={data.year} heading="CV" />
-      </main>
+      <SignedOutExampleSwitch
+        area="admin"
+        example={<ApplicationsCvPage entries={DEMO_CME_ENTRIES} cpdFailed={false} demoMode now={DEMO_CME_INSTANT} />}
+        notice={
+          <main className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6">
+            <CmeStateNotice state="signed-out" year={data.year} heading="CV" />
+          </main>
+        }
+      />
     );
   }
   // A year with no CPD set-up still has other years' activities, read through allYears.

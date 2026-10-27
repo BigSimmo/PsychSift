@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 
 import { CmeAnnualSummary } from "@/components/cme/cme-annual-summary";
 import { CmeCalendarPage } from "@/components/cme/cme-calendar-page";
+import { CmeCustomisePage } from "@/components/cme/cme-customise-page";
 import { CmeDashboard } from "@/components/cme/cme-dashboard";
 import { CmeEntryRouteClient } from "@/components/cme/cme-entry-route-client";
+import { CmeLearningPage } from "@/components/cme/cme-learning-page";
 import { CmeLogPage, type CmeLogAttention } from "@/components/cme/cme-log-page";
 import { CmeNewEntryRoute } from "@/components/cme/cme-new-entry-route";
 import { CmePageTabs } from "@/components/cme/cme-page-tabs";
@@ -19,6 +21,9 @@ import { CmeSampleContext } from "@/components/cme/cme-sample-context";
 import { CmeSetupRoute } from "@/components/cme/cme-setup-route";
 import { CmeTrainingPage } from "@/components/cme/cme-training-page";
 import { CmeYearCheckPage } from "@/components/cme/cme-year-check-page";
+import { CpdHomeSendPage } from "@/components/cme/cpd-home/cpd-home-send-page";
+import { CpdEvidencePage } from "@/components/work-screens/cpd/cpd-evidence-page";
+import { CpdExportPage } from "@/components/work-screens/cpd/cpd-export-page";
 import { perthCalendarDate } from "@/lib/cme/cpd-year";
 import {
   DEMO_CME_ENTRIES,
@@ -27,6 +32,7 @@ import {
   DEMO_CME_ROUTINES,
   DEMO_CME_YEAR,
 } from "@/lib/cme/demo-year";
+import { loadLearningDirectory } from "@/lib/cme/learning-directory";
 import { parseCmeLearningPrefill } from "@/lib/cme/learning-source";
 import { trainingExampleView } from "@/lib/cme/training-assessments";
 import {
@@ -36,6 +42,7 @@ import {
   sampleTrainingAssessments,
 } from "@/lib/cme/training-assessments-sample";
 import { cmeCategories, type CmeCategory } from "@/lib/cme/types";
+import { parseEvidenceCategory, parseEvidenceOrder, parseEvidenceStatus } from "@/lib/work-screens/cpd/evidence";
 
 /**
  * The signed-out CPD sample: the real screens filled with the invented demo year
@@ -52,6 +59,18 @@ const ENTRIES = DEMO_CME_ENTRIES;
 const ROUTINES = DEMO_CME_ROUTINES;
 const GOALS = DEMO_CME_PLAN_GOALS;
 const SAMPLE_YEARS = [DEMO_CME_YEAR.year] as const;
+
+/** Pages that moved to Admin: the server redirect does not run here, so follow it in the browser. */
+const MOVED_TO_ADMIN: Readonly<Record<string, string>> = {
+  "/cme/applications": "/admin/applications",
+  "/cme/applications/cv": "/admin/applications/cv",
+};
+
+function MovedPage({ href }: { readonly href: string }) {
+  const router = useRouter();
+  useEffect(() => router.replace(href), [href, router]);
+  return <main className="min-h-48" />;
+}
 
 function SampleBody({ pathname, query }: { readonly pathname: string; readonly query: URLSearchParams }) {
   const router = useRouter();
@@ -160,6 +179,65 @@ function SampleBody({ pathname, query }: { readonly pathname: string; readonly q
       <CmeSetupRoute key={SET.year} year={SET.year} set={SET} demoMode editInitially={query.get("edit") === "1"} />
     );
   }
+  if (pathname === "/cme/cpd-home") {
+    return (
+      <CpdHomeSendPage set={SET} entries={ENTRIES} availableYears={SAMPLE_YEARS} demoMode now={DEMO_CME_INSTANT} />
+    );
+  }
+  if (pathname === "/cme/evidence") {
+    const category = parseEvidenceCategory(query.get("category"));
+    const status = parseEvidenceStatus(query.get("show"));
+    const order = parseEvidenceOrder(query.get("order"));
+    return (
+      <CpdEvidencePage
+        key={`${category}:${status}:${order}`}
+        entries={ENTRIES}
+        year={SET.year}
+        years={SAMPLE_YEARS}
+        demoMode
+        initialCategory={category}
+        initialStatus={status}
+        initialOrder={order}
+      />
+    );
+  }
+  if (pathname === "/cme/export") {
+    return (
+      <CpdExportPage
+        set={SET}
+        entries={ENTRIES}
+        years={SAMPLE_YEARS}
+        goalCount={GOALS.length}
+        close={null}
+        now={DEMO_CME_INSTANT}
+        demoMode
+      />
+    );
+  }
+  if (pathname === "/cme/customise") {
+    // Look only: the layout is kept on this device, so the sample must not change it for whoever signs in next.
+    return (
+      <div inert data-testid="cme-sample-customise">
+        <CmeCustomisePage />
+      </div>
+    );
+  }
+  if (pathname === "/cme/learning") {
+    // The public WA course list, the same for everyone; the home label is the sample year's.
+    const directory = loadLearningDirectory();
+    return (
+      <CmeLearningPage
+        items={directory.items}
+        lastCheckedOn={directory.lastCheckedOn}
+        nowIso={new Date().toISOString()}
+        view={query.get("view") === "past" ? "past" : "upcoming"}
+        homeSource={SET.confirmedSource}
+        hospitalTeachingHref="/teaching"
+      />
+    );
+  }
+  const moved = MOVED_TO_ADMIN[pathname];
+  if (moved) return <MovedPage href={moved} />;
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6" data-testid="cme-sample-unavailable">
       <p>This page is not part of the example data. It works on your own CPD record, so it needs you to sign in.</p>

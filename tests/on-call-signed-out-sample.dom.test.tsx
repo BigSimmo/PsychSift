@@ -7,10 +7,13 @@
 import { cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { DEMO_ON_CALL_ENTRIES } from "@/lib/on-call/demo-entries";
+import { DEMO_ON_CALL_ENTRIES, EXAMPLE_CONTRACT_END_ENTRY } from "@/lib/on-call/demo-entries";
 import { clearOnCallEntryCache, onCallEntryCacheStorageKey, useOnCallEntries } from "@/lib/on-call/entry-store";
 import { sampleServiceDetail } from "@/lib/on-call/service-demo";
 import { isOnCallPlaceholderNumber, onCallTelHref, resolveHandbookPhone } from "@/lib/on-call/number-resolver";
+
+/** The example set is the corpus plus the example contract, which "Load example content" never writes. */
+const EXAMPLE_SET_SIZE = [...DEMO_ON_CALL_ENTRIES, EXAMPLE_CONTRACT_END_ENTRY].length;
 
 const auth = vi.hoisted(() => ({ status: "signed_out", authEpoch: 1 }));
 vi.mock("@/lib/supabase/client", () => ({ useAuthSession: () => auth }));
@@ -40,7 +43,7 @@ describe("On Call signed-out sample", () => {
     await waitFor(() => expect(result.current.sample).toBe(true));
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    expect(result.current.entries.length).toBe(DEMO_ON_CALL_ENTRIES.length);
+    expect(result.current.entries.length).toBe(EXAMPLE_SET_SIZE);
     expect(result.current.demoMode).toBe(true);
     expect(result.current.signedOut).toBe(false);
     expect(result.current.cachedAt).toBeNull();

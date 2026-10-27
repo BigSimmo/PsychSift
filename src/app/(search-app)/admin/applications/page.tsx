@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { ApplicationsPage } from "@/components/cme/applications/applications-page";
 import { CmeStateNotice } from "@/components/cme/cme-state-notice";
+import { SignedOutExampleSwitch } from "@/components/mode-kit/signed-out-example-switch";
 import { cpdYearOf } from "@/lib/cme/cpd-year";
 import { DEMO_CME_INSTANT } from "@/lib/cme/demo-year";
 import { isDemoMode } from "@/lib/env";
@@ -32,9 +33,15 @@ export default async function CmeApplicationsRoute() {
   const now = demoMode ? DEMO_CME_INSTANT : new Date();
   if (!demoMode && (await signedOut())) {
     return (
-      <main className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6">
-        <CmeStateNotice state="signed-out" year={cpdYearOf(now)} heading="Job applications" />
-      </main>
+      <SignedOutExampleSwitch
+        area="admin"
+        example={<ApplicationsPage demoMode now={DEMO_CME_INSTANT} />}
+        notice={
+          <main className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6">
+            <CmeStateNotice state="signed-out" year={cpdYearOf(now)} heading="Job applications" />
+          </main>
+        }
+      />
     );
   }
   return <ApplicationsPage demoMode={demoMode} now={now} />;
