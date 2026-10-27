@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "ad1f1616-5c3c-49b8-8be9-c4a41fa06b4d",
+  "createdOn": "2026-10-27",
+  "action": "update",
+  "payload": {
+    "id": "#XJ3N16",
+    "summary": "Privacy page: get the privacy adviser's review of the live APP 1 and automated-decision wording before 10 Dec 2026, then remove the draft notice",
+    "detail": "UPDATE 2026-10-27: the new sections are live (PR #3871): contact, decisions made with computer programs (APP 1.7 to 1.9), access, correction, account closure and OAIC complaints, Sentry (United States) and the other OpenAI uses. What is left is the outside review. The owner has no indemnity insurer, so the adviser is not yet chosen. Options: a fixed-fee review by a health privacy lawyer (recommended), or the OAIC enquiries line (1300 363 992) for free general guidance only. The 15 questions are ready as a draft in the owner's Outlook (no recipient) and in /mnt/project-files/plan/streams/S10-adviser-email.md. Answers needed by about 20 Nov. After the review, apply the changes and remove PRIVACY_DRAFT_DISCLAIMER in src/lib/privacy-page-content.tsx.",
+    "source": "Privacy page thread, 27 Oct 2026",
+    "baseRowFingerprint": "cbb76ddda5cb690b1122129229e83910992adb17c9b99637144c8f574074534b",
+    "targetUlid": "01M5D6CEB9XJ3N16G8K97GNX01"
+  }
+}
