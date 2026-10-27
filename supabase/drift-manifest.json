@@ -2,7 +2,7 @@
   "generated_at": "2026-10-26T17:21:29.185Z",
   "generator": "scripts/generate-drift-manifest.ts",
   "postgres_image": "supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83",
-  "schema_sha256": "23a94b730392be22a9fa08b9d663126aca0ae48067f5d15dac4b94d1cf9d29d0",
+  "schema_sha256": "659066becb0679feef7b71fc356fe57e54e27c5896b9653f827de1464830a319",
   "replay_seconds": 19,
   "snapshot": {
     "views": [
@@ -19051,6 +19051,11 @@
         "table": "work_hospital_teams"
       },
       {
+        "def": "CREATE TRIGGER work_team_supervision_sync AFTER INSERT OR UPDATE OF hospital_id ON public.work_hospital_teams FOR EACH ROW EXECUTE FUNCTION public.work_team_supervision_sync()",
+        "name": "work_team_supervision_sync",
+        "table": "work_hospital_teams"
+      },
+      {
         "def": "CREATE TRIGGER work_grant_supervision_sync AFTER INSERT OR UPDATE OF revoked_at ON public.work_role_grants FOR EACH ROW EXECUTE FUNCTION public.work_grant_supervision_sync()",
         "name": "work_grant_supervision_sync",
         "table": "work_role_grants"
@@ -21909,8 +21914,24 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "bb8f66ffe6108e79445be2b4fc78d8e4",
+        "def_hash": "1633b004bc84d18213ba3b1e940c98bd",
         "signature": "public.work_sync_registrar_supervision(uuid,uuid,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "4a50fae80632d84a8b77e4fad2e80290",
+        "signature": "public.work_sync_registrar_team(uuid,uuid,uuid,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "1bdd194e08247700b6aaf05c94564e46",
+        "signature": "public.work_sync_team_supervision(uuid,uuid)"
       },
       {
         "acl": [
@@ -21919,6 +21940,14 @@
         ],
         "def_hash": "22a596627352e65e2e82a27d2f8d76a5",
         "signature": "public.work_team_hospital(uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "9c9e68b5c3704b60790a5ae4cf953308",
+        "signature": "public.work_team_supervision_sync()"
       },
       {
         "acl": [

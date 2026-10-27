@@ -39399,7 +39399,8 @@ end $$;
 --   * naming a supervisor for a trainee starts or updates that trainee's open Teaching pairing in
 --     every team of the hospital they are both in; removing the name moves the pairing to the
 --     trainee's next named supervisor, or leaves it with none, and pending sessions wait;
---   * a member joining or leaving a team re-checks the same;
+--   * a member joining or leaving a team, or a team joining or moving hospital, re-checks the same;
+--   * an open pairing in a hospital team whose trainee has nobody named is left with nobody named;
 --   * Teaching can no longer start a pairing or change its supervisor in such a team, only its dates.
 -- The pairing stays the record of sessions, entries and confirmations. Confirmed sessions keep who
 -- confirmed them. A whole-team supervisor (assessor) does not start pairings. Teams that are not in
@@ -39420,58 +39421,100 @@ alter function public.work_team_hospital(uuid) owner to postgres;
 revoke all on function public.work_team_hospital(uuid) from public, anon, authenticated;
 grant execute on function public.work_team_hospital(uuid) to service_role;
 
--- Brings one trainee's open pairings in a hospital's teams into line with the supervisors People
--- and roles names for them. The latest named supervisor who is also in that team wins. Takes the
--- same per-team lock as pairing.save and pairing.reassign, teams in id order.
+-- Brings one trainee's open pairings in one hospital team into line with the supervisors People and
+-- roles names for them: the latest named supervisor who is also in that team, or nobody. Every open
+-- pairing follows; a pairing is started only when the trainee has none open and someone is named.
+-- Takes the same per-team lock as pairing.save and pairing.reassign.
+create function public.work_sync_registrar_team(p_service_id uuid, p_hospital_id uuid, p_registrar_id uuid, p_actor_id uuid)
+returns void
+language plpgsql volatile security invoker set search_path = public, pg_catalog, pg_temp as $$
+declare
+  v_supervisor uuid;
+  v_pairing public.teaching_supervision_pairings;
+  v_open boolean := false;
+  v_today date := (now() at time zone 'Australia/Perth')::date;
+begin
+  if p_service_id is null or p_hospital_id is null or p_registrar_id is null then return; end if;
+  if not public.service_member_active(p_service_id, p_registrar_id) then return; end if;
+  perform pg_advisory_xact_lock(hashtextextended(p_service_id::text, 74818));
+  select g.user_id into v_supervisor from public.work_role_grants g
+  where g.role = 'supervisor' and g.hospital_id = p_hospital_id and g.subject_user_id = p_registrar_id
+    and g.revoked_at is null and g.user_id <> p_registrar_id
+    and public.service_member_active(p_service_id, g.user_id)
+  order by g.granted_at desc, g.id
+  limit 1;
+  for v_pairing in
+    select * from public.teaching_supervision_pairings p
+    where p.service_id = p_service_id and p.registrar_id = p_registrar_id and p.ends_on >= v_today
+    order by p.id
+    for update
+  loop
+    v_open := true;
+    -- Pending sessions and corrections now wait for this supervisor, because confirmation always
+    -- checks the pairing's current supervisor. Confirmed ones keep who confirmed them.
+    if v_pairing.supervisor_id is distinct from v_supervisor then
+      update public.teaching_supervision_pairings set supervisor_id = v_supervisor, updated_at = now()
+      where id = v_pairing.id;
+      perform public.teaching_audit(p_service_id, p_actor_id, 'pairing.reassign', v_pairing.id);
+    end if;
+  end loop;
+  if not v_open and v_supervisor is not null
+    and (select count(*) from public.teaching_supervision_pairings where service_id = p_service_id) < 5000 then
+    insert into public.teaching_supervision_pairings(service_id, registrar_id, supervisor_id, starts_on, ends_on, created_by)
+    values (p_service_id, p_registrar_id, v_supervisor, v_today, v_today + 365, p_actor_id)
+    returning * into v_pairing;
+    perform public.teaching_audit(p_service_id, p_actor_id, 'pairing.save', v_pairing.id);
+  end if;
+end $$;
+alter function public.work_sync_registrar_team(uuid, uuid, uuid, uuid) owner to postgres;
+revoke all on function public.work_sync_registrar_team(uuid, uuid, uuid, uuid) from public, anon, authenticated;
+grant execute on function public.work_sync_registrar_team(uuid, uuid, uuid, uuid) to service_role;
+
+-- The same for one trainee across every team of a live hospital, teams in id order.
 create function public.work_sync_registrar_supervision(p_hospital_id uuid, p_registrar_id uuid, p_actor_id uuid)
 returns void
 language plpgsql volatile security invoker set search_path = public, pg_catalog, pg_temp as $$
 declare
   v_service uuid;
-  v_supervisor uuid;
-  v_pairing public.teaching_supervision_pairings;
-  v_today date := (now() at time zone 'Australia/Perth')::date;
 begin
   if p_hospital_id is null or p_registrar_id is null then return; end if;
   if not exists (select 1 from public.work_hospitals where id = p_hospital_id and archived_at is null) then return; end if;
   for v_service in
-    select t.service_id from public.work_hospital_teams t
-    where t.hospital_id = p_hospital_id and public.service_member_active(t.service_id, p_registrar_id)
-    order by t.service_id
+    select t.service_id from public.work_hospital_teams t where t.hospital_id = p_hospital_id order by t.service_id
   loop
-    perform pg_advisory_xact_lock(hashtextextended(v_service::text, 74818));
-    v_supervisor := null;
-    select g.user_id into v_supervisor from public.work_role_grants g
-    where g.role = 'supervisor' and g.hospital_id = p_hospital_id and g.subject_user_id = p_registrar_id
-      and g.revoked_at is null and g.user_id <> p_registrar_id
-      and public.service_member_active(v_service, g.user_id)
-    order by g.granted_at desc, g.id
-    limit 1;
-    select * into v_pairing from public.teaching_supervision_pairings p
-    where p.service_id = v_service and p.registrar_id = p_registrar_id and p.ends_on >= v_today
-    order by p.starts_on desc, p.id
-    limit 1
-    for update;
-    if found then
-      -- Pending sessions and corrections now wait for this supervisor, because confirmation always
-      -- checks the pairing's current supervisor. Confirmed ones keep who confirmed them.
-      if v_pairing.supervisor_id is distinct from v_supervisor then
-        update public.teaching_supervision_pairings set supervisor_id = v_supervisor, updated_at = now()
-        where id = v_pairing.id;
-        perform public.teaching_audit(v_service, p_actor_id, 'pairing.reassign', v_pairing.id);
-      end if;
-    elsif v_supervisor is not null
-      and (select count(*) from public.teaching_supervision_pairings where service_id = v_service) < 5000 then
-      insert into public.teaching_supervision_pairings(service_id, registrar_id, supervisor_id, starts_on, ends_on, created_by)
-      values (v_service, p_registrar_id, v_supervisor, v_today, v_today + 365, p_actor_id)
-      returning * into v_pairing;
-      perform public.teaching_audit(v_service, p_actor_id, 'pairing.save', v_pairing.id);
-    end if;
+    perform public.work_sync_registrar_team(v_service, p_hospital_id, p_registrar_id, p_actor_id);
   end loop;
 end $$;
 alter function public.work_sync_registrar_supervision(uuid, uuid, uuid) owner to postgres;
 revoke all on function public.work_sync_registrar_supervision(uuid, uuid, uuid) from public, anon, authenticated;
 grant execute on function public.work_sync_registrar_supervision(uuid, uuid, uuid) to service_role;
+
+-- The same for a whole team in its live hospital: every trainee with an open pairing there, and
+-- every trainee in the team the hospital names a supervisor for. Used when a team joins or moves
+-- hospital, and once below for teams already in one.
+create function public.work_sync_team_supervision(p_service_id uuid, p_actor_id uuid)
+returns void
+language plpgsql volatile security invoker set search_path = public, pg_catalog, pg_temp as $$
+declare
+  v_hospital uuid := public.work_team_hospital(p_service_id);
+  v_registrar uuid;
+begin
+  if v_hospital is null then return; end if;
+  for v_registrar in
+    select p.registrar_id from public.teaching_supervision_pairings p
+    where p.service_id = p_service_id and p.registrar_id is not null
+      and p.ends_on >= (now() at time zone 'Australia/Perth')::date
+    union
+    select g.subject_user_id from public.work_role_grants g
+    where g.role = 'supervisor' and g.hospital_id = v_hospital and g.subject_user_id is not null and g.revoked_at is null
+    order by 1
+  loop
+    perform public.work_sync_registrar_team(p_service_id, v_hospital, v_registrar, p_actor_id);
+  end loop;
+end $$;
+alter function public.work_sync_team_supervision(uuid, uuid) owner to postgres;
+revoke all on function public.work_sync_team_supervision(uuid, uuid) from public, anon, authenticated;
+grant execute on function public.work_sync_team_supervision(uuid, uuid) to service_role;
 
 -- A trainee supervisor named or removed in People and roles.
 create function public.work_grant_supervision_sync() returns trigger
@@ -39518,6 +39561,21 @@ grant execute on function public.work_member_supervision_sync() to service_role;
 create trigger work_member_supervision_sync
   after insert or update of revoked_at on public.on_call_service_members
   for each row execute function public.work_member_supervision_sync();
+
+-- A team linked to a hospital, or moved to another one.
+create function public.work_team_supervision_sync() returns trigger
+language plpgsql security invoker set search_path = public, pg_catalog, pg_temp as $$
+begin
+  if tg_op = 'UPDATE' and old.hospital_id is not distinct from new.hospital_id then return null; end if;
+  perform public.work_sync_team_supervision(new.service_id, new.linked_by);
+  return null;
+end $$;
+alter function public.work_team_supervision_sync() owner to postgres;
+revoke all on function public.work_team_supervision_sync() from public, anon, authenticated;
+grant execute on function public.work_team_supervision_sync() to service_role;
+create trigger work_team_supervision_sync
+  after insert or update of hospital_id on public.work_hospital_teams
+  for each row execute function public.work_team_supervision_sync();
 
 -- Teaching keeps the pairing as the record of sessions but takes its supervisor from People and
 -- roles in a hospital team (teaching_supervisor_from_people), shows a pairing with nobody named as
@@ -39911,17 +39969,17 @@ alter function public.teaching_depth_command(uuid,uuid,text,jsonb) owner to post
 revoke all on function public.teaching_depth_command(uuid,uuid,text,jsonb) from public, anon, authenticated;
 grant execute on function public.teaching_depth_command(uuid,uuid,text,jsonb) to service_role;
 
--- Bring every trainee who already has a named supervisor into line once.
+-- Bring every team already in a live hospital into line once: named supervisors take their
+-- trainees' pairings, and an open pairing whose trainee has nobody named is left with nobody.
 do $$
 declare
-  r record;
+  v_service uuid;
 begin
-  for r in
-    select distinct g.hospital_id, g.subject_user_id from public.work_role_grants g
-    join public.work_hospitals h on h.id = g.hospital_id and h.archived_at is null
-    where g.role = 'supervisor' and g.subject_user_id is not null and g.revoked_at is null
-    order by g.hospital_id, g.subject_user_id
+  for v_service in
+    select t.service_id from public.work_hospital_teams t
+    join public.work_hospitals h on h.id = t.hospital_id and h.archived_at is null
+    order by t.service_id
   loop
-    perform public.work_sync_registrar_supervision(r.hospital_id, r.subject_user_id, null);
+    perform public.work_sync_team_supervision(v_service, null);
   end loop;
 end $$;

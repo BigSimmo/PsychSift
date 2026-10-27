@@ -37,7 +37,7 @@ declare
   sup1 uuid := (select v from sup_test_ids where k = 'sup1');
   sup2 uuid := (select v from sup_test_ids where k = 'sup2');
   org uuid := (select v from sup_test_ids where k = 'org');
-  g1 uuid; g2 uuid; pairing uuid; entry uuid; result jsonb;
+  g1 uuid; g2 uuid; pairing uuid; second uuid; entry uuid; result jsonb;
 begin
   -- Naming a trainee supervisor starts the pairing in the hospital team, and only there.
   insert into public.work_role_grants (user_id, role, hospital_id, subject_user_id, granted_by)
@@ -87,6 +87,16 @@ begin
   if (select confirmed_by from public.teaching_supervision_entries where id = entry) <> sup1 then
     raise exception 'a confirmed session lost who confirmed it';
   end if;
+  -- Every open pairing follows, not just one.
+  insert into public.teaching_supervision_pairings (service_id, registrar_id, supervisor_id, starts_on, ends_on, created_by)
+    values (svc, reg, org, current_date, current_date + 30, org) returning id into second;
+  update public.work_role_grants set revoked_at = now(), revoked_by = dct where id = g2;
+  update public.work_role_grants set revoked_at = null, revoked_by = null where id = g2;
+  if exists (select 1 from public.teaching_supervision_pairings
+      where service_id = svc and registrar_id = reg and supervisor_id is distinct from sup2) then
+    raise exception 'an open pairing kept a supervisor nobody named';
+  end if;
+  delete from public.teaching_supervision_pairings where id = second;
 
   -- Removing the latest name falls back to the earlier one; removing both leaves nobody named.
   update public.work_role_grants set revoked_at = now(), revoked_by = dct where id = g2;
@@ -114,6 +124,13 @@ begin
   if result ->> 'pairingId' is null then raise exception 'a loose team could not pair by hand'; end if;
   result := public.teaching_depth_command(org, loose, 'supervision.read', '{}'::jsonb);
   if (result ->> 'supervisorsFromPeople')::boolean is not false then raise exception 'read flagged a loose team'; end if;
+
+  -- Linking that team to the hospital brings its pairings into the one list: nobody is named for
+  -- the trainee any more, so the hand-made supervisor goes.
+  insert into public.work_hospital_teams (service_id, hospital_id, linked_by) values (loose, h, dct);
+  if exists (select 1 from public.teaching_supervision_pairings where service_id = loose and supervisor_id is not null) then
+    raise exception 'linking a team to a hospital kept a supervisor nobody named';
+  end if;
 end $one_list$;
 select 'One supervisor list checks passed';
 rollback;

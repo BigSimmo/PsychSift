@@ -1,7 +1,7 @@
 {
   "note": "sha256 of every migration this repository has shipped, with newlines normalised. An entry whose hash changes means an applied migration was edited, which cannot reach the live database. See scripts/check-migration-immutability.mjs.",
   "generator": "scripts/check-migration-immutability.mjs",
-  "sealed_at": "2026-10-27T04:35:09.353Z",
+  "sealed_at": "2026-10-27T05:58:56.541Z",
   "versions": {
     "20260527000000_bulk_ingestion.sql": "813e8e314064a6dcbaaa55e2765a8ce901d5783b304b4a7af7bb7417a07daf7c",
     "20260527001000_documents_policy_cleanup.sql": "559c26f3172bf75e545a41adef75538b2bf648ea7d53c8eb3d3ea7c244c65a48",
@@ -351,6 +351,6 @@
     "20261026081500_delete_question_logs_with_account.sql": "4d4c0606d2b0595b384b4ea6ae0c3da00b858a5250a03355589541bb415c13d3",
     "20261026085000_roster_swap_accept_team_rules.sql": "671be78b7ed16356ac7c0ef24005f558d8ce2b24b678f1f4ba02e0850d1c8aef",
     "20261026092000_drop_calendar_link_plain_url.sql": "8fc7ebc22c7221845b8fe4a337c47c81711410914883af369fc58af9c69d1b72",
-    "20261027120000_one_supervisor_list.sql": "2e27f0bee26e9f8b9a06c7e0bd0ee1d2c0dba7922832f710519ce94020fab519"
+    "20261027120000_one_supervisor_list.sql": "54465ba4059ff29c1292189971506aa8603896333ed99d5d89c6071a82695bcc"
   }
 }
