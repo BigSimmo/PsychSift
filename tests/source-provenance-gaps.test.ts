@@ -112,7 +112,7 @@ describe("offline provenance export boundary", () => {
         { encoding: "utf8", timeout: 10_000 },
       );
     } finally {
-      rmSync(directory, { recursive: true, force: true });
+      rmSync(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     }
   }
 
