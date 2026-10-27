@@ -1116,43 +1116,67 @@ describe("RAG structured-output fallback", () => {
     expect(answer.citations.every((citation) => citation.provenance === "review_only")).toBe(true);
   });
 
-  it("preserves the initial strong quality verdict when its repair attempt truncates", async () => {
-    const sources = [
-      source({
-        id: "quality-retry-source-a",
-        document_id: "quality-retry-guide-a",
-        content: "Guide A outlines routine monitoring steps and referral thresholds.",
-      }),
-      source({
-        id: "quality-retry-source-b",
-        document_id: "quality-retry-guide-b",
-        content: "Guide B outlines a second monitoring pathway and escalation thresholds.",
-      }),
-    ];
-    const templateLikeAnswer: GeneratedAnswerPayload = {
-      answer: "Compare the document monitoring pathways using the source-backed guidance.",
-      grounded: true,
-      confidence: "high",
-      answerSections: [],
-      citations: [{ chunk_id: "quality-retry-source-a" }],
-      quoteCards: [],
-      conflictsOrGaps: [],
-    };
+  it.each([false, true])(
+    "preserves strong quality verdict and bounded repair with shared Sol routes=%s",
+    async (sharedSol) => {
+      if (sharedSol) {
+        vi.stubEnv("OPENAI_FAST_ANSWER_MODEL", "gpt-6.1-sol");
+        vi.stubEnv("OPENAI_STRONG_ANSWER_MODEL", "gpt-6.1-sol");
+        vi.stubEnv("OPENAI_FAST_REASONING_EFFORT", "low");
+        vi.stubEnv("OPENAI_STRONG_REASONING_EFFORT", "medium");
+      }
+      const providerCalls: Record<string, unknown>[] = [];
+      const sources = [
+        source({
+          id: "quality-retry-source-a",
+          document_id: "quality-retry-guide-a",
+          content: "Guide A outlines routine monitoring steps and referral thresholds.",
+        }),
+        source({
+          id: "quality-retry-source-b",
+          document_id: "quality-retry-guide-b",
+          content: "Guide B outlines a second monitoring pathway and escalation thresholds.",
+        }),
+      ];
+      const templateLikeAnswer: GeneratedAnswerPayload = {
+        answer: "Compare the document monitoring pathways using the source-backed guidance.",
+        grounded: true,
+        confidence: "high",
+        answerSections: [],
+        citations: [{ chunk_id: "quality-retry-source-a" }],
+        quoteCards: [],
+        conflictsOrGaps: [],
+      };
 
-    const answer = await answerFromTextSources("Compare document monitoring pathways across two guides", sources, [
-      templateLikeAnswer,
-      templateLikeAnswer,
-      "truncated",
-    ]);
+      const answer = await answerFromTextSources(
+        "Compare document monitoring pathways across two guides",
+        sources,
+        [templateLikeAnswer, templateLikeAnswer, "truncated"],
+        { captureProviderContract: (_schema, options) => providerCalls.push(options) },
+      );
 
-    expect(answer.latencyTimings?.answer_retry_reasons).toContain("fast_template_retry_strong");
-    expect(answer.latencyTimings?.answer_retry_reasons).toContain("strong_quality_retry");
-    // The preserved verdict is whatever generatedAnswerQualityFailureReason returned for the
-    // strong answer at gate time. Current sanitizeAnswerText strips this fixture's template
-    // answer to nothing, so the first check in the ladder (empty_after_sanitize) wins over
-    // template_like_answer; the assertion pins preservation, not the ladder's tie-break.
-    expect(answer.latencyTimings?.answer_retry_reasons).toContain("generation_quality_gate:empty_after_sanitize");
-  });
+      if (sharedSol) {
+        expect(providerCalls.map((call) => [call.model, call.reasoningEffort, call.maxRetries])).toEqual([
+          ["gpt-6.1-sol", "low", 0],
+          ["gpt-6.1-sol", "medium", 0],
+          ["gpt-6.1-sol", "medium", 0],
+        ]);
+        expect(answer.openAIUsageAttempts?.map((attempt) => attempt.model)).toEqual([
+          "gpt-6.1-sol",
+          "gpt-6.1-sol",
+          "gpt-6.1-sol",
+        ]);
+      }
+
+      expect(answer.latencyTimings?.answer_retry_reasons).toContain("fast_template_retry_strong");
+      expect(answer.latencyTimings?.answer_retry_reasons).toContain("strong_quality_retry");
+      // The preserved verdict is whatever generatedAnswerQualityFailureReason returned for the
+      // strong answer at gate time. Current sanitizeAnswerText strips this fixture's template
+      // answer to nothing, so the first check in the ladder (empty_after_sanitize) wins over
+      // template_like_answer; the assertion pins preservation, not the ladder's tie-break.
+      expect(answer.latencyTimings?.answer_retry_reasons).toContain("generation_quality_gate:empty_after_sanitize");
+    },
+  );
 
   it("records the cited-refusal verdict when generation returns a provider source gap (#231)", async () => {
     const answer = await answerFromTextSources(
