@@ -30,7 +30,7 @@ export const PRIVACY_CONTENT_AS_OF = "2026-10-27";
 export const PRIVACY_OPERATOR_NAME = "Dr Josh Simpson";
 
 /** The one monitored address for privacy questions, requests and complaints. */
-export const PRIVACY_CONTACT_EMAIL = "josh@stoicable.com";
+export const PRIVACY_CONTACT_EMAIL = "Josh@psychexplained.com";
 
 export const PRIVACY_IMPORTANT_SHORT =
   "Do not enter identifiable patient details. Processing may include Singapore and the OpenAI API.";

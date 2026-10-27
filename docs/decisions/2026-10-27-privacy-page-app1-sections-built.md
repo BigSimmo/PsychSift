@@ -11,6 +11,7 @@ allocation and the open-shift shortlist) and says team rosters are not yet open 
 page keeps its draft notice until the privacy adviser has reviewed it. On 27 Oct 2026 the owner
 said "Ok go ahead and complete all of this for me and confirm", accepting the printed name "Dr Josh
 Simpson". The Sentry organisation's region was read the same day as United States
-(`us.sentry.io`). The change merges once mail to the privacy address is shown to arrive.
+(`us.sentry.io`). Because privacy@psychiatry.tools cannot yet receive mail, the owner chose by decision card on
+27 Oct 2026 to show Josh@psychexplained.com for now, until the dedicated address is set up.
 
 If this summary and the source ever differ, the source wins.
