@@ -39,6 +39,10 @@ When workload-specific variables are omitted, classifier
 and summary code fallbacks stay on `gpt-5.6-terra`, and indexing stays on `gpt-5.6-sol`. The example
 configuration's explicit Luna classifier and Terra indexing overrides remain unchanged. Changing
 answer models must not migrate ingestion, embeddings or retrieval.
+The Edge indexing agent uses the same independent indexing fallback as the Node worker. This
+preserves existing structured summaries and generated labels when answer models change. Preserve
+the intended explicit `OPENAI_INDEXING_MODEL` in both runtime environments; deploy the matching
+Edge function before any answer-model activation. No migration or re-indexing is required.
 
 OpenAI recommends the Responses API for current general-purpose multimodal and tool-capable
 workflows. See the [Responses migration guide](https://developers.openai.com/api/docs/guides/migrate-to-responses),
