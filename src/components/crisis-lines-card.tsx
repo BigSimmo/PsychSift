@@ -1,7 +1,7 @@
 "use client";
 
 import { Phone } from "lucide-react";
-import { useState } from "react";
+import { useId, useState } from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import { spokenModeNumber } from "@/components/mode-kit/dates";
@@ -36,6 +36,8 @@ function CrisisLineRow({ contact, testIdPrefix }: { contact: PublicCrisisContact
     tel: `tel:${contact.telephoneUri}`,
   };
   const spoken = spokenModeNumber(number.display);
+  // The hours sit inside the button, which has its own label, so screen readers get them as its description.
+  const hoursId = useId();
 
   return (
     <li data-testid={testId} className={cn(modeInsetHairline, "grid min-w-0 gap-0.5 pb-2 pl-3 pr-1")}>
@@ -45,6 +47,7 @@ function CrisisLineRow({ contact, testIdPrefix }: { contact: PublicCrisisContact
           aria-haspopup="dialog"
           // The number as shown, so a voice-control user can say it, then digit by digit (A11Y-02).
           aria-label={`${contact.name}, ${number.display} (${spoken}). Show dialling options`}
+          aria-describedby={hoursId}
           onClick={() => setSheetOpen(true)}
           className={cn(
             focusRing,
@@ -71,7 +74,7 @@ function CrisisLineRow({ contact, testIdPrefix }: { contact: PublicCrisisContact
           <span className="nums whitespace-nowrap text-sm font-semibold leading-5 tracking-wide text-[color:var(--text-heading)]">
             {number.display}
           </span>
-          <span className="break-words text-xs leading-4 text-[color:var(--text-muted)]">
+          <span id={hoursId} className="break-words text-xs leading-4 text-[color:var(--text-muted)]">
             {contact.availability} · <span>Updated {formatUpdatedMonth(contact.verifiedOn)}</span>
           </span>
         </button>
