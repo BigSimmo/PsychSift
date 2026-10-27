@@ -103,6 +103,8 @@ const MESSAGES: Record<string, string> = {
   teaching_access_denied: "You're not a member of this service. Ask its organiser for an invitation.",
   teaching_role_denied: "That's for your service's organisers.",
   teaching_team_unverified: "This service isn't set up for real records yet, so only the demo service can be used.",
+  teaching_supervisor_from_people:
+    "Medical Workforce or the DCT names this service's supervisors in People and roles, and pairings follow them.",
   teaching_limit: "That's more than Teaching takes in one go. Try fewer.",
   teaching_invalid_request: "Something in that didn't look right. Check it and try again.",
   teaching_no_health_service: "Your service has no health service yet. Ask for it to be set.",

@@ -79,6 +79,10 @@ export const teachingErrors: Record<string, { status: number; message: string }>
     message: "This service isn't approved for real records yet. Until it is, only the demo service can be used.",
   },
   teaching_not_found: { status: 404, message: "This session isn't available." },
+  teaching_supervisor_from_people: {
+    status: 409,
+    message: "Supervisors for this service are named in People and roles, and the pairing follows them.",
+  },
   teaching_code_expired: { status: 410, message: "The code changed. Scan the screen again." },
   teaching_code_invalid: { status: 400, message: "That code isn't right. Check it and try again." },
   teaching_code_other_team: {
