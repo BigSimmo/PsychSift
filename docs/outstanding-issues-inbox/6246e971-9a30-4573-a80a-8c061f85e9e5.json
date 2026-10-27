@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "6246e971-9a30-4573-a80a-8c061f85e9e5",
+  "createdOn": "2026-10-27",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "task",
+    "summary": "Set up privacy@psychiatry.tools forwarding, then switch the privacy page contact back to it",
+    "detail": "psychiatry.tools DNS is at name.com and has no MX records, so privacy@psychiatry.tools bounces. The owner chose (27 Oct, decision card) to show Josh@psychexplained.com until then. Owner step: name.com, psychiatry.tools, Email Forwarding, forward privacy@ to Josh@psychexplained.com, then send a test. Agent step after that: change PRIVACY_CONTACT_EMAIL in src/lib/privacy-page-content.tsx and the mailto pin in tests/privacy-ui.test.ts. Note josh@stoicable.com is not usable: its name servers refuse queries.",
+    "source": "Privacy page thread, 27 Oct 2026",
+    "issueUlid": "01M5YETAE41DZFBBY5P36TYH8F"
+  }
+}

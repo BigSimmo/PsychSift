@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "8879739a-7f64-4fbe-a2f4-39d1399a0bb6",
+  "createdOn": "2026-10-27",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "task",
+    "summary": "Owner to accept the Supabase data processing agreement before 1 Dec 2026 (SB-10)",
+    "detail": "No Supabase DPA is recorded (docs/privacy-impact-assessment.md section 7). Only the owner can accept legal terms: Supabase dashboard, Organisation, Legal documents. Then record the date in the assessment and docs/rag-improvement/data-flow-register.md. The live privacy page does not claim a DPA exists, so the page needs no change.",
+    "source": "Privacy page thread, 27 Oct 2026",
+    "issueUlid": "01M5YETA95WGZBHVQT5XAXXHB3"
+  }
+}
