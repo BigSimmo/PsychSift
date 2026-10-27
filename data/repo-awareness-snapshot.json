@@ -2177,6 +2177,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-26-supermemory-route-per-environment.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/decisions/2026-09-26-remove-ward-flow-and-caring-contacts.md",
         "section": "decisions",
         "catalogued": true
