@@ -2977,6 +2977,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-27-slow-sign-in-note.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/decisions/2026-10-19-citations-stay-pdf-first.md",
         "section": "decisions",
         "catalogued": true

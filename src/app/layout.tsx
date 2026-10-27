@@ -14,6 +14,7 @@ import { MobileKeyboardProvider } from "@/components/use-mobile-keyboard";
 import { AppAnnouncements } from "@/components/app-announcements";
 import { OverlayRoot } from "@/components/ui/overlay-root";
 import { ToastProvider } from "@/components/ui/toast";
+import { SlowSignInNotice } from "@/components/front-door/slow-sign-in-notice";
 import { PUBLIC_APP_ROBOTS_METADATA } from "@/lib/crawler-policy";
 import { BRAND_DESCRIPTION, BRAND_NAME } from "@/lib/brand";
 import "./globals.css";
@@ -178,7 +179,12 @@ export default async function RootLayout({
           <AccountDataProvider>
             <WorkAccountSyncDeferred />
             <MobileKeyboardProvider>
-              <ToastProvider>{children}</ToastProvider>
+              <ToastProvider>
+                {/* Root layout so every page explains its own slow sign-in. Not lazy-loaded: a lazy
+                    chunk that fails as the phone goes offline triggers the chunk-load reload. */}
+                <SlowSignInNotice />
+                {children}
+              </ToastProvider>
             </MobileKeyboardProvider>
           </AccountDataProvider>
         </AuthProvider>

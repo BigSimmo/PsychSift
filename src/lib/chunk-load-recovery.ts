@@ -36,6 +36,7 @@ type ReloadEnvironment = {
   readonly storage: Pick<Storage, "getItem" | "setItem"> | null;
   readonly now: number;
   readonly reload: () => void;
+  readonly online: boolean;
 };
 
 function sessionStorageOrNull(): Pick<Storage, "getItem" | "setItem"> | null {
@@ -49,13 +50,16 @@ function sessionStorageOrNull(): Pick<Storage, "getItem" | "setItem"> | null {
 /**
  * Reloads the page once for a stale-build chunk failure. Returns true when it reloaded.
  * Without working storage it never reloads, because it could not tell a loop from a first try.
+ * Offline it never reloads either: the new build cannot download, and the reload would replace
+ * the open page (or a navigation the reader just started) with the offline page.
  */
 export function reloadOnceForChunkLoadError(environment?: Partial<ReloadEnvironment>): boolean {
   if (typeof window === "undefined") return false;
   const storage = environment && "storage" in environment ? environment.storage : sessionStorageOrNull();
   const now = environment?.now ?? Date.now();
   const reload = environment?.reload ?? (() => window.location.reload());
-  if (!storage) return false;
+  const online = environment?.online ?? window.navigator.onLine !== false;
+  if (!storage || !online) return false;
   try {
     const last = Number(storage.getItem(CHUNK_RELOAD_STORAGE_KEY));
     if (Number.isFinite(last) && last > 0 && now - last >= 0 && now - last < CHUNK_RELOAD_WINDOW_MS) return false;

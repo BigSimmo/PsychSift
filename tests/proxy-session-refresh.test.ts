@@ -94,6 +94,8 @@ describe("proxy session refresh scoping", () => {
     expect(getClaims).toHaveBeenCalledTimes(1);
     expect(response.cookies.get("sb-unit-test-auth-token")?.value).toBe("rotated-session");
     expect(response.headers.get("content-security-policy")).toBeTruthy();
+    // A check that answered in time never raises the slow sign-in note.
+    expect(response.cookies.get("psychsift_sign_in_slow")).toBeUndefined();
   });
 
   it("lets a signed-in page load as signed out when the sign-in check stalls (performance audit H1)", async () => {
@@ -110,10 +112,26 @@ describe("proxy session refresh scoping", () => {
     const overridden = (response.headers.get("x-middleware-override-headers") ?? "").split(",");
     expect(overridden).not.toContain(PROXY_AUTH_USER_HEADER);
     expect(response.cookies.get("sb-unit-test-auth-token")).toBeUndefined();
+    // The browser is told why, so it can show the slow sign-in note (owner "Build" 27 Oct 2026).
+    const { SLOW_SIGN_IN_COOKIE } = await import("../src/lib/supabase/auth-deadline");
+    expect(response.cookies.get(SLOW_SIGN_IN_COOKIE)?.value).toBe("1");
 
     // The stalled refresh finishing later must not clear the browser's session cookie.
     await vi.advanceTimersByTimeAsync(100_000);
     expect(response.cookies.get("sb-unit-test-auth-token")).toBeUndefined();
+  });
+
+  it("does not raise the slow sign-in note when a background API call stalls", async () => {
+    vi.useFakeTimers();
+    const { proxy } = await import("../src/proxy");
+    const { SERVER_AUTH_DEADLINE_MS, SLOW_SIGN_IN_COOKIE } = await import("../src/lib/supabase/auth-deadline");
+    stall.next = true;
+
+    const pending = proxy(requestWithSessionCookie("/api/answer"));
+    await vi.advanceTimersByTimeAsync(SERVER_AUTH_DEADLINE_MS);
+    const response = await pending;
+
+    expect(response.cookies.get(SLOW_SIGN_IN_COOKIE)).toBeUndefined();
   });
 
   it("never calls getClaims without an sb- cookie", async () => {

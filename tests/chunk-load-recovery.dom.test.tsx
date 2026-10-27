@@ -56,6 +56,14 @@ describe("chunk-load recovery", () => {
     expect(reload).toHaveBeenCalledOnce();
   });
 
+  it("never reloads offline, where the new build cannot download and the offline page would replace this one", () => {
+    const storage = memoryStorage();
+    const reload = vi.fn();
+    expect(reloadOnceForChunkLoadError({ storage, now: 1_000_000, reload, online: false })).toBe(false);
+    expect(reload).not.toHaveBeenCalled();
+    expect(storage.values.has(CHUNK_RELOAD_STORAGE_KEY)).toBe(false);
+  });
+
   it("never reloads without storage, because it could not tell a loop from a first try", () => {
     const reload = vi.fn();
     expect(reloadOnceForChunkLoadError({ storage: null, now: 1, reload })).toBe(false);
