@@ -421,8 +421,9 @@ export async function proxy(request: NextRequest) {
   // user out on the next request.
   const { value: claimsResult, timedOut } = await authDeadline.run(() => supabase.auth.getClaims(), null);
   // Tell the browser this page opened as signed out only because the check ran out of time, so
-  // it can say so instead of leaving a signed-in doctor to think they were logged out.
-  if (timedOut) {
+  // it can say so instead of leaving a signed-in doctor to think they were logged out. Pages only:
+  // a background API call that times out did not open a page, so it must not raise the note.
+  if (timedOut && !request.nextUrl.pathname.startsWith("/api/")) {
     response.cookies.set(SLOW_SIGN_IN_COOKIE, "1", {
       path: "/",
       maxAge: SLOW_SIGN_IN_COOKIE_MAX_AGE_S,

@@ -7,7 +7,8 @@ import { useOptionalToast } from "@/components/ui/toast";
 import { SLOW_SIGN_IN_COOKIE } from "@/lib/supabase/auth-deadline";
 
 export const SLOW_SIGN_IN_TITLE = "Sign-in is slow right now";
-export const SLOW_SIGN_IN_BODY = "So this page opened as signed out. You are still signed in. Try again in a moment.";
+export const SLOW_SIGN_IN_BODY =
+  "Checking your sign-in took too long, so this page opened as signed out. Try again in a moment.";
 
 /** True once, when the proxy marked this page as opened signed out after its sign-in check ran out of time. */
 function takeSlowSignInFlag(): boolean {
@@ -24,7 +25,7 @@ function takeSlowSignInFlag(): boolean {
  */
 export function SlowSignInNotice() {
   const toast = useOptionalToast();
-  // The layout that holds this note stays mounted across in-app navigation, and each navigation
+  // The root layout that holds this note stays mounted across in-app navigation, and each navigation
   // passes the proxy again, so the flag is checked after every one, not only on first load.
   const pathname = usePathname();
   const search = useSearchParams()?.toString() ?? "";

@@ -121,6 +121,19 @@ describe("proxy session refresh scoping", () => {
     expect(response.cookies.get("sb-unit-test-auth-token")).toBeUndefined();
   });
 
+  it("does not raise the slow sign-in note when a background API call stalls", async () => {
+    vi.useFakeTimers();
+    const { proxy } = await import("../src/proxy");
+    const { SERVER_AUTH_DEADLINE_MS, SLOW_SIGN_IN_COOKIE } = await import("../src/lib/supabase/auth-deadline");
+    stall.next = true;
+
+    const pending = proxy(requestWithSessionCookie("/api/answer"));
+    await vi.advanceTimersByTimeAsync(SERVER_AUTH_DEADLINE_MS);
+    const response = await pending;
+
+    expect(response.cookies.get(SLOW_SIGN_IN_COOKIE)).toBeUndefined();
+  });
+
   it("never calls getClaims without an sb- cookie", async () => {
     const { proxy } = await import("../src/proxy");
     await proxy(new NextRequest(new URL("http://localhost/documents/some-id")));

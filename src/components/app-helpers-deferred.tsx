@@ -26,10 +26,6 @@ const SignInReturnNotice = dynamic(
   () => import("@/components/front-door/sign-in-return-notice").then((m) => m.SignInReturnNotice),
   { ssr: false },
 );
-const SlowSignInNotice = dynamic(
-  () => import("@/components/front-door/slow-sign-in-notice").then((m) => m.SlowSignInNotice),
-  { ssr: false },
-);
 const SignedOutWorkPrompt = dynamic(
   () => import("@/components/front-door/signed-out-work-prompt").then((m) => m.SignedOutWorkPrompt),
   { ssr: false },
@@ -50,8 +46,6 @@ export function AppHelpersDeferred() {
       <SignInEndedNotice />
       {/* Says why a sign-in link that opened this page did not sign the reader in. */}
       <SignInReturnNotice />
-      {/* Says why a signed-in reader sees a signed-out page when sign-in was too slow. */}
-      <SlowSignInNotice />
       {/* Asks whether a first sign-in keeps the shift's signed-out work on this phone. */}
       <SignedOutWorkPrompt />
     </>

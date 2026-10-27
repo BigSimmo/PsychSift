@@ -5,7 +5,11 @@ import { AuthProvider } from "@/lib/supabase/client";
 import { AccountDataProvider } from "@/components/account-data-provider";
 import { ChunkLoadRecovery } from "@/components/chunk-load-recovery";
 import { PhoneFocusClearance } from "@/components/phone-focus-clearance";
-import { PwaLifecycleDeferred, WorkAccountSyncDeferred } from "@/components/root-helpers-deferred";
+import {
+  PwaLifecycleDeferred,
+  SlowSignInNoticeDeferred,
+  WorkAccountSyncDeferred,
+} from "@/components/root-helpers-deferred";
 import { WebVitalsReporter } from "@/components/web-vitals-reporter";
 import { resolveMetadataBase } from "@/lib/metadata-base";
 import { GLASS_FALLBACK_SCRIPT } from "@/lib/glass-fallback";
@@ -178,7 +182,10 @@ export default async function RootLayout({
           <AccountDataProvider>
             <WorkAccountSyncDeferred />
             <MobileKeyboardProvider>
-              <ToastProvider>{children}</ToastProvider>
+              <ToastProvider>
+                <SlowSignInNoticeDeferred />
+                {children}
+              </ToastProvider>
             </MobileKeyboardProvider>
           </AccountDataProvider>
         </AuthProvider>
