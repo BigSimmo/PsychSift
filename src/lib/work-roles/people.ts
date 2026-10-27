@@ -3,6 +3,7 @@ import "server-only";
 import { z } from "zod";
 
 import { PublicApiError } from "@/lib/http";
+import { rosterTeamReleaseEnabled } from "@/lib/roster/team/release";
 import type { createAdminClient } from "@/lib/supabase/admin";
 import { looksLikePatientDetail } from "@/lib/work-text/patient-detail-check";
 import {
@@ -46,7 +47,7 @@ export type PeopleView = {
     people: PeoplePerson[];
     grants: PeopleGrant[];
   };
-  viewer: { userId: string; administrator: boolean; canGrant: GrantableWorkRole[] };
+  viewer: { userId: string; administrator: boolean; canGrant: GrantableWorkRole[]; canNameManagers: boolean };
   unlinkedTeams?: { serviceId: string; name: string }[];
 };
 
@@ -71,6 +72,9 @@ export const peopleChangeSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("move-team"), serviceId: uuid, toHospitalId: uuid }).strict(),
   z.object({ action: z.literal("rename-hospital"), hospitalId: uuid, name: hospitalName }).strict(),
   z.object({ action: z.literal("archive-hospital"), hospitalId: uuid }).strict(),
+  z
+    .object({ action: z.literal("set-manager"), hospitalId: uuid, serviceId: uuid, userId: uuid, manager: z.boolean() })
+    .strict(),
 ]);
 export type PeopleChange = z.infer<typeof peopleChangeSchema>;
 
@@ -95,6 +99,15 @@ function check<T>(result: { data: T | null; error: { code?: string | null } | nu
 }
 
 const isAdministrator = (context: WorkRoleContext) => context.grants.some((grant) => grant.role === "administrator");
+
+/**
+ * May this person name or remove roster managers for this hospital's teams? The site administrator
+ * anywhere, and Medical Workforce for their own hospital (owner decision 27 Oct 2026). The same
+ * `roles.grant` rule that lets Workforce give the DCT and supervisor roles.
+ */
+export function canNameManagers(context: WorkRoleContext, hospitalId: string): boolean {
+  return can(context, "roles.grant", { kind: "hospital", hospitalId });
+}
 
 /** May this person open People and roles for this hospital at all? */
 export function canManagePeople(context: WorkRoleContext, hospitalId: string): boolean {
@@ -144,6 +157,7 @@ export async function readPeople(
     userId: context.userId,
     administrator,
     canGrant: selected ? grantableRoles(context, selected.id) : [],
+    canNameManagers: selected ? canNameManagers(context, selected.id) : false,
   };
   const unlinkedTeams = administrator ? await readUnlinkedTeams(client) : undefined;
   if (!selected) return { hospitals, hospital: null, viewer, unlinkedTeams };
@@ -414,6 +428,37 @@ async function revoke(client: Client, context: WorkRoleContext, grantId: string)
   return row.hospital_id;
 }
 
+/**
+ * Names or removes a roster manager for one of the hospital's teams. The person must already be an
+ * active member of the team (the RPC checks it again under the team's lock). Nobody but the
+ * administrator changes their own manager role here, so Workforce cannot make themselves a
+ * manager. Held with the rest of the real-staff roster until the release is switched on.
+ */
+async function setManager(
+  client: Client,
+  context: WorkRoleContext,
+  change: Extract<PeopleChange, { action: "set-manager" }>,
+): Promise<void> {
+  if (!canNameManagers(context, change.hospitalId)) throw denied();
+  if (change.userId === context.userId && !isAdministrator(context)) throw denied();
+  if (!(await hospitalTeamIds(client, change.hospitalId)).includes(change.serviceId)) throw denied();
+  if (!rosterTeamReleaseEnabled()) {
+    throw new PublicApiError("Team roster is not available for real staff yet.", 503, { code: "roster_release_held" });
+  }
+  const { error } = await client.rpc("roster_set_manager", {
+    p_service_id: change.serviceId,
+    p_user_id: change.userId,
+    p_actor_id: context.userId,
+    p_manager: change.manager,
+  });
+  if (error?.message?.includes("roster_not_found")) {
+    throw new PublicApiError("That person isn't an active member of this team.", 404, {
+      code: "work_people_not_found",
+    });
+  }
+  if (error) throw writeFailed(error);
+}
+
 function hospitalUnavailable(): PublicApiError {
   return new PublicApiError("That hospital is unavailable. It may have been archived.", 404, {
     code: "work_people_not_found",
@@ -571,6 +616,9 @@ export async function applyPeopleChange(
       return readPeople(client, context, await moveTeam(client, context, change));
     case "rename-hospital":
       await renameHospital(client, context, change);
+      return readPeople(client, context, change.hospitalId);
+    case "set-manager":
+      await setManager(client, context, change);
       return readPeople(client, context, change.hospitalId);
     case "archive-hospital":
       await archiveHospital(client, context, change);

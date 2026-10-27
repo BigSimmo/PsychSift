@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "b8b79972-19fa-401a-b3cd-b829f656bee2",
+  "createdOn": "2026-10-27",
+  "action": "done",
+  "payload": {
+    "id": "#DW0T5X",
+    "outcome": "Resolved 2026-10-27: the team-rule checks inside the SQL swap accept shipped as supabase/migrations/20261026085000_roster_swap_accept_team_rules.sql with its schema files (commit abe08d6e), merged to main in PR #3829 by the owner. Not checked here: the post-merge live-drift run for that merge; read it before relying on the live state. Checked against main df306fc1 on 27 Oct.",
+    "baseRowFingerprint": "b673aee28c62785f81d5400b4cbe33e0367a0d9d60bae20e497096df9330420c",
+    "targetUlid": "01M5GK7J60DW0T5XW9TXGA6E25"
+  }
+}

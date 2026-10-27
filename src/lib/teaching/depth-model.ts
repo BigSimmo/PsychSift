@@ -346,7 +346,11 @@ const pairingSchema = z
   // Spec §4: an organiser sees totals and status only. Enforced by the SQL; repeated here so a
   // regression there still never sends topics or the registrar's own target to an organiser.
   .transform((row) => (row.access === "organiser" ? { ...row, entries: null, targetHours: null } : row));
-export const supervisionReadSchema = z.object({ pairings: z.array(pairingSchema) });
+export const supervisionReadSchema = z.object({
+  pairings: z.array(pairingSchema),
+  /** The service belongs to a hospital, so People and roles names its supervisors (one supervisor list). */
+  supervisorsFromPeople: z.boolean().optional(),
+});
 export type SupervisionNote = z.infer<typeof noteSchema>;
 export type SupervisionEntry = z.infer<typeof entrySchema>;
 export type SupervisionPairing = z.infer<typeof pairingSchema>;

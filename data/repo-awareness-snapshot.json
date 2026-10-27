@@ -2237,6 +2237,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/access-roles.md",
+        "section": "root",
+        "catalogued": true
+      },
+      {
         "path": "docs/codex/data-database-safety/README.md",
         "section": "codex",
         "catalogued": true
@@ -2278,6 +2283,11 @@
       },
       {
         "path": "docs/decisions/2026-10-16-original-section-delivery-scope.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-27-workforce-names-roster-managers.md",
         "section": "decisions",
         "catalogued": true
       },
@@ -2902,6 +2912,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-27-signed-out-examples-on-every-work-page.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/decisions/2026-10-19-rag-ts-split-deferred-until-after-launch.md",
         "section": "decisions",
         "catalogued": true
@@ -2974,6 +2989,11 @@
       {
         "path": "docs/archive/cloud-session-state-2026-10-16/db-remediation-coordination-state.md",
         "section": "archive",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-27-slow-sign-in-note.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -4252,6 +4272,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-27-one-supervisor-list.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/README.md",
         "section": "root",
         "catalogued": true
@@ -4308,6 +4333,11 @@
       },
       {
         "path": "docs/decisions/2026-08-09-visual-baseline-off-pull-requests.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-27-defer-worker-malware-scanner.md",
         "section": "decisions",
         "catalogued": true
       },

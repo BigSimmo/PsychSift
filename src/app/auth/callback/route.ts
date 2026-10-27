@@ -25,6 +25,7 @@ export const dynamic = "force-dynamic";
  */
 function exchangeFailureCode(message: string | undefined): string {
   const normalized = message?.toLowerCase() ?? "";
+  if (/\bbanned\b/.test(normalized)) return "account_blocked";
   if (normalized.includes("code verifier")) return "link_other_browser";
   if (normalized.includes("expired") || normalized.includes("flow state") || normalized.includes("already used")) {
     return "link_expired";

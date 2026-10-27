@@ -10,7 +10,7 @@ import { cleanup, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { DEMO_ON_CALL_ENTRIES } from "@/lib/on-call/demo-entries";
+import { DEMO_ON_CALL_ENTRIES, EXAMPLE_CONTRACT_END_ENTRY } from "@/lib/on-call/demo-entries";
 import {
   OnCallExampleDataScope,
   cacheOnCallEntries,
@@ -20,6 +20,9 @@ import {
   useOnCallEntries,
 } from "@/lib/on-call/entry-store";
 import { areaDataState, resetExampleDataForTests, setExampleDataOn } from "@/lib/example-data/store";
+
+/** The example set is the corpus plus the example contract, which "Load example content" never writes. */
+const EXAMPLE_SET_SIZE = [...DEMO_ON_CALL_ENTRIES, EXAMPLE_CONTRACT_END_ENTRY].length;
 
 const auth = vi.hoisted(() => ({
   status: "authenticated" as string,
@@ -64,7 +67,7 @@ describe("useOnCallEntries and the example data switch", () => {
     await waitFor(() => expect(result.current.sample).toBe(true));
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.demoMode).toBe(true);
-    expect(result.current.entries).toHaveLength(DEMO_ON_CALL_ENTRIES.length);
+    expect(result.current.entries).toHaveLength(EXAMPLE_SET_SIZE);
     expect(result.current.entries.every(isOnCallExampleEntry)).toBe(true);
     expect(result.current.cachedAt).toBeNull();
 
@@ -111,7 +114,7 @@ describe("useOnCallEntries and the example data switch", () => {
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(areaDataState("call")).toBe("empty");
     expect(result.current.demoMode).toBe(true);
-    expect(result.current.entries).toHaveLength(DEMO_ON_CALL_ENTRIES.length);
+    expect(result.current.entries).toHaveLength(EXAMPLE_SET_SIZE);
   });
 
   it("honours an explicit off for a signed-out visitor: no sample, the normal signed-out state", async () => {
@@ -134,7 +137,7 @@ describe("useOnCallEntries and the example data switch", () => {
     const { result } = renderHook(() => useOnCallEntries(), { wrapper: scope });
     await waitFor(() => expect(result.current.sample).toBe(true));
     await waitFor(() => expect(result.current.loading).toBe(false));
-    expect(result.current.entries).toHaveLength(DEMO_ON_CALL_ENTRIES.length);
+    expect(result.current.entries).toHaveLength(EXAMPLE_SET_SIZE);
   });
 
   it("changes nothing outside the frame's scope", async () => {

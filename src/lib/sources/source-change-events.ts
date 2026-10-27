@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import sourceChangeRegister from "@/data/source-change-events.json";
+import { strictSourceDate } from "@/lib/sources/source-date-policy";
 
 /**
  * Confirmed changes to registered sources (src/data/source-acquisitions.json).
@@ -15,7 +16,7 @@ import sourceChangeRegister from "@/data/source-change-events.json";
  * Deliberately free of server-only imports so client components can work out a
  * record's review state from it.
  */
-const isoDate = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/, "expected yyyy-mm-dd");
+const isoDate = z.string().refine((value) => strictSourceDate(value) !== null, "expected a real yyyy-mm-dd date");
 
 const sourceChangeEventSchema = z
   .object({

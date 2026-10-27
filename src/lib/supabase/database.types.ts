@@ -5184,6 +5184,19 @@ export type Database = {
         Args: { p_actor_id: string; p_service_id: string; p_expected_hospital_id: string; p_to_hospital_id: string };
         Returns: string;
       };
+      work_team_hospital: { Args: { p_service_id: string }; Returns: string | null };
+      work_sync_registrar_supervision: {
+        Args: { p_hospital_id: string; p_registrar_id: string; p_actor_id: string | null };
+        Returns: undefined;
+      };
+      work_sync_registrar_team: {
+        Args: { p_service_id: string; p_hospital_id: string; p_registrar_id: string; p_actor_id: string | null };
+        Returns: undefined;
+      };
+      work_sync_team_supervision: { Args: { p_service_id: string; p_actor_id: string | null }; Returns: undefined };
+      work_grant_supervision_sync: { Args: never; Returns: unknown };
+      work_team_supervision_sync: { Args: never; Returns: unknown };
+      work_member_supervision_sync: { Args: never; Returns: unknown };
       recover_ingestion_job: {
         Args: { p_job_id: string; p_action: string; p_expected: Json };
         Returns: Json;

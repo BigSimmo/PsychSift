@@ -27,6 +27,7 @@ const entryState = vi.hoisted(() => ({
   loadError: null as "offline" | "failed" | null,
   signedOut: false,
   demoMode: false,
+  sample: false,
   cachedAt: null as string | null,
   retry: vi.fn(),
 }));
@@ -52,6 +53,7 @@ beforeEach(() => {
     loadError: null,
     signedOut: false,
     demoMode: false,
+    sample: false,
     cachedAt: null,
   });
 });
@@ -68,6 +70,22 @@ describe("AdminCredentialPackPage", () => {
     render(<AdminCredentialPackPage now={NOW} />);
     expect(screen.getByTestId("admin-credential-pack-signed-out")).toBeTruthy();
     expect(screen.queryByTestId("admin-credential-pack-preview")).toBeNull();
+  });
+
+  it("shows a pack built from the example records and made-up numbers when signed out with examples showing", () => {
+    accountState.isAuthenticated = false;
+    seedWallet({ ahpraNumber: "MED1111111111" });
+    Object.assign(entryState, { demoMode: true, sample: true, entries: [renewal] });
+    render(<AdminCredentialPackPage now={NOW} />);
+    expect(screen.getByTestId("admin-credential-pack-example").textContent).toContain("made-up numbers");
+    const preview = screen.getByTestId("admin-credential-pack-preview").textContent ?? "";
+    expect(preview).toContain("MED0000000000");
+    expect(preview).toContain("Medical registration renewal");
+    // Whatever this device holds is never shown in the example.
+    expect(preview).not.toContain("MED1111111111");
+    // A browser Print must not output the example pack.
+    expect(screen.getByTestId("admin-credential-pack-preview").hasAttribute("data-print-output")).toBe(false);
+    expect(screen.queryByTestId("admin-credential-pack-signed-out")).toBeNull();
   });
 
   it("shows the same message in demo mode", () => {
