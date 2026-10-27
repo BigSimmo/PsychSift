@@ -7,11 +7,18 @@ import { SLOW_SIGN_IN_BODY, SLOW_SIGN_IN_TITLE, SlowSignInNotice } from "@/compo
 import { ToastProvider } from "@/components/ui/toast";
 import { SLOW_SIGN_IN_COOKIE } from "@/lib/supabase/auth-deadline";
 
+const nav = vi.hoisted(() => ({ pathname: "/my-day" }));
+vi.mock("next/navigation", () => ({
+  usePathname: () => nav.pathname,
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 // Owner "Build" 27 Oct 2026: when the server's 4 second sign-in limit is reached the page opens as
 // signed out, and this note says why instead of leaving the doctor to think they were logged out.
 
 afterEach(() => {
   cleanup();
+  nav.pathname = "/my-day";
   document.cookie = `${SLOW_SIGN_IN_COOKIE}=; Path=/; Max-Age=0`;
   vi.restoreAllMocks();
 });
@@ -40,6 +47,20 @@ describe("slow sign-in notice", () => {
     cleanup();
     renderNotice();
     expect(screen.queryByText(SLOW_SIGN_IN_TITLE)).toBeNull();
+  });
+
+  it("checks again after an in-app navigation, which passes the proxy again", () => {
+    const view = renderNotice();
+    expect(screen.queryByText(SLOW_SIGN_IN_TITLE)).toBeNull();
+
+    document.cookie = `${SLOW_SIGN_IN_COOKIE}=1; Path=/`;
+    nav.pathname = "/roster";
+    view.rerender(
+      <ToastProvider>
+        <SlowSignInNotice />
+      </ToastProvider>,
+    );
+    expect(screen.getByText(SLOW_SIGN_IN_TITLE)).toBeTruthy();
   });
 
   it("reloads the page on Try again", async () => {

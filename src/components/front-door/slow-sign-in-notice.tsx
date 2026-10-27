@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useEffect } from "react";
 
 import { useOptionalToast } from "@/components/ui/toast";
 import { SLOW_SIGN_IN_COOKIE } from "@/lib/supabase/auth-deadline";
@@ -23,12 +24,13 @@ function takeSlowSignInFlag(): boolean {
  */
 export function SlowSignInNotice() {
   const toast = useOptionalToast();
-  const shown = useRef(false);
+  // The layout that holds this note stays mounted across in-app navigation, and each navigation
+  // passes the proxy again, so the flag is checked after every one, not only on first load.
+  const pathname = usePathname();
+  const search = useSearchParams()?.toString() ?? "";
 
   useEffect(() => {
-    if (!toast || shown.current) return;
-    shown.current = true;
-    if (!takeSlowSignInFlag()) return;
+    if (!toast || !takeSlowSignInFlag()) return;
     toast.push({
       tone: "warning",
       title: SLOW_SIGN_IN_TITLE,
@@ -36,7 +38,7 @@ export function SlowSignInNotice() {
       duration: 0,
       action: { label: "Try again", onAction: () => window.location.reload() },
     });
-  }, [toast]);
+  }, [toast, pathname, search]);
 
   return null;
 }
