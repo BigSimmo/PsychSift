@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "1644e3b6-e86e-4ba7-af1b-a7a1a0fb7b87",
+  "createdOn": "2026-10-27",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "issue",
+    "summary": "Supabase support must revoke the supabase_admin default privileges in schema public (deferred, waiting on Supabase support)",
+    "detail": "DEFERRED 2026-10-27 by the owner pending a Supabase support ticket. Live read on 2026-10-27 (owner-run SELECT on pg_default_acl): supabase_admin in schema public still has default privileges granting anon and authenticated full access to new tables (arwdDxtm), sequences (rwU) and functions (X). No existing object is affected; the risk is any future object created as supabase_admin (for example by a platform tool) starting open to the public API key. Migration 20260713102000_revoke_supabase_admin_default_privileges degrades to a warning on hosted because postgres is not a member of supabase_admin, and the owner's manual run in the SQL editor on 2026-10-27 returned permission denied. NEXT ACTION: the owner sends Supabase support a ticket for project sjrfecxgysukkwxsowpy asking them to run: alter default privileges for role supabase_admin in schema public revoke all privileges on tables from anon, authenticated; ... revoke usage, select on sequences from anon, authenticated; ... revoke execute on functions from public, anon, authenticated. VERIFY: select defaclobjtype, defaclacl from pg_default_acl where defaclrole = 'supabase_admin'::regrole and defaclnamespace = 'public'::regnamespace returns no anon or authenticated entries. UNTIL THEN: create tables only through repository migrations, never by hand in the dashboard. The other 12 default grants seen (storage, graphql, graphql_public, supabase_functions) are platform-owned and expected.",
+    "source": "S1 live privacy checks thread, 2026-10-27; migration 20260713102000",
+    "issueUlid": "01M5YEVA3ZMXHK8FS728MBZ1Q3"
+  }
+}
