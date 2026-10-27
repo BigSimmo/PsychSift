@@ -4317,6 +4317,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-27-defer-worker-malware-scanner.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/rag-improvement/COORDINATION.md",
         "section": "rag-improvement",
         "catalogued": true
