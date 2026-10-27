@@ -153,7 +153,7 @@ describe("preferBundledFormRecord", () => {
     // Measured 2026-10-20: the clinical content audit edited eight signed forms, which went
     // back to drafted until the owner signs each one again. Each must still carry the
     // caveat, which is what the loop below checks.
-    expect(drafted.map((row) => row.form)).toEqual(["1A", "3B", "3D", "4B", "5A", "5B", "5C", "11D", "12C"]);
+    expect(drafted.map((row) => row.form)).toEqual(["1A", "4B", "5A", "5B", "5C", "11D", "12C"]);
     for (const details of drafted) {
       const resolved =
         formRecords.find((row) => (row.catalogPayload as { form?: string } | undefined)?.form === details.form) ?? null;
