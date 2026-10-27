@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { OnCallRosterWhosOnPage } from "@/components/on-call/roster-whos-on/on-call-roster-whos-on-page";
+import { RosterSampleGate } from "@/components/roster/roster-sample-gate";
 
 export const metadata: Metadata = {
   title: "From your team roster | On Call | PsychSift",
@@ -9,5 +10,10 @@ export const metadata: Metadata = {
 };
 
 export default function OnCallRosterWhosOnRoute() {
-  return <OnCallRosterWhosOnPage />;
+  // Who is on reads Roster, so signed out it shows Roster's example team.
+  return (
+    <RosterSampleGate>
+      <OnCallRosterWhosOnPage />
+    </RosterSampleGate>
+  );
 }

@@ -121,14 +121,31 @@ describe("CPD signed-out sample", () => {
   });
 
   it("says plainly that a page outside the sample needs sign-in", async () => {
-    nav.pathname = "/cme/customise";
+    nav.pathname = "/cme/not-a-sample-page";
     renderBoundary();
     await sampleShown();
     expect(screen.getByTestId("cme-sample-unavailable").textContent).toContain("not part of the example data");
   });
 
+  it("follows Job applications to Admin, where it moved", async () => {
+    nav.pathname = "/cme/applications/cv";
+    renderBoundary();
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/admin/applications/cv"));
+  });
+
   it("makes no network call and no browser-storage write on any sample page", async () => {
-    for (const pathname of ["/cme", "/cme/log", "/cme/routines", "/cme/summary", "/cme/new", "/cme/training"]) {
+    for (const pathname of [
+      "/cme",
+      "/cme/log",
+      "/cme/routines",
+      "/cme/summary",
+      "/cme/new",
+      "/cme/training",
+      "/cme/cpd-home",
+      "/cme/evidence",
+      "/cme/export",
+      "/cme/learning",
+    ]) {
       nav.pathname = pathname;
       const view = renderBoundary();
       await sampleShown();

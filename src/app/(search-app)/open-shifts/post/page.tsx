@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { OpenShiftsPostedPage } from "@/components/open-shifts/open-shifts-posted-page";
+import { RosterSampleGate } from "@/components/roster/roster-sample-gate";
 
 export const metadata: Metadata = {
   title: "Post | Open shifts | PsychSift",
@@ -8,5 +9,9 @@ export const metadata: Metadata = {
 };
 
 export default function OpenShiftsPostedRoute() {
-  return <OpenShiftsPostedPage />;
+  return (
+    <RosterSampleGate>
+      <OpenShiftsPostedPage />
+    </RosterSampleGate>
+  );
 }

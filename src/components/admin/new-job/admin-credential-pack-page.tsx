@@ -43,6 +43,14 @@ import { guardExampleAction } from "@/lib/example-data/guards";
  * The wallet is device-only, so the pack is offered only when signed in and
  * not in the example corpus, the same rule Admin Today uses for the wallet.
  */
+/** Made-up numbers for the signed-out example, shaped like the real ones but all zeros. */
+const EXAMPLE_PACK_NUMBERS: CredentialPackNumbers = {
+  ahpraNumber: "MED0000000000",
+  prescriberNumber: "0000000",
+  wwccNumber: "0000000",
+  providerNumbers: [{ id: "example-provider", site: "Example Hospital", number: "000000AB" }],
+};
+
 export function AdminCredentialPackPage({ now: nowProp }: { now?: Date } = {}) {
   const state = useOnCallEntries();
   const { isAuthenticated } = useAccountData();
@@ -55,7 +63,11 @@ export function AdminCredentialPackPage({ now: nowProp }: { now?: Date } = {}) {
   const [numbers, setNumbers] = useState<CredentialPackNumbers>(() => loadDoctorCredentials());
   useEffect(() => subscribeAccountTransition(() => setNumbers({})), []);
 
-  const sections = useMemo(() => buildCredentialPack({ numbers, ownEntries: own }), [numbers, own]);
+  // Signed out with example data showing, the pack is built from the example records and made-up
+  // numbers, so the page can be seen working. Copy, share and save stay off for examples.
+  const signedOutExample = !isAuthenticated && state.sample;
+  const packNumbers = signedOutExample ? EXAMPLE_PACK_NUMBERS : numbers;
+  const sections = useMemo(() => buildCredentialPack({ numbers: packNumbers, ownEntries: own }), [packNumbers, own]);
   const [excluded, setExcluded] = useState<ReadonlySet<string>>(() => new Set());
   const included = useMemo(() => includedCredentialPack(sections, excluded), [sections, excluded]);
   const text = useMemo(() => credentialPackText(included, now), [included, now]);
@@ -92,7 +104,7 @@ export function AdminCredentialPackPage({ now: nowProp }: { now?: Date } = {}) {
     );
   }
 
-  const available = isAuthenticated && !state.demoMode;
+  const available = (isAuthenticated && !state.demoMode) || signedOutExample;
   const ready = loadState === "ready" && available;
   const nothingIncluded = included.length === 0;
 
@@ -159,6 +171,11 @@ export function AdminCredentialPackPage({ now: nowProp }: { now?: Date } = {}) {
         </WorkCard>
       ) : ready ? (
         <>
+          {signedOutExample ? (
+            <AdminNote testId="admin-credential-pack-example">
+              These are example records with made-up numbers. Sign in to make a pack from your own.
+            </AdminNote>
+          ) : null}
           <section className={cn(adminStyles.section, "print:hidden")} aria-labelledby="pack-choose">
             <WorkSectionLabel id="pack-choose">Choose what goes in</WorkSectionLabel>
             <ul className="work-card work-rows" data-testid="admin-credential-pack-choose">
