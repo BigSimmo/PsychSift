@@ -121,7 +121,7 @@ describe("CmeDashboardRoute one-tap due log", () => {
       />,
     );
     await user.click(screen.getByRole("button", { name: /log 1(\.0)? h/i }));
-    expect(await screen.findByTestId("cme-one-tap-log-error")).toHaveTextContent(/Demo mode is read-only/i);
+    expect(await screen.findByTestId("cme-one-tap-log-error")).toHaveTextContent(/These are example records/i);
     expect(fetchMock).not.toHaveBeenCalled();
     expect(navigation.push).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: "Dismiss notification" }));

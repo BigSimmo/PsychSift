@@ -12,6 +12,7 @@ import {
   type CommittedGeneration,
   type RollbackScope,
   type RollbackStore,
+  type RollbackPreflight,
 } from "../src/lib/reindex-rollback";
 
 const DOC_A = "00000000-0000-4000-8000-00000000000a";
@@ -25,6 +26,7 @@ type MemoryDocument = {
   chunkerVersions?: Record<string, string[]>;
   /** Generations without a complete snapshot; every other generation has one. */
   missingSnapshots?: string[];
+  preflight?: Partial<RollbackPreflight>;
 };
 
 function memoryStore(documents: Record<string, MemoryDocument>) {
@@ -52,6 +54,16 @@ function memoryStore(documents: Record<string, MemoryDocument>) {
     },
     async hasGenerationSnapshot(documentId, generationId) {
       return !(documents[documentId]?.missingSnapshots ?? []).includes(generationId);
+    },
+    async preflight(documentId) {
+      return {
+        openIngestionJobs: 0,
+        openEnrichmentJobs: 0,
+        pageStorageMode: "typed_exact",
+        targetPages: 4,
+        unstampedPages: 0,
+        ...documents[documentId]?.preflight,
+      };
     },
     repoint,
   };
@@ -121,6 +133,50 @@ describe("reindex rollback", () => {
     expect(repoint).not.toHaveBeenCalled();
   });
 
+  it.each([
+    { openIngestionJobs: 1, openEnrichmentJobs: 0 },
+    { openIngestionJobs: 0, openEnrichmentJobs: 2 },
+  ])("refuses and reports open work during preflight: %j", async (openJobs) => {
+    const { store, repoint } = memoryStore({ [DOC_A]: { ...twoGenerations(), preflight: openJobs } });
+    const [outcome] = await runReindexRollback(store, { kind: "documents", documentIds: [DOC_A] }, { apply: true });
+    expect(outcome.refusal).toBe("ingestion_in_progress");
+    expect(outcome.preflight).toMatchObject(openJobs);
+    expect(formatRollbackOutcome(outcome, false)).toContain(
+      `${openJobs.openIngestionJobs} open ingestion jobs, ${openJobs.openEnrichmentJobs} open enrichment jobs`,
+    );
+    expect(repoint).not.toHaveBeenCalled();
+  });
+
+  it("refuses a chunk-only target without restorable pages", async () => {
+    const { store, repoint } = memoryStore({
+      [DOC_A]: { ...twoGenerations(), preflight: { targetPages: 0, unstampedPages: 0 } },
+    });
+    const [outcome] = await runReindexRollback(store, { kind: "documents", documentIds: [DOC_A] }, { apply: true });
+    expect(outcome.refusal).toBe("target_not_committed");
+    expect(repoint).not.toHaveBeenCalled();
+  });
+
+  it("keeps the existing legacy-page fallback only when leaving typed page storage", async () => {
+    const { store, repoint, documents } = memoryStore({
+      [DOC_A]: { ...twoGenerations(), preflight: { targetPages: 0, unstampedPages: 7 } },
+    });
+    const [eligible] = await runReindexRollback(store, { kind: "documents", documentIds: [DOC_A] });
+    expect(eligible.refusal).toBeNull();
+    documents[DOC_A].preflight = { targetPages: 0, unstampedPages: 7, pageStorageMode: "legacy_unqualified" };
+    const [refused] = await runReindexRollback(store, { kind: "documents", documentIds: [DOC_A] }, { apply: true });
+    expect(refused.refusal).toBe("target_not_committed");
+    expect(repoint).not.toHaveBeenCalled();
+  });
+
+  it("never applies when preflight metadata cannot be read", async () => {
+    const { store, repoint } = memoryStore({ [DOC_A]: twoGenerations() });
+    store.preflight = vi.fn().mockRejectedValue(new Error("preflight read unavailable"));
+    await expect(
+      runReindexRollback(store, { kind: "documents", documentIds: [DOC_A] }, { apply: true }),
+    ).rejects.toThrow("preflight read unavailable");
+    expect(repoint).not.toHaveBeenCalled();
+  });
+
   it("refuses when the current generation's commit time is unknown, unless rolling forward", async () => {
     const document = twoGenerations();
     document.current = "gen-unstamped";
@@ -176,6 +232,70 @@ describe("reindex rollback", () => {
     );
     expect(outcomes.map((outcome) => outcome.documentId)).toEqual([DOC_A]);
     expect(repoint).toHaveBeenCalledTimes(1);
+  });
+
+  it.each<RollbackScope>([
+    { kind: "committed-after", after: "2026-10-20T00:00:00.000Z" },
+    { kind: "chunker-version", chunkerVersion: "1.3.1-page" },
+  ])("filters $kind before artifact counts, preflight and snapshot reads", async (scope) => {
+    const excluded = twoGenerations();
+    excluded.generations[1].committedAt = "2026-10-10T00:00:00.000Z";
+    excluded.chunkerVersions = { "gen-new": ["1.3.0-page"] };
+    const { store } = memoryStore({ [DOC_A]: excluded, [DOC_B]: twoGenerations() });
+    const chunks = vi.spyOn(store, "chunkCount");
+    const preflight = vi.spyOn(store, "preflight");
+    const snapshots = vi.spyOn(store, "hasGenerationSnapshot");
+    const generations = vi.spyOn(store, "committedGenerations");
+    const plans = await planReindexRollback(store, scope, 1);
+    expect(plans.map((plan) => plan.documentId)).toEqual([DOC_B]);
+    expect(chunks.mock.calls).toEqual([
+      [DOC_B, "gen-new"],
+      [DOC_B, "gen-old"],
+    ]);
+    expect(preflight.mock.calls).toEqual([[DOC_B, "gen-old"]]);
+    expect(snapshots.mock.calls).toEqual([[DOC_B, "gen-old"]]);
+    expect(generations.mock.calls).toEqual(scope.kind === "committed-after" ? [[DOC_A], [DOC_B]] : [[DOC_B]]);
+  });
+
+  it("does not let an excluded document's unavailable preflight abort the selected scope", async () => {
+    const excluded = twoGenerations();
+    excluded.chunkerVersions = { "gen-new": ["1.3.0-page"] };
+    const { store } = memoryStore({ [DOC_A]: excluded, [DOC_B]: twoGenerations() });
+    const readPreflight = store.preflight.bind(store);
+    vi.spyOn(store, "preflight").mockImplementation((documentId, generationId) => {
+      if (documentId === DOC_A) throw new Error("excluded preflight unavailable");
+      return readPreflight(documentId, generationId);
+    });
+    const plans = await planReindexRollback(store, { kind: "chunker-version", chunkerVersion: "1.3.1-page" });
+    expect(plans.map((plan) => plan.documentId)).toEqual([DOC_B]);
+  });
+
+  it("keeps full preflight for explicit document scope without probing chunker versions", async () => {
+    const { store } = memoryStore({
+      [DOC_A]: { ...twoGenerations(), preflight: { openEnrichmentJobs: 1 } },
+    });
+    const preflight = vi.spyOn(store, "preflight");
+    const versions = vi.spyOn(store, "chunkerVersions");
+    const [plan] = await planReindexRollback(store, { kind: "documents", documentIds: [DOC_A] });
+    expect(preflight).toHaveBeenCalledWith(DOC_A, "gen-old");
+    expect(versions).not.toHaveBeenCalled();
+    expect(plan.refusal).toBe("ingestion_in_progress");
+  });
+
+  it("keeps the generation captured for scope selection when the pointer moves during its version read", async () => {
+    const { store, documents, repoint } = memoryStore({ [DOC_A]: twoGenerations() });
+    const current = vi.spyOn(store, "currentGeneration");
+    vi.spyOn(store, "chunkerVersions").mockImplementation(async (_documentId, generationId) => {
+      expect(generationId).toBe("gen-new");
+      documents[DOC_A].current = "gen-newer";
+      return ["1.3.1-page"];
+    });
+    const preview = await planReindexRollback(store, { kind: "chunker-version", chunkerVersion: "1.3.1-page" });
+    expect(preview[0].currentGeneration).toBe("gen-new");
+    expect(current).toHaveBeenCalledTimes(1);
+    const [outcome] = await applyRollbackPlans(store, preview);
+    expect(repoint).toHaveBeenCalledWith(DOC_A, "gen-new", "gen-old");
+    expect(outcome.applyError).toBe("pointer_moved");
   });
 
   it("scopes by document IDs and respects the limit", async () => {

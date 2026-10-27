@@ -93,7 +93,8 @@ live queue owner. Resuming the worker does not clear it. `reindex:health` counts
 uploads waiting for the worker (audit 26 Oct 2026 LS-07, four September enrichment-backfill jobs).
 
 - On a document that is already searchable, the autopilot prints a note and does not alert. No
-  upload waits on the job; it is leftover enrichment work.
+  upload waits on the job. The retained job status alone does not prove enrichment remains:
+  linked enrichment jobs can already be complete, leaving an inconsistent historical job row.
 - On a document that is not searchable, it is an upload that will never finish by itself, so it is
   an integrity alert like `jobs_stranded_final_attempt`.
 
@@ -132,6 +133,37 @@ as its own chunk.
 - Do not use `--force-large-import` unless Supabase health is stable and you have intentionally chosen a larger import wave.
 - Do not re-index to fix "OCR corruption" or to add table/heading-aware chunking without new evidence. Both were measured negligible/neutral on 2026-07-08 (`noisy_unit_rate` is a saturated visual-coverage metric, not corruption; heading/table-aware chunking already exists and chunks are well-bounded). See `docs/chunking-ocr-reindex-lever-finding-2026-07-08.md`.
 
+## Offline deduplication impact preparation
+
+`scripts/audit-chunk-dedup-impact.ts` compares the audited legacy fingerprint with
+chunker 1.3.4 using an explicitly supplied public or synthetic **pre-dedup** candidate
+export. It reads no corpus, provider configuration or original source and never queues work:
+
+```sh
+node scripts/run-tsx.mjs scripts/audit-chunk-dedup-impact.ts --input permitted-candidates.json --output new-impact-report.json
+```
+
+The version-1 JSON envelope requires `evidenceKind` (`public_pre_dedup_candidates`
+or `synthetic_pre_dedup_candidates`), canonical UUID `sourceId` and `generationId`,
+`sourceSha256`, `scopeMode` (`page` or `document`) and ordered `candidates`.
+Each candidate has a unique `candidate-N` ID, `content` and exact `scope`: page mode
+uses `pageNumber`; document mode uses `sectionPathSha256`, `pageStart` and `pageEnd`.
+The section digest must hash the runtime's `sectionPath.join(" > ")`; all digests
+use `sha256:` followed by 64 lowercase hex digits. Include `schemaVersion: 1`.
+The input is a bounded regular UTF-8 JSON file (1 MiB, at most 10,000 candidates);
+the output must be a new file, or omit `--output` for JSON on stdout.
+
+Reports contain only hashes, counts and opaque IDs. The public/synthetic declaration
+does not de-identify input or establish source-use rights. The supplied source hash
+and scope capture are assertions, not independent authentication of original bytes.
+Use only explicitly permitted evidence; never patient material or secrets.
+
+A collision identifies distinct candidates lost under the old rule **within the
+supplied evidence**. Stored surviving chunks cannot reveal already discarded text;
+old producer versions alone establish neither impact nor completeness. Review the
+exact permitted original and generation before proposing targeted reconstruction.
+No report authorizes reindexing or lifts the full-library stop.
+
 ## Rolling back a reindex
 
 `npm run reindex:rollback` moves documents back to their previous committed index generation.
@@ -142,7 +174,10 @@ commit of that document. The script needs the `rollback_document_index_generatio
 `20261021170000_restore_generation_metadata_on_rollback.sql`).
 
 - Dry run is the default. For each document it prints the current and previous generation,
-  their chunk counts and commit times, and whether it would roll back.
+  their chunk counts and commit-time proxies, and whether it would roll back. For a target with
+  chunks it also reports pending/processing job counts in both ingestion and enrichment queues,
+  target stamped-page and unstamped-page counts, and the current page-storage mode. These reads
+  select counts and storage metadata, never page text, vectors, summaries or patient content.
 - Choose one scope: `--document-id <uuid>[,<uuid>]`, `--committed-after <ISO time>` (the
   current generation was committed after that time) or `--chunker-version <version>` (the
   current generation's chunks carry that `chunker_version`). `--limit` caps the documents
@@ -154,12 +189,16 @@ commit of that document. The script needs the `rollback_document_index_generatio
   is left alone. A generation that was replaced before 21 Oct 2026 (before
   `20261021170000_restore_generation_metadata_on_rollback.sql` started taking snapshots) has no
   snapshot and is refused with `target_snapshot_missing` rather than rolled back with mismatched
-  details. The dry run reports that refusal too, so a document it lists as ready will not be
-  refused for it at apply.
+  details. The dry run reports that refusal too. Its reads are not an atomic snapshot or an apply
+  guarantee: the database function repeats its checks under the document lock.
 - `--apply` writes (it asks first unless `--yes` is given). It refuses a document with no
   previous committed generation, or whose previous generation has no chunks. The database
-  function also refuses if the pointer moved since the dry run or an ingestion job for the
-  document is pending or processing.
+  function also refuses if the pointer moved since the dry run. Both dry run and apply refuse
+  pending or processing work in either `ingestion_jobs` or `indexing_v3_agent_jobs`
+  (`ingestion_in_progress`), or a target without restorable pages (`target_not_committed`).
+  Unstamped pages qualify only when leaving `typed_exact` page storage, matching the existing
+  legacy-page fallback in the database function. A failed or incomplete preflight read stops
+  planning; it never assumes an empty queue.
 - The generation you roll back from is kept, so a rollback can itself be undone. On branch
   `claude/project-thread-d92wad` (24 Oct 2026), a second run that would move a document forward
   to that newer generation is refused as `previous_generation_is_newer` unless you pass

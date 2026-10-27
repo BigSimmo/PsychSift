@@ -20,7 +20,7 @@ export const runtime = "nodejs";
 export async function PUT(request: Request) {
   try {
     if (isDemoMode()) {
-      return publicErrorResponse("Demo mode is read-only. Sign in to write your plan.", 400, {
+      return publicErrorResponse("These are example records. Sign in to write your plan.", 400, {
         code: "demo_mode_unavailable",
       });
     }

@@ -31,7 +31,7 @@ export function CmeSetupRoute({
       demoMode={demoMode}
       onConfirm={async (requirementSet) => {
         if (demoMode)
-          throw new Error("Demo mode is read-only. Sign in to confirm requirements for your private record.");
+          throw new Error("These are example records. Sign in to confirm requirements for your private record.");
         const response = await fetch("/api/cme/year", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },

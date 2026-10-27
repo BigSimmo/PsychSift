@@ -5,7 +5,7 @@ type EvalSummary = Record<string, unknown>;
 
 type EvalPayload = {
   summary?: EvalSummary;
-  results?: Array<Record<string, unknown>>;
+  results?: unknown[];
 };
 
 type MetricKind = "number" | "array" | "layer";
@@ -120,12 +120,36 @@ export type PerCaseRankComparison = {
   // metric would report "zero regressions" without evidence for it, so these also make the
   // pair non-comparable.
   unavailableMetrics: Array<{ caseId: string; metric: (typeof PER_CASE_RANK_METRICS)[number] }>;
+  invalidCases: string[];
+  contentPopulationChanges: string[];
   comparedCaseCount: number;
 };
 
 const PER_CASE_RANK_METRICS = ["reciprocalRankAt10", "contentReciprocalRankAt10"] as const;
 
 type PerCaseResult = Record<string, unknown>;
+
+function indexCases(results: unknown[], side: string, invalidCases: string[]): Map<string, PerCaseResult> {
+  const byId = new Map<string, PerCaseResult>();
+  if (results.length === 0) invalidCases.push(`${side}.results must contain at least one case`);
+  for (const [index, result] of results.entries()) {
+    if (!result || typeof result !== "object" || Array.isArray(result)) {
+      invalidCases.push(`${side}.results[${index}] must be a case object`);
+      continue;
+    }
+    const entry = result as PerCaseResult;
+    if (typeof entry.id !== "string" || entry.id.trim().length === 0) {
+      invalidCases.push(`${side}.results[${index}] must have a nonempty case ID`);
+      continue;
+    }
+    if (byId.has(entry.id)) {
+      invalidCases.push(`${side}.results has duplicate case ID: ${entry.id}`);
+      continue;
+    }
+    byId.set(entry.id, entry);
+  }
+  return byId;
+}
 
 function readCaseRank(result: PerCaseResult, key: string): number | undefined {
   const value = result[key];
@@ -136,42 +160,94 @@ function readCaseRank(result: PerCaseResult, key: string): number | undefined {
 // safeguards.md, canary-pair step 3), mechanized: any per-case drop in doc-level rr@10 or
 // content rr@10 between the baseline and post artifacts is a regression, even when the
 // case still passes its top-5 recall gate (rank depth can silently erode otherwise).
-export function comparePerCaseRanks(
-  baselineResults: PerCaseResult[],
-  candidateResults: PerCaseResult[],
-): PerCaseRankComparison {
-  const candidateById = new Map<string, PerCaseResult>();
-  for (const result of candidateResults) {
-    if (typeof result.id === "string") candidateById.set(result.id, result);
-  }
-  const baselineIds = new Set<string>();
+export function comparePerCaseRanks(baselineResults: unknown[], candidateResults: unknown[]): PerCaseRankComparison {
+  const invalidCases: string[] = [];
+  const baselineById = indexCases(baselineResults, "baseline", invalidCases);
+  const candidateById = indexCases(candidateResults, "candidate", invalidCases);
   const regressions: PerCaseRankRegression[] = [];
   const missingInCandidate: string[] = [];
   const unavailableMetrics: PerCaseRankComparison["unavailableMetrics"] = [];
+  const contentPopulationChanges: string[] = [];
   let comparedCaseCount = 0;
-  for (const baselineResult of baselineResults) {
-    if (typeof baselineResult.id !== "string") continue;
-    baselineIds.add(baselineResult.id);
-    const candidateResult = candidateById.get(baselineResult.id);
+  for (const [caseId, baselineResult] of baselineById) {
+    const candidateResult = candidateById.get(caseId);
     if (!candidateResult) {
-      missingInCandidate.push(baselineResult.id);
+      missingInCandidate.push(caseId);
       continue;
     }
     comparedCaseCount += 1;
+    if (
+      Array.isArray(baselineResult.expectedContentTerms) &&
+      Array.isArray(candidateResult.expectedContentTerms) &&
+      baselineResult.expectedContentTerms.length > 0 !== candidateResult.expectedContentTerms.length > 0
+    ) {
+      contentPopulationChanges.push(caseId);
+    }
     for (const metric of PER_CASE_RANK_METRICS) {
       const baselineRank = readCaseRank(baselineResult, metric);
       const candidateRank = readCaseRank(candidateResult, metric);
       if (baselineRank === undefined || candidateRank === undefined) {
-        unavailableMetrics.push({ caseId: baselineResult.id, metric });
+        unavailableMetrics.push({ caseId, metric });
         continue;
       }
       if (candidateRank < baselineRank) {
-        regressions.push({ caseId: baselineResult.id, metric, baseline: baselineRank, candidate: candidateRank });
+        regressions.push({ caseId, metric, baseline: baselineRank, candidate: candidateRank });
       }
     }
   }
-  const missingInBaseline = [...candidateById.keys()].filter((id) => !baselineIds.has(id));
-  return { regressions, missingInCandidate, missingInBaseline, unavailableMetrics, comparedCaseCount };
+  const missingInBaseline = [...candidateById.keys()].filter((id) => !baselineById.has(id));
+  return {
+    regressions,
+    missingInCandidate,
+    missingInBaseline,
+    unavailableMetrics,
+    invalidCases,
+    contentPopulationChanges,
+    comparedCaseCount,
+  };
+}
+
+// A rank delta alone cannot establish the canary's absolute recall/quality gates or prove
+// that the summary denominators describe the supplied cases. Keep these release checks
+// separate from the report-only summary comparison.
+function canaryArtifactFailures(payload: EvalPayload, side: string): string[] {
+  const failures: string[] = [];
+  const summary = payload.summary ?? {};
+  for (const metric of ["document_recall_at_5", "content_recall_at_5", "top_k_hit_rate"]) {
+    if (summary[metric] !== 1) failures.push(`${side}.${metric} must equal 1.0`);
+  }
+  if (!Array.isArray(summary.failed_cases) || summary.failed_cases.length > 0) {
+    failures.push(`${side}.failed_cases must be an empty array`);
+  }
+  const results = payload.results;
+  if (!Array.isArray(results)) return failures; // The per-case gate reports absent results.
+  const caseCount = summary.case_count;
+  if (!Number.isInteger(caseCount) || (caseCount as number) <= 0 || caseCount !== results.length) {
+    failures.push(`${side}.case_count must be a positive integer matching results.length (${results.length})`);
+  }
+  const contentCount = summary.content_mrr_case_count;
+  if (!Number.isInteger(contentCount) || (contentCount as number) < 0 || (contentCount as number) > results.length) {
+    failures.push(`${side}.content_mrr_case_count must be an integer between 0 and results.length`);
+  }
+  let declaredContentCount = 0;
+  for (const [index, result] of results.entries()) {
+    if (!result || typeof result !== "object" || Array.isArray(result)) continue;
+    const entry = result as PerCaseResult;
+    if (!Array.isArray(entry.expectedContentTerms)) {
+      failures.push(`${side}.results[${index}].expectedContentTerms is required to verify content_mrr_case_count`);
+    } else if (entry.expectedContentTerms.length > 0) {
+      declaredContentCount += 1;
+    }
+    if (!Array.isArray(entry.failures) || entry.failures.length > 0) {
+      failures.push(`${side}.results[${index}].failures must be an empty array`);
+    }
+  }
+  if (contentCount !== declaredContentCount) {
+    failures.push(
+      `${side}.content_mrr_case_count must match cases declaring expectedContentTerms (${declaredContentCount})`,
+    );
+  }
+  return failures;
 }
 
 // Pure so it can be unit-tested without touching the filesystem or process exit code.
@@ -256,6 +332,17 @@ function main() {
     process.exitCode = 1;
   }
 
+  if (failOnRegression) {
+    const failures = [
+      ...canaryArtifactFailures(baselinePayload, "baseline"),
+      ...canaryArtifactFailures(candidatePayload, "candidate"),
+    ];
+    if (failures.length > 0) {
+      console.error(`\nCanary quality/population gate failed:\n  ${failures.join("\n  ")}`);
+      process.exitCode = 1;
+    }
+  }
+
   const baselineResults = baselinePayload.results;
   const candidateResults = candidatePayload.results;
   if (Array.isArray(baselineResults) && Array.isArray(candidateResults)) {
@@ -274,15 +361,19 @@ function main() {
     for (const entry of perCase.unavailableMetrics) {
       console.log(`  METRIC UNAVAILABLE ${entry.caseId} ${entry.metric}: absent or non-finite on one side`);
     }
+    for (const issue of perCase.invalidCases) console.log(`  INVALID CASES: ${issue}`);
+    for (const id of perCase.contentPopulationChanges) console.log(`  CONTENT MRR POPULATION CHANGED: ${id}`);
     // Any difference in the case sets — either direction — or an unavailable metric means the
     // pair cannot prove the identical-case-set gate; fail closed rather than report a pass.
     const notComparable =
       perCase.missingInCandidate.length > 0 ||
       perCase.missingInBaseline.length > 0 ||
-      perCase.unavailableMetrics.length > 0;
+      perCase.unavailableMetrics.length > 0 ||
+      perCase.invalidCases.length > 0 ||
+      perCase.contentPopulationChanges.length > 0;
     if (failOnRegression && (perCase.regressions.length > 0 || notComparable)) {
       console.error(
-        "\nPer-case gate failed: the canary-pair protocol (docs/rag-behaviour/safeguards.md) requires zero per-case rr regressions over an identical case set with both rank metrics present.",
+        "\nPer-case gate failed: the canary-pair protocol (docs/rag-behaviour/safeguards.md) requires zero per-case rr regressions over an identical nonempty set of unique cases with both rank metrics present and a consistent content-MRR population.",
       );
       process.exitCode = 1;
     }

@@ -122,7 +122,7 @@ export function CmeRoutinesRoute({
       return;
     }
     if (demoMode) {
-      setError("Demo mode is read-only. Sign in to save routines to a private CPD record.");
+      setError("These are example records. Sign in to save routines to a private CPD record.");
       return;
     }
     setSaving(true);
@@ -151,7 +151,7 @@ export function CmeRoutinesRoute({
   async function archive(restore = false) {
     if (!editingId || editingId === "new" || saving) return;
     if (demoMode) {
-      setError(`Demo mode is read-only. Sign in to ${restore ? "restore" : "archive"} a private routine.`);
+      setError(`These are example records. Sign in to ${restore ? "restore" : "archive"} a private routine.`);
       return;
     }
     setSaving(true);

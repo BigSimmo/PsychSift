@@ -34,8 +34,10 @@ export function batchEmbeddingInputs(texts: string[], maxInputs: number, model: 
   let currentBytes = 0;
   for (const text of texts) {
     const bytes = bounded ? Buffer.byteLength(text, "utf8") : 0;
-    // Validate the entire list before any caller can dispatch a partial build.
-    if (bytes > EMBEDDING_MAX_BATCH_UTF8_BYTES) throw new EmbeddingRequestBudgetError();
+    // An individually oversized input is invalid even when the request total fits.
+    // Validate the entire list before any caller can dispatch a partial build;
+    // refuse instead of silently truncating a source passage or table row.
+    if (bytes > EMBEDDING_MAX_INPUT_UTF8_BYTES) throw new EmbeddingRequestBudgetError();
     if (current.length && (current.length >= maxInputs || currentBytes + bytes > EMBEDDING_MAX_BATCH_UTF8_BYTES)) {
       batches.push(current);
       current = [];

@@ -1,3 +1,8 @@
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import { buildSourceProvenanceGapReport, sourceProvenanceGaps } from "@/lib/source-provenance-gaps";
@@ -92,5 +97,94 @@ describe("database follow-ups (E2E-10, E2E-11, DB-N4)", () => {
       );
     }
     expect(sql).toMatch(/drop index if exists public\.image_caption_cache_owner_hash_idx;/);
+  });
+});
+
+describe("offline provenance export boundary", () => {
+  function runReport(rows: unknown, args: string[] = []) {
+    const directory = mkdtempSync(path.join(tmpdir(), "psychsift-provenance-"));
+    const input = path.join(directory, "synthetic.json");
+    try {
+      writeFileSync(input, JSON.stringify(rows));
+      return spawnSync(
+        process.execPath,
+        ["scripts/run-tsx.mjs", "scripts/source-provenance-gaps.ts", "--input", input, ...args],
+        { encoding: "utf8", timeout: 10_000 },
+      );
+    } finally {
+      rmSync(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    }
+  }
+
+  const row = { id: "synthetic-document", title: "Synthetic document", status: "indexed", metadata: {} };
+
+  it.each([
+    ["malformed row", [row, null]],
+    ["missing id", [row, { title: "Synthetic missing identity", status: "indexed", metadata: {} }]],
+    ["duplicate id", [row, { ...row }]],
+    ["invalid status", [{ ...row, status: "INDEXED" }]],
+    ["invalid metadata", [{ ...row, metadata: [] }]],
+  ])("refuses the whole export for %s before emitting any totals", (_label, rows) => {
+    const result = runReport(rows);
+    expect(result.error).toBeUndefined();
+    expect(result.status).toBe(1);
+    expect(result.stdout).not.toContain("Rows read:");
+    expect(result.stderr).toMatch(/Export row/);
+  });
+
+  it.each([
+    ["terminal escape", "Synthetic\u001b[2Jforged report"],
+    ["line break", "Synthetic\nforged report"],
+    ["null character", "Synthetic\u0000forged report"],
+    ["Unicode control", "Synthetic\u0085forged report"],
+  ])("refuses a title containing a %s without echoing it or printing a report", (_label, title) => {
+    const result = runReport([{ ...row, title }], ["--list"]);
+    expect(result.error).toBeUndefined();
+    expect(result.status).toBe(1);
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toContain("Export row 1 title must not contain control characters.");
+    expect(result.stderr).not.toContain(title);
+    expect(result.stderr).not.toContain("\u001b");
+  });
+
+  it.each([null, "Ordinary synthetic title", "Synthetic α/β ≤ 5 — ≥ 2"])("preserves a permitted title: %s", (title) => {
+    const result = runReport([{ ...row, title }], ["--list"]);
+    expect(result.error).toBeUndefined();
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("Rows read: 1; searchable (indexed, not outdated): 1");
+    expect(result.stdout).toContain(title ?? "(untitled)");
+  });
+
+  it("refuses a partial export against an independent expected population", () => {
+    const result = runReport([row], ["--expected-count", "2"]);
+    expect(result.error).toBeUndefined();
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("Export row count does not match --expected-count");
+    expect(result.stdout).not.toContain("Rows read:");
+  });
+
+  it("accounts for a valid thin export conservatively without asserting completeness", () => {
+    const result = runReport([{ ...row, status: null }], ["--list"]);
+    expect(result.error).toBeUndefined();
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("Rows read: 1; searchable (indexed, not outdated): 1");
+    expect(result.stdout).toContain("Export completeness unverified:");
+    expect(result.stdout).toContain("No licence basis: 1");
+  });
+
+  it("acknowledges a matched count without turning it into clinical approval", () => {
+    const result = runReport([row], ["--expected-count", "1"]);
+    expect(result.error).toBeUndefined();
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("Export row count matches --expected-count");
+    expect(result.stdout).toContain("source fidelity and clinical approval are not assessed");
+  });
+
+  it("rejects unknown flags instead of suggesting an unrecognized policy was applied", () => {
+    const result = runReport([row], ["--apply"]);
+    expect(result.error).toBeUndefined();
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("Unknown provenance report option.");
+    expect(result.stdout).not.toContain("Rows read:");
   });
 });

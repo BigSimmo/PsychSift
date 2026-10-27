@@ -22,7 +22,7 @@ const entryIdSchema = z.string().uuid();
 export async function PUT(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     if (isDemoMode()) {
-      return publicErrorResponse("Demo mode is read-only. Sign in to link activities to your plan.", 400, {
+      return publicErrorResponse("These are example records. Sign in to link activities to your plan.", 400, {
         code: "demo_mode_unavailable",
       });
     }

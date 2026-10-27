@@ -337,7 +337,7 @@ export function CmeTrainingPage({
     setPeriodProblems(problems);
     if (problems.length > 0) return;
     if (demoMode) {
-      setError("Demo mode is read-only. Sign in to record your training.");
+      setError("These are example records. Sign in to record your training.");
       return;
     }
     setSaving(true);
@@ -379,7 +379,7 @@ export function CmeTrainingPage({
     }
     setMilestoneErrors({});
     if (demoMode) {
-      setError("Demo mode is read-only. Sign in to record your training.");
+      setError("These are example records. Sign in to record your training.");
       return;
     }
     setSaving(true);
@@ -404,7 +404,7 @@ export function CmeTrainingPage({
   async function setCompleted(milestone: TrainingMilestone, completedOn: string | null) {
     if (saving) return;
     if (demoMode) {
-      setError("Demo mode is read-only. Sign in to record your training.");
+      setError("These are example records. Sign in to record your training.");
       return;
     }
     setSaving(true);
@@ -426,7 +426,7 @@ export function CmeTrainingPage({
   async function confirmDelete() {
     if (!pendingDelete || saving) return;
     if (demoMode) {
-      setError("Demo mode is read-only. Sign in to record your training.");
+      setError("These are example records. Sign in to record your training.");
       setPendingDelete(null);
       return;
     }

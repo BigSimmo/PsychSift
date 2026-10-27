@@ -4017,6 +4017,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-27-work-mode-layout-fixes.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/production-readiness.md",
         "section": "root",
         "catalogued": true

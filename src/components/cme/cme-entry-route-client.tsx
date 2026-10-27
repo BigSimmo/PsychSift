@@ -88,7 +88,7 @@ export function CmeEntryRouteClient({ entry, set, edit, demoMode, goals = [] }: 
   const amendable = Boolean(set.closedAt) && !archived;
 
   async function patchEntry(payload: object) {
-    if (demoMode) throw new Error("Demo mode is read-only. Sign in to update a private CPD record.");
+    if (demoMode) throw new Error("These are example records. Sign in to update a private CPD record.");
     const response = await fetch(`/api/cme/entries/${loadedEntry.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -144,7 +144,7 @@ export function CmeEntryRouteClient({ entry, set, edit, demoMode, goals = [] }: 
         ) : null}
         {demoMode ? (
           <div className="mt-4">
-            <InlineNotice tone="neutral">Demo mode is read-only. The form is shown for inspection.</InlineNotice>
+            <InlineNotice tone="neutral">These are example records. Sign in to log your own activity.</InlineNotice>
           </div>
         ) : null}
         <div className="mt-6">
@@ -316,7 +316,7 @@ export function CmeEntryRouteClient({ entry, set, edit, demoMode, goals = [] }: 
           </>
         }
         onCopied={async () => {
-          if (demoMode) throw new Error("Demo mode is read-only.");
+          if (demoMode) throw new Error("These are example records.");
           const response = await fetch(`/api/cme/entries/${loadedEntry.id}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
