@@ -44,6 +44,20 @@ describe("/api/client-error", () => {
     expect(scrubbed.exception?.values?.[0]?.stacktrace?.frames?.[0]?.filename).toBe("/_next/static/chunks/a.js");
   });
 
+  it("keeps distinct minified faults in one section apart after scrubbing", async () => {
+    await post({
+      ...validReport,
+      frames: [{ filename: "/_next/static/chunks/12345.js", function: "a", lineno: 3, colno: 10 }],
+    });
+    await post({
+      ...validReport,
+      frames: [{ filename: "/_next/static/chunks/67890.js", function: "b", lineno: 100, colno: 10 }],
+    });
+    const [first, second] = captureEvent.mock.calls.map(([event]) => privacySafeErrorEvent(event).fingerprint);
+    expect(first?.[0]).toBe("browser");
+    expect(first).not.toEqual(second);
+  });
+
   it("rejects extra fields and free text", async () => {
     expect((await post({ ...validReport, message: "Jane Doe" })).status).toBe(400);
     expect((await post({ ...validReport, type: "Jane Doe" })).status).toBe(400);
