@@ -17,6 +17,8 @@ const TITLES: Record<EmailOtpType, string> = {
 
 const HTML_ESCAPES: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
 
+// Referrer policy is `same-origin`, not `no-referrer`: with `no-referrer` browsers send `Origin: null`
+// on the form post, which the POST handler's same-origin check would refuse.
 export function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (character) => HTML_ESCAPES[character] ?? character);
 }
@@ -32,7 +34,7 @@ export function continuePage({ tokenHash, type, next }: { tokenHash: string; typ
   const field = (name: string, value: string) => `<input type="hidden" name="${name}" value="${escapeHtml(value)}">`;
   const html = `<!doctype html>
 <html lang="en-AU"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex, nofollow"><meta name="referrer" content="no-referrer"><title>${title}</title>
+<meta name="robots" content="noindex, nofollow"><meta name="referrer" content="same-origin"><title>${title}</title>
 <style>body{margin:0;min-height:100vh;display:grid;place-items:center;font-family:system-ui,sans-serif;color-scheme:light dark;background:Canvas;color:CanvasText}
 main{max-width:26rem;padding:2rem;text-align:center}h1{font-size:1.375rem;margin:0 0 .75rem}p{margin:0 0 1.5rem;line-height:1.5}
 button{font:inherit;font-weight:600;padding:.75rem 2rem;border:0;border-radius:.5rem;background:AccentColor;color:AccentColorText;cursor:pointer}
@@ -46,7 +48,7 @@ button:focus-visible{outline:3px solid Highlight;outline-offset:2px}</style></he
       "content-type": "text/html; charset=utf-8",
       "cache-control": "private, no-store, max-age=0",
       "x-robots-tag": "noindex, nofollow",
-      "referrer-policy": "no-referrer",
+      "referrer-policy": "same-origin",
     },
   });
 }

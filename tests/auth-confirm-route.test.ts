@@ -224,6 +224,8 @@ describe("/auth/confirm GET (the link a mail scanner may open first)", () => {
     expect(html).toContain('<input type="hidden" name="token_hash" value="hash-1">');
     expect(html).toContain(`<input type="hidden" name="type" value="${type}">`);
     expect(html).toContain('<button type="submit">Continue</button>');
+    // no-referrer would make the browser post `Origin: null`, which the same-origin check refuses.
+    expect(response.headers.get("referrer-policy")).toBe("same-origin");
     expect(html).not.toContain("<script");
   });
 
