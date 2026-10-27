@@ -10,7 +10,6 @@ import { SLOW_SIGN_IN_COOKIE } from "@/lib/supabase/auth-deadline";
 const nav = vi.hoisted(() => ({ pathname: "/my-day" }));
 vi.mock("next/navigation", () => ({
   usePathname: () => nav.pathname,
-  useSearchParams: () => new URLSearchParams(),
 }));
 
 // Owner "Build" 27 Oct 2026: when the server's 4 second sign-in limit is reached the page opens as

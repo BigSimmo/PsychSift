@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 
 import { useOptionalToast } from "@/components/ui/toast";
@@ -27,8 +27,8 @@ export function SlowSignInNotice() {
   const toast = useOptionalToast();
   // The root layout that holds this note stays mounted across in-app navigation, and each navigation
   // passes the proxy again, so the flag is checked after every one, not only on first load.
+  // Pathname only: useSearchParams in the root layout would make static pages render on the client.
   const pathname = usePathname();
-  const search = useSearchParams()?.toString() ?? "";
 
   useEffect(() => {
     if (!toast || !takeSlowSignInFlag()) return;
@@ -39,7 +39,7 @@ export function SlowSignInNotice() {
       duration: 0,
       action: { label: "Try again", onAction: () => window.location.reload() },
     });
-  }, [toast, pathname, search]);
+  }, [toast, pathname]);
 
   return null;
 }

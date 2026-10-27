@@ -5,8 +5,7 @@ import { startEarlyInstallPromptCapture, watchForAppShell } from "@/lib/pwa-earl
 
 /*
  * Root-layout helpers that draw nothing at rest: the PWA lifecycle notices (offline /
- * update / install, all shown later and only on a trigger), the signed-in work sync and the
- * slow sign-in note.
+ * update / install, all shown later and only on a trigger) and the signed-in work sync.
  * Loading them just after the page keeps their modules out of every route's first
  * evaluation and hydration. The one-shot install prompt is still captured eagerly here
  * so it is not lost while the lifecycle chunk downloads.
@@ -18,11 +17,5 @@ export const PwaLifecycleDeferred = dynamic(() => import("@/components/pwa-lifec
 });
 export const WorkAccountSyncDeferred = dynamic(
   () => import("@/components/work-sync/work-account-sync").then((m) => m.WorkAccountSync),
-  { ssr: false },
-);
-// In the root layout, not the search app's, so a slow sign-in on any page (admin, about, privacy)
-// is explained on that page rather than on a later one. It must sit inside ToastProvider.
-export const SlowSignInNoticeDeferred = dynamic(
-  () => import("@/components/front-door/slow-sign-in-notice").then((m) => m.SlowSignInNotice),
   { ssr: false },
 );
