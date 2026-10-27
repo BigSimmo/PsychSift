@@ -40,8 +40,10 @@ declare
   g1 uuid; g2 uuid; pairing uuid; second uuid; entry uuid; result jsonb;
 begin
   -- Naming a trainee supervisor starts the pairing in the hospital team, and only there.
-  insert into public.work_role_grants (user_id, role, hospital_id, subject_user_id, granted_by)
-    values (sup1, 'supervisor', h, reg, dct) returning id into g1;
+  -- Every grant here shares one transaction, so now() is the same: date the first an hour back so
+  -- "the latest named supervisor" is well defined, as it is across real transactions.
+  insert into public.work_role_grants (user_id, role, hospital_id, subject_user_id, granted_by, granted_at)
+    values (sup1, 'supervisor', h, reg, dct, now() - interval '1 hour') returning id into g1;
   select id into pairing from public.teaching_supervision_pairings
     where service_id = svc and registrar_id = reg and supervisor_id = sup1;
   if pairing is null then raise exception 'naming a supervisor did not start a pairing'; end if;
