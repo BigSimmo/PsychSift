@@ -140,6 +140,7 @@ describe("privacy UI", () => {
     expect(markup).toContain("Office of the Australian Information Commissioner");
     expect(markup).toContain("1300 363 992");
     expect(markup).toContain("Notes written on answer feedback are deleted after 30 days");
+    expect(markup).toContain("published roster, which the team keeps as its record of who worked");
     expect(markup).toContain("its questions, answers, search logs and feedback notes are deleted with it");
     expect(markup).toContain("an hourly clean-up deletes expired copies, normally within about 75 minutes");
     expect(markup).toContain("sent to Sentry, in the United States");
