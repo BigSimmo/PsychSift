@@ -20,7 +20,11 @@ import {
 } from "@/lib/developer-area/link-access";
 import { readSearchNavigationContext } from "@/lib/search-navigation-context";
 import { buildContentSecurityPolicy, resolveRuntimeFlags } from "@/lib/security-headers";
-import { createServerAuthDeadline } from "@/lib/supabase/auth-deadline";
+import {
+  createServerAuthDeadline,
+  SLOW_SIGN_IN_COOKIE,
+  SLOW_SIGN_IN_COOKIE_MAX_AGE_S,
+} from "@/lib/supabase/auth-deadline";
 import { signProxyAuthPayload } from "@/lib/supabase/proxy-auth-crypto";
 import {
   resolveWorkModeLaunch,
@@ -415,7 +419,18 @@ export async function proxy(request: NextRequest) {
   // Refresh the session. Per @supabase/ssr guidance, do not run other logic
   // between createServerClient and getClaims — a stale token here would sign the
   // user out on the next request.
-  const { value: claimsResult } = await authDeadline.run(() => supabase.auth.getClaims(), null);
+  const { value: claimsResult, timedOut } = await authDeadline.run(() => supabase.auth.getClaims(), null);
+  // Tell the browser this page opened as signed out only because the check ran out of time, so
+  // it can say so instead of leaving a signed-in doctor to think they were logged out. Pages only:
+  // a background API call that times out did not open a page, so it must not raise the note.
+  if (timedOut && !request.nextUrl.pathname.startsWith("/api/")) {
+    response.cookies.set(SLOW_SIGN_IN_COOKIE, "1", {
+      path: "/",
+      maxAge: SLOW_SIGN_IN_COOKIE_MAX_AGE_S,
+      sameSite: "lax",
+      secure: request.nextUrl.protocol === "https:",
+    });
+  }
   const claims = claimsResult?.data?.claims;
   if (claims && typeof claims === "object" && typeof claims.sub === "string" && claims.sub) {
     const userPayload = {

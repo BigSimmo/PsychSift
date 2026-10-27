@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "5b03dedf-152f-4ba1-bbbc-02fd3ed57d3b",
+  "createdOn": "2026-10-27",
+  "action": "done",
+  "payload": {
+    "id": "#YF0XSQ",
+    "outcome": "Resolved by configuration: .gitar/config/merge.md on main now tells Gitar never to arm auto-merge on a PR that touches supabase/** or that the PR policy check reports as 'Clinical risk: yes', so only the owner presses Merge on those (owner decision docs/decisions/2026-10-20-database-prs-merge-by-hand.md). No recurrence of the PR 3507 pattern recorded since. Checked against main df306fc1 on 27 Oct.",
+    "baseRowFingerprint": "840a0403a2d79ddb94af5b27d5a8a43379dda28949b1a17e5842fa2e4c037a6f",
+    "targetUlid": "01M4TNNVYKYF0XSQY0GS5GWG8Z"
+  }
+}

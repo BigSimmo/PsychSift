@@ -549,9 +549,22 @@ function assertReopenIdentity(markdown, request) {
   }
 }
 
+/**
+ * Known encoding damage in the hand-written preamble, which no request can reach. An arrow saved
+ * through a Windows code page became "ΓåÆ" (#WWTRM5). Repaired only inside a real reconcile, so
+ * a batch with no requests still reproduces its base byte for byte for check:ledger-write-discipline.
+ */
+const LEDGER_MOJIBAKE_REPAIRS = [["\u0393\u00e5\u00c6", "\u2192"]];
+
+export function repairLedgerMojibake(markdown) {
+  let next = markdown;
+  for (const [broken, intended] of LEDGER_MOJIBAKE_REPAIRS) next = next.split(broken).join(intended);
+  return next;
+}
+
 export function applyRequestBatch(markdown, requests, options = {}) {
   const plan = planRequestBatch(requests, options);
-  let next = markdown;
+  let next = requests.length > 0 ? repairLedgerMojibake(markdown) : markdown;
   const closedInBatch = new Set();
   const ulidToDisplayId = new Map();
 

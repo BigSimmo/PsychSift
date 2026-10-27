@@ -197,6 +197,8 @@ function preservedReviewMetadata(metadata: unknown) {
   const preserved: Record<string, unknown> = {};
   for (const key of [
     "review_status",
+    "label_review_status",
+    "hidden",
     "reviewed_at",
     "reviewed_by",
     "review_note",
@@ -409,21 +411,31 @@ async function writeClassifications(supabase: SupabaseAdmin, plans: Classificati
     const documentIds = batch.map((plan) => plan.document.id);
     const generatedLabels = dedupeGeneratedLabels(batch.flatMap((plan) => generatedLabelsForPlan(plan, stampedAt)));
     const desiredLabelKeys = new Set(generatedLabels.map(labelIdentity));
-    const { data: existingGenerated, error: existingGeneratedError } = (await supabase
-      .from("document_labels")
-      .select("id,document_id,label_type,label,metadata")
-      .in("document_id", documentIds)
-      .eq("source", "generated")
-      .in("label_type", [...generatedLabelTypes])) as {
-      data: ExistingGeneratedLabelRow[] | null;
-      error: DatabaseError | null;
-    };
-    if (existingGeneratedError) throw new Error(existingGeneratedError.message);
+    // Paged, because 100 documents can hold more generated labels than one response returns,
+    // and a label missing here would lose its review state on upsert and never be cleaned up.
+    const existingGenerated: ExistingGeneratedLabelRow[] = [];
+    const existingPageSize = 1000;
+    for (let start = 0; ; start += existingPageSize) {
+      const { data, error: existingGeneratedError } = (await supabase
+        .from("document_labels")
+        .select("id,document_id,label_type,label,metadata")
+        .in("document_id", documentIds)
+        .eq("source", "generated")
+        .in("label_type", [...generatedLabelTypes])
+        .order("id", { ascending: true })
+        .range(start, start + existingPageSize - 1)) as {
+        data: ExistingGeneratedLabelRow[] | null;
+        error: DatabaseError | null;
+      };
+      if (existingGeneratedError) throw new Error(existingGeneratedError.message);
+      existingGenerated.push(...(data ?? []));
+      if ((data ?? []).length < existingPageSize) break;
+    }
 
-    const labelsToDelete = (existingGenerated ?? [])
+    const labelsToDelete = existingGenerated
       .filter((label) => !desiredLabelKeys.has(labelIdentity(label)))
       .map((label) => label.id);
-    const existingGeneratedByKey = new Map((existingGenerated ?? []).map((label) => [labelIdentity(label), label]));
+    const existingGeneratedByKey = new Map(existingGenerated.map((label) => [labelIdentity(label), label]));
     const labelsForUpsert = generatedLabels.map((label) => {
       const preserved = preservedReviewMetadata(existingGeneratedByKey.get(labelIdentity(label))?.metadata);
       return {

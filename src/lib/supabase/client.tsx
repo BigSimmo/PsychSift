@@ -4,6 +4,7 @@ import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { clearAccountScopedBrowserStorage } from "@/lib/account-scoped-browser-state";
 import { clearAdminPins } from "@/lib/admin/pin-storage-keys";
+import { isChunkLoadError, reloadOnceForChunkLoadError } from "@/lib/chunk-load-recovery";
 import { removeThisDevicePushSubscription } from "@/lib/alerts/device-push";
 import { clearPersistedAnswerThread } from "@/lib/answer-thread-storage-keys";
 import { authSessionFingerprint, createAuthRequestLifecycle } from "@/lib/auth-request-lifecycle";
@@ -59,6 +60,11 @@ type AuthContextValue = {
    * Before this the sign-in cleared them without a word (design audit D26-02).
    */
   signedOutWorkHeld?: boolean;
+  /**
+   * Why the sign-in link or provider return that opened this page failed, once, for a notice
+   * on whatever page it landed on. Null when the page was not opened by a failed sign-in.
+   */
+  signInReturnError?: string | null;
   /** Answer the question above: keep the work with this account for the shift, or clear it now. */
   resolveSignedOutWork?: (keep: boolean) => void;
 };
@@ -66,9 +72,28 @@ type AuthContextValue = {
 export const AUTH_EMAIL_STORAGE_KEY = "clinical.dashboard.lastAuthEmail";
 const AUTH_CALLBACK_PATH = "/auth/callback";
 const GENERIC_AUTH_ERROR = "Sign-in could not be completed. Please try again.";
+export const SIGN_IN_LINK_OTHER_BROWSER_ERROR =
+  "That sign-in link opened in a different browser from the one you asked for it in, so it could not sign you in. Open the link in the browser you used to request it, or sign in here with your password, Apple, Google or Microsoft.";
+export const SIGN_IN_LINK_EXPIRED_ERROR =
+  "That sign-in link has expired or was already used. Ask for a new one, or sign in with your password, Apple, Google or Microsoft.";
 
-function safeCallbackError(value: string | null) {
+/** Exported for tests. */
+export function safeCallbackError(value: string | null) {
   const normalized = value?.trim().toLowerCase();
+  // A PKCE link (email link, sign-up confirmation, provider return) only works in the browser
+  // that asked for it, because that browser holds the verifier. On a phone the email app often
+  // opens links in its own in-app browser, so this is the common way a link "does nothing".
+  if (normalized === "link_other_browser" || normalized?.includes("code verifier")) {
+    return SIGN_IN_LINK_OTHER_BROWSER_ERROR;
+  }
+  if (
+    normalized === "link_expired" ||
+    normalized === "otp_expired" ||
+    normalized?.includes("flow state") ||
+    normalized?.includes("invalid or has expired")
+  ) {
+    return SIGN_IN_LINK_EXPIRED_ERROR;
+  }
   if (normalized === "access_denied" || normalized?.includes("access denied")) {
     return "Sign-in was cancelled. You can try again.";
   }
@@ -303,6 +328,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [deviceDataClearedAt, setDeviceDataClearedAt] = useState<number | null>(null);
   const [signedOutWorkHeld, setSignedOutWorkHeld] = useState(false);
   const callbackErrorRef = useRef<string | null | undefined>(undefined);
+  const [signInReturnError, setSignInReturnError] = useState<string | null>(null);
   const authRequestsRef = useRef(createAuthRequestLifecycle());
   const authFingerprintRef = useRef<string | null>(null);
   // Tracks the user id last published into context so onAuthStateChange can
@@ -334,6 +360,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!config) return Promise.resolve(null);
     clientLoadRef.current ??= loadBrowserSupabaseClient(config).catch((loadError: unknown) => {
       clientLoadRef.current = null;
+      // After a deploy the old build's library file is gone, so retrying the same import fails
+      // forever and sign-in silently does nothing. One reload picks up the current build.
+      if (isChunkLoadError(loadError)) reloadOnceForChunkLoadError();
       throw loadError;
     });
     return clientLoadRef.current;
@@ -404,6 +433,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         initialSessionPublishedRef.current = true;
         setSession(resolved.session);
         setStatus(resolved.status);
+        // Said on the page itself, not only inside the account dialog: a failed link used to
+        // land on the sign-in card with no word about why.
+        setSignInReturnError(callbackError);
         if (resolved.status === "authenticated") {
           setError(callbackError);
           setNotice(null);
@@ -723,6 +755,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       deviceDataClearedAt,
       signedOutWorkHeld,
       resolveSignedOutWork,
+      signInReturnError,
     }),
     [
       client,
@@ -744,6 +777,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       deviceDataClearedAt,
       signedOutWorkHeld,
       resolveSignedOutWork,
+      signInReturnError,
     ],
   );
 

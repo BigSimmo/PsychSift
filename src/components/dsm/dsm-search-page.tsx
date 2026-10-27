@@ -510,6 +510,8 @@ export function DsmSearchPage({
                 </section>
               ) : (
                 <section aria-label="DSM diagnosis results" className="grid gap-3">
+                  {/* Keeps the cards' h3 titles from skipping a level (a11y A11Y-12). */}
+                  <h2 className="sr-only">Matching diagnoses</h2>
                   {results.map((result) => (
                     <DsmSearchResultCard
                       key={result.slug}

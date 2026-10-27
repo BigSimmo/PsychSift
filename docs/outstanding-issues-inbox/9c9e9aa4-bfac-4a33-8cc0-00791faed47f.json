@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "9c9e9aa4-bfac-4a33-8cc0-00791faed47f",
+  "createdOn": "2026-10-27",
+  "action": "update",
+  "payload": {
+    "id": "#PM71Z1",
+    "detail": "RECHECKED 2026-10-27 from a cloud session: cdn.playwright.dev, playwright.download.prss.microsoft.com and playwrightbrowsers.blob.core.windows.net are all still unreachable (no HTTP response), so this owner action is still needed. PRIOR DETAIL: Add cdn.playwright.dev, playwright.download.prss.microsoft.com and *.blob.core.windows.net to the Claude Cloud environment's egress allowlist; owner action in the environment settings, no repo change. THE THREE, each verified by a real request, not inferred: the first two are the ONLY mirrors in playwright-core 1.63.0's PLAYWRIGHT_CDN_MIRRORS (the old *.azureedge.net entries were removed in this version, so allowlisting those achieves nothing) and both return 403 request blocked; the third serves GitHub Actions artifacts, and an artifact download redirects there and returns CONNECT tunnel failed 403, which is why a retained Playwright trace cannot be fetched. ALSO CHECKED AND DEAD: ftp/archive/download.mozilla.org, snapcraft, flathub, the mozillateam PPA, codeload, and the npm @playwright/browser-firefox package (a 15KB stub that downloads from the same blocked CDN). A stock apt/tarball Firefox is NOT a substitute at any version - Playwright launches with -juggler-pipe and waits for \"Juggler listening to the pipe\", which only its own patched build emits - and there is no channel: firefox and no PLAYWRIGHT_FIREFOX_EXECUTABLE_PATH; the repo's PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH is its own invention and Chromium-only. Why: This is the constraint that shaped the whole 2026-09-20 triage. Four Firefox failures were fixed without a single Firefox run, and the dark-mode one was nearly written up as a broken app for every Firefox and Safari user before a cross-check refuted it; the two that remain are stuck precisely because the trace that would settle them is behind the third hostname. Context: Also worth knowing separately - the preinstalled Chromium is 141 (revision 1194) where playwright-core 1.63.0 pins revision 1243 / Chrome 153, so even local Chromium proof is twelve majors behind CI. Owner: Josh - environment settings. Confidence: high; every claim above was checked by running the request or reading node_modules/playwright-core. Depends on: nothing.",
+    "baseRowFingerprint": "deac655d7f0e17f20fea04cf909430bc4210d1afcee693a5208384808093cbbd",
+    "targetUlid": "01M2ZTQ884PM71Z1546JP1SMVH"
+  }
+}

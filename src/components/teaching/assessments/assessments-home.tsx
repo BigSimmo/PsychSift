@@ -138,7 +138,7 @@ export function AssessmentsHome({ s, openSheet, dct }: ScreenProps) {
         ring={
           <WorkRing
             value={weeks}
-            label={`of ${YEAR_WEEKS} wk`}
+            label={`of ${YEAR_WEEKS}`}
             fraction={weeks / YEAR_WEEKS}
             accessibleLabel={`${withUnit(weeks, "of")} ${withUnit(YEAR_WEEKS, "weeks")} done this year`}
           />

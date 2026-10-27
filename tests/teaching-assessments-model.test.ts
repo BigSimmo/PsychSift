@@ -91,6 +91,18 @@ describe("Teaching assessments: home on Mon 5 Oct (week 6)", () => {
     expect(twice.epaRequests).toHaveLength(1);
   });
 
+  it("refuses a direct EPA record whose note looks like a patient detail or is too long", () => {
+    const patient = assessmentsReducer(s, {
+      type: "record-epa-direct",
+      epa: 1,
+      level: "minimal",
+      note: "Mrs Smith in bed 4",
+    });
+    expect(patient).toBe(s);
+    const long = assessmentsReducer(s, { type: "record-epa-direct", epa: 1, level: "minimal", note: "x".repeat(5000) });
+    expect(long).toBe(s);
+  });
+
   it("lets the supervisor record an EPA without a request, and Undo removes it", () => {
     const saved = assessmentsReducer(s, { type: "record-epa-direct", epa: 1, level: "minimal", note: " Clear plans " });
     expect(epaRecords(saved)).toHaveLength(9);

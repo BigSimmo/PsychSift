@@ -102,25 +102,36 @@ import type { RosterDisplayShift } from "@/lib/roster/team/team-view";
 import type { SessionSummary } from "@/lib/teaching/model";
 
 /*
+ * `loading` gives each card its own Suspense boundary. Without one, a card the browser draws before
+ * its chunk arrives suspends the whole My Day page: React swaps the page for its skeleton, then
+ * puts it back and re-runs every source read (performance audit 2026-10-26, three rounds of reads
+ * on a phone). Drawing nothing for the moment the chunk takes keeps the rest of the page still.
+ */
+function LoadingCard() {
+  return null;
+}
+
+/*
  * The Work and Me cards draw only on those two pages, so they load in their own chunk. They still
  * render on the server, so a direct link to ?page=work or ?page=me draws the same first HTML, and
  * Today fetches the chunk quietly once idle so switching pages never waits on it.
  */
 const loadWorkMeCards = () => import("@/components/my-day/my-day-work-me-cards");
-const CallNotesFoot = dynamic(() => loadWorkMeCards().then((m) => m.CallNotesFoot));
-const CallsCard = dynamic(() => loadWorkMeCards().then((m) => m.CallsCard));
-const ComingUpCard = dynamic(() => loadWorkMeCards().then((m) => m.ComingUpCard));
-const CpdMonthCard = dynamic(() => loadWorkMeCards().then((m) => m.CpdMonthCard));
-const CredentialsCard = dynamic(() => loadWorkMeCards().then((m) => m.CredentialsCard));
-const GlanceCard = dynamic(() => loadWorkMeCards().then((m) => m.GlanceCard));
-const HoursCard = dynamic(() => loadWorkMeCards().then((m) => m.HoursCard));
-const NextTalkCard = dynamic(() => loadWorkMeCards().then((m) => m.NextTalkCard));
-const PinnedNumbersCard = dynamic(() => loadWorkMeCards().then((m) => m.PinnedNumbersCard));
-const QuickNoteCard = dynamic(() => loadWorkMeCards().then((m) => m.QuickNoteCard));
-const WhosOnCard = dynamic(() => loadWorkMeCards().then((m) => m.WhosOnCard));
+const CallNotesFoot = dynamic(() => loadWorkMeCards().then((m) => m.CallNotesFoot), { loading: LoadingCard });
+const CallsCard = dynamic(() => loadWorkMeCards().then((m) => m.CallsCard), { loading: LoadingCard });
+const ComingUpCard = dynamic(() => loadWorkMeCards().then((m) => m.ComingUpCard), { loading: LoadingCard });
+const CpdMonthCard = dynamic(() => loadWorkMeCards().then((m) => m.CpdMonthCard), { loading: LoadingCard });
+const CredentialsCard = dynamic(() => loadWorkMeCards().then((m) => m.CredentialsCard), { loading: LoadingCard });
+const GlanceCard = dynamic(() => loadWorkMeCards().then((m) => m.GlanceCard), { loading: LoadingCard });
+const HoursCard = dynamic(() => loadWorkMeCards().then((m) => m.HoursCard), { loading: LoadingCard });
+const NextTalkCard = dynamic(() => loadWorkMeCards().then((m) => m.NextTalkCard), { loading: LoadingCard });
+const PinnedNumbersCard = dynamic(() => loadWorkMeCards().then((m) => m.PinnedNumbersCard), { loading: LoadingCard });
+const QuickNoteCard = dynamic(() => loadWorkMeCards().then((m) => m.QuickNoteCard), { loading: LoadingCard });
+const WhosOnCard = dynamic(() => loadWorkMeCards().then((m) => m.WhosOnCard), { loading: LoadingCard });
 /** The junior features' Today cards (Sick for tomorrow, first week, Job applications, term folder), own chunk. */
-const MyDayFeatureCards = dynamic(() =>
-  import("@/components/my-day/my-day-feature-cards").then((m) => m.MyDayFeatureCards),
+const MyDayFeatureCards = dynamic(
+  () => import("@/components/my-day/my-day-feature-cards").then((m) => m.MyDayFeatureCards),
+  { loading: LoadingCard },
 );
 
 function preloadWorkMeCards(): () => void {

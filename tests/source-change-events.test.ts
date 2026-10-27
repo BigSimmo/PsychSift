@@ -39,6 +39,29 @@ describe("source change register", () => {
     expect(parseSourceChangeRegister({ version: 1, note: "", events: [event] })).toHaveLength(1);
   });
 
+  it.each([
+    ["changedOn", "2026-02-29"],
+    ["changedOn", "2026-02-31"],
+    ["changedOn", "2026-04-31"],
+    ["changedOn", "1900-02-29"],
+    ["confirmedOn", "2026-02-29"],
+    ["confirmedOn", "2026-02-31"],
+    ["confirmedOn", "2026-04-31"],
+    ["confirmedOn", "1900-02-29"],
+  ])("refuses impossible %s calendar date %s", (field, date) => {
+    expect(() => parseSourceChangeRegister({ version: 1, note: "", events: [{ ...event, [field]: date }] })).toThrow();
+  });
+
+  it.each(["2024-02-29", "2000-02-29"])("accepts genuine leap day %s without changing date ordering policy", (date) => {
+    expect(
+      parseSourceChangeRegister({
+        version: 1,
+        note: "",
+        events: [{ ...event, changedOn: date, confirmedOn: date }],
+      }),
+    ).toMatchObject([{ changedOn: date, confirmedOn: date }]);
+  });
+
   it("returns only changes to cited sources made after the review date", () => {
     const events = parseSourceChangeRegister({ version: 1, note: "", events: [event] });
     expect(confirmedSourceChangesAfter(["wa-monitored-medicines-prescribing-code"], "2026-05-01", events)).toHaveLength(

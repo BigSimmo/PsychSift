@@ -183,6 +183,28 @@ describe("embedTexts batching (IDX-C3)", () => {
     expect(constructed).not.toHaveBeenCalled();
   });
 
+  it("rejects an oversized individual input before constructing a client or dispatching earlier batches", async () => {
+    stubEmbeddingEnv(2);
+    vi.stubEnv("OPENAI_EMBEDDING_BATCH_SIZE", "1");
+    const constructed = vi.fn();
+    const create = vi.fn();
+    vi.doMock("openai", () => ({
+      default: class MockOpenAI {
+        constructor() {
+          constructed();
+        }
+        embeddings = { create };
+        responses = { create: vi.fn() };
+      },
+    }));
+    const { embedTexts } = await import("../src/lib/openai");
+    await expect(embedTexts(["safe earlier input", "界".repeat(2731)])).rejects.toMatchObject({
+      code: "EMBEDDING_INPUT_EXCEEDS_REQUEST_BUDGET",
+    });
+    expect(constructed).not.toHaveBeenCalled();
+    expect(create).not.toHaveBeenCalled();
+  });
+
   function embeddingForText(text: string): number[] {
     // Encode the input's numeric suffix so a mis-mapped embedding is detectable.
     const n = Number(text.replace(/[^0-9]/g, ""));

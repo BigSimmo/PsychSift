@@ -151,6 +151,49 @@ function supabaseRollbackStore(supabase: AdminClient): RollbackStore {
       if (error) throw new Error(error.message);
       return (count ?? 0) > 0;
     },
+    async preflight(documentId, targetGeneration) {
+      const [document, ingestion, enrichment, targetPages, unstampedPages] = await Promise.all([
+        supabase.from("documents").select("page_storage_mode").eq("id", documentId).maybeSingle(),
+        supabase
+          .from("ingestion_jobs")
+          .select("id", { count: "exact", head: true })
+          .eq("document_id", documentId)
+          .in("status", ["pending", "processing"]),
+        supabase
+          .from("indexing_v3_agent_jobs")
+          .select("id", { count: "exact", head: true })
+          .eq("document_id", documentId)
+          .in("status", ["pending", "processing"]),
+        supabase
+          .from("document_pages")
+          .select("id", { count: "exact", head: true })
+          .eq("document_id", documentId)
+          .eq("index_generation_id", targetGeneration),
+        supabase
+          .from("document_pages")
+          .select("id", { count: "exact", head: true })
+          .eq("document_id", documentId)
+          .is("index_generation_id", null),
+      ]);
+      for (const result of [document, ingestion, enrichment, targetPages, unstampedPages]) {
+        if (result.error) throw new Error(result.error.message);
+      }
+      if (
+        !document.data ||
+        [ingestion.count, enrichment.count, targetPages.count, unstampedPages.count].some(
+          (count) => count === null || !Number.isSafeInteger(count) || count < 0,
+        )
+      ) {
+        throw new Error("Rollback preflight metadata is incomplete; refusing to plan a rollback.");
+      }
+      return {
+        openIngestionJobs: ingestion.count as number,
+        openEnrichmentJobs: enrichment.count as number,
+        pageStorageMode: document.data.page_storage_mode,
+        targetPages: targetPages.count as number,
+        unstampedPages: unstampedPages.count as number,
+      };
+    },
     async repoint(documentId, expectedGeneration, targetGeneration) {
       const { data, error } = await supabase.rpc("rollback_document_index_generation", {
         p_document_id: documentId,
@@ -203,7 +246,8 @@ async function main() {
   console.log(`\nDocuments in scope: ${preview.length}; would roll back: ${ready}; refused: ${preview.length - ready}`);
 
   if (!args.apply) {
-    console.log("\nDry run only. Re-run with --apply to roll back the documents above.");
+    console.log("\nDry run only. Metadata preflight is not an apply guarantee; the RPC rechecks under lock.");
+    if (ready > 0) console.log("Re-run with --apply to roll back the eligible documents above.");
     return;
   }
   if (ready === 0) return;

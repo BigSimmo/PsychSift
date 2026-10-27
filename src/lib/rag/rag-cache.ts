@@ -894,6 +894,8 @@ export function retrievalPlanCacheQuery(
     `topK:${args.topK ?? 8}`,
     `min:${args.minSimilarity ?? 0.15}`,
     `forceEmbedding:${args.forceEmbedding ? "1" : "0"}`,
+    // Older forced-vector artifacts may include lexical rescue. Leave ordinary keys intact.
+    ...(args.forceEmbedding ? ["forcedVectorContract:lexical-isolation-v1"] : []),
     `lexicalOnly:${args.lexicalOnly ? "1" : "0"}`,
     `rag:${ragDeepMemoryVersion}`,
     `force:${args.forceEmbedding ? 1 : 0}`,

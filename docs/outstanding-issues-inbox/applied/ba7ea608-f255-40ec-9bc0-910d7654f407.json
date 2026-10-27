@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "id": "ba7ea608-f255-40ec-9bc0-910d7654f407",
+  "createdOn": "2026-10-26",
+  "action": "update",
+  "payload": {
+    "id": "#BFCTST",
+    "summary": "Jurisdiction tier tests exist and outdated sources are filtered; currentness and public source-conflict disclosure remain",
+    "source": "Revalidated against main 9ab09f7d0 on 2026-10-27 (issues report revalidation)",
+    "baseRowFingerprint": "9dcfca3ec0b16b5103943f300d04d48b3c39bf62908b6bdc6632767941cf5bbc",
+    "targetUlid": "01M3CJ78QHBFCTST7YFDZZHKE3"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "id": "4e2caf8c-54eb-4915-a05b-654fd72b3458",
+  "createdOn": "2026-10-26",
+  "action": "update",
+  "payload": {
+    "id": "#GJHKYC",
+    "summary": "Three-document re-index pilot recorded as approved; the full-library re-index stays stopped",
+    "source": "Revalidated against main 9ab09f7d0 on 2026-10-27 (issues report revalidation)",
+    "baseRowFingerprint": "129a35d350ccce150f46b7f7a3c93514f003df2e24847458c214fb4e574d02fd",
+    "targetUlid": "01M2MWJEY9GJHKYCQ0T41B63F8"
+  }
+}

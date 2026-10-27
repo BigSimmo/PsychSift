@@ -2561,14 +2561,12 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
           // sm+ keeps its pinned inset because sticky top-bar chrome is a
           // separate wide-layout contract from page-flow search.
           //
-          // Paint the header's own surface, not the page background. While the
-          // spacer is visible it is the top of the header, so `--background`
-          // drew a page-coloured status-bar band above a `--surface` bar on
-          // every collapse-strategy mode — the seam answer mode never had,
-          // because its overlay header pads the inset itself and paints
-          // straight through. Opaque on purpose: the spacer must keep hiding
-          // scrolled content at the sm+ pinned inset.
-          "relative z-40 shrink-0 bg-[color:var(--surface)] motion-reduce:transition-none sm:h-[var(--safe-area-top)]",
+          // Paint the header's own colour. While the spacer is visible it is
+          // the top of the header, so any other colour draws a status-bar band
+          // above the bar. Phones paint the bar in the page colour (globals.css
+          // phone baseline), wider screens in `--surface`. Opaque on purpose:
+          // the spacer must keep hiding scrolled content at the sm+ pinned inset.
+          "relative z-40 shrink-0 max-sm:bg-[color:var(--background)] sm:bg-[color:var(--surface)] motion-reduce:transition-none sm:h-[var(--safe-area-top)]",
           phoneOverlayMotion
             ? "max-sm:h-[var(--safe-area-top)]"
             : cn(

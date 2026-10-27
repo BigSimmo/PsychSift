@@ -91,7 +91,7 @@ export function useCmeOneTapRoutineLog({
     setSaveError(null);
     setUndoError(null);
     if (demoMode) {
-      setSaveError("Demo mode is read-only. Sign in to save this activity to a private CPD record.");
+      setSaveError("These are example records. Sign in to save this activity to a private CPD record.");
       return "saved";
     }
     setLogging(true);

@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "b7b03d13-f610-4505-947e-9cbbcfd465f5",
+  "createdOn": "2026-10-27",
+  "action": "done",
+  "payload": {
+    "id": "#WWTRM5",
+    "outcome": "Resolved: item 4 was already on main (26 Oct). Item 1, the mojibake arrow in the ledger preamble, is repaired by the reconcile-time normalisation added in PR #3849 and applied by the PR #3860 reconciliation; that ledger has no remaining mojibake characters. Checked on the PR #3860 head (dfd3af1a) on 27 Oct.",
+    "baseRowFingerprint": "d949213a2051c45f136fd1cea95065e0629a530ab9a973cf73c2b36daf01e708",
+    "targetUlid": "01M54YEVQ8WWTRM5RPCGA0FEVP"
+  }
+}

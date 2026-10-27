@@ -8,6 +8,7 @@ import {
   applyRequest,
   applyRequestBatch,
   planRequestBatch,
+  repairLedgerMojibake,
   validateRequest,
 } from "../scripts/ledger-inbox.mjs";
 import {
@@ -1119,5 +1120,17 @@ describe("ledger-inbox idempotent close and duplicate done handling", () => {
       expect(validateRequest(reopenRequest({ pri: "P9" }))).toContain("reopen pri must be P1, P2, or P3");
       expect(validateRequest(reopenRequest({ detail: undefined }))).toContain("reopen requires detail");
     });
+  });
+});
+
+describe("ledger preamble mojibake (#WWTRM5)", () => {
+  const broken = "- Say `/issues` in Claude Code \u0393\u00e5\u00c6 the skill reads this file\n";
+
+  it("repairs the damaged arrow", () => {
+    expect(repairLedgerMojibake(broken)).toBe("- Say `/issues` in Claude Code \u2192 the skill reads this file\n");
+  });
+
+  it("leaves a batch with no requests byte for byte, so other PRs still match their base", () => {
+    expect(applyRequestBatch(broken + BASE_LEDGER, []).markdown).toBe(broken + BASE_LEDGER);
   });
 });

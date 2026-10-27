@@ -18,6 +18,14 @@
 /** How long a server-side sign-in check may take before the request proceeds as signed out. */
 export const SERVER_AUTH_DEADLINE_MS = 4_000;
 
+/**
+ * Set by the proxy on a page it let through as signed out because the deadline expired, so the
+ * browser can say why (owner "Build" 27 Oct 2026). A bare flag that lives one minute: it names no
+ * one, and the note reads and clears it on the next page drawn.
+ */
+export const SLOW_SIGN_IN_COOKIE = "psychsift_sign_in_slow";
+export const SLOW_SIGN_IN_COOKIE_MAX_AGE_S = 60;
+
 function requestUrl(input: RequestInfo | URL) {
   if (typeof input === "string") return input;
   return input instanceof URL ? input.href : input.url;

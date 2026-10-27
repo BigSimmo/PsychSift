@@ -176,6 +176,22 @@
       "pattern": "every (other )?alert workflow .{0,80}names the owner|names the owner in each new alert issue and each repeat comment|every new alert and every repeat comment names the owner",
       "allowedContext": "no longer|retired|replaced|superseded|formerly|previously",
       "decision": "docs/decisions/2026-10-21-one-daily-health-summary.md"
+    },
+    {
+      "id": "memory-per-run-spending-approval",
+      "retired": "2026-10-26",
+      "summary": "Routine Supermemory recall and saves through the host's approved route no longer need per-run spending approval; the owner's Supermemory credits are the limit. Other paid runs keep the per-run gate.",
+      "pattern": "(?:preserving host-specific|Preserve platform-native) restrictions and per-run spending approval",
+      "allowedContext": "no longer|retired|superseded|formerly|previously",
+      "decision": "docs/decisions/2026-10-26-supermemory-route-per-environment.md"
+    },
+    {
+      "id": "local-sqlite-memory-checkpoints",
+      "retired": "2026-10-26",
+      "summary": "Memory no longer routes through scoped local SQLite checkpoints or the shared-checkpoint-v2 helper. Git and approved docs and receipts hold task state.",
+      "pattern": "scoped local SQLite checkpoints|shared-checkpoint-v2\\.mjs",
+      "allowedContext": "no longer|retired|superseded|former|legacy|formerly|previously",
+      "decision": "docs/decisions/2026-10-26-supermemory-route-per-environment.md"
     }
   ]
 }
