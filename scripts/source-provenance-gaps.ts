@@ -39,6 +39,9 @@ export function parseSourceProvenanceExport(value: unknown, expectedCount?: numb
     if (row.title !== null && typeof row.title !== "string") {
       throw new Error(`${label} title must be a string or null.`);
     }
+    if (typeof row.title === "string" && /\p{Cc}/u.test(row.title)) {
+      throw new Error(`${label} title must not contain control characters.`);
+    }
     if (row.status != null && (typeof row.status !== "string" || !documentStatuses.has(row.status))) {
       throw new Error(`${label} has an invalid document status; it cannot be silently excluded.`);
     }

@@ -890,12 +890,13 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
 const FAILURE_WEBHOOK_TIMEOUT_MS = 5_000;
 
 export async function runWorkerMain() {
-  assertWorkerEmbeddingCompatibility({ model: env.OPENAI_EMBEDDING_MODEL, dimensions: env.EMBEDDING_DIMENSIONS });
   // A fixed label for the step that failed. The error itself stays content-free, so without this a
   // crash before the first log line (for example an unreadable runtime module) is indistinguishable
   // from any other startup failure in the deploy log.
-  let stage = "supabase_client";
+  let stage = "embedding_contract";
   try {
+    assertWorkerEmbeddingCompatibility({ model: env.OPENAI_EMBEDDING_MODEL, dimensions: env.EMBEDDING_DIMENSIONS });
+    stage = "supabase_client";
     const client = withControlPlaneAbortClient(
       createAdminClient({ timeoutMs: resolveWorkerSupabaseTimeoutMs(process.env) }),
       (stopSignal) => controlPlaneAbortSignal(stopSignal),
@@ -921,9 +922,11 @@ export async function runWorkerMain() {
     const failureDetails = contentFreeErrorDetails(error);
     // WorkerAbortError wraps the underlying failure in `cause`; read its allowlisted code too.
     const failureCode =
-      failureDetails.errorCode ??
-      (abort?.cause ? contentFreeErrorDetails(abort.cause).errorCode : undefined) ??
-      "unclassified";
+      stage === "embedding_contract"
+        ? "worker_embedding_contract_mismatch"
+        : (failureDetails.errorCode ??
+          (abort?.cause ? contentFreeErrorDetails(abort.cause).errorCode : undefined) ??
+          "unclassified");
     if (env.WORKER_FAILURE_WEBHOOK_URL) {
       try {
         await fetch(env.WORKER_FAILURE_WEBHOOK_URL, {

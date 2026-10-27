@@ -475,13 +475,17 @@ describe("document-mode chunking (CI-1)", () => {
     ["α", "β"],
   ])("retains document-mode chunks differing only by %s versus %s", async (left, right) => {
     // Identical qualification paragraphs force separate chunks in one page/section scope.
+    vi.stubEnv("CHUNK_OVERLAP", "0");
     const qualify = "synthetic source qualification for the retained observation. ".repeat(25);
     const texts = [left, right].map((value) => `synthetic result ${value} 1.5 units. ${qualify}`);
     const chunks = await buildDocumentChunks([
       { documentId: "doc-1", pageNumber: 1, pageText: texts.join("\n\n"), metadata: {} },
     ]);
-    expect(chunks.some((chunk) => chunk.content.includes(`synthetic result ${left} 1.5 units.`))).toBe(true);
-    expect(chunks.some((chunk) => chunk.content.includes(`synthetic result ${right} 1.5 units.`))).toBe(true);
+    const leftChunk = chunks.find((chunk) => chunk.content.includes(`synthetic result ${left} 1.5 units.`));
+    const rightChunk = chunks.find((chunk) => chunk.content.includes(`synthetic result ${right} 1.5 units.`));
+    expect(leftChunk).toBeDefined();
+    expect(rightChunk).toBeDefined();
+    expect(leftChunk).not.toBe(rightChunk);
   });
 
   it("merges a section across a page break into a single cross-page chunk", async () => {

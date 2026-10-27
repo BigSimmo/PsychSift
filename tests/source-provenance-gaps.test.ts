@@ -132,6 +132,29 @@ describe("offline provenance export boundary", () => {
     expect(result.stderr).toMatch(/Export row/);
   });
 
+  it.each([
+    ["terminal escape", "Synthetic\u001b[2Jforged report"],
+    ["line break", "Synthetic\nforged report"],
+    ["null character", "Synthetic\u0000forged report"],
+    ["Unicode control", "Synthetic\u0085forged report"],
+  ])("refuses a title containing a %s without echoing it or printing a report", (_label, title) => {
+    const result = runReport([{ ...row, title }], ["--list"]);
+    expect(result.error).toBeUndefined();
+    expect(result.status).toBe(1);
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toContain("Export row 1 title must not contain control characters.");
+    expect(result.stderr).not.toContain(title);
+    expect(result.stderr).not.toContain("\u001b");
+  });
+
+  it.each([null, "Ordinary synthetic title", "Synthetic α/β ≤ 5 — ≥ 2"])("preserves a permitted title: %s", (title) => {
+    const result = runReport([{ ...row, title }], ["--list"]);
+    expect(result.error).toBeUndefined();
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("Rows read: 1; searchable (indexed, not outdated): 1");
+    expect(result.stdout).toContain(title ?? "(untitled)");
+  });
+
   it("refuses a partial export against an independent expected population", () => {
     const result = runReport([row], ["--expected-count", "2"]);
     expect(result.error).toBeUndefined();
