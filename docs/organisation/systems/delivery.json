@@ -46,6 +46,7 @@
     "docs/process-hardening.md",
     "docs/production-readiness-checklist.md",
     "docs/production-readiness.md",
+    "docs/skipped-tests-inventory.md",
     "docs/staging-setup.md",
     "docs/testing.md",
     "eslint.config.mjs",
