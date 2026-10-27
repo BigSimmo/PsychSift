@@ -5462,6 +5462,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-27-privacy-page-app1-sections-built.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/archive/branch-cleanup-2026-06-28.md",
         "section": "archive",
         "catalogued": true
