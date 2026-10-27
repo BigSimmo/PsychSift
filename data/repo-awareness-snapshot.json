@@ -4272,6 +4272,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-27-one-supervisor-list.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/README.md",
         "section": "root",
         "catalogued": true
