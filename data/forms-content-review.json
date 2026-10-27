@@ -54,10 +54,13 @@
     },
     {
       "code": "3B",
-      "status": "drafted",
+      "status": "reviewed",
       "sections": ["28", "59", "62"],
       "contextualSections": ["26", "58", "61"],
-      "basis": "Drafted from Mental Health Act 2014 (WA) s 28, s 59, s 62 with s 26, s 58, s 61 as context, and from the approved Form 3B as listed on the Office of the Chief Psychiatrist register."
+      "basis": "Drafted from Mental Health Act 2014 (WA) s 28, s 59, s 62 with s 26, s 58, s 61 as context, and from the approved Form 3B as listed on the Office of the Chief Psychiatrist register.",
+      "reviewedBy": "Dr Josh Simpson",
+      "reviewedAt": "2026-10-27T06:56:54.547Z",
+      "reviewedContentSha256": "e94494deb7707b1cc9aed0f5e60ac51748b96e5cd6ad33eb827e54337486d980"
     },
     {
       "code": "3C",
@@ -71,10 +74,13 @@
     },
     {
       "code": "3D",
-      "status": "drafted",
+      "status": "reviewed",
       "sections": ["61"],
       "contextualSections": ["62", "63", "69"],
-      "basis": "Drafted from Mental Health Act 2014 (WA) s 61 with s 62, s 63, s 69 as context, and from the approved Form 3D as listed on the Office of the Chief Psychiatrist register."
+      "basis": "Drafted from Mental Health Act 2014 (WA) s 61 with s 62, s 63, s 69 as context, and from the approved Form 3D as listed on the Office of the Chief Psychiatrist register.",
+      "reviewedBy": "Dr Josh Simpson",
+      "reviewedAt": "2026-10-27T06:57:06.232Z",
+      "reviewedContentSha256": "a412dffee9ab4b9e13946ca07c26f6baa020b00923705ed8c807450ba251e072"
     },
     {
       "code": "3E",
