@@ -2902,6 +2902,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-27-signed-out-examples-on-every-work-page.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/decisions/2026-10-19-rag-ts-split-deferred-until-after-launch.md",
         "section": "decisions",
         "catalogued": true
