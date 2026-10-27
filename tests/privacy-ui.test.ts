@@ -141,7 +141,7 @@ describe("privacy UI", () => {
     expect(markup).toContain("1300 363 992");
     expect(markup).toContain("Notes written on answer feedback are deleted after 30 days");
     expect(markup).toContain("its questions, answers, search logs and feedback notes are deleted with it");
-    expect(markup).toContain("a cached copy lasts at most about 75 minutes");
+    expect(markup).toContain("an hourly clean-up deletes expired copies, normally within about 75 minutes");
     expect(markup).toContain("sent to Sentry, in the United States");
     expect(markup).toContain("turn dictated questions into text when voice input is used");
     expect(markup).not.toContain("Report a suspected privacy or access problem through your organisation");
