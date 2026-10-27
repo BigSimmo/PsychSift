@@ -76,6 +76,7 @@
     "src/app/api/setup-status/route.ts",
     "src/app/api/webhooks/**",
     "src/app/auth/callback/**",
+    "src/app/auth/confirm/**",
     "src/components/clinical-dashboard/password-recovery-form.tsx",
     "src/components/use-account-request-scope.ts",
     "src/components/work-mode-launch/**",
