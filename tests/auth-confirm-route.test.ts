@@ -134,6 +134,7 @@ describe("/auth/confirm", () => {
   it.each([
     ["Email link is invalid or has expired", "link_expired"],
     ["Token has expired or is invalid", "link_expired"],
+    ["User is banned", "account_blocked"],
     ["Something else went wrong", "verify_failed"],
   ])("maps the verify error %j to %s", async (message, code) => {
     const { GET } = await loadConfirm(vi.fn(async () => ({ error: { message } })));

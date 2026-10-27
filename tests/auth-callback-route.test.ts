@@ -260,6 +260,7 @@ describe("/auth/callback", () => {
     ["invalid flow state, no valid flow state found", "link_expired"],
     ["Email link is invalid or has expired", "link_expired"],
     ["Database error granting user", "exchange_failed"],
+    ["User is banned", "account_blocked"],
   ])("turns the exchange failure %s into the short code %s", async (message, code) => {
     vi.doMock("@/lib/supabase/server", () => ({
       createSupabaseServerClient: vi.fn(async () => ({

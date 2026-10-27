@@ -56,6 +56,7 @@ function confirmNext(rawNext: string | null, origin: string): string {
 /** Short codes the sign-in window already explains (see `safeCallbackError`). */
 function verifyFailureCode(message: string | undefined): string {
   const normalized = message?.toLowerCase() ?? "";
+  if (/\bbanned\b/.test(normalized)) return "account_blocked";
   if (normalized.includes("expired") || normalized.includes("invalid") || normalized.includes("already used")) {
     return "link_expired";
   }

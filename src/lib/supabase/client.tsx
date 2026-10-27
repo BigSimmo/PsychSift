@@ -74,6 +74,14 @@ const AUTH_CALLBACK_PATH = "/auth/callback";
 const GENERIC_AUTH_ERROR = "Sign-in could not be completed. Please try again.";
 export const SIGN_IN_LINK_OTHER_BROWSER_ERROR =
   "That sign-in link opened in a different browser from the one you asked for it in, so it could not sign you in. Open the link in the browser you used to request it, or sign in here with your password, Apple, Google or Microsoft.";
+export const ACCOUNT_BLOCKED_ERROR =
+  "This account has been blocked, so it can't sign in. If you think this is a mistake, contact the PsychSift administrator.";
+
+/** The auth server refuses a banned account with this code, or a message naming the ban. Exported for tests. */
+export function isBlockedAccountError(error: { readonly code?: string; readonly message?: string } | null | undefined) {
+  if (!error) return false;
+  return error.code === "user_banned" || /\bbanned\b/i.test(error.message ?? "");
+}
 export const SIGN_IN_LINK_EXPIRED_ERROR =
   "That sign-in link has expired or was already used. Ask for a new one, or sign in with your password, Apple, Google or Microsoft.";
 
@@ -93,6 +101,9 @@ export function safeCallbackError(value: string | null) {
     normalized?.includes("invalid or has expired")
   ) {
     return SIGN_IN_LINK_EXPIRED_ERROR;
+  }
+  if (normalized === "account_blocked" || (normalized && /\bbanned\b/.test(normalized))) {
+    return ACCOUNT_BLOCKED_ERROR;
   }
   if (normalized === "access_denied" || normalized?.includes("access denied")) {
     return "Sign-in was cancelled. You can try again.";
@@ -568,7 +579,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .catch(() => ({ error: { message: "network_error" } }));
       if (signInError) {
         setStatus("error");
-        setError("Sign-in email could not be sent.");
+        setError(isBlockedAccountError(signInError) ? ACCOUNT_BLOCKED_ERROR : "Sign-in email could not be sent.");
         return;
       }
       setStatus("signed_out");
@@ -589,7 +600,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .catch(() => ({ error: { message: "network_error" } }));
       if (signInError) {
         setStatus("error");
-        setError("Sign-in failed. Check your email and password, or confirm your email address.");
+        setError(
+          isBlockedAccountError(signInError)
+            ? ACCOUNT_BLOCKED_ERROR
+            : "Sign-in failed. Check your email and password, or confirm your email address.",
+        );
         return;
       }
       // onAuthStateChange flips status to "authenticated" on success.
