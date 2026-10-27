@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "8ffe87c2-2f01-4984-8beb-acf4ac7d6105",
+  "createdOn": "2026-10-27",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "task",
+    "summary": "Malware scanner for the ingestion worker is deferred; new uploads and re-index stay blocked until it is built or the gate is changed",
+    "detail": "Owner decision 27 Oct 2026 (docs/decisions/2026-10-27-defer-worker-malware-scanner.md): defer the scanner because only administrators can upload. Without the module named by WORKER_ADMIN_SOURCE_RUNTIME_MODULE the worker builds an unavailable provider-egress context (worker/provider-egress.ts), so every job is refused before any provider call. Revisit when new uploads are needed: either build the ClamAV module (pinned binary and signature hashes, signatures at most 7 days old, daily refresh) or ask the owner to approve exempting administrator uploads from the scan. Indexing rights per document (rights: permitted) are a separate gate waiting on counsel (#HGEC4B). The #GJHKYC pilot is parked on this.",
+    "source": "Project thread, 27 Oct 2026",
+    "issueUlid": "01M5XT9KGNSSVX8DEXY4WCX76B"
+  }
+}
