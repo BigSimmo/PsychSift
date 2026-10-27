@@ -2237,6 +2237,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/access-roles.md",
+        "section": "root",
+        "catalogued": true
+      },
+      {
         "path": "docs/codex/data-database-safety/README.md",
         "section": "codex",
         "catalogued": true
