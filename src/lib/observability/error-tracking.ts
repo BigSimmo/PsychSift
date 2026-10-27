@@ -2,6 +2,8 @@ import type { ErrorEvent } from "@sentry/nextjs";
 import type { Instrumentation } from "next";
 
 const SAFE_ERROR_MESSAGE = "Unhandled server request error";
+// Browser reports arrive through `/api/client-error` tagged `service: "browser"`.
+const SAFE_BROWSER_ERROR_MESSAGE = "Unhandled browser error";
 // `service` / `worker_stage` are set only from fixed code literals by the
 // ingestion worker (worker/observability.ts) — never from job, document, or
 // owner data. Everything else stays stripped.
@@ -416,12 +418,13 @@ type ScrubbedErrorEvent = Pick<
 
 /** Keep code locations while removing all free-form/request data before export. */
 export function privacySafeErrorEvent(event: ErrorEvent | ScrubbedErrorEvent): ScrubbedErrorEvent {
+  const safeMessage = event.tags?.service === "browser" ? SAFE_BROWSER_ERROR_MESSAGE : SAFE_ERROR_MESSAGE;
   const exceptions = event.exception?.values?.map((exception) => ({
     // Error.name is mutable and can contain request or clinical text. Retain
     // only fixed JavaScript runtime types; custom/provider names collapse to a
     // generic type while their scrubbed stack location still supports grouping.
     type: privacySafeExceptionType(exception.type),
-    value: SAFE_ERROR_MESSAGE,
+    value: safeMessage,
     mechanism: privacySafeMechanism(exception.mechanism),
     stacktrace: exception.stacktrace
       ? {
@@ -458,7 +461,7 @@ export function privacySafeErrorEvent(event: ErrorEvent | ScrubbedErrorEvent): S
     level: event.level,
     release: event.release,
     environment: event.environment,
-    message: exceptions?.length ? undefined : SAFE_ERROR_MESSAGE,
+    message: exceptions?.length ? undefined : safeMessage,
     exception: exceptions?.length ? { values: exceptions } : undefined,
     // NEVER `undefined` outside the worker branch. An undefined fingerprint hands grouping back
     // to Sentry's default algorithm, which reads exactly the minified frames this function exists

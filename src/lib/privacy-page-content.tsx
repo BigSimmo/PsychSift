@@ -223,7 +223,7 @@ export const PRIVACY_SECTIONS: PrivacySection[] = [
     body: [
       "PsychSift is assembled from three providers, each holding a different part of the system. Supabase hosts the database, the private file storage, and authentication, in its Sydney region. Railway runs the application and the ingestion worker in Singapore. OpenAI, in the United States, creates retrieval embeddings and, when model-backed synthesis is used, generates the answer text.",
       "OpenAI is also used to summarise and index reference documents, describe images in them, sort some questions by type, and turn dictated questions into text when voice input is used.",
-      "A fourth is optional. When the operator configures server-side error monitoring, error and performance events are sent to Sentry, in the United States, with request URLs, headers, bodies, account data, and exception messages stripped before they leave the application; browser session replay is not enabled.",
+      "A fourth is optional. When the operator configures error monitoring, error and performance events, including error reports from the app in your browser, are sent to Sentry, in the United States, with request URLs, headers, bodies, account data, typed text and exception messages stripped before they leave the application; browser session replay is not enabled.",
       "Provider regions, sub-processors, retention terms, and contractual cover are operator responsibilities. This section describes which providers the application is configured to use, not what has been agreed with each of them.",
     ],
   },

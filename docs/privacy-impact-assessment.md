@@ -516,6 +516,12 @@ needs governance review.
   United States or Germany depending on the organisation's chosen region. The operator must record
   the region and agreement, and the privacy adviser must decide whether these stripped events still
   carry personal information that needs listing under APP 1, APP 5 and APP 8.
+  Browser errors (performance audit M4, 2026-10-27) are not sent from the browser to Sentry. The app
+  posts a code-location-only report (error type, how it was caught, the first page-path segment and
+  stack frames in the app's own `/_next/` files) to `/api/client-error` without cookies, and the
+  server forwards it through the same scrubber. The error message, query string, typed text, page
+  content and account data are never read into the report
+  ([client-error-report.ts](../src/lib/observability/client-error-report.ts)).
 - **Supabase agreement: not recorded (SB-10, 2026-10-26).** No Supabase data processing agreement
   or acceptance record appears in this assessment or in
   [the readiness register](governance/privacy-readiness.v1.json). Data stays in Sydney, so this is an
