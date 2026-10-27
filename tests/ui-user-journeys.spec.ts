@@ -236,7 +236,7 @@ test.describe("Live Browser User Journeys", () => {
     );
     await expect(signInTrigger).toHaveCount(1);
     await expect(signInTrigger).toBeVisible();
-    await expect(signInTrigger).toHaveAccessibleName(/Guest Not signed in\. Set up workspace/);
+    await expect(signInTrigger).toHaveAccessibleName("Sign in or create an account");
     await expectHydratedHandler(signInTrigger, "onClick");
 
     // Trigger Account Setup dialog

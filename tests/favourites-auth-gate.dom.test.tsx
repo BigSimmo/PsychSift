@@ -279,6 +279,64 @@ describe("favourites auth gate DOM", () => {
     expect(screen.queryByText("Account-scoped saves")).toBeNull();
   });
 
+  it("keeps signing in and creating an account clearly separate", async () => {
+    const user = userEvent.setup();
+    render(<AccountSetupDialog open onClose={() => undefined} />);
+
+    expect(screen.getByRole("radio", { name: "Sign in" })).toBeChecked();
+    expect(screen.getByRole("heading", { name: "Welcome back" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Continue with Google" })).toBeVisible();
+
+    await user.click(screen.getByRole("radio", { name: "Create account" }));
+    expect(screen.getByRole("heading", { name: "Create your account" })).toBeVisible();
+    // Providers make the account on first use, so the create tab says so.
+    expect(screen.getByRole("button", { name: "Sign up with Google" })).toBeVisible();
+    expect(screen.getByLabelText(/Confirm password/)).toBeVisible();
+    expect(screen.getByRole("button", { name: "Create account" })).toBeVisible();
+  });
+
+  it("opens the favourites prompt on Create account", () => {
+    render(<AccountSetupDialog open onClose={() => undefined} intent="favourites" />);
+    expect(screen.getByRole("radio", { name: "Create account" })).toBeChecked();
+  });
+
+  it("starts each reopening on the tab its intent asks for, while staying mounted", async () => {
+    const user = userEvent.setup();
+    const close = () => undefined;
+    const { rerender } = render(<AccountSetupDialog open onClose={close} />);
+    expect(screen.getByRole("radio", { name: "Sign in" })).toBeChecked();
+    rerender(<AccountSetupDialog open={false} onClose={close} />);
+    rerender(<AccountSetupDialog open onClose={close} intent="favourites" />);
+    expect(screen.getByRole("radio", { name: "Create account" })).toBeChecked();
+    await user.click(screen.getByRole("radio", { name: "Sign in" }));
+    rerender(<AccountSetupDialog open={false} onClose={close} intent="favourites" />);
+    rerender(<AccountSetupDialog open onClose={close} intent="favourites" />);
+    expect(screen.getByRole("radio", { name: "Create account" })).toBeChecked();
+    rerender(<AccountSetupDialog open={false} onClose={close} />);
+    rerender(<AccountSetupDialog open onClose={close} />);
+    expect(screen.getByRole("radio", { name: "Sign in" })).toBeChecked();
+  });
+
+  it("keeps the favourites heading in step with the chosen tab", async () => {
+    const user = userEvent.setup();
+    render(<AccountSetupDialog open onClose={() => undefined} intent="favourites" />);
+    expect(screen.getByRole("heading", { name: "Sign up to save favourites" })).toBeVisible();
+    await user.click(screen.getByRole("radio", { name: "Sign in" }));
+    expect(screen.getByRole("heading", { name: "Sign in to save favourites" })).toBeVisible();
+  });
+
+  it("clears a typed and revealed password when the top tab switches", async () => {
+    const user = userEvent.setup();
+    render(<AccountSetupDialog open onClose={() => undefined} />);
+    await user.type(screen.getByLabelText(/Email address/), "person@example.com");
+    await user.type(screen.getByLabelText(/^Password/), "existing-passphrase");
+    await user.click(screen.getByRole("button", { name: "Show password" }));
+    await user.click(screen.getByRole("radio", { name: "Create account" }));
+    expect(screen.getByLabelText(/^Create a password/)).toHaveValue("");
+    expect(screen.getByLabelText(/^Create a password/)).toHaveAttribute("type", "password");
+    expect(screen.getByLabelText(/Email address/)).toHaveValue("person@example.com");
+  });
+
   it("leads with and wires Apple, Google, and Microsoft OAuth", async () => {
     const user = userEvent.setup();
     render(<AccountSetupDialog open onClose={() => undefined} />);
@@ -314,15 +372,16 @@ describe("favourites auth gate DOM", () => {
     for (const provider of ["Apple", "Google", "Microsoft"]) {
       expect(screen.getByRole("button", { name: `Continue with ${provider}` })).toBeDisabled();
     }
-    expect(screen.getByRole("button", { name: "Sign in with email" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Sign in" })).toBeDisabled();
   });
 
   it("submits password sign-in and announces success and failure feedback", async () => {
     const user = userEvent.setup();
     const { rerender } = render(<AccountSetupDialog open onClose={() => undefined} />);
 
-    const submit = screen.getByRole("button", { name: "Sign in with email" });
-    expect(submit).toBeDisabled();
+    const submit = screen.getByRole("button", { name: "Sign in" });
+    // Enabled while empty: an empty submit explains what is missing rather than looking broken.
+    expect(submit).toBeEnabled();
     const email = screen.getByLabelText(/Email address/);
     expect(email).toHaveAttribute("data-sheet-autofocus", "true");
     await user.type(email, "clinician@clinic.example");
