@@ -9,9 +9,10 @@ import type { OpenAITextResult } from "../src/lib/openai";
 import type { OpenAITokenUsage, RagAnswer, SearchResult } from "../src/lib/types";
 import type { EvalModelPrices } from "./eval-utils";
 import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
+import { answerJsonSchema, answerJsonOutputSchemaForResults } from "../src/lib/rag/rag-answer-schema";
 
 export const comparisonConfig = Object.freeze({
-  version: 1,
+  version: 2,
   componentOnly: true,
   syntheticOnly: true,
   arms: {
@@ -20,7 +21,7 @@ export const comparisonConfig = Object.freeze({
   },
   efforts: { fast: "low", strong: "medium" },
   measuredPasses: 2,
-  warmupsPerArm: 1,
+  warmupsPerArm: 2,
   concurrency: 1,
   sdkRetries: 0,
   outerRetries: 0,
@@ -136,7 +137,13 @@ export function planExecutions(cases: readonly ComparisonCase[]): Execution[] {
   const executions: Execution[] = [];
   const add = (arm: Arm, c: ComparisonCase, pass: number, warmup: boolean) =>
     executions.push({ arm, caseId: c.id, pass, warmup, route: c.route, model: comparisonConfig.arms[arm][c.route] });
-  for (const arm of ["control", "candidate"] as const) add(arm, cases[0], 0, true);
+  for (const arm of ["control", "candidate"] as const) {
+    for (const route of ["fast", "strong"] as const) {
+      const testCase = cases.find((c) => c.route === route);
+      if (!testCase) throw new Error("Both route fixtures are required for symmetric warmups.");
+      add(arm, testCase, 0, true);
+    }
+  }
   for (let pass = 1; pass <= comparisonConfig.measuredPasses; pass++)
     cases.forEach((c, index) => {
       const arms: Arm[] = (index + pass) % 2 ? ["control", "candidate"] : ["candidate", "control"];
@@ -349,7 +356,18 @@ export function deterministicChecks(testCase: ComparisonCase, raw: string, answe
   } catch {
     payload = null;
   }
-  const ids = new Set(frozenSources(testCase).map((s) => s.id));
+  const sources = frozenSources(testCase);
+  // The production parser deliberately recovers malformed outputs into safe
+  // refusals. That recovery must not earn model-quality credit. Require the
+  // issued envelope before judging the parser's final groundedness/citations.
+  const required = answerJsonOutputSchemaForResults(sources).required;
+  const validAnswerEnvelope =
+    record(payload) &&
+    required.every((key) => Object.hasOwn(payload, key)) &&
+    typeof payload.answer === "string" &&
+    payload.answer.trim().length > 0 &&
+    answerJsonSchema.safeParse(payload).success;
+  const ids = new Set(sources.map((s) => s.id));
   const proposed = record(payload) && Array.isArray(payload.citations) ? payload.citations : [];
   const invalidProposedCitations = proposed.filter((c) => !record(c) || !ids.has(String(c.chunk_id))).length;
   const text = [answer.answer, ...(answer.answerSections ?? []).map((s) => s.body)].join(" ").toLowerCase();
@@ -359,10 +377,14 @@ export function deterministicChecks(testCase: ComparisonCase, raw: string, answe
     answer.sources.some((s) => s.id === c.chunk_id && s.document_id === c.document_id),
   ).length;
   const unsupportedCorrect = testCase.unsupported
-    ? !answer.grounded && answer.confidence === "unsupported"
+    ? record(payload) &&
+      payload.grounded === false &&
+      payload.confidence === "unsupported" &&
+      !answer.grounded &&
+      answer.confidence === "unsupported"
     : answer.grounded && validCitations > 0;
   const passed =
-    record(payload) &&
+    validAnswerEnvelope &&
     invalidProposedCitations === 0 &&
     missingTerms.length === 0 &&
     forbiddenTerms.length === 0 &&
@@ -371,6 +393,7 @@ export function deterministicChecks(testCase: ComparisonCase, raw: string, answe
   return {
     passed,
     validJson: record(payload),
+    validAnswerEnvelope,
     invalidProposedCitations,
     validCitations,
     missingTerms,
@@ -394,7 +417,8 @@ export async function runComparison(
   execute: (e: Execution, c: ComparisonCase) => Promise<Omit<ComparisonOutcome, keyof Execution>>,
 ) {
   const outcomes: ComparisonOutcome[] = [];
-  for (const execution of planExecutions(cases)) {
+  const plan = planExecutions(cases);
+  for (const execution of plan) {
     const started = performance.now();
     try {
       outcomes.push({
@@ -404,6 +428,7 @@ export async function runComparison(
           cases.find((c) => c.id === execution.caseId)!,
         )),
       });
+      if (outcomes.at(-1)?.status === "failed") break;
     } catch {
       outcomes.push({
         ...execution,
@@ -415,8 +440,8 @@ export async function runComparison(
     }
   }
   return {
-    complete: outcomes.length === 50 && outcomes.every((o) => o.status === "completed"),
-    expectedExecutions: 50,
+    complete: outcomes.length === plan.length && outcomes.every((o) => o.status === "completed"),
+    expectedExecutions: plan.length,
     outcomes,
   };
 }
@@ -655,7 +680,7 @@ export async function main(argv = process.argv.slice(2), cwd = process.cwd()) {
       "Answer-generation component only; no retrieval, full-route prompt/planning, packing, recovery, caching or hosted acceptance. Deterministic checks are not expert quality review.",
     approvalStatus: mode === "paid" ? "validation_required" : "not_authorised_for_provider_calls",
     incompleteWarning:
-      "Published full-context reservations can stop the experiment before 50 executions. Never substitute a guessed input token cap.",
+      "The 52-execution plan reserves 832,000 output tokens and cannot fit the configured 400,000 cap. Published full-context input reservations may stop it earlier. Revised scope needs separate approval; never substitute guessed limits.",
   };
   if (mode === "dry-run") {
     console.log(JSON.stringify(preflight, null, 2));
@@ -784,7 +809,7 @@ export async function main(argv = process.argv.slice(2), cwd = process.cwd()) {
           mode,
           complete: results.complete,
           executed: results.outcomes.length,
-          expectedExecutions: 50,
+          expectedExecutions: plan.length,
           output: out,
           transport: report.transport,
           summary,

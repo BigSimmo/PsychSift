@@ -76,14 +76,20 @@ This is not approval for paid evaluation, production activation, publication or 
 Use `node scripts/run-tsx.mjs scripts/compare-answer-models.ts` for the provider-free dry run.
 The component experiment uses frozen synthetic evidence and the production generation/validation
 components; it does not establish live retrieval or complete route equivalence. Twelve cases, two
-measured passes and one labelled warm-up per arm give 50 planned answer executions. No paid model
+measured passes and one labelled warm-up per route per arm give 52 planned answer executions.
+Both model/effort combinations are warmed before measurement. No paid model
 judge is used. Blinded review remains human; clinical sign-off remains owner-only.
 
 Before a live run, verify account access and current official prices, approve that exact bounded
 run and inspect the harness's approval manifest and reservations. The planned ceilings are US$15,
 150 requests including recovery, one million input tokens, 400,000 output tokens including reasoning,
-and concurrency one. Conservative admission can stop the experiment before all cases complete;
+and concurrency one. This full plan cannot fit those caps: output reservations alone are
+832,000 tokens against the 400,000 cap. A feasible revised scope and its own approval are required.
+Conservative admission can stop the experiment before all cases complete;
 an incomplete comparison never passes. No credentials or production content belong in a manifest.
+Thrown failures and incomplete provider responses both stop the schedule without retries.
+Malformed output recovered into a safe refusal earns no model-quality credit; the raw response
+must contain the issued answer envelope and explicitly declare unsupported confidence.
 The manifest's absolute `outputDirectory` binds it to one new ignored run directory in this checkout. That directory is
 atomically consumed and a durable approval receipt is written before transport; an interrupted
 or failed run cannot reuse it. Run the harness from its own checkout root so the approved hashes

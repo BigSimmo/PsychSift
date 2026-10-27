@@ -119,13 +119,22 @@ describe("offline-first answer model comparison", () => {
       await rm(root, { recursive: true, force: true });
     }
   });
-  it("freezes 12 cases across six categories and schedules two warmups plus 48 measured executions", async () => {
+  it("warms both model/effort routes symmetrically before 48 measured executions", async () => {
     const cases = await fixture(),
       plan = planExecutions(cases);
     expect(cases).toHaveLength(12);
     expect(new Set(cases.map((c) => c.category)).size).toBe(6);
-    expect(plan).toHaveLength(50);
-    expect(plan.filter((e) => e.warmup)).toHaveLength(2);
+    expect(plan).toHaveLength(52);
+    expect(plan.filter((e) => e.warmup)).toHaveLength(4);
+    for (const arm of ["control", "candidate"]) {
+      expect(
+        plan
+          .filter((e) => e.arm === arm && e.warmup)
+          .map((e) => e.route)
+          .sort(),
+      ).toEqual(["fast", "strong"]);
+    }
+    expect(plan.slice(0, 4).every((e) => e.warmup)).toBe(true);
     expect(plan.filter((e) => e.arm === "control" && !e.warmup)).toHaveLength(24);
     expect(plan.filter((e) => e.arm === "candidate" && !e.warmup)).toHaveLength(24);
     expect(plan.find((e) => e.arm === "control" && e.route === "strong")?.model).toBe("gpt-5.6-sol");
@@ -178,7 +187,7 @@ describe("offline-first answer model comparison", () => {
 
   it("reports that conservative full-plan output reservations exceed the approved cap", async () => {
     const bound = worstCasePlan(planExecutions(await fixture()), card());
-    expect(bound.outputTokens).toBe(800_000);
+    expect(bound.outputTokens).toBe(832_000);
     expect(bound.fitsConfiguredCaps).toBe(false);
   });
 
@@ -253,12 +262,27 @@ describe("offline-first answer model comparison", () => {
     expect(execute).toHaveBeenCalledTimes(1);
   });
 
+  it("also stops on a returned incomplete provider response without further calls", async () => {
+    const execute = vi.fn(async () => ({
+      status: "failed" as const,
+      latencyMs: 1,
+      reason: "provider_incomplete",
+      usage: { input_tokens: 10, output_tokens: 16_000 },
+    }));
+    const run = await runComparison(await fixture(), execute);
+    expect(run.complete).toBe(false);
+    expect(run.expectedExecutions).toBe(52);
+    expect(run.outcomes).toHaveLength(1);
+    expect(run.outcomes[0]?.usage).toEqual({ input_tokens: 10, output_tokens: 16_000 });
+    expect(execute).toHaveBeenCalledTimes(1);
+  });
+
   it("uses production generation wrapper, source fencing, schema and parser offline without network", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("network forbidden"));
     const cases = await fixture(),
       execute = await offlineComparisonExecutor();
     const run = await runComparison(cases, execute);
-    expect(run.outcomes).toHaveLength(50);
+    expect(run.outcomes).toHaveLength(52);
     expect(run.complete).toBe(true);
     expect(run.outcomes.every((o) => o.checks?.validJson)).toBe(true);
     expect(
@@ -282,6 +306,26 @@ describe("offline-first answer model comparison", () => {
       passed: false,
       invalidProposedCitations: 1,
     });
+  });
+
+  it.each([
+    {},
+    { answer: 42 },
+    {
+      answer: "I cannot answer.",
+      grounded: true,
+      confidence: "high",
+      answerSections: [],
+      citations: [],
+      quoteCards: [],
+      conflictsOrGaps: [],
+    },
+  ])("does not count malformed output or a recovered fallback as a correct refusal: %j", async (payload) => {
+    const c = (await fixture()).find((item) => item.unsupported)!;
+    const { parseAnswerJson } = await import("../src/lib/rag/rag");
+    const raw = JSON.stringify(payload);
+    const parsed = parseAnswerJson(raw, frozenSources(c), c.question);
+    expect(deterministicChecks(c, raw, parsed).passed).toBe(false);
   });
 
   it("admits real SDK serialization through the guarded mock transport without network", async () => {
