@@ -1,6 +1,7 @@
 import { formatRecordedDate } from "@/lib/admin/renewal-dates";
 import {
   decideGrantWorkRole,
+  decideWorkCapability,
   GRANTABLE_WORK_ROLES,
   isGrantableWorkRole,
   type GrantableWorkRole,
@@ -57,6 +58,8 @@ export type PeopleViewer = {
    * Absent from an older answer, when the screen works it out from the model.
    */
   readonly canGrant?: readonly GrantableWorkRole[];
+  /** Whether the server lets this viewer name roster managers here. Absent from an older answer. */
+  readonly canNameManagers?: boolean;
 };
 
 export type WorkPeopleResponse = {
@@ -85,7 +88,15 @@ export type WorkPeopleAction =
   | { readonly action: "move-team"; readonly serviceId: string; readonly toHospitalId: string }
   | { readonly action: "rename-hospital"; readonly hospitalId: string; readonly name: string }
   /** Refused while any team is still linked to it. */
-  | { readonly action: "archive-hospital"; readonly hospitalId: string };
+  | { readonly action: "archive-hospital"; readonly hospitalId: string }
+  /** Names or removes a roster manager. The administrator, or Medical Workforce for their hospital. */
+  | {
+      readonly action: "set-manager";
+      readonly hospitalId: string;
+      readonly serviceId: string;
+      readonly userId: string;
+      readonly manager: boolean;
+    };
 
 /* --------------------------------------------------------------- parsing */
 
@@ -178,7 +189,12 @@ export function parseWorkPeopleResponse(value: unknown): WorkPeopleResponse | nu
     hospitals,
     hospital,
     unlinkedTeams,
-    viewer: { userId: viewer.userId, administrator: viewer.administrator === true, ...(canGrant ? { canGrant } : {}) },
+    viewer: {
+      userId: viewer.userId,
+      administrator: viewer.administrator === true,
+      ...(canGrant ? { canGrant } : {}),
+      ...(typeof viewer.canNameManagers === "boolean" ? { canNameManagers: viewer.canNameManagers } : {}),
+    },
   };
 }
 
@@ -303,6 +319,32 @@ export function rolesViewerMayGive(
       scope: { kind: "hospital", hospitalId },
     }),
   );
+}
+
+/**
+ * Whether the viewer may name or remove roster managers for this hospital's teams: the site
+ * administrator, or Medical Workforce for this hospital. The server's answer wins when it sent one.
+ */
+export function mayNameManagers(
+  grants: readonly WorkRoleGrant[],
+  hospitalId: string,
+  serverCanNameManagers?: boolean,
+): boolean {
+  if (serverCanNameManagers !== undefined) return serverCanNameManagers;
+  return decideWorkCapability(grants, "roles.grant", { kind: "hospital", hospitalId });
+}
+
+/** The people in one team, by name, each marked when they are its roster manager. */
+export function teamMembers(
+  hospital: PeopleHospital,
+  serviceId: string,
+): readonly { readonly userId: string; readonly name: string; readonly manager: boolean }[] {
+  const team = hospital.teams.find((entry) => entry.serviceId === serviceId);
+  const managers = new Set(team?.managers.map((manager) => manager.userId) ?? []);
+  return hospital.people
+    .filter((person) => person.serviceIds.includes(serviceId))
+    .map((person) => ({ userId: person.userId, name: person.name, manager: managers.has(person.userId) }))
+    .sort(byName);
 }
 
 /** Whether the viewer may remove this grant. Never their own: nobody narrows or widens themselves here. */
@@ -641,6 +683,27 @@ export function applyExampleAction(
           }),
           unlinkedTeams: state.unlinkedTeams.filter((entry) => entry.serviceId !== team.serviceId),
         },
+        hospitalId: hospital.id,
+      };
+    }
+    case "set-manager": {
+      const hospital = state.hospitals.find((entry) => entry.id === action.hospitalId);
+      const team = hospital?.teams.find((entry) => entry.serviceId === action.serviceId);
+      const person = hospital?.people.find(
+        (entry) => entry.userId === action.userId && entry.serviceIds.includes(action.serviceId),
+      );
+      if (!hospital || !team || !person)
+        return { ok: false, problem: "That person isn't an active member of this team." };
+      if (person.userId === state.viewer.userId && !state.viewer.administrator)
+        return { ok: false, problem: "You can't change your own manager role." };
+      const others = team.managers.filter((manager) => manager.userId !== person.userId);
+      const managers = action.manager ? [...others, { userId: person.userId, name: person.name }] : others;
+      return {
+        ok: true,
+        state: replace({
+          ...hospital,
+          teams: hospital.teams.map((entry) => (entry === team ? { ...team, managers } : entry)),
+        }),
         hospitalId: hospital.id,
       };
     }

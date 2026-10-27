@@ -41,11 +41,13 @@ import {
   pickablePeople,
   renameHospitalProblem,
   roleSentence,
+  teamMembers,
   type GrantDraft,
   type LinkableTeam,
   type PeopleGrant,
   type PeopleHospital,
   type PeopleHospitalRef,
+  type PeopleTeam,
   type WorkPeopleAction,
 } from "@/lib/work-roles/people-model";
 import { checkPatientDetail } from "@/lib/work-text/patient-detail-check";
@@ -1096,6 +1098,119 @@ export function ArchiveHospitalSheet({
             <p className="text-sm font-semibold text-[color:var(--text-heading)]">{`Archive ${hospital.name}?`}</p>
             <WorkSectionLabel as="h3">What changes</WorkSectionLabel>
             <EffectList lines={archiveHospitalEffects(hospital.name)} testId="admin-people-archive-effects" />
+          </>
+        )}
+        {!online ? <OfflineLine /> : null}
+      </div>
+    </Sheet>
+  );
+}
+
+/* ------------------------------------------------------ roster managers */
+
+/**
+ * Names or removes a team's roster managers, one tick at a time. For the site administrator, and
+ * Medical Workforce for their own hospital. Only the team's own members are listed, and nobody but
+ * the administrator changes their own manager role.
+ */
+export function TeamManagersSheet({
+  hospital,
+  team,
+  viewerId,
+  administrator,
+  online,
+  run,
+  onClose,
+}: {
+  readonly hospital: PeopleHospital;
+  readonly team: PeopleTeam;
+  readonly viewerId: string;
+  readonly administrator: boolean;
+  readonly online: boolean;
+  readonly run: PeopleRun;
+  readonly onClose: () => void;
+}) {
+  const [busy, setBusy] = useState<string | null>(null);
+  const [failure, setFailure] = useState<string | null>(null);
+  const members = teamMembers(hospital, team.serviceId);
+
+  async function toggle(member: { readonly userId: string; readonly name: string; readonly manager: boolean }) {
+    if (busy || !online) return;
+    setBusy(member.userId);
+    setFailure(null);
+    const failed = await run(
+      {
+        action: "set-manager",
+        hospitalId: hospital.id,
+        serviceId: team.serviceId,
+        userId: member.userId,
+        manager: !member.manager,
+      },
+      member.manager
+        ? `${member.name} is no longer a roster manager for ${team.name}`
+        : `${member.name} is now a roster manager for ${team.name}`,
+    );
+    setBusy(null);
+    if (failed) setFailure(failed);
+  }
+
+  return (
+    <Sheet
+      open
+      onClose={onClose}
+      title="Roster managers"
+      description={team.name}
+      testId="admin-people-managers-sheet"
+      footer={
+        <div className="grid gap-2">
+          {failure ? <Problem testId="admin-people-managers-problem">{failure}</Problem> : null}
+          <WorkButton size="wide" variant="secondary" onClick={onClose} testId="admin-people-managers-done">
+            Done
+          </WorkButton>
+        </div>
+      }
+    >
+      <div className="grid gap-3">
+        {members.length === 0 ? (
+          <WorkCard>
+            <WorkEmpty
+              icon={Users}
+              title="Nobody in this team yet"
+              body="A roster manager must be a member of the team. Invite them to the team first."
+              testId="admin-people-managers-empty"
+            />
+          </WorkCard>
+        ) : (
+          <>
+            <p className="text-sm">
+              {`A roster manager publishes ${team.name}'s roster, approves swaps and sees its sick calls. Tick to name one.`}
+            </p>
+            <ChoiceList label={`Roster managers for ${team.name}`} kind="checkbox" testId="admin-people-managers-list">
+              {members.map((member) => {
+                const self = member.userId === viewerId && !administrator;
+                return (
+                  <ChoiceRow
+                    key={member.userId}
+                    kind="checkbox"
+                    checked={member.manager}
+                    title={member.name}
+                    sub={
+                      self
+                        ? "You can't change your own manager role"
+                        : busy === member.userId
+                          ? "Saving"
+                          : member.manager
+                            ? "Roster manager"
+                            : undefined
+                    }
+                    onToggle={() => {
+                      if (!self) void toggle(member);
+                    }}
+                    testId="admin-people-manager"
+                  />
+                );
+              })}
+            </ChoiceList>
           </>
         )}
         {!online ? <OfflineLine /> : null}

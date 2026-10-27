@@ -2287,6 +2287,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-27-workforce-names-roster-managers.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/decisions/2026-10-16-keep-migration-history.md",
         "section": "decisions",
         "catalogued": true

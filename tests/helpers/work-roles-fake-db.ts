@@ -4,7 +4,8 @@ import type { applyPeopleChange } from "@/lib/work-roles/people";
  * A small in-memory stand-in for the service-role client that the work-roles code uses. It applies
  * eq, is and in filters, updates and inserts, the one unique rule the migration keeps on hospitals
  * (no two open hospitals share a name, whatever the case), the database-owned revocation of
- * whole-team supervisors when a team moves hospital, and the `work_move_team_v1` RPC. Accounts in
+ * whole-team supervisors when a team moves hospital, and the `work_move_team_v1` and
+ * `roster_set_manager` RPCs. Accounts in
  * `administrators` carry the site administrator claim. Synthetic ids only.
  */
 
@@ -124,8 +125,21 @@ export function fakeWorkRolesDb(tables: Tables, administrators: readonly string[
         }),
       },
     },
-    rpc: async (name: string, args: Record<string, string>) => {
+    rpc: async (name: string, args: Record<string, unknown>) => {
       if (state.rpcUnavailable) return { data: null, error: { code: "PGRST202", message: "Missing move RPC" } };
+      if (name === "roster_set_manager") {
+        // The RPC's own rules: the person must be an active member of the team, then upsert their role.
+        const active = (tables.on_call_service_members ?? []).some(
+          (row) => row.service_id === args.p_service_id && row.user_id === args.p_user_id && row.revoked_at == null,
+        );
+        if (!active) return { data: null, error: { code: "P0001", message: "roster_not_found" } };
+        const rows = (tables.roster_member_roles ??= []);
+        const role = args.p_manager === true ? "manager" : "member";
+        const existing = rows.find((row) => row.service_id === args.p_service_id && row.user_id === args.p_user_id);
+        if (existing) Object.assign(existing, { role, granted_by: args.p_actor_id, revoked_at: null });
+        else rows.push({ service_id: args.p_service_id, user_id: args.p_user_id, role, granted_by: args.p_actor_id });
+        return { data: { ok: true }, error: null };
+      }
       if (name !== "work_move_team_v1") throw new Error("Unexpected RPC");
       const result = await from("work_hospital_teams")
         .update({ hospital_id: args.p_to_hospital_id, linked_by: args.p_actor_id, linked_at: new Date().toISOString() })

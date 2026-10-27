@@ -360,6 +360,55 @@ describe("how the roles hand on to each other", () => {
     ).toMatchObject({ status: 403 });
   });
 
+  it("Medical Workforce names and removes a roster manager in their own hospital, who then runs that team", async () => {
+    const db = fakeWorkRolesDb(seed(), [ADMIN]);
+    await applyPeopleChange(
+      db.client,
+      await rolesOf(db, ADMIN),
+      grant({ userId: WORKFORCE, role: "workforce", hospitalId: H1 }),
+    );
+    const workforce = await rolesOf(db, WORKFORCE);
+    const setManager = (userId: string, serviceId: string, manager: boolean, hospitalId = H1) =>
+      peopleChangeSchema.parse({ action: "set-manager", hospitalId, serviceId, userId, manager });
+
+    // The People screen tells Workforce they may name managers here.
+    const view = await applyPeopleChange(db.client, workforce, setManager(TRAINEE, TEAM_A, true));
+    expect(view.viewer.canNameManagers).toBe(true);
+    expect(view.hospital?.teams.find((team) => team.serviceId === TEAM_A)?.managers.map((m) => m.userId)).toEqual([
+      MANAGER,
+      TRAINEE,
+    ]);
+    const named = await rolesOf(db, TRAINEE);
+    expect(named.grants).toEqual([{ role: "manager", serviceId: TEAM_A }]);
+    expect(screen(hospitalSections(named.grants, H1)).map((section) => section.id)).toEqual(["manager"]);
+
+    // Removing it takes the team away again.
+    await applyPeopleChange(db.client, workforce, setManager(TRAINEE, TEAM_A, false));
+    expect((await rolesOf(db, TRAINEE)).grants).toEqual([]);
+
+    // Not another hospital's team, not themselves, not someone outside the team.
+    expect(
+      await refusal(applyPeopleChange(db.client, workforce, setManager(OTHER_MANAGER, TEAM_C, true, H2))),
+    ).toMatchObject({
+      status: 403,
+    });
+    expect(await refusal(applyPeopleChange(db.client, workforce, setManager(WORKFORCE, TEAM_B, true)))).toMatchObject({
+      status: 403,
+    });
+    expect(await refusal(applyPeopleChange(db.client, workforce, setManager(TRAINEE, TEAM_B, true)))).toMatchObject({
+      status: 404,
+    });
+
+    // The DCT and a roster manager cannot name managers.
+    await applyPeopleChange(db.client, workforce, grant({ userId: DCT, role: "dct", hospitalId: H1 }));
+    expect(
+      await refusal(applyPeopleChange(db.client, await rolesOf(db, DCT), setManager(TRAINEE, TEAM_A, true))),
+    ).toMatchObject({ status: 403 });
+    expect(
+      await refusal(applyPeopleChange(db.client, await rolesOf(db, MANAGER), setManager(TRAINEE, TEAM_A, true))),
+    ).toMatchObject({ status: 403 });
+  });
+
   it("an archived hospital's roles lapse for everyone who held them", async () => {
     const tables = seed();
     const db = fakeWorkRolesDb(tables, [ADMIN]);
