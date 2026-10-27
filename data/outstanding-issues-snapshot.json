@@ -1,16 +1,16 @@
 {
   "version": "outstanding-issues-snapshot-v2",
   "ledger_revision": {
-    "committed_at": "2026-10-26"
+    "committed_at": "2026-10-27"
   },
   "counts": {
-    "open": 82,
+    "open": 81,
     "p1": 11,
     "p2": 46,
-    "p3": 25,
+    "p3": 24,
     "queued": 5,
     "pending": 0,
-    "resolved": 853
+    "resolved": 854
   },
   "queue": [
     {
@@ -356,15 +356,6 @@
       "summary": "Establish why GET /api/documents costs about a second warm, before assuming the exact count is to blame",
       "detail": "OBSERVED 2026-09-17 on live psychiatry.tools: GET /api/documents?limit=10 settled at 1.29-1.52 s warm (5.47 s cold), and ?limit=1 at 0.92-0.99 s, against a ~0.63-0.67 s floor for trivial endpoints (/api/health, /api/local-project-id) measured from the same client. So roughly 0.3-0.9 s is the route's own work, and it does not fall away at limit=1. HYPOTHESIS ONLY, NOT EVIDENCE: src/app/api/documents/route.ts selects with { count: 'exact' }, and the response reports pagination.total 2851, so every request also runs an exact count over the owner-scoped filtered set regardless of limit. That is the obvious suspect and it is exactly the kind of inferred claim this repo has had refuted before (ledger #069 found warm p90 175-243 ms and concluded plans are not the multi-second tail), so it must be measured, not assumed. DO NOT switch to an estimated count on this reasoning alone: pagination.total is user-visible and hasMore depends on it. NEXT ACTION: EXPLAIN ANALYZE the list query with and without the exact count, at limit 1 and 10, against the live owner-scoped shape. GATE: provider-backed, needs explicit owner confirmation per AGENTS.md API and provider confirmation boundary. PARKED 2026-09-18: the next action is EXPLAIN ANALYZE against the live owner-scoped query, which is provider-backed and needs explicit owner confirmation. The exact-count hypothesis must not be acted on without that measurement - this repository has already had one inferred latency claim refuted the same way. TO UNBLOCK: approve one EXPLAIN ANALYZE run of the documents list query, with and without the exact count, at limit 1 and 10.",
       "source": "Live latency review session 2026-09-17",
-      "added": "2026-09-17"
-    },
-    {
-      "id": "#CWWH2E",
-      "priority": "P3",
-      "type": "issue",
-      "summary": "One search issues 27-45 database round trips, many of them re-fetching what it already loaded in the same request",
-      "detail": "REVIEW 2026-09-25 (offline audit of current main; no provider access): No hydration changes since the audit. Lines moved: forceRefresh now rag.ts:1142 and rag-cache.ts:1057; per-request caches rag.ts:1116-1118. The row itself values the saving at a fraction of a second, so P3. PRIOR DETAIL: MEASURED BY CODE AUDIT 2026-09-17, not inferred, against HEAD 8427182d8. For POST /api/search mode=differentials, query 'major depressive disorder', anonymous caller, cold cache: floor approx 27 round trips, typical 34-37, worst approx 45. The four parallel retrieval strategies (lexical, embedding-field, index-unit, hybrid) are deliberate and should NOT be collapsed; the cost is in follow-up hydration. FOUR CONCRETE WASTES, each verified in source: (1) loadChunksForSignalMatches (rag-candidate-sources.ts:1345 -> :1362 -> :1393) is a 3-hop serial chain paid TWICE, where attachDocumentContextPackAdmission in the same file at :275-278 already does the identical job in one embedded-join query; 4 serial hops on the critical path where 2 would do. (2) attachPageVisualEvidence (rag-hydration.ts:253-306) has NO cache and runs 3x per search over heavily overlapping document/page sets. (3) cacheIndexingVersion(...,{forceRefresh:true}) runs twice per search (rag.ts:1088 and rag-cache.ts:1057) and deletes its own 5s TTL entry before reading, so the cache is write-only on the search path; the rag-cache.ts:1057 one is justified as a mid-request staleness guard, the rag.ts:1088 one is not. (4) loadChunksForMemoryCards ignores the request-scoped ChunkLoadCache entirely and runs twice (lexical then vector keys). Also: the typo-correction recursion at rag.ts:1245 threads cacheContext but re-creates memoryCardCache/chunkLoadCache/documentRankingMetadataCache at rag.ts:1062-1064, so an out_of_corpus query pays ~2x the whole search with every hydration cache cold. REFUTED HYPOTHESIS, recorded so it is not re-investigated: the versioned _v2/_v3 retrieval RPCs are NOT missing. All twelve preferred names were cross-checked against supabase/schema.sql and all 248 migration files and every one resolves with matching argument names; drift-allowlist.json has zero functions entries, so a missing one would fail check:drift. Also corrected: callVersionedRetrievalRpc costs 2x not 3x for an anonymous caller (it returns after the legacy call when owner_filter is the public sentinel, rag-candidate-sources.ts:587-594). PRIORITY RATIONALE: P2 not P1 because this is second-order. The dominant cost was read_site_content_public_records at up to 92s; this whole item is worth a fraction of a second and is only worth doing after the catalogue migration lands. NEXT: items 1 and 2 above are the highest value. ALL of these live in src/lib/rag/** which is a RAG-ranking protected surface: flag to owner BEFORE editing, RAG impact line required, owner-merge, and item 1 needs an eval canary because reproducing the three filters (documents.status=indexed, the owner-scope ladder, and the index_generation_id check at :1418) imperfectly would silently drop candidates and change ranking. STOP: do not remove the legacy rungs of callVersionedRetrievalRpc (zero cost while v2 exists, and they are the fail-soft path), and do not skip the coverage-gate block for broad_summary (its results re-enter the candidate pool at rag.ts:1555 and removing it changes ranking).",
-      "source": "Code audit by rag-retrieval-reviewer subagent, session 01XGpedMgoXWK3U3fn2TWTzR, 2026-09-17; offline classifier probe confirming single query variant and broad_summary class.",
       "added": "2026-09-17"
     },
     {
