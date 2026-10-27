@@ -40,6 +40,9 @@ describe("privacy UI", () => {
     expect(markup).toContain("This is draft product information");
     for (const heading of [
       "What this tool is",
+      "Who runs PsychSift and how to contact us",
+      "Decisions made with computer programs",
+      "Seeing, correcting or deleting your information, and complaints",
       "What is collected",
       "How questions are handled",
       "Where data is stored and processed",
@@ -119,11 +122,29 @@ describe("privacy UI", () => {
     // Status line: describes how PsychSift is set up, never asserts a review. Plain words and a
     // plain Australian date (design audit 13 Oct 2026, D22).
     expect(markup).toContain("Describes how PsychSift is set up as of");
-    expect(markup).toContain('<time dateTime="2026-09-01" data-testid="privacy-as-of">1 September 2026</time>');
+    expect(markup).toContain('<time dateTime="2026-10-27" data-testid="privacy-as-of">27 October 2026</time>');
     expect(markup).toContain("based on how PsychSift is set up.");
     expect(markup).not.toContain("repository&#x27;s configured behaviour");
     expect(markup).not.toContain("01/09/2026");
     expect(markup).not.toContain("Reviewed on");
+    // APP 1 and APP 1.7 to 1.9 sections (owner decisions 2026-10-26 and 2026-10-27).
+    expect(markup).toContain("an individual medical practitioner in Perth, Western Australia");
+    expect(markup).toContain('href="mailto:privacy@psychiatry.tools"');
+    expect(markup).toContain("acknowledge your message within 5 business days");
+    expect(markup).toContain("No artificial intelligence is used for these decisions");
+    expect(markup).toContain("Team rosters are not yet open to real staff");
+    expect(markup).toContain("the swap is approved automatically if the team allows it");
+    expect(markup).toContain("A roster administrator reviews it, can change it, and publishes the result");
+    expect(markup).toContain("PsychSift makes no decisions about patients");
+    expect(markup).toContain("reply within 30 days");
+    expect(markup).toContain("Office of the Australian Information Commissioner");
+    expect(markup).toContain("1300 363 992");
+    expect(markup).toContain("Notes written on answer feedback are deleted after 30 days");
+    expect(markup).toContain("its questions, answers, search logs and feedback notes are deleted with it");
+    expect(markup).toContain("a cached copy lasts at most about 75 minutes");
+    expect(markup).toContain("sent to Sentry, in the United States");
+    expect(markup).toContain("turn dictated questions into text when voice input is used");
+    expect(markup).not.toContain("Report a suspected privacy or access problem through your organisation");
     expect(metadata.description).toContain("current provider controls");
     expect(metadata.description).toContain("pending privacy approvals");
   });
@@ -133,14 +154,17 @@ describe("privacy UI", () => {
 
     for (const id of [
       "what-this-tool-is",
+      "who-runs-it",
       "what-is-collected",
       "how-questions-are-handled",
+      "automated-decisions",
       "where-data-is-stored",
       "external-providers",
       "who-can-access",
       "in-this-browser",
       "retention",
       "third-parties",
+      "your-rights",
       "your-responsibilities",
     ]) {
       expect(markup).toContain(`id="${id}"`);
@@ -183,7 +207,7 @@ describe("privacy UI", () => {
     // globals.css drops `header`, `nav` and `button` from print. This page's
     // section headings ARE disclosure triggers and its summary tiles ARE
     // buttons, so without the scoped restore the printed copy loses its title,
-    // its fact summary and all ten headings — silently, on paper.
+    // its fact summary and every section heading — silently, on paper.
     expect(markup).toContain("privacy-page");
     expect(markup).toContain("data-print-keep");
     expect(markup).toContain("data-print-stack");

@@ -24,7 +24,13 @@ export const PRIVACY_DRAFT_DISCLAIMER =
  * "reviewed", which would imply a governance sign-off that PIA-5 records as
  * still outstanding.
  */
-export const PRIVACY_CONTENT_AS_OF = "2026-09-01";
+export const PRIVACY_CONTENT_AS_OF = "2026-10-27";
+
+/** Who runs PsychSift (owner decision 2026-10-26, `docs/decisions/2026-10-26-privacy-page-operator-and-contact.md`). */
+export const PRIVACY_OPERATOR_NAME = "Dr Josh Simpson";
+
+/** The one monitored address for privacy questions, requests and complaints. */
+export const PRIVACY_CONTACT_EMAIL = "privacy@psychiatry.tools";
 
 export const PRIVACY_IMPORTANT_SHORT =
   "Do not enter identifiable patient details. Processing may include Singapore and the OpenAI API.";
@@ -32,19 +38,32 @@ export const PRIVACY_IMPORTANT_SHORT =
 export const PRIVACY_IMPORTANT_FULL =
   "Do not enter identifiable patient details such as names, dates of birth, or record numbers. Requests are processed by the application service in Singapore. With external provider mode configured, question text may be sent to the OpenAI API for retrieval embedding even when the final response is source-only; model-backed answer synthesis also sends the question and selected evidence.";
 
-export const PRIVACY_CLOSING_NOTE =
-  "This page describes how the application is configured, not an agreement with you. Report a suspected privacy or access problem through your organisation's approved process.";
+export const PRIVACY_CLOSING_NOTE = `This page describes how the application is configured, not an agreement with you. For any privacy question, request or complaint, email ${PRIVACY_CONTACT_EMAIL}.`;
+
+function PrivacyEmailLink() {
+  return (
+    <a
+      href={`mailto:${PRIVACY_CONTACT_EMAIL}`}
+      className="text-[color:var(--clinical-accent)] underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
+    >
+      {PRIVACY_CONTACT_EMAIL}
+    </a>
+  );
+}
 
 export type PrivacySectionId =
   | "what-this-tool-is"
+  | "who-runs-it"
   | "what-is-collected"
   | "how-questions-are-handled"
+  | "automated-decisions"
   | "where-data-is-stored"
   | "external-providers"
   | "who-can-access"
   | "in-this-browser"
   | "retention"
   | "third-parties"
+  | "your-rights"
   | "your-responsibilities";
 
 export type PrivacySection = {
@@ -75,6 +94,20 @@ export const PRIVACY_SECTIONS: PrivacySection[] = [
     ],
   },
   {
+    id: "who-runs-it",
+    heading: "Who runs PsychSift and how to contact us",
+    short: "Contact",
+    gist: "Run by one doctor in Perth · privacy@psychiatry.tools",
+    body: [
+      `PsychSift is run by ${PRIVACY_OPERATOR_NAME}, an individual medical practitioner in Perth, Western Australia. It is not run by a hospital or health service.`,
+      <>
+        For any privacy question, request or complaint, email <PrivacyEmailLink />. We aim to acknowledge your message
+        within 5 business days.
+      </>,
+      "This page is reviewed at least once a year and whenever the way PsychSift handles information changes. The date at the top shows when it was last checked against how PsychSift is set up.",
+    ],
+  },
+  {
     id: "what-is-collected",
     heading: "What is collected",
     short: "Collected",
@@ -83,6 +116,8 @@ export const PRIVACY_SECTIONS: PrivacySection[] = [
       "Questions, generated answers, account identifiers, uploaded documents, retrieved excerpts, document metadata, and operational or retrieval telemetry may be processed. Free text and uploaded material can contain sensitive information if you enter it. Safety-plan working content is different: it remains in the current browser tab and is not sent to the application service or stored by PsychSift.",
       "Clinical Ask accepts a typed or dictated question and non-identifying Case Context. It cannot guarantee that text is de-identified: identifier-shaped input is blocked as a warning aid, not transformed or certified. Review the transcript and remove identifiable details before asking.",
       "Signing in creates an account record held by the authentication provider. Saved favourites and display preferences are stored against that account so they follow you between devices; they describe how you use the app, not who your patients are.",
+      "If you use the work features, PsychSift also holds what you save there: CPD records and certificates, your own roster and on-call entries, leave dates and calendar links. If you report a problem with an answer, it holds the category you chose and any note you add, up to 500 characters. Security and audit logs record sign-ins and privileged actions.",
+      "Team rosters are not yet open to real staff. When they open, joining a team shares your name, grade, shifts, swap requests and leave dates with that team's roster managers, who see planned leave by name to plan cover. Other team members see only how many people are on leave, not who. No leave reason is stored.",
     ],
   },
   {
@@ -99,6 +134,21 @@ export const PRIVACY_SECTIONS: PrivacySection[] = [
         is never sent to the application service.
       </>,
       "Clinical Ask keeps its draft, transcript, Case Context, clarification answers, and response in ephemeral page memory for the current tab. Raw Clinical Ask content is not placed in the URL or browser history and is not attached to feedback or content-free telemetry. Clearing the case, signing out, changing account, refreshing, or closing the tab discards that in-memory session.",
+    ],
+  },
+  {
+    id: "automated-decisions",
+    heading: "Decisions made with computer programs",
+    short: "Decisions",
+    gist: "Fixed-rule roster tools · no AI decisions about you",
+    body: [
+      "Some team roster features use computer programs, following fixed rules, to make or help make decisions about you. No artificial intelligence is used for these decisions. Team rosters are not yet open to real staff, so none of these decisions is being made about real staff today. This is how they will work when team rosters open.",
+      "Decided by a program alone. Shift swaps: when two doctors in a team agree to swap shifts, the swap is approved automatically if the team allows it, both doctors are the same grade, the shift is more than 7 days away, and the swap breaks no team rule such as minimum rest between shifts. Otherwise it goes to a roster manager. The program uses both doctors' grades and shifts and the team's rules.",
+      "A program does part of the work and a person decides. Rotation allocation: when a team runs a rotation round, a program proposes who gets which rotation from everyone's ranked preferences. It gives as many people as possible their first choice, then their second, and breaks ties by a fixed random draw. A roster administrator reviews it, can change it, and publishes the result. The program uses your ranked preferences, your grade and any placement the administrator has fixed. Open shifts: a program lists team members at or above the shift's grade who have no clash on the team roster, and a roster manager decides whom to ask. It uses names, grades, team shifts, leave and days marked unavailable.",
+      "Not decisions about you: answers to clinical questions are reference information for you to check against the cited source, and PsychSift makes no decisions about patients. The patient-detail check can stop a question being sent; you can reword it and try again.",
+      <>
+        If you think one of these decisions is wrong, ask a roster manager to review it, or email <PrivacyEmailLink />.
+      </>,
     ],
   },
   {
@@ -162,6 +212,7 @@ export const PRIVACY_SECTIONS: PrivacySection[] = [
       "Repository migrations configure 30-day retention for RAG query records, 90-day retention for retrieval logs and query-miss telemetry, and a bounded hourly purge of expired response-cache rows. The operator verified the four expected schedules on production and staging and approved that evidence on 1 September 2026. Uploaded documents remain until removed under the applicable process. Completed answer threads in the current browser tab expire no later than 12 hours after the most recent answer and are also cleared by New chat, sign-out, or an account change. Safety-plan working content has no PsychSift retention: it is discarded when the component is cleared or the tab is closed. Clipboard, print, and PDF copies are outside the app and must follow the organisation's approved record-handling process.",
       "Memory-only Clinical Ask handling is not a zero-retention promise for providers or network infrastructure. Provider retention, regional processing, the separately deployable feedback migration, clinical evaluation, and production readiness must each be verified by the responsible operator before launch.",
       "Audit records are the deliberate exception: they are append-only and retained indefinitely by design, because an access trail that expires cannot answer a later question about who reached what.",
+      "Notes written on answer feedback are deleted after 30 days; the category of the report is kept. The short-lived response cache also holds the question text, and the hourly purge removes expired rows, so a cached copy lasts at most about 75 minutes. When an account is deleted, its questions, answers, search logs and feedback notes are deleted with it.",
     ],
   },
   {
@@ -171,8 +222,25 @@ export const PRIVACY_SECTIONS: PrivacySection[] = [
     gist: "Supabase · Railway · OpenAI · optional error monitoring",
     body: [
       "PsychSift is assembled from three providers, each holding a different part of the system. Supabase hosts the database, the private file storage, and authentication, in its Sydney region. Railway runs the application and the ingestion worker in Singapore. OpenAI, in the United States, creates retrieval embeddings and, when model-backed synthesis is used, generates the answer text.",
-      "A fourth is optional. When the operator configures server-side error monitoring, error and performance events are sent to that service with request URLs, headers, bodies, account data, and exception messages stripped before they leave the application; browser session replay is not enabled.",
+      "OpenAI is also used to summarise and index reference documents, describe images in them, sort some questions by type, and turn dictated questions into text when voice input is used.",
+      "A fourth is optional. When the operator configures server-side error monitoring, error and performance events are sent to Sentry, in the United States, with request URLs, headers, bodies, account data, and exception messages stripped before they leave the application; browser session replay is not enabled.",
       "Provider regions, sub-processors, retention terms, and contractual cover are operator responsibilities. This section describes which providers the application is configured to use, not what has been agreed with each of them.",
+    ],
+  },
+  {
+    id: "your-rights",
+    heading: "Seeing, correcting or deleting your information, and complaints",
+    short: "Your rights",
+    gist: "Ask for a copy · correct · close your account · complain",
+    body: [
+      <>
+        You can see and change most of your information in the app, under Settings and in each feature. To ask for a
+        copy of everything we hold about you, or for a correction you cannot make yourself, email <PrivacyEmailLink />.
+        We will confirm who you are, reply within 30 days, and explain if any part of the request cannot be met and why.
+        There is no charge.
+      </>,
+      "To close your account, email the same address. When an account is closed, your saved items, CPD records and files, roster entries and leave are deleted, along with your questions, answers, search logs and any notes you wrote on answer feedback. Two kinds of record are kept with your name removed: the category of any answer problem you reported, which holds no text you wrote and helps find unsafe answers, and security audit records. Copies may remain in database backups until those backups expire.",
+      "To complain about how we have handled your information, email the same address. We will acknowledge your complaint within 5 business days and aim to resolve it within 30 days. If you are not satisfied with the outcome, you can complain to the Office of the Australian Information Commissioner at oaic.gov.au or on 1300 363 992.",
     ],
   },
   {
@@ -181,7 +249,7 @@ export const PRIVACY_SECTIONS: PrivacySection[] = [
     short: "You",
     gist: "No identifiers · verify sources · report issues",
     body: [
-      "Do not enter patient-identifiable information. In the Safety Plan Generator, add any patient identifier only after export through your organisation's approved clinical-record process. If your account has administrator upload access, upload only material you are authorised to use. Keep access credentials private, review original linked sources before relying on clinical output, and report suspected privacy or access issues through your organisation's approved process.",
+      `Do not enter patient-identifiable information. In the Safety Plan Generator, add any patient identifier only after export through your organisation's approved clinical-record process. If your account has administrator upload access, upload only material you are authorised to use. Keep access credentials private, review original linked sources before relying on clinical output, and report suspected privacy or access issues to ${PRIVACY_CONTACT_EMAIL} as well as through your organisation's approved process.`,
     ],
   },
 ];
