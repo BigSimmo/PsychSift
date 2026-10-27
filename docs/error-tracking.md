@@ -1,6 +1,6 @@
 # Privacy-safe production error tracking
 
-Production server exception tracking is an optional, provider-gated Sentry integration. It is inert unless `SENTRY_DSN` is configured. Browser telemetry and session replay are not enabled — there is no client Sentry bundle path. Structured server/edge **Logs** are available under the privacy rules below. Runtime init is owned by `src/sentry.{server,edge}.config.ts` (loaded once from Next server/edge instrumentation); do not add a second `Sentry.init()` path or a browser SDK import.
+Production server exception tracking is an optional, provider-gated Sentry integration. It is inert unless `SENTRY_DSN` is configured. There is no browser Sentry SDK and session replay is not enabled. Uncaught browser errors are reported by `src/components/client-error-reporter.tsx` as a code-location-only report (see **Browser error reports** below) posted to `/api/client-error`, which forwards it through the server scrubber. Structured server/edge **Logs** are available under the privacy rules below. Runtime init is owned by `src/sentry.{server,edge}.config.ts` (loaded once from Next server/edge instrumentation); do not add a second `Sentry.init()` path or a browser SDK import.
 
 ## Data envelope
 
@@ -130,3 +130,12 @@ Remove `SENTRY_DSN` and restart the service. The tracker then makes no provider 
 Upload cleanup logs contain an opaque SHA-256 object reference and fixed operational error classes/codes, rather than storage paths, filenames, owner IDs or provider prose. The digest is an aid for comparing a separately authorised scoped storage inventory; it is not a replacement for durable cleanup records. Exact paths remain in the owner-scoped cleanup queue when that write succeeds. Unknown error names/codes are withheld. The logger also redacts filename and storage/document-path context keys as defense in depth.
 
 Fatal worker console and notification payloads omit raw exception text. Notifications retain the fixed failure state; the existing privacy-filtered error-tracking path retains its stage and scrubbed stack information. No notification was sent during local tests. These measures minimise known diagnostic egress; they do not constitute clinical PHI-minimisation approval or a complete deidentification guarantee.
+
+## Browser error reports
+
+Added 2026-10-27 (performance audit M4) so faults that happen only in the browser are seen.
+
+- `src/lib/observability/client-error-report.ts` builds the report in the browser, in production only. It holds the runtime error type (letters only, else `Error`), the mechanism (`onerror` or `onunhandledrejection`), the first path segment (`/documents/<id>` becomes `/documents`) and up to 30 stack frames whose URL is this origin's `/_next/` files, kept as path, function name, line and column. It never reads the error message, the query string, typed text, page content or account data.
+- It sends nothing offline, nothing for a thrown non-`Error` value or a stack with no app frames, at most 5 reports a page load, and each distinct fault once. The request omits cookies.
+- `/api/client-error` (`src/lib/observability/client-error-intake.ts`) re-validates every field by pattern, caps the body at 16 KB, rate-limits in memory (10 a minute an address, 120 a minute in all), does nothing outside production or without `SENTRY_DSN`, and calls `Sentry.captureEvent` tagged `service: "browser"` and `route_path: <section>`. `privacySafeErrorEvent` then runs as for any server event, with the fixed message `Unhandled browser error`.
+- Frames carry the built file path only, with no host. Whether the uploaded source maps (`sentry-sourcemaps.yml`) resolve them has not been checked yet; until it is, expect built file names. Grouping uses the section and the top frame.

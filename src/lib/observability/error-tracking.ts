@@ -2,6 +2,8 @@ import type { ErrorEvent } from "@sentry/nextjs";
 import type { Instrumentation } from "next";
 
 const SAFE_ERROR_MESSAGE = "Unhandled server request error";
+// Browser reports arrive through `/api/client-error` tagged `service: "browser"`.
+const SAFE_BROWSER_ERROR_MESSAGE = "Unhandled browser error";
 // `service` / `worker_stage` are set only from fixed code literals by the
 // ingestion worker (worker/observability.ts) — never from job, document, or
 // owner data. Everything else stays stripped.
@@ -395,6 +397,28 @@ function stableAnchorFilename(frames: { filename?: string }[] | undefined): stri
 }
 
 /**
+ * Browser reports carry only the first path segment as `route_path`, and production chunks and
+ * function names are hashed or minified, so the server-style fingerprint would merge every fault in
+ * a section. Keep the build-stable anchors, and when neither survives fall back to the top frame's
+ * own location: one fault may then open a new issue after a deploy, which is better than two
+ * different faults hiding in one.
+ */
+function browserFingerprint(
+  section: string | undefined,
+  exceptionType: string,
+  frames: { filename?: string; function?: string; lineno?: number; colno?: number }[] | undefined,
+): string[] {
+  const top = frames?.at(-1);
+  const anchor = stableAnchorFilename(frames);
+  const name = stableFrameFunction(top?.function);
+  const fingerprint = ["browser", section ?? "unknown", exceptionType, anchor, name];
+  if (anchor === "unknown" && name === "unknown") {
+    fingerprint.push(`${top?.filename ?? "unknown"}:${top?.lineno ?? 0}:${top?.colno ?? 0}`);
+  }
+  return fingerprint;
+}
+
+/**
  * The shared scrubber accepts and returns only the SDK fields it actually uses.
  * Node and Next may carry different Sentry versions; their private span/scope
  * types are not part of this privacy boundary and must not couple the two SDKs.
@@ -416,12 +440,13 @@ type ScrubbedErrorEvent = Pick<
 
 /** Keep code locations while removing all free-form/request data before export. */
 export function privacySafeErrorEvent(event: ErrorEvent | ScrubbedErrorEvent): ScrubbedErrorEvent {
+  const safeMessage = event.tags?.service === "browser" ? SAFE_BROWSER_ERROR_MESSAGE : SAFE_ERROR_MESSAGE;
   const exceptions = event.exception?.values?.map((exception) => ({
     // Error.name is mutable and can contain request or clinical text. Retain
     // only fixed JavaScript runtime types; custom/provider names collapse to a
     // generic type while their scrubbed stack location still supports grouping.
     type: privacySafeExceptionType(exception.type),
-    value: SAFE_ERROR_MESSAGE,
+    value: safeMessage,
     mechanism: privacySafeMechanism(exception.mechanism),
     stacktrace: exception.stacktrace
       ? {
@@ -458,7 +483,7 @@ export function privacySafeErrorEvent(event: ErrorEvent | ScrubbedErrorEvent): S
     level: event.level,
     release: event.release,
     environment: event.environment,
-    message: exceptions?.length ? undefined : SAFE_ERROR_MESSAGE,
+    message: exceptions?.length ? undefined : safeMessage,
     exception: exceptions?.length ? { values: exceptions } : undefined,
     // NEVER `undefined` outside the worker branch. An undefined fingerprint hands grouping back
     // to Sentry's default algorithm, which reads exactly the minified frames this function exists
@@ -468,9 +493,11 @@ export function privacySafeErrorEvent(event: ErrorEvent | ScrubbedErrorEvent): S
     // deliberately coarse last resort for a stack that names no route bundle at all.
     fingerprint: workerStage
       ? ["worker", workerStage, exceptionType, stableFrameFilename(topFrame?.filename)]
-      : routePath
-        ? [routePath, exceptionType, stableFrameFilename(topFrame?.filename), stableFrameFunction(topFrame?.function)]
-        : ["unrouted", stableAnchorFilename(frames), exceptionType, stableFrameFunction(topFrame?.function)],
+      : tags.service === "browser"
+        ? browserFingerprint(tags.route_path, exceptionType, frames)
+        : routePath
+          ? [routePath, exceptionType, stableFrameFilename(topFrame?.filename), stableFrameFunction(topFrame?.function)]
+          : ["unrouted", stableAnchorFilename(frames), exceptionType, stableFrameFunction(topFrame?.function)],
     tags: Object.keys(tags).length ? tags : undefined,
   };
 }

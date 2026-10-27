@@ -338,6 +338,7 @@ const apiDescriptions: Record<string, string> = {
   "/api/answer": "Generate answer response.",
   "/api/answer/stream": "Streaming answer response.",
   "/api/answer-feedback": "Answer quality feedback submission.",
+  "/api/client-error": "Code-location-only browser error reports, forwarded to Sentry through the server scrubber.",
   "/api/differentials": "Differential diagnosis catalogue operations.",
   "/api/differentials/[slug]": "Differential diagnosis detail endpoint.",
   "/api/differentials/presentations/[slug]": "Presentation workflow comparison data endpoint.",
