@@ -8,8 +8,8 @@ import type { ChunkInput, DocumentChunk } from "@/lib/types";
 // re-index can tell which chunker produced a row, and so bumping the strategy deliberately
 // invalidates stale chunks. Bump this when chunk boundaries change (e.g. when cross-page
 // document-mode chunking is enabled by default).
-export const CHUNKER_VERSION = "1.3.3-page";
-export const DOCUMENT_CHUNKER_VERSION = "1.3.3-document";
+export const CHUNKER_VERSION = "1.3.4-page";
+export const DOCUMENT_CHUNKER_VERSION = "1.3.4-document";
 
 const sentenceBoundary = /(?<=[.!?])\s+/;
 const sentenceBoundaryGlobal = new RegExp(sentenceBoundary.source, "g");
@@ -441,7 +441,9 @@ function imageMatchScore(lookupText: string, sourceText: string) {
 }
 
 function dedupeChunkFingerprint(text: string) {
-  return normalizeLookupText(text).replace(whitespaceRunPattern, " ").trim();
+  // Lookup normalization intentionally loses punctuation and case. Deduplication
+  // must retain comparisons, signs, units, symbols and source-reference identity.
+  return text.replace(whitespaceRunPattern, " ").trim();
 }
 
 const imageDataTagPattern =

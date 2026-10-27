@@ -21,6 +21,7 @@ import {
 } from "../src/lib/rag/rag";
 import { firstVariantPoolIsStrong, maxTextRpcQueryVariants } from "../src/lib/rag/rag-retrieval-variants";
 import { buildRagQueryPlan } from "../src/lib/rag/rag-query-plan";
+import { queryCacheKeyForStorage } from "../src/lib/query-privacy";
 import type { SearchResult } from "../src/lib/types";
 
 function result(overrides: Partial<SearchResult> = {}): SearchResult {
@@ -243,6 +244,19 @@ describe("retrieval query variants", () => {
     expect(retrievalPlanCacheQuery(baseArgs, "broad_summary")).not.toBe(
       retrievalPlanCacheQuery({ ...baseArgs, forceEmbedding: true }, "broad_summary"),
     );
+  });
+
+  it("invalidates pre-isolation forced-vector cache rows while preserving ordinary retrieval keys", () => {
+    // Frozen pre-repair identity: historical forced results can contain lexical rescue.
+    const legacyPrefix =
+      "plan:broad_summary:document_summaries_sections_memory_then_chunks|class:broad_summary|query:clozapine|" +
+      "variants:e3b0c44298fc1c14|queryPlan:rag-query-plan-v1|queryPlanMode:legacy|corpora|mode:auto|" +
+      "topK:8|min:0.15|";
+    const legacySuffix = "|lexicalOnly:0|rag:rag-deep-memory-v2|force:";
+    const oldOrdinary = queryCacheKeyForStorage(`${legacyPrefix}forceEmbedding:0${legacySuffix}0`, "clozapine");
+    const oldForced = queryCacheKeyForStorage(`${legacyPrefix}forceEmbedding:1${legacySuffix}1`, "clozapine");
+    expect(retrievalPlanCacheQuery({ query: "clozapine" }, "broad_summary")).toBe(oldOrdinary);
+    expect(retrievalPlanCacheQuery({ query: "clozapine", forceEmbedding: true }, "broad_summary")).not.toBe(oldForced);
   });
 
   it("allows direct document title hits to skip embedding retrieval", () => {

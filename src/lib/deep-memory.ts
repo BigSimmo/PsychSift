@@ -788,6 +788,8 @@ export async function fetchMemoryCardsForQuery(args: {
   supabase: SupabaseClient;
   query: string;
   queryEmbedding?: number[];
+  /** Evaluation isolation: never retrieve memory through lexical matches or fallback. */
+  vectorOnly?: boolean;
   ownerId?: string;
   accessScope?: RetrievalAccessScope;
   documentIds?: string[];
@@ -796,12 +798,13 @@ export async function fetchMemoryCardsForQuery(args: {
 }) {
   try {
     throwIfAborted(args.signal);
+    if (args.vectorOnly && !args.queryEmbedding?.length) return [];
     const accessScope = retrievalAccessScopeForArgs(args);
     if (args.queryEmbedding?.length) {
       const versioned = await resolveAbortableQuery(
         args.supabase.rpc("match_document_memory_cards_hybrid_v3", {
           query_embedding: args.queryEmbedding,
-          query_text: buildClinicalTextSearchQuery(args.query),
+          query_text: args.vectorOnly ? "" : buildClinicalTextSearchQuery(args.query),
           match_count: args.matchCount ?? 32,
           min_similarity: 0.1,
           document_filters: args.documentIds?.length ? args.documentIds : null,
@@ -814,7 +817,7 @@ export async function fetchMemoryCardsForQuery(args: {
       if (!versioned || isMissingRetrievalRpcError(versioned.error)) {
         const baseArgs = {
           query_embedding: args.queryEmbedding,
-          query_text: buildClinicalTextSearchQuery(args.query),
+          query_text: args.vectorOnly ? "" : buildClinicalTextSearchQuery(args.query),
           match_count: args.matchCount ?? 32,
           min_similarity: 0.1,
           document_filters: args.documentIds?.length ? args.documentIds : null,
@@ -890,6 +893,9 @@ export async function fetchMemoryCardsForQuery(args: {
           .slice(0, args.matchCount ?? 32);
       }
     }
+
+    // A missing vector match (or an RPC failure) must remain missing in a forced-vector probe.
+    if (args.vectorOnly) return [];
 
     let queryBuilder = args.supabase
       .from("document_memory_cards")
