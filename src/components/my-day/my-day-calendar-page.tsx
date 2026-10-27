@@ -884,7 +884,8 @@ function DayCell({
             key={item.key}
             data-mode-identity={item.area}
             className={cn(
-              "block min-w-0 truncate rounded px-1 py-px text-3xs font-semibold leading-snug lg:text-2xs",
+              // Two lines, not one: a computer cut every title to "Day sh..." (owner build, 27 Oct 2026).
+              "line-clamp-2 min-w-0 rounded px-1 py-px text-3xs font-semibold leading-snug lg:text-2xs",
               item.warn
                 ? "bg-[color:var(--warning-bg)] text-[color:var(--warning-text)]"
                 : "bg-[color:var(--mode-identity-soft)] text-[color:var(--work-ink)]",

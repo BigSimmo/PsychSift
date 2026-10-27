@@ -111,11 +111,24 @@ function ContactRow({ entry }: { entry: OnCallEntry }) {
           <span className="work-row__title">{entry.title}</span>
           {entry.subtitle ? <span className="work-row__sub">{entry.subtitle}</span> : null}
           {display && !placeholder ? (
-            <a href={telHref ?? `tel:${phone}`} className={cn("work-row__sub tabular-nums", adminStyles.mono)}>
+            <a
+              href={telHref ?? `tel:${phone}`}
+              className={cn(
+                "work-row__sub tabular-nums font-semibold text-[color:var(--text-heading)]",
+                adminStyles.mono,
+              )}
+            >
               {display}
             </a>
           ) : display ? (
-            <span className={cn("work-row__sub tabular-nums", adminStyles.mono)}>{display}</span>
+            <span
+              className={cn(
+                "work-row__sub tabular-nums font-semibold text-[color:var(--text-heading)]",
+                adminStyles.mono,
+              )}
+            >
+              {display}
+            </span>
           ) : null}
           <span className="work-row__sub">
             {entry.lastVerifiedAt ? `Updated ${formatUpdatedMonth(entry.lastVerifiedAt)}` : "No date recorded"}
@@ -134,9 +147,9 @@ function ContactRow({ entry }: { entry: OnCallEntry }) {
 /** At most this many item names in the signpost before "and N more". */
 const PAPERWORK_NAMES = 4;
 
-function namesLine(titles: readonly string[]): string {
-  if (titles.length <= PAPERWORK_NAMES) return titles.join(", ");
-  return `${titles.slice(0, PAPERWORK_NAMES).join(", ")} and ${titles.length - PAPERWORK_NAMES} more`;
+function namesList(titles: readonly string[]): readonly string[] {
+  if (titles.length <= PAPERWORK_NAMES) return titles;
+  return [...titles.slice(0, PAPERWORK_NAMES), `and ${titles.length - PAPERWORK_NAMES} more`];
 }
 
 /**
@@ -180,12 +193,22 @@ function PaperworkSignpost({ overview }: { readonly overview: ComplianceOverview
         testId="admin-new-job-paperwork"
         sub={
           <>
-            <span className="block" data-testid="admin-new-job-paperwork-count">
+            <span
+              className="block font-semibold text-[color:var(--text-heading)]"
+              data-testid="admin-new-job-paperwork-count"
+            >
               {countLine}
             </span>
             {nextJob && toDo.length > 0 ? (
-              <span className="block" data-testid="admin-new-job-paperwork-names">
-                {`Before ${formatRecordedDate(nextJob.startsOn)}: ${namesLine(toDo.map((todo) => todo.item.row.item.title))}`}
+              // One item per line rather than one comma-separated run of text (owner build, 27 Oct 2026).
+              // Spans, not a list element, because the row is a link and its sub line is phrasing content.
+              <span className="block pb-1" data-testid="admin-new-job-paperwork-names">
+                <span className="block">{`Before ${formatRecordedDate(nextJob.startsOn)}: `}</span>
+                {namesList(toDo.map((todo) => todo.item.row.item.title)).map((name) => (
+                  <span key={name} className="ml-4 list-item list-disc text-[color:var(--text)]">
+                    {name}
+                  </span>
+                ))}
               </span>
             ) : null}
             {alsoLine ? (

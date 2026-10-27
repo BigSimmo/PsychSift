@@ -62,7 +62,7 @@ describe("CME requirement confirmation", () => {
 
   it("keeps demo confirmation visibly read-only", () => {
     render(<CmeSetupPage year={2026} set={DEMO_CME_YEAR} demoMode />);
-    expect(screen.getByText(/demo mode is read-only/i)).toBeInTheDocument();
+    expect(screen.getByText(/these are example records/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /re-confirm requirements/i })).toBeNull();
   });
 

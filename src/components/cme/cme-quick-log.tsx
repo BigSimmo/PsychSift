@@ -215,7 +215,7 @@ export function CmeQuickLog({
   }, [savedNotice]);
 
   async function saveEntry(entry: CmeEntryDraft) {
-    if (demoMode) throw new Error("Demo mode is read-only. Sign in to save this activity to a private CPD record.");
+    if (demoMode) throw new Error("These are example records. Sign in to save this activity to a private CPD record.");
     const response = await fetch("/api/cme/entries", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -251,7 +251,7 @@ export function CmeQuickLog({
   }
 
   async function saveDraft(payload: CmeDraftPayload) {
-    if (demoMode) throw new Error("Demo mode is read-only. Sign in to keep a private draft.");
+    if (demoMode) throw new Error("These are example records. Sign in to keep a private draft.");
     const response = await fetch("/api/cme/drafts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

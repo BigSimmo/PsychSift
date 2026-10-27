@@ -117,7 +117,7 @@ describe("closing a year from the annual summary", () => {
 
   it("is read-only in demo mode", () => {
     render(<CmeAnnualSummary set={set} entries={[entry]} demoMode now={new Date("2026-12-28T02:00:00Z")} />);
-    expect(screen.getByText(/Demo mode is read-only/)).toBeInTheDocument();
+    expect(screen.getByText(/These are example records/)).toBeInTheDocument();
     expect(screen.queryByTestId("cme-year-close")).toBeNull();
   });
 

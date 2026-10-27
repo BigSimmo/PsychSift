@@ -274,7 +274,7 @@ export function CmeSetupPage({
 
         {demoMode ? (
           <InlineNotice tone="neutral">
-            Demo mode is read-only. The whole confirmation form stays visible so you can look through it.
+            These are example records. The whole confirmation form stays visible so you can look through it.
           </InlineNotice>
         ) : null}
         {error ? <InlineNotice tone="neutral">{error}</InlineNotice> : null}

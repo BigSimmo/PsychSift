@@ -109,6 +109,9 @@ export function TodayRenewNextCard({
               progress={windowShare(item.windowStart, item.windowEnd, today)}
               start={`${item.windowStart <= today ? "Opened" : "Opens"} ${shortDate(item.windowStart)}`}
               end={item.state === "passed" ? `Passed ${shortDate(item.windowEnd)}` : shortDate(item.windowEnd)}
+              // "Today" sits between the two dates, so it goes once the window has opened and closed
+              // around it: a date that passed 13 days ago read "Opened, Today, Passed" (owner build, 27 Oct 2026).
+              showToday={item.windowStart <= today && item.windowEnd >= today}
               testId="admin-today-renew-next-window"
             />
           ) : null}

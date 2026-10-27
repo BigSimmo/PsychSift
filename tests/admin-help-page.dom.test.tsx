@@ -241,6 +241,11 @@ describe("AdminHelpPage layout (Admin polish, lane C)", () => {
       expect(row.textContent).toContain(contact.name);
       expect(row.textContent).toContain(contact.availability);
       if (contact.caveat) expect(within(row).getByText(contact.caveat)).toBeTruthy();
+      // The hours sit inside the labelled number button, so they must reach screen readers as its description.
+      const number = within(row).getByTestId(`admin-help-crisis-${contact.id}-number`);
+      const describedBy = number.getAttribute("aria-describedby");
+      expect(describedBy).toBeTruthy();
+      expect(document.getElementById(describedBy ?? "")?.textContent).toContain(contact.availability);
       const call = within(row).getByTestId(`admin-help-crisis-${contact.id}-call`);
       expect(call.getAttribute("aria-label")).toMatch(new RegExp(`^Call ${contact.name.replace(/[()]/g, "\\$&")}, `));
       expect(call.className).toContain("min-h-12");
