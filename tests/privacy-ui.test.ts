@@ -129,7 +129,7 @@ describe("privacy UI", () => {
     expect(markup).not.toContain("Reviewed on");
     // APP 1 and APP 1.7 to 1.9 sections (owner decisions 2026-10-26 and 2026-10-27).
     expect(markup).toContain("an individual medical practitioner in Perth, Western Australia");
-    expect(markup).toContain('href="mailto:privacy@psychiatry.tools"');
+    expect(markup).toContain('href="mailto:josh@stoicable.com"');
     expect(markup).toContain("acknowledge your message within 5 business days");
     expect(markup).toContain("No artificial intelligence is used for these decisions");
     expect(markup).toContain("Team rosters are not yet open to real staff");

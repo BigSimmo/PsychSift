@@ -30,7 +30,7 @@ export const PRIVACY_CONTENT_AS_OF = "2026-10-27";
 export const PRIVACY_OPERATOR_NAME = "Dr Josh Simpson";
 
 /** The one monitored address for privacy questions, requests and complaints. */
-export const PRIVACY_CONTACT_EMAIL = "privacy@psychiatry.tools";
+export const PRIVACY_CONTACT_EMAIL = "josh@stoicable.com";
 
 export const PRIVACY_IMPORTANT_SHORT =
   "Do not enter identifiable patient details. Processing may include Singapore and the OpenAI API.";
@@ -97,7 +97,7 @@ export const PRIVACY_SECTIONS: PrivacySection[] = [
     id: "who-runs-it",
     heading: "Who runs PsychSift and how to contact us",
     short: "Contact",
-    gist: "Run by one doctor in Perth · privacy@psychiatry.tools",
+    gist: "Run by one doctor in Perth · email for privacy",
     body: [
       `PsychSift is run by ${PRIVACY_OPERATOR_NAME}, an individual medical practitioner in Perth, Western Australia. It is not run by a hospital or health service.`,
       <>
