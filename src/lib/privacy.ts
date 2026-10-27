@@ -70,6 +70,55 @@ export function safeErrorLogDetails(error: unknown) {
 }
 
 /**
+ * Message-free diagnostics for a fatal worker crash. Reports only the error name, a string
+ * `code`, the constructor name, and the file:line of the first stack frame under /app/dist or
+ * /app/worker. The message text and full stack are never included. The message is also stripped
+ * from the stack before frames are scanned, so a multi-line message cannot masquerade as a frame.
+ */
+export function startupCrashLogDetails(error: unknown): {
+  name?: string;
+  code?: string;
+  constructorName?: string;
+  frame?: string;
+} {
+  try {
+    const record = error && typeof error === "object" ? (error as Record<string, unknown>) : {};
+    const bounded = (value: string) => String(redactLogValue(value.slice(0, 100)));
+    const name = typeof record.name === "string" ? bounded(record.name) : undefined;
+    const code = typeof record.code === "string" ? bounded(record.code) : undefined;
+    const ctor = record.constructor;
+    const constructorName =
+      typeof ctor === "function" && typeof ctor.name === "string" ? bounded(ctor.name) : undefined;
+
+    let stack = typeof record.stack === "string" ? record.stack : "";
+    const message = typeof record.message === "string" ? record.message : "";
+    if (message) {
+      const index = stack.indexOf(message);
+      if (index >= 0) stack = stack.slice(index + message.length);
+    }
+    let frame: string | undefined;
+    for (const line of stack.split("\n")) {
+      const trimmed = line.trim();
+      if (!trimmed.startsWith("at ")) continue;
+      const match = trimmed.match(/(\/app\/(?:dist|worker)[^\s()]*?):(\d+)(?::\d+)?\)?$/);
+      if (match) {
+        frame = `${match[1]}:${match[2]}`;
+        break;
+      }
+    }
+    return {
+      ...(name ? { name } : {}),
+      ...(code ? { code } : {}),
+      ...(constructorName ? { constructorName } : {}),
+      ...(frame ? { frame } : {}),
+    };
+  } catch {
+    // Error-like objects can have throwing getters. Reporting must not prevent cleanup.
+    return {};
+  }
+}
+
+/**
  * Diagnostics for upload failures and fatal alerts must not contain free text.
  * A filename, person's name or provider response need not match a redaction
  * pattern to be sensitive. Preserve only fixed error classes and known codes.

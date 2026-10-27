@@ -13,9 +13,55 @@ export const dynamic = "force-dynamic";
 // health-response.ts). So a short in-process cache of the whole computed result
 // is safe, and a burst of hits within the window shares one Supabase probe
 // instead of paying for one each.
+//
+// That "never depends on the caller" claim is enforced here rather than assumed
+// from the flags above. The cache holds ONLY the caller-invariant readiness
+// payload, by two independent constraints: the probe runs against a canonical,
+// header-free request (so `HEALTH_DEEP_PROBE_SECRET` / `x-health-deep-token` and
+// query flags such as `answer_window` can never influence what is stored), and
+// the stored body is an allowlist of top-level keys (so a diagnostic section such
+// as `spend` or `ragProgramme` cannot be cached even if a future change to
+// `health-response.ts` starts emitting it on this path). Anything that depends on
+// the caller's authorization belongs to the per-request path, after the cache
+// lookup, and never in `cachedReady`.
 const READY_CACHE_TTL_MS = 2_000;
 
+/**
+ * The only top-level body keys the shared snapshot may carry. `siteContent` is the
+ * public projection and stays governed by its own gate in `health-response.ts`;
+ * the operator-only sections (`slo*`, `cache`, `coalescing`, `spend`,
+ * `storageCleanup`, `ragProgramme`) are deliberately absent.
+ */
+const READY_BODY_ALLOWLIST = [
+  "status",
+  "demoMode",
+  "timestamp",
+  "uptimeSeconds",
+  "deploymentCommitSha",
+  "checks",
+  "siteContent",
+] as const;
+
 type ReadySnapshot = { body: unknown; status: number };
+
+function invariantBody(body: unknown): unknown {
+  if (!body || typeof body !== "object") return body;
+  const source = body as Record<string, unknown>;
+  const kept: Record<string, unknown> = {};
+  for (const key of READY_BODY_ALLOWLIST) {
+    if (key in source) kept[key] = source[key];
+  }
+  return kept;
+}
+
+/**
+ * A request that carries nothing from the caller: no headers (so no probe token)
+ * and no query string. The shared probe is computed from this, never from the
+ * request that happened to start it.
+ */
+function canonicalProbeRequest(request: Request): Request {
+  return new Request(new URL("/api/health/ready", request.url).toString());
+}
 
 let cachedReady: (ReadySnapshot & { expiresAt: number }) | null = null;
 
@@ -60,12 +106,12 @@ async function computeReadySnapshot(request: Request): Promise<ReadySnapshot> {
   // is diagnostic-only unless someone deliberately says otherwise in `health-response.ts`.
   // Readiness is a question about THIS CONTAINER: configuration, and one bounded Supabase
   // `select ... limit 1`. Nothing shared, nothing whole-corpus, nothing unbounded.
-  const response = await healthResponse(request, {
+  const response = await healthResponse(canonicalProbeRequest(request), {
     forceDeep: true,
     allowUnauthenticatedDeep: true,
     probes: "readiness",
   });
-  return { body: (await response.json()) as unknown, status: response.status };
+  return { body: invariantBody((await response.json()) as unknown), status: response.status };
 }
 
 export async function GET(request: Request) {

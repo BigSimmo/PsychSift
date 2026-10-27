@@ -17,7 +17,9 @@ describe("mobile sheet top safe-area ownership", () => {
     expect(sheet).toContain('"pt-[max(1rem,var(--safe-area-top))] sm:pt-5"');
     expect(sheet).toContain('"top-[max(0.75rem,var(--safe-area-top))] sm:top-4"');
     expect(accountSetup).toContain('mobileHeaderSafeArea="offset"');
-    expect(accountSetup).toContain("pt-[max(1.5rem,var(--safe-area-top))]");
+    // On phones the close button's own row now holds the top safe area (it used to be the
+    // orientation panel's padding, with the close button floating over the content).
+    expect(accountSetup).toContain("pt-[max(0.25rem,var(--safe-area-top))]");
     expect(sidebar).toContain('mobileHeaderSafeArea="padding"');
     expect(masterHeader).toContain('mobileHeaderSafeArea="padding"');
   });

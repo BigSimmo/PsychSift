@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import { cookies, headers } from "next/headers";
 import { AuthProvider } from "@/lib/supabase/client";
 import { AccountDataProvider } from "@/components/account-data-provider";
+import { ChunkLoadRecovery } from "@/components/chunk-load-recovery";
 import { PhoneFocusClearance } from "@/components/phone-focus-clearance";
 import { PwaLifecycleDeferred, WorkAccountSyncDeferred } from "@/components/root-helpers-deferred";
 import { WebVitalsReporter } from "@/components/web-vitals-reporter";
@@ -168,6 +169,7 @@ export default async function RootLayout({
           Skip to main content
         </a>
         <WebVitalsReporter />
+        <ChunkLoadRecovery />
         <PwaLifecycleDeferred />
         <PhoneFocusClearance />
         <AppAnnouncements />

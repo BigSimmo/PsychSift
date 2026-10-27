@@ -58461,6 +58461,11 @@
             "tags": []
           },
           {
+            "key": "Pharmacodynamic",
+            "val": "HIGH — Atomoxetine, reboxetine and bupropion. Their Australian product information contraindicates use with an MAO inhibitor, and linezolid is a reversible, non-selective MAO inhibitor; the US atomoxetine and bupropion labels and the UK reboxetine SmPC name linezolid specifically. Combined use may raise blood pressure or cause other serious reactions. Monitor closely (e.g. blood pressure); seek specialist or source guidance.",
+            "tags": []
+          },
+          {
             "key": "Food",
             "val": "CAUTION — Large amounts of tyramine-rich food and drink (e.g. mature cheese, yeast extracts, undistilled alcoholic beverages, fermented soy products) may raise blood pressure. Monitor closely; seek specialist or source guidance.",
             "tags": []

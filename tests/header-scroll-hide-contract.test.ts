@@ -543,19 +543,20 @@ describe("shared header hide/reveal wiring", () => {
     expect(behaviourDocSource).toContain("`h-0` while hidden");
   });
 
-  it("paints the visible top safe-area with the header surface, not the page background", () => {
-    // While visible the spacer is the top of the header. `--background` there
-    // drew a page-coloured status-bar band above the `--surface` bar on every
-    // collapse-strategy mode, which answer mode (overlay, pads the inset in the
-    // header itself) never showed.
+  it("paints the visible top safe-area in the header bar's own colour", () => {
+    // While visible the spacer is the top of the header, so it must match the
+    // bar: the page colour on phones (the phone bar matches the page so no grey
+    // band shows at rest) and `--surface` from sm up. A mismatch draws a
+    // status-bar band above the bar.
     const spacerStart = headerSource.indexOf('data-testid="chrome-safe-area-top"');
     expect(spacerStart).toBeGreaterThan(-1);
     // Bound the window to this element so a later call site cannot satisfy or
     // break the assertion from outside the spacer.
     const safeAreaSpacer = headerSource.slice(spacerStart, headerSource.indexOf("/>", spacerStart));
-    expect(safeAreaSpacer).toContain("bg-[color:var(--surface)]");
-    expect(safeAreaSpacer).not.toContain("bg-[color:var(--background)]");
-    expect(behaviourDocSource).toContain("paints `var(--surface)`");
+    expect(safeAreaSpacer).toContain("max-sm:bg-[color:var(--background)]");
+    expect(safeAreaSpacer).toContain("sm:bg-[color:var(--surface)]");
+    expect(safeAreaSpacer).not.toMatch(/(^|[\s"])bg-\[color:/);
+    expect(behaviourDocSource).toContain("`var(--background)` on phones");
   });
 
   it("keeps the header out of sticky positioning wherever its row collapses", () => {

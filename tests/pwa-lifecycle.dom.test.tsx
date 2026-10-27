@@ -767,6 +767,44 @@ describe("PwaLifecycle", () => {
       delete (navigator as { userAgent?: string }).userAgent;
     }
   });
+
+  it("never offers install inside another app's browser", async () => {
+    Object.defineProperty(navigator, "userAgent", {
+      configurable: true,
+      value:
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 [FBAN/FBIOS;FBAV/480.0.0.0]",
+    });
+    try {
+      render(<PwaLifecycle />);
+      await act(async () => {
+        await new Promise((resolve) => window.setTimeout(resolve, 20));
+      });
+      expect(screen.queryByRole("region", { name: "Install PsychSift" })).not.toBeInTheDocument();
+    } finally {
+      delete (navigator as { userAgent?: string }).userAgent;
+    }
+  });
+
+  it("keeps the install hint off the sign-in window and brings it back after", async () => {
+    Object.defineProperty(navigator, "userAgent", {
+      configurable: true,
+      value:
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+    });
+    document.documentElement.setAttribute("data-account-setup-open", "");
+    try {
+      render(<PwaLifecycle />);
+      await act(async () => {
+        await new Promise((resolve) => window.setTimeout(resolve, 20));
+      });
+      expect(screen.queryByRole("region", { name: "Install PsychSift" })).not.toBeInTheDocument();
+      act(() => document.documentElement.removeAttribute("data-account-setup-open"));
+      expect(await screen.findByRole("region", { name: "Install PsychSift" })).toBeInTheDocument();
+    } finally {
+      document.documentElement.removeAttribute("data-account-setup-open");
+      delete (navigator as { userAgent?: string }).userAgent;
+    }
+  });
 });
 
 describe("notice-stack swap settling", () => {

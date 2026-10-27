@@ -87,12 +87,11 @@ type DetailFieldSpec = {
    * So every optional control on the Compliance form carries this: expiry,
    * lead time, issuer, evidence link, URL.
    *
-   * The same is true of the other five section forms, whose optional controls
-   * still cannot be cleared — a decommissioned ward extension can be corrected
-   * but not removed. That is older than this page and is filed as follow-up
-   * rather than fixed here, because it changes saving behaviour on surfaces
-   * this change does not otherwise touch, and because two of the branches in
-   * `handleSave` (`list` and `escalationSteps`) do not read this flag at all.
+   * `handleSave` no longer reads this flag. Its text and select branch clears
+   * every emptied optional control on every section form, not only Compliance,
+   * and the `number` branch clears an empty box too. The `list` and
+   * `escalationSteps` branches write what is on screen. The flag now records
+   * intent only, so do not rely on removing it to keep a stored value.
    *
    * Never on a REQUIRED control, and the reason is worth stating because the
    * obvious fix for a blank required select is to put it here. A blank

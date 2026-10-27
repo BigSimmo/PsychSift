@@ -41,6 +41,10 @@ _Updated 2026-10-01 - distinguish scoped CI selection from completed verificatio
 - For pull requests that touch ingestion, answer generation, search/ranking, source rendering, document access, privacy, production env, or clinical output, complete the clinical governance preflight in `.github/pull_request_template.md`.
 - Track known verification debts and staged process improvements in `docs/process-hardening.md` instead of relying on chat-only memory.
 
+Pre-push defers local lint/typecheck while required CI in flight already blocks the push.
+Other push guards still run. This is not a static pass or reusable evidence: retrying after
+CI settles runs the same static checks before admission.
+
 ## Do not pay twice for the verdict GitHub is about to reach
 
 `check:gate-manifest` checks that each local `verify:full` gate has a declared CI command

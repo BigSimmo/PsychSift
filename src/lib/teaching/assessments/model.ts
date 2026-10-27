@@ -926,6 +926,7 @@ export function assessmentsReducer(s: AssessmentsState, a: AssessmentsAction): A
       if (![1, 2, 3, 4].includes(a.epa) || !SUPERVISION_LEVELS.some((l) => l.id === a.level)) return s;
       if (a.complexity !== undefined && !validComplexity(a.complexity)) return s;
       const note = a.note?.trim();
+      if (!validText(note)) return s;
       const done: EpaRequest = {
         epa: a.epa,
         who: "sup",

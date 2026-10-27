@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "id": "1a03d6a1-8510-48d3-9527-1a35616b79bb",
+  "createdOn": "2026-10-26",
+  "action": "update",
+  "payload": {
+    "id": "#YB3WAN",
+    "summary": "WA-endorsed review debt: recording the eight owner reviews is deferred; the accepted waiver ceiling is 0.95",
+    "source": "Revalidated against main 9ab09f7d0 on 2026-10-27 (issues report revalidation)",
+    "baseRowFingerprint": "55e19030ea45cd1b3db32de1f963dd49cef5583abbd9d6a86749f11e6236ce18",
+    "targetUlid": "01M5HDJBKBYB3WANKF8TDQJBEZ"
+  }
+}
