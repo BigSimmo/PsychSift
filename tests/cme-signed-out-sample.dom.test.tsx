@@ -127,6 +127,13 @@ describe("CPD signed-out sample", () => {
     expect(screen.getByTestId("cme-sample-unavailable").textContent).toContain("not part of the example data");
   });
 
+  it("shows Customise look-only, so the sample cannot change this device's layout", async () => {
+    nav.pathname = "/cme/customise";
+    renderBoundary();
+    await sampleShown();
+    expect(screen.getByTestId("cme-sample-customise").hasAttribute("inert")).toBe(true);
+  });
+
   it("follows Job applications to Admin, where it moved", async () => {
     nav.pathname = "/cme/applications/cv";
     renderBoundary();

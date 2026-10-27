@@ -83,6 +83,8 @@ describe("AdminCredentialPackPage", () => {
     expect(preview).toContain("Medical registration renewal");
     // Whatever this device holds is never shown in the example.
     expect(preview).not.toContain("MED1111111111");
+    // A browser Print must not output the example pack.
+    expect(screen.getByTestId("admin-credential-pack-preview").hasAttribute("data-print-output")).toBe(false);
     expect(screen.queryByTestId("admin-credential-pack-signed-out")).toBeNull();
   });
 

@@ -206,12 +206,13 @@ export function AdminCredentialPackPage({ now: nowProp }: { now?: Date } = {}) {
             </ul>
           </section>
 
-          {/* Only this section prints: the shared print rule hides the app around `data-print-output`. */}
+          {/* Only this section prints: the shared print rule hides the app around `data-print-output`.
+              The example pack never prints: a browser Print would otherwise skip the Save as PDF guard. */}
           <section
-            className={adminStyles.section}
+            className={cn(adminStyles.section, signedOutExample && "print:hidden")}
             aria-label="Preview"
             data-testid="admin-credential-pack-preview"
-            data-print-output
+            data-print-output={signedOutExample ? undefined : true}
           >
             <div data-print-hide>
               <WorkSectionLabel>Preview</WorkSectionLabel>

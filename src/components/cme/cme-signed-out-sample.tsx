@@ -59,8 +59,6 @@ const ENTRIES = DEMO_CME_ENTRIES;
 const ROUTINES = DEMO_CME_ROUTINES;
 const GOALS = DEMO_CME_PLAN_GOALS;
 const SAMPLE_YEARS = [DEMO_CME_YEAR.year] as const;
-/** The same two years the demo loader offers (`load-cme-page-data`), so the year chips match. */
-const SAMPLE_AVAILABLE_YEARS = [DEMO_CME_YEAR.year, DEMO_CME_YEAR.year - 1];
 
 /** Pages that moved to Admin: the server redirect does not run here, so follow it in the browser. */
 const MOVED_TO_ADMIN: Readonly<Record<string, string>> = {
@@ -183,13 +181,7 @@ function SampleBody({ pathname, query }: { readonly pathname: string; readonly q
   }
   if (pathname === "/cme/cpd-home") {
     return (
-      <CpdHomeSendPage
-        set={SET}
-        entries={ENTRIES}
-        availableYears={SAMPLE_AVAILABLE_YEARS}
-        demoMode
-        now={DEMO_CME_INSTANT}
-      />
+      <CpdHomeSendPage set={SET} entries={ENTRIES} availableYears={SAMPLE_YEARS} demoMode now={DEMO_CME_INSTANT} />
     );
   }
   if (pathname === "/cme/evidence") {
@@ -201,7 +193,7 @@ function SampleBody({ pathname, query }: { readonly pathname: string; readonly q
         key={`${category}:${status}:${order}`}
         entries={ENTRIES}
         year={SET.year}
-        years={SAMPLE_AVAILABLE_YEARS}
+        years={SAMPLE_YEARS}
         demoMode
         initialCategory={category}
         initialStatus={status}
@@ -214,7 +206,7 @@ function SampleBody({ pathname, query }: { readonly pathname: string; readonly q
       <CpdExportPage
         set={SET}
         entries={ENTRIES}
-        years={SAMPLE_AVAILABLE_YEARS}
+        years={SAMPLE_YEARS}
         goalCount={GOALS.length}
         close={null}
         now={DEMO_CME_INSTANT}
@@ -223,8 +215,12 @@ function SampleBody({ pathname, query }: { readonly pathname: string; readonly q
     );
   }
   if (pathname === "/cme/customise") {
-    // Only the dashboard layout on this device; no CPD record is read or written.
-    return <CmeCustomisePage />;
+    // Look only: the layout is kept on this device, so the sample must not change it for whoever signs in next.
+    return (
+      <div inert data-testid="cme-sample-customise">
+        <CmeCustomisePage />
+      </div>
+    );
   }
   if (pathname === "/cme/learning") {
     // The public WA course list, the same for everyone; the home label is the sample year's.
