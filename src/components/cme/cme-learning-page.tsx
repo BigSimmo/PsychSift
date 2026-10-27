@@ -12,7 +12,6 @@ import { WorkBody } from "@/components/mode-kit/work";
 import { Sheet } from "@/components/ui/sheet";
 import { EmptyState, cn } from "@/components/ui-primitives";
 import { formatCmeRowDate, perthCalendarDate } from "@/lib/cme/cpd-year";
-import { formatZonedLongDay } from "@/lib/work-time/format";
 import { canAddLearningToCalendar, learningCalendarEventIcs, learningCalendarFileName } from "@/lib/cme/calendar-event";
 import {
   LEARNING_DIRECTORY_STALE_AFTER_DAYS,
@@ -38,11 +37,6 @@ const KIND_LABEL: Record<LearningDirectoryItem["kind"], string> = {
 };
 
 const SHORT_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;
-
-/** "Thursday 1 October", with the year only when it is not this year. */
-function longDateWithWeekday(dateOnly: string, today: string): string {
-  return formatZonedLongDay(dateOnly, today);
-}
 
 /**
  * When, as one phrase: every date with its weekday (the year only when it is
@@ -536,9 +530,10 @@ export function CmeLearningPage({
           </div>
         ) : null}
 
+        {/* The title's small line already says "Western Australia · checked <date>", so the hint no
+            longer repeats it (owner build, 27 Oct 2026). */}
         <CmeHint testId="cme-learning-checked">
-          Western Australia. Checked {longDateWithWeekday(lastCheckedOn, today)}. A curated list, not an endorsement:
-          confirm dates, cost and CPD eligibility with the organiser.
+          A curated list, not an endorsement: confirm dates, cost and CPD eligibility with the organiser.
         </CmeHint>
 
         {stale ? (

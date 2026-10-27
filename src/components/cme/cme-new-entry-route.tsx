@@ -149,7 +149,7 @@ export function CmeNewEntryRoute({
         };
 
   async function saveEntry(entry: CmeEntryDraft) {
-    if (demoMode) throw new Error("Demo mode is read-only. Sign in to save this activity to a private CPD record.");
+    if (demoMode) throw new Error("These are example records. Sign in to save this activity to a private CPD record.");
     // The entries API accepts only a UUID. A free-text reason must not be sent as
     // missedSessionId or the whole save is rejected with 400.
     const effectiveMissedSessionId = isReplacement && UUID_PATTERN.test(missedSessionDraft) ? missedSessionDraft : null;
@@ -173,7 +173,7 @@ export function CmeNewEntryRoute({
   }
 
   async function saveDraft(payload: CmeDraftPayload) {
-    if (demoMode) throw new Error("Demo mode is read-only. Sign in to save drafts to your private CPD record.");
+    if (demoMode) throw new Error("These are example records. Sign in to save drafts to your private CPD record.");
     if (waiting.waitingOn && waitingNoteProblem(waiting.waitingNote))
       throw new Error("Take out the patient details from the note to save this draft.");
     const response = await fetch(resumeDraft ? `/api/cme/drafts/${resumeDraft.id}` : "/api/cme/drafts", {

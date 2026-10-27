@@ -316,7 +316,9 @@ export function CmeMissedSessionsSection({
 
       {demoMode ? (
         <div>
-          <InlineNotice tone="neutral">Demo mode is read-only. Missed sessions are shown for inspection.</InlineNotice>
+          <InlineNotice tone="neutral">
+            These are example records. Sign in to record your own missed sessions.
+          </InlineNotice>
         </div>
       ) : null}
 

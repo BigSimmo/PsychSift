@@ -19,7 +19,7 @@ export const runtime = "nodejs";
 export async function POST(request: Request) {
   try {
     if (isDemoMode()) {
-      return publicErrorResponse("Demo mode is read-only. Sign in to carry a goal.", 400, {
+      return publicErrorResponse("These are example records. Sign in to carry a goal.", 400, {
         code: "demo_mode_unavailable",
       });
     }

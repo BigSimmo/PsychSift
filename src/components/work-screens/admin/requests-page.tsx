@@ -518,17 +518,24 @@ function RequestCard({
       <p className="text-base-minus font-semibold text-[color:var(--text-heading)] [overflow-wrap:anywhere]">
         {request.title}
       </p>
-      <div className="flex flex-wrap gap-1.5">
-        <WorkTag tone={STATUS_TONE[word] ?? "neutral"}>{word}</WorkTag>
-        <WorkTag tone="neutral">{REQUEST_KIND_WORDS[request.kind]}</WorkTag>
-        {request.dueOn ? (
-          <WorkTag tone="neutral">{`${request.dueOn < today ? "Was due" : "Due"} ${formatRecordedDate(request.dueOn)}`}</WorkTag>
-        ) : null}
-        {request.askedFor ? (
-          <WorkTag tone="neutral">{`Asked to ${formatRecordedDate(request.askedFor)}`}</WorkTag>
+      {/* One plain line for what was asked and when, instead of five pills (owner build, 27 Oct
+          2026). The steps below already say Sent or Seen, so the status word shows only for a
+          draft or a decision, and Chase stays a tag because it asks for action. */}
+      <p className="m-0 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-[color:var(--text-muted)]">
+        {request.status === "draft" || request.status === "decided" ? (
+          <WorkTag tone={STATUS_TONE[word] ?? "neutral"}>{word}</WorkTag>
         ) : null}
         {chase ? <WorkTag tone="mode">Chase</WorkTag> : null}
-      </div>
+        <span className="min-w-0">
+          {[
+            REQUEST_KIND_WORDS[request.kind],
+            request.askedFor ? `asked to ${formatRecordedDate(request.askedFor)}` : null,
+            request.dueOn ? `${request.dueOn < today ? "was due" : "due"} ${formatRecordedDate(request.dueOn)}` : null,
+          ]
+            .filter(Boolean)
+            .join(" · ")}
+        </span>
+      </p>
       {request.status !== "draft" ? (
         <ol className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs" aria-label="Progress">
           {requestSteps(request).map((step) => (
@@ -578,9 +585,6 @@ function RequestCard({
                 Email draft
               </a>
             )}
-            <WorkButton variant="secondary" onClick={onEdit} testId="admin-requests-edit">
-              Edit
-            </WorkButton>
           </>
         ) : request.status === "decided" ? (
           <>
@@ -613,11 +617,21 @@ function RequestCard({
                 Copy a follow-up
               </WorkButton>
             ) : null}
-            <WorkButton variant="secondary" icon={Copy} onClick={onCopy} testId="admin-requests-copy-again">
-              Copy again
-            </WorkButton>
           </>
         )}
+      </div>
+      {/* The less used actions as quiet text buttons under the two main ones. */}
+      <div className="-mt-1 flex flex-wrap gap-1">
+        {request.status === "draft" ? (
+          <WorkButton variant="quiet" onClick={onEdit} testId="admin-requests-edit">
+            Edit
+          </WorkButton>
+        ) : null}
+        {request.status === "sent" || request.status === "seen" ? (
+          <WorkButton variant="quiet" icon={Copy} onClick={onCopy} testId="admin-requests-copy-again">
+            Copy again
+          </WorkButton>
+        ) : null}
         <WorkButton
           variant="quiet"
           icon={Trash2}

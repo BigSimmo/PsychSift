@@ -311,12 +311,15 @@ function expectLabelAt(at: string) {
 }
 
 describe("AdminTodayPage redesign (Admin proposal)", () => {
-  it("keeps the window bar's 'Today' label inside the bar when today is past the end", () => {
-    // wwc's date passed, so the marker sits at 100%: the label must end at the
-    // bar's right edge, not centre on it and spill past the card.
+  it("drops the window bar's 'Today' label once today is past the end, keeping the marker at the bar's edge", () => {
+    // wwc's date passed, so the marker sits at 100%. "Today" between "Opened" and
+    // "Passed" read as if today came before the passed date (owner build, 27 Oct 2026).
     state.entries = [wwc];
     render(<AdminTodayPage now={NOW} />);
-    expectLabelAt("100%");
+    const window = screen.getByTestId("admin-today-renew-next-window");
+    expect(window.querySelector("svg svg")?.getAttribute("x")).toBe("100%");
+    expect(within(window).queryByText("Today")).toBeNull();
+    expect(within(window).getByText(/^Passed /)).toBeTruthy();
   });
 
   it("anchors the label to the left edge when today is at the start of the window", () => {

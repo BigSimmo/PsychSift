@@ -1075,7 +1075,7 @@ export function SupervisorWords({ role }: ScreenProps) {
       <SectionLabel>Words used here</SectionLabel>
       <dl className="work-card m-0">
         {GLOSSARY.map(([term, meaning]) => (
-          <div key={term} className="assess-word" data-long={term.length > 8 ? "" : undefined}>
+          <div key={term} className="assess-word">
             <dt>{term}</dt>
             <dd>{meaning}</dd>
           </div>
