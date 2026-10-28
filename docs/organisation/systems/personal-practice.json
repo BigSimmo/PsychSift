@@ -111,6 +111,7 @@
     "tests/ui-cme-phone.spec.ts",
     "tests/ui-on-*",
     "tests/ui-teaching.spec.ts",
+    "tests/week-add-toggle.dom.test.tsx",
     "tests/work-bookings-concurrent-*",
     "tests/work-calendar-booking-feed.test.ts",
     "tests/work-calendar-entries.test.ts",
