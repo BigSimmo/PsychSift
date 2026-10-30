@@ -1,5 +1,64 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+describe("Sol answer defaults and workload isolation", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  it("keeps control answer defaults until explicit candidate activation", async () => {
+    for (const key of [
+      "OPENAI_ANSWER_MODEL",
+      "OPENAI_FAST_ANSWER_MODEL",
+      "OPENAI_STRONG_ANSWER_MODEL",
+      "OPENAI_QUERY_CLASSIFIER_MODEL",
+      "OPENAI_SUMMARY_MODEL",
+      "OPENAI_INDEXING_MODEL",
+    ])
+      vi.stubEnv(key, undefined);
+    const { env } = await import("@/lib/env");
+    expect(env).toMatchObject({
+      OPENAI_ANSWER_MODEL: "gpt-5.6-terra",
+      OPENAI_FAST_ANSWER_MODEL: "gpt-5.6-terra",
+      OPENAI_STRONG_ANSWER_MODEL: "gpt-5.6-sol",
+      OPENAI_QUERY_CLASSIFIER_MODEL: "gpt-5.6-terra",
+      OPENAI_SUMMARY_MODEL: "gpt-5.6-terra",
+      OPENAI_INDEXING_MODEL: "gpt-5.6-sol",
+      OPENAI_EMBEDDING_MODEL: "text-embedding-3-small",
+      EMBEDDING_DIMENSIONS: 1536,
+    });
+  });
+
+  it("activates all-Sol answers explicitly without changing other workload fallbacks", async () => {
+    for (const key of ["OPENAI_ANSWER_MODEL", "OPENAI_FAST_ANSWER_MODEL", "OPENAI_STRONG_ANSWER_MODEL"])
+      vi.stubEnv(key, "gpt-6.1-sol");
+    for (const key of ["OPENAI_QUERY_CLASSIFIER_MODEL", "OPENAI_SUMMARY_MODEL", "OPENAI_INDEXING_MODEL"])
+      vi.stubEnv(key, undefined);
+    const { env } = await import("@/lib/env");
+    expect(env).toMatchObject({
+      OPENAI_ANSWER_MODEL: "gpt-6.1-sol",
+      OPENAI_FAST_ANSWER_MODEL: "gpt-6.1-sol",
+      OPENAI_STRONG_ANSWER_MODEL: "gpt-6.1-sol",
+      OPENAI_QUERY_CLASSIFIER_MODEL: "gpt-5.6-terra",
+      OPENAI_SUMMARY_MODEL: "gpt-5.6-terra",
+      OPENAI_INDEXING_MODEL: "gpt-5.6-sol",
+    });
+  });
+
+  it("preserves explicit workload overrides independently of the answer models", async () => {
+    vi.stubEnv("OPENAI_FAST_ANSWER_MODEL", "gpt-6.1-sol");
+    vi.stubEnv("OPENAI_QUERY_CLASSIFIER_MODEL", "gpt-5.6-luna");
+    vi.stubEnv("OPENAI_SUMMARY_MODEL", "gpt-5.6-terra");
+    vi.stubEnv("OPENAI_INDEXING_MODEL", "gpt-5.6-terra");
+    const { env } = await import("@/lib/env");
+    expect(env).toMatchObject({
+      OPENAI_QUERY_CLASSIFIER_MODEL: "gpt-5.6-luna",
+      OPENAI_SUMMARY_MODEL: "gpt-5.6-terra",
+      OPENAI_INDEXING_MODEL: "gpt-5.6-terra",
+    });
+  });
+});
+
 describe("developer-area access-key environment parsing", () => {
   afterEach(() => {
     vi.unstubAllEnvs();

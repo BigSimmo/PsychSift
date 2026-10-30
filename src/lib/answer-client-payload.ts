@@ -123,6 +123,7 @@ const answerFieldPolicy = {
   latencyTimings: "server",
   openAIRequestIds: "server",
   openAIUsage: "server",
+  openAIUsageAttempts: "server",
   answerSections: "client",
   evidenceSummary: "client",
   conflictsOrGaps: "client",

@@ -7,13 +7,14 @@ import type {
 } from "@/lib/clinical-ask/contracts";
 import { projectConfirmedContext } from "@/lib/clinical-ask/context";
 import { clinicalAskModeProfile } from "@/lib/clinical-ask/mode-profiles";
-import { generateStructuredTextResponse } from "@/lib/openai";
+import { generateStructuredTextResponse, type OpenAIReasoningEffort } from "@/lib/openai";
 import { fenceSourceEvidence, neutralizePromptInstructions } from "@/lib/source-text-sanitizer";
 
 const PROVIDER_TIMEOUT_MS = 20_000;
 
 async function structuredCall(
   model: string,
+  reasoningEffort: OpenAIReasoningEffort,
   schemaName: string,
   schema: Record<string, unknown>,
   input: Array<Record<string, unknown>>,
@@ -21,6 +22,7 @@ async function structuredCall(
 ) {
   const text = await generateStructuredTextResponse(input, schema, {
     model,
+    reasoningEffort,
     operation: "answer",
     schemaName,
     timeoutMs: PROVIDER_TIMEOUT_MS,
@@ -60,6 +62,7 @@ export async function suggestClinicalAskContext(
   };
   const parsed = (await structuredCall(
     env.OPENAI_FAST_ANSWER_MODEL,
+    env.OPENAI_FAST_REASONING_EFFORT,
     "clinical_ask_context",
     schema,
     [
@@ -175,6 +178,7 @@ export async function synthesizeClinicalAskDraft(
   };
   const draft = (await structuredCall(
     env.OPENAI_STRONG_ANSWER_MODEL,
+    env.OPENAI_STRONG_REASONING_EFFORT,
     "clinical_ask_draft",
     schema,
     [

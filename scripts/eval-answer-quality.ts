@@ -19,7 +19,7 @@ import {
 } from "@/lib/rag/rag-eval-cases";
 import { rankAnswerEvidence } from "@/lib/answer-ranking";
 import type { RagAnswer } from "@/lib/types";
-import { estimateCostUsd, loadAdminClient, resolveEvalOwnerId, withProviderBackoff } from "./eval-utils";
+import { estimateAnswerCost, loadAdminClient, resolveEvalOwnerId, withProviderBackoff } from "./eval-utils";
 import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 loadEnvConfig(process.cwd());
@@ -269,7 +269,7 @@ export function buildBoundedRagSourceDiagnostics(
   });
 }
 
-export function buildRagDiagnosticDumpRecord(id: string, question: string, answer: RagAnswer) {
+export function buildRagDiagnosticDumpRecord(id: string, question: string, answer: RagAnswer, unpricedAttempts = 0) {
   const openAIUsage = {
     input_tokens: answer.openAIUsage?.input_tokens ?? 0,
     cached_input_tokens: answer.openAIUsage?.cached_input_tokens ?? 0,
@@ -282,12 +282,15 @@ export function buildRagDiagnosticDumpRecord(id: string, question: string, answe
   // does for telemetry. It explains rankAnswerEvidence's reorder, not later context selection.
   const answerEvidenceScores = rankAnswerEvidence(question, answer.sources, answer.queryClass).scoresByChunkId;
   const providerAttempted = Boolean(
+    unpricedAttempts > 0 ||
+    answer.openAIUsageAttempts?.length ||
     hasOpenAIUsage ||
     observedProviderRequestIdCount > 0 ||
     answer.modelUsed ||
     generationLatencyMs > 0 ||
     /(?:^|;\s*)generation_fallback:provider_/i.test(answer.routingReason ?? ""),
   );
+  const costEstimate = estimateAnswerCost(answer, providerAttempted, unpricedAttempts);
   return {
     id: displaySafeDiagnosticText(id, 160),
     question: displaySafeDiagnosticText(question, MAX_DIAGNOSTIC_QUESTION_CHARS),
@@ -313,15 +316,9 @@ export function buildRagDiagnosticDumpRecord(id: string, question: string, answe
     provider_attempted: providerAttempted,
     observed_provider_request_id_count: observedProviderRequestIdCount,
     openai_usage: openAIUsage,
-    estimated_cost_usd: hasOpenAIUsage
-      ? estimateCostUsd({
-          inputTokens: openAIUsage.input_tokens,
-          cachedInputTokens: openAIUsage.cached_input_tokens,
-          outputTokens: openAIUsage.output_tokens,
-        })
-      : providerAttempted
-        ? null
-        : 0,
+    estimated_cost_usd: costEstimate.estimatedCostUsd,
+    cost_estimate_basis: costEstimate.pricingBasis,
+    unpriced_outer_attempts: unpricedAttempts,
     citation_count: answer.citations.length,
     // Only the sources the answer actually cites: the blinded reading pack renders this list
     // (not the broader retrieved-source diagnostics below) so grounding is judged on real
@@ -350,9 +347,10 @@ export function buildAnswerDumpRecord(
   testCase: AnswerQualityEvalCase,
   answer: RagAnswer,
   targeting: ReturnType<typeof scoreAnswerTargeting>,
+  unpricedAttempts = 0,
 ) {
   return {
-    ...buildRagDiagnosticDumpRecord(testCase.id, testCase.question, answer),
+    ...buildRagDiagnosticDumpRecord(testCase.id, testCase.question, answer, unpricedAttempts),
     intent: testCase.expectedIntent,
     targeting: { applicable: targeting.applicable, score: targeting.score, reason: targeting.reason },
     capture_only: false as const,
@@ -360,9 +358,9 @@ export function buildAnswerDumpRecord(
 }
 
 // Dump record for an owner-supplied capture-only question: same scrubbed shape, no scoring.
-export function buildCaptureOnlyDumpRecord(extraCase: ExtraCaptureCase, answer: RagAnswer) {
+export function buildCaptureOnlyDumpRecord(extraCase: ExtraCaptureCase, answer: RagAnswer, unpricedAttempts = 0) {
   return {
-    ...buildRagDiagnosticDumpRecord(extraCase.id, extraCase.question, answer),
+    ...buildRagDiagnosticDumpRecord(extraCase.id, extraCase.question, answer, unpricedAttempts),
     intent: null,
     targeting: null,
     capture_only: true as const,
@@ -482,22 +480,36 @@ async function main() {
     [];
 
   for (const testCase of cases) {
-    const answer = (await withProviderBackoff(`answer-quality:${testCase.id}`, () =>
-      answerQuestionWithScope({ query: testCase.question, ownerId, logQuery: false, skipCache: true }),
+    let unpricedAttempts = 0;
+    const answer = (await withProviderBackoff(
+      `answer-quality:${testCase.id}`,
+      () => answerQuestionWithScope({ query: testCase.question, ownerId, logQuery: false, skipCache: true }),
+      {
+        onFailedAttempt: () => {
+          unpricedAttempts += 1;
+        },
+      },
     )) as RagAnswer;
 
     const metricScores = scoreAnswerQualityEvalCase(testCase, answer);
     const targeting = scoreAnswerTargeting(testCase, answer);
     outcomes.push({ testCase, metricScores, targeting, answer });
-    if (args.dumpAnswers) dumpRecords.push(buildAnswerDumpRecord(testCase, answer, targeting));
+    if (args.dumpAnswers) dumpRecords.push(buildAnswerDumpRecord(testCase, answer, targeting, unpricedAttempts));
   }
 
   // Owner-chosen capture-only questions (Gate E): answered and dumped, never scored.
   for (const extraCase of extraCases) {
-    const answer = (await withProviderBackoff(`answer-quality:extra:${extraCase.id}`, () =>
-      answerQuestionWithScope({ query: extraCase.question, ownerId, logQuery: false, skipCache: true }),
+    let unpricedAttempts = 0;
+    const answer = (await withProviderBackoff(
+      `answer-quality:extra:${extraCase.id}`,
+      () => answerQuestionWithScope({ query: extraCase.question, ownerId, logQuery: false, skipCache: true }),
+      {
+        onFailedAttempt: () => {
+          unpricedAttempts += 1;
+        },
+      },
     )) as RagAnswer;
-    dumpRecords.push(buildCaptureOnlyDumpRecord(extraCase, answer));
+    dumpRecords.push(buildCaptureOnlyDumpRecord(extraCase, answer, unpricedAttempts));
   }
 
   const summary = summarizeAnswerQuality(outcomes);

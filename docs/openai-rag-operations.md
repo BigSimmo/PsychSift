@@ -1,5 +1,7 @@
 # OpenAI and RAG operations
 
+_Updated 2026-10-27 — Sol 6.1 answer candidate and bounded comparison; Answer engine owns._
+
 ## Supported architecture
 
 The app uses the OpenAI Responses API for stateless structured generation and
@@ -19,8 +21,8 @@ answer prose is sent only in the validated `final` event. The browser deliberate
 
 | Workload                                                                 | Environment variable            | Documented rollout value                    |
 | ------------------------------------------------------------------------ | ------------------------------- | ------------------------------------------- |
-| Fast clinical synthesis                                                  | `OPENAI_FAST_ANSWER_MODEL`      | `gpt-5.6-terra`                             |
-| Strong clinical synthesis                                                | `OPENAI_STRONG_ANSWER_MODEL`    | `gpt-5.6-sol`                               |
+| Fast clinical synthesis                                                  | `OPENAI_FAST_ANSWER_MODEL`      | `gpt-6.1-sol` (low effort)                  |
+| Strong clinical synthesis                                                | `OPENAI_STRONG_ANSWER_MODEL`    | `gpt-6.1-sol` (medium effort)               |
 | Query classifier                                                         | `OPENAI_QUERY_CLASSIFIER_MODEL` | `gpt-5.6-luna`                              |
 | Document summaries                                                       | `OPENAI_SUMMARY_MODEL`          | `gpt-5.6-terra`                             |
 | Enrichment/index profiles                                                | `OPENAI_INDEXING_MODEL`         | `gpt-5.6-terra`                             |
@@ -29,9 +31,18 @@ answer prose is sent only in the validated `final` event. The browser deliberate
 | Optional semantic rerank (off unless `RAG_SEMANTIC_RERANK_ENABLED=true`) | `OPENAI_RERANK_MODEL`           | `gpt-5.6-luna` (code default)               |
 | Clinical Ask voice transcription                                         | `OPENAI_TRANSCRIPTION_MODEL`    | `gpt-4o-mini-transcribe` (code default)     |
 
-If a workload-specific variable is omitted, the query classifier follows the fast-answer model,
-summaries follow the answer model, and indexing follows the strong-answer model. Existing
-deployments with explicit GPT-5.5 variables remain pinned until their environment is changed.
+These are candidate configuration values, not evidence of hosted activation. Explicit deployment
+variables remain pinned until changed. Runtime answer defaults remain GPT-5.6 Terra (answer/fast)
+and GPT-5.6 Sol (strong); the three explicit Sol overrides are a separate activation step after
+the approved comparison. Merging this preparation must not activate Sol by itself.
+When workload-specific variables are omitted, classifier
+and summary code fallbacks stay on `gpt-5.6-terra`, and indexing stays on `gpt-5.6-sol`. The example
+configuration's explicit Luna classifier and Terra indexing overrides remain unchanged. Changing
+answer models must not migrate ingestion, embeddings or retrieval.
+The Edge indexing agent uses the same independent indexing fallback as the Node worker. This
+preserves existing structured summaries and generated labels when answer models change. Preserve
+the intended explicit `OPENAI_INDEXING_MODEL` in both runtime environments; deploy the matching
+Edge function before any answer-model activation. No migration or re-indexing is required.
 
 OpenAI recommends the Responses API for current general-purpose multimodal and tool-capable
 workflows. See the [Responses migration guide](https://developers.openai.com/api/docs/guides/migrate-to-responses),
@@ -40,7 +51,7 @@ workflows. See the [Responses migration guide](https://developers.openai.com/api
 
 ## Compatibility and safety controls
 
-- GPT-5.6 requests use `prompt_cache_options.ttl`; they never receive the deprecated
+- GPT-5.6 and Sol 6.1 requests use `prompt_cache_options.ttl`; they never receive the deprecated
   `prompt_cache_retention` field. `OPENAI_PROMPT_CACHE_TTL=off` omits the extended TTL option.
   Pre-5.6 models retain the legacy retention configuration.
 - Answer caches and in-flight coalescing include a fingerprint of models, reasoning effort,
@@ -57,6 +68,60 @@ workflows. See the [Responses migration guide](https://developers.openai.com/api
 - When `OPENAI_SAFETY_IDENTIFIER_SECRET` is configured, authenticated Responses requests use an
   HMAC-SHA256 pseudonym. Raw owner IDs are never sent; anonymous/background requests omit it.
 - Usage telemetry includes input, output, total, cached-input, cache-write, and reasoning tokens.
+- Sol 6.1 requires reasoning: an explicit `none` becomes `low`. The existing answer routes pass
+  their own effort explicitly even though both now use the same model. No new router is added.
+
+## Sol 6.1 comparison and activation
+
+The owner approved preparing Sol 6.1 for all generated answers, conditional on better quality at
+no higher cost per successful answer, no safety/citation regression and no material latency regression.
+This is not approval for paid evaluation, production activation, publication or deployment.
+
+Use `node scripts/run-tsx.mjs scripts/compare-answer-models.ts` for the provider-free dry run.
+The component experiment uses frozen synthetic evidence and the production generation/validation
+components; it does not establish live retrieval or complete route equivalence. Twelve cases, two
+measured passes and one labelled warm-up per route per arm give 52 planned answer executions.
+Both model/effort combinations are warmed before measurement. No paid model
+judge is used. Blinded review remains human; clinical sign-off remains owner-only.
+
+Before a live run, verify account access and current official prices, approve that exact bounded
+run and inspect the harness's approval manifest and reservations. The planned ceilings are US$15,
+150 requests including recovery, one million input tokens, 400,000 output tokens including reasoning,
+and concurrency one. This full plan cannot fit those caps: output reservations alone are
+832,000 tokens against the 400,000 cap. A feasible revised scope and its own approval are required.
+Conservative admission can stop the experiment before all cases complete;
+an incomplete comparison never passes. No credentials or production content belong in a manifest.
+Thrown failures and incomplete provider responses both stop the schedule without retries.
+Malformed output recovered into a safe refusal earns no model-quality credit; the raw response
+must contain the issued answer envelope and explicitly declare unsupported confidence.
+The manifest's absolute `outputDirectory` binds it to one new ignored run directory in this checkout. That directory is
+atomically consumed and a durable approval receipt is written before transport; an interrupted
+or failed run cannot reuse it. Run the harness from its own checkout root so the approved hashes
+identify the code that actually executes.
+
+Existing evaluators accept `RAG_EVAL_MODEL_PRICES_JSON` with explicit per-million USD rates keyed
+by exact model ID (`input`, `output`, optional `cachedInput` and `cacheWrite`). Attempt records
+retain each generation's model/usage; unknown failed-call usage makes cost unknown. Unmeasured
+cache writes use a labelled conservative premium. Without the table, legacy global rate overrides
+remain labelled aggregate estimates. Reasoning is already included in output tokens.
+
+Compare blinded quality, groundedness, citations and unsupported handling, total costs including
+failed attempts, and median/p90 latency (no more than 10% above control, no additional deadline
+failures). Keep upstream embeddings/retrieval/reranking frozen and provider-free in this experiment;
+their experimental charge is zero, not a claim about production costs. Provider cache writes,
+regional premiums and any later hosted/evaluation charges need inclusion in the approved price basis.
+
+For activation, separately approve setting `OPENAI_ANSWER_MODEL`, `OPENAI_FAST_ANSWER_MODEL` and
+`OPENAI_STRONG_ANSWER_MODEL` to `gpt-6.1-sol`, while retaining non-answer workload overrides and
+`OPENAI_STORE_RESPONSES=false`. Retain low/medium effort and current context/output ceilings.
+Record previous environment settings and artifact first. Rollback restores those settings/artifact;
+model-aware cache identities prevent cross-model reuse. No re-embedding, re-indexing or migration
+is needed. Source defaults and a dry run do not establish account availability or answer quality.
+
+Model identity and compatibility: [Sol 6.1](https://developers.openai.com/api/docs/models/gpt-6.1-sol).
+Pricing basis: [OpenAI pricing](https://developers.openai.com/api/docs/pricing), checked 27 October 2026;
+refresh before a paid run. Standard short-context Sol 6.1 is US$2 input/US$10 output per million,
+versus Terra 5.6 US$2/US$12 and Sol 5.6 US$4/US$20; token rates alone do not prove answer savings.
 
 ## Rollout sequence
 
