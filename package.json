@@ -256,6 +256,8 @@
     "medications:lexicon-report": "node scripts/run-tsx.mjs scripts/build-medication-lexicon-report.ts",
     "check:medication-lexicon-report": "node scripts/run-tsx.mjs scripts/build-medication-lexicon-report.ts --check",
     "reindex": "node scripts/run-tsx.mjs scripts/reindex.ts",
+    "audit:ingestion:offline": "node scripts/run-tsx.mjs scripts/audit-ingestion-corpus.ts",
+    "reindex:gate:offline": "node scripts/run-tsx.mjs scripts/reindex-gate-report.ts",
     "reindex:health": "node scripts/run-tsx.mjs scripts/reindex-health.ts",
     "ingestion:autopilot": "node scripts/run-tsx.mjs scripts/ingestion-autopilot.ts",
     "flake:ledger": "node scripts/flake-ledger.mjs",
