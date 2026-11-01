@@ -1,7 +1,7 @@
 {
   "version": "repo-awareness-snapshot-v3",
   "captured_revision": {
-    "committed_at": "2026-10-27"
+    "committed_at": "2026-11-01"
   },
   "routes": {
     "modes": [
@@ -2596,6 +2596,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-11-01-ingestion-preparation-only.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/archive/forward-codify-retrieval-rpcs-workorder-2026-10-20.md",
         "section": "archive",
         "catalogued": true
@@ -4396,6 +4401,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/reindex-unlock-plan.md",
+        "section": "root",
+        "catalogued": false
+      },
+      {
         "path": "docs/specifier-definition-worklist-2026-09-18.md",
         "section": "root",
         "catalogued": true
@@ -5022,6 +5032,11 @@
       },
       {
         "path": "docs/decisions/2026-10-26-crisis-routing-under-18-youth-and-000.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-11-01-administrator-source-unscanned-exception.md",
         "section": "decisions",
         "catalogued": true
       },
