@@ -413,10 +413,16 @@ IDs and which file types are allowed, and any allowlist error), and the startup 
 
 **`WORKER_ADMIN_SOURCE_RUNTIME_MODULE`** (`loadAdminSourceRuntimeOptions` in `worker/admin-source-runtime.ts`).
 It names, by absolute local path, a server-mounted module that is deliberately kept outside this repository.
-That module supplies the approved-source record and the malware-scanner configuration
+That module supplies the approved-source record and the malware-scanner policy
 (`loadApprovedSource` and `loadScannerConfiguration`, or a `createAdminSourceRuntimeSuppliers` factory that
 returns them). The worker refuses a relative, `http(s):`, `data:` or `node:` path, and refuses if the module's
 bytes change while it runs. Never write its value into a document, log, PR or ticket; only whether it is set.
+
+The owner selected an explicit source-scoped administrator-only unscanned exception for local
+implementation on 1 November. Its evidence, expiry, revocation and commissioning requirements
+live in [the exception contract](reindex-unlock-plan.md#administrator-unscanned-exception-contract).
+It is a separate explicit policy mode, never automatic fallback when a scanner fails. This code
+change does not configure a mounted module, resume the worker or authorize processing.
 
 Without it there is no scanner verdict, so every ingestion provider call is refused and each job ends as
 `blocked by ingress safety checks` with `scanner_unavailable` (fail closed; pinned by

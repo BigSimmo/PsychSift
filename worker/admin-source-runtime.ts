@@ -10,6 +10,7 @@ import {
   createAdminTextInspectionLoader,
   type AdminTextCurrentFacts,
   type AdminTextScannerConfiguration,
+  type AdminTextInspectionOptions,
 } from "./admin-text-inspection";
 import type { ManagedAdminTextSourceSectionLayout } from "./managed-admin-text-terminal";
 import { prepareManagedPrivateSupplier, type ManagedPreparedSupplierInput } from "./managed-prepared-supplier";
@@ -51,7 +52,10 @@ export type ApprovedAdminSource = Readonly<{
 export type AdminSourceRuntimeSuppliers = Readonly<{
   /** Undefined revokes permission for this exact current job/source/purpose. */
   loadApprovedSource: (job: JobRow, purpose: "embedding") => Promise<ApprovedAdminSource | undefined>;
-  loadScannerConfiguration: () => Promise<AdminTextScannerConfiguration>;
+  /** Fresh server-owned scanner policy; exception records include independent admin-admission provenance. */
+  loadScannerConfiguration: (
+    args: Parameters<AdminTextInspectionOptions["loadScannerConfiguration"]>[0] & Readonly<{ job: JobRow }>,
+  ) => Promise<AdminTextScannerConfiguration>;
   loadManagedAdminPdfCompletionEvidence?: (
     input: ManagedPreparedSupplierInput,
   ) => Promise<ManagedAdminPdfCompletionEvidence | undefined>;
@@ -273,9 +277,9 @@ export function createAdminSourceRuntimeOptions(
             policyObservations: source.policyObservations,
           };
         },
-        async loadScannerConfiguration() {
+        async loadScannerConfiguration(args) {
           attempt.check();
-          const config = await suppliers.loadScannerConfiguration();
+          const config = await suppliers.loadScannerConfiguration({ ...args, job });
           attempt.check();
           return config;
         },
@@ -468,9 +472,9 @@ export async function loadAdminSourceRuntimeOptions(
         await currentModule();
         return source;
       },
-      async loadScannerConfiguration() {
+      async loadScannerConfiguration(args) {
         await currentModule();
-        const scanner = await suppliers.loadScannerConfiguration();
+        const scanner = await suppliers.loadScannerConfiguration(args);
         await currentModule();
         return scanner;
       },

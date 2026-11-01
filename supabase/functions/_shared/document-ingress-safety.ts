@@ -1,4 +1,9 @@
 import { createHash } from "node:crypto";
+import {
+  ADMIN_UNSCANNED_EXCEPTION_POLICY,
+  readAdminUnscannedExceptionReceipt,
+  type AdminUnscannedExceptionReceipt,
+} from "./admin-unscanned-exception.ts";
 
 export const PROVIDER_EGRESS_PURPOSES = ["caption", "embedding", "summary", "deep_memory"] as const;
 
@@ -9,6 +14,7 @@ export type IngressHardGateCode =
   | "admission_missing"
   | "binding_invalid"
   | "scanner_unavailable"
+  | "unscanned_exception_invalid"
   | "malware_detected"
   | "active_content_detected"
   | "identifier_detected"
@@ -60,9 +66,10 @@ export type DocumentIngressSafetyObservations = Readonly<{
   rights: "permitted" | "denied";
   purposeClearance: "permitted" | "denied";
   scanner: Readonly<{
-    verdict: "clean" | "malware" | "unavailable";
+    verdict: "clean" | "malware" | "unavailable" | "unscanned";
     scannerVersion: string;
     contentSha256: ContentSha256;
+    exceptionReceipt?: AdminUnscannedExceptionReceipt;
   }>;
   activeContent: "absent" | "detected";
   identifiers: "absent" | "detected";
@@ -81,6 +88,7 @@ export type DocumentIngressSafetyResult =
       policyVersion: string;
       checks: readonly string[];
       evidenceDigest: ContentSha256;
+      validUntilMs?: number;
     }>
   | Readonly<{
       verdict: "quarantine";
@@ -217,7 +225,7 @@ export function evaluateDocumentIngressSafety(input: unknown): DocumentIngressSa
   }
 
   const scanner = isRecord(record.scanner) ? record.scanner : {};
-  const scannerVerdict = normalizedStatus(scanner.verdict, ["clean", "malware", "unavailable"] as const);
+  const scannerVerdict = normalizedStatus(scanner.verdict, ["clean", "malware", "unavailable", "unscanned"] as const);
   const scannerVersion = isNonEmptyString(scanner.scannerVersion) ? scanner.scannerVersion.trim() : "invalid";
   const scannerContentSha256 = isContentSha256(scanner.contentSha256) ? scanner.contentSha256 : "invalid";
   if (
@@ -230,6 +238,13 @@ export function evaluateDocumentIngressSafety(input: unknown): DocumentIngressSa
     reasons.set("scanner_unavailable", "repeat_safety_checks");
   }
   if (scannerVerdict === "malware") reasons.set("malware_detected", "remove_or_quarantine_unsafe_content");
+  const exception =
+    scannerVerdict === "unscanned" && binding && purpose
+      ? readAdminUnscannedExceptionReceipt(scanner.exceptionReceipt, binding, purpose)
+      : null;
+  if (scannerVerdict === "unscanned" && (!exception || scannerVersion !== ADMIN_UNSCANNED_EXCEPTION_POLICY)) {
+    reasons.set("unscanned_exception_invalid", "repeat_safety_checks");
+  }
 
   const activeContent = normalizedStatus(record.activeContent, ["absent", "detected"] as const);
   const identifiers = normalizedStatus(record.identifiers, ["absent", "detected"] as const);
@@ -278,6 +293,7 @@ export function evaluateDocumentIngressSafety(input: unknown): DocumentIngressSa
       verdict: scannerVerdict,
       version: scannerVersion,
       contentSha256: scannerContentSha256,
+      ...(exception ? { exceptionDigest: exception.grantDigest, expiresAtMs: exception.expiresAtMs } : {}),
     },
     activeContent,
     identifiers,
@@ -310,7 +326,9 @@ export function evaluateDocumentIngressSafety(input: unknown): DocumentIngressSa
     "owner_scope:permitted",
     "rights:permitted",
     `purpose:${purpose}:permitted`,
-    `scanner:clean:${scannerVersion}`,
+    ...(exception
+      ? [`scanner:unscanned:${ADMIN_UNSCANNED_EXCEPTION_POLICY}:${exception.grantDigest}`]
+      : [`scanner:clean:${scannerVersion}`]),
     "active_content:absent",
     "identifiers:absent",
     `hidden_text:${hiddenText}`,
@@ -319,7 +337,15 @@ export function evaluateDocumentIngressSafety(input: unknown): DocumentIngressSa
     "index_licence:permitted",
     "source_policy:matched",
   ]);
-  return Object.freeze({ verdict: "pass", binding, purpose, policyVersion, checks, evidenceDigest });
+  return Object.freeze({
+    verdict: "pass",
+    binding,
+    purpose,
+    policyVersion,
+    checks,
+    evidenceDigest,
+    ...(exception ? { validUntilMs: exception.expiresAtMs } : {}),
+  });
 }
 
 declare const providerEgressPermitType: unique symbol;
@@ -430,8 +456,8 @@ export function createDocumentIngressSafetyAuthority(options: AuthorityOptions):
     if (result.purpose !== purpose) throw new ProviderEgressDeniedError("provider_egress_purpose_mismatch");
 
     const issuedAt = now();
-    const expiresAt = issuedAt + options.permitTtlMs;
-    if (!Number.isSafeInteger(issuedAt) || !Number.isSafeInteger(expiresAt)) {
+    const expiresAt = Math.min(issuedAt + options.permitTtlMs, result.validUntilMs ?? Number.POSITIVE_INFINITY);
+    if (!Number.isSafeInteger(issuedAt) || !Number.isSafeInteger(expiresAt) || issuedAt >= expiresAt) {
       throw new ProviderEgressDeniedError("provider_egress_permit_stale");
     }
     const permit = Object.freeze(Object.create(null)) as ProviderEgressPermit;

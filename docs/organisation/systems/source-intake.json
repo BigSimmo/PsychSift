@@ -139,6 +139,7 @@
     "src/lib/upload-limits.ts",
     "src/lib/upload-structure.ts",
     "src/lib/visual-intelligence.ts",
+    "supabase/functions/_shared/admin-unscanned-exception.ts",
     "supabase/functions/_shared/document-ingress-safety.ts",
     "supabase/functions/_shared/ingestion-attempt.ts",
     "supabase/functions/_shared/ingestion-provider-egress.ts",

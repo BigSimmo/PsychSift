@@ -45,17 +45,61 @@ documents and uses; no WA-wide permission may be inferred from a publisher, URL 
    evidence of WA authority. Test national/WA mismatches and protected/link-only publishers.
    Source eligibility, permission for provider processing and permission for public display
    remain distinct decisions.
-4. **Scanning.** Preserve default refusal. Present a concrete choice between a commissioned
-   scanner configuration and an explicit administrator-only exception. An exception must be
-   attributable, time-limited, source/admission-bound, revocable, restricted to its approved
-   channel and reported as unscanned, never `clean`. The existing scanner union and safety
-   evaluator require a reviewed contract change; document metadata or an environment boolean
-   cannot supply an exception. This plan does not reinterpret the October deferral as approval.
+4. **Scanning.** The owner selected a source-scoped administrator-only unscanned exception on
+   1 November; see [the decision](decisions/2026-11-01-administrator-source-unscanned-exception.md).
+   The local implementation is described below. Default refusal, real-scanner paths and all
+   non-malware checks remain. This selection does not activate a runtime module or grant any
+   document rights, ingestion, provider-call or rollout approval.
 
 Implement these changes on a feature branch with synthetic fixtures. Review stale/revoked grants,
 cross-owner sources, malformed or active PDFs, hidden text, oversized files, cancellation,
 scanner failure and exact provider payload binding. Draft any migration unmerged; production
 application requires the owner's permission for that specific database change.
+
+## Administrator unscanned exception contract
+
+Local implementation: `supabase/functions/_shared/admin-unscanned-exception.ts`,
+`worker/admin-text-inspection.ts` and the existing ingress safety authority. The trusted mounted
+module can explicitly return `backend: admin_unscanned_exception` from `loadScannerConfiguration`.
+It must independently reload both the current exception grant and the administrator admission
+provenance on every call. The callback receives the job, source binding, exact checked-byte hash,
+purpose and source/payload phase so it can look up that exact scope. It must not synthesize a grant
+or an admission from document metadata, a role label or a caller-supplied boolean.
+
+The strict evidence contract contains:
+
+- An active exception ID and version, responsible administrator and owner IDs, current complete
+  source/attempt/lease/authority binding, admission digest, catalogue key, MIME type, byte count,
+  `embedding` purpose, hashed approval reference, issue time and expiry. Validity is at most
+  24 hours. Missing, revoked, future, expired or malformed evidence refuses.
+- Separate current admission provenance: `admin_api` channel, administrator actor and current
+  administrator status, matching administrator/owner/document/admission IDs, admission digest
+  and original source hash. Current authority facts alone do not expose actor/channel. A backend
+  import, ordinary upload or country-level authority declaration cannot establish this scope.
+
+The module is a trusted server boundary: these contracts do not cryptographically authenticate
+the supplier or implement a database admission reader. Before separately authorized activation,
+review its actual data access and prove that provenance comes from admission events/current role
+state and that grants/revocations come from the operative server-owned exception store. No such
+module, real grant or exception store is provisioned by this change. Existing deployed modules
+that only return scanner configurations remain compatible.
+
+After the existing complete-source, rights, licence, catalogue, identifier, active-content and
+source-derived-payload checks pass, the adapter validates the grant against the freshly loaded
+facts and mints separate opaque in-process receipts for original bytes and exact payload bytes.
+The gate rejects raw records, cloned/serialized receipts, different bindings/purposes and expired
+receipts. Source and payload evidence are pinned together; changed grants cannot renew a permit.
+An unavailable scanner never falls back to this mode. Revocation is detected by fresh supplier
+reads before each provider assertion, not by a background revocation subscription.
+
+Successful safety evidence explicitly says `scanner:unscanned` with the policy and evidence digest,
+never `scanner:clean`. Permits cannot outlive the exception, including issuance from an earlier
+evaluation result. Receipt validity is process-local; restart requires fresh evidence and new
+receipts. No unscanned-upload authority crosses a network through serialized JSON.
+
+This exception does not extend the current supported formats: national plain text and the exact
+reviewed native PDF remain the only supported inspection paths. General PDFs, WA jurisdiction
+support, rights decisions and shadow promotion remain separate implementation/acceptance work.
 
 ## Visibility and rollback acceptance
 
@@ -167,7 +211,9 @@ advisory-window extension may be inferred from this plan.
 ## Checkpoint
 
 Objective: carry out the audit recommendations without ingestion or re-index execution.
-Base: `08fbeda`; branch: `rag-ingestion-safety-20261101`. Owned work: offline gate validation and
+Original base: `08fbeda`; preparation commit: `daadb4f62`; branch: `rag-ingestion-safety-20261101`.
+Continuation: implement the owner-selected source-scoped administrator-only unscanned exception
+locally, with synthetic tests and independent review. Owned work: offline gate validation and
 report, audit command alias, this plan, runbook/design corrections and owner decision.
 Independent read-only source review confirmed the visibility/rollback findings; deployed state
 is unverified. Fresh checks: 47 gate/report tests and 46 existing rollback/page/snapshot tests
@@ -177,12 +223,20 @@ and 21 expected source records only. Offline production-readiness structural che
 pending legal/privacy and hosted-evidence blockers; this is not production readiness. Independent
 diff review found no executable must-fix issues; its two documentation corrections are incorporated.
 No PostgreSQL executable is installed here, and no database runtime proof was attempted.
-Legal rights, scanner/exception design approval, implementation and integration of
-the admission extension, scratch-DB runtime proof, candidate selection and bounded paid-run
-approval remain outstanding. Next action: review the admission design above, implement the
-selected scanning policy with the PDF/jurisdiction contract and obtain independent security review
-before proposing activation. No local commit/publication/deployment or task-ledger reconciliation
-is implied by this checkpoint; report those separately at handoff. The owner has been asked to
-choose commissioned ClamAV scanning or a scoped administrator-only unscanned exception; neither
-option is selected or implemented by elapsed time. Continue local implementation after that
-answer; publication, live operations and paid runs retain their separate boundaries.
+Legal rights, implementation and integration of the general PDF/jurisdiction admission extension,
+trusted runtime exception commissioning, scratch-DB runtime proof, candidate selection and bounded paid-run
+approval remain outstanding. Next action after this exception implementation: extend the PDF and
+jurisdiction contracts locally, then obtain their independent security review before proposing
+activation. No publication, deployment or task-ledger reconciliation is implied by this checkpoint;
+report those separately at handoff. Ingestion, re-index, paid evaluation, merge and deployment
+require separate approval under the owner's latest instruction.
+
+Exception continuation verification (1 November): 249 focused tests across ingress safety,
+exception receipts, inspection/runtime composition and Node/Edge provider boundaries passed.
+Typecheck, owned-file lint, formatting, worker bundle compilation, repository links, organisation,
+instructions, decisions and diff checks passed. The type check initially caught test-fixture digest
+types; these were corrected before the passing check. Independent source/security review found
+no must-fix issues. Tests used synthetic inputs and scanner/provider stubs only; bundle compilation
+did not execute the worker. No ingestion, re-index, paid evaluation, provider operation, database
+change, merge or deployment occurred. The source changes remain local until separately authorized
+publication; no canonical task-ledger reconciliation is claimed.
