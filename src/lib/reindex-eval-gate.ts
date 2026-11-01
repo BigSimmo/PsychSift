@@ -369,6 +369,53 @@ function missingRetrievalMetrics(label: "baselineRetrieval" | "candidateRetrieva
   );
 }
 
+// Finite numbers alone are not evidence: empty populations and impossible rates
+// used to produce GO. Validate both sides before applying any release threshold.
+function invalidSummaryMetrics(
+  label: string,
+  summary: RetrievalGateSummary | QualityGateSummary,
+  kind: "retrieval" | "quality",
+) {
+  const failures: string[] = [];
+  const countKeys =
+    kind === "retrieval"
+      ? ["case_count", "content_mrr_case_count", "failed_case_count"]
+      : ["case_count", "unsupported_count", "expected_danger_warning_missing_count"];
+  const values = summary as unknown as Record<string, unknown>;
+  for (const key of countKeys) {
+    const value = values[key];
+    const minimum = key === "case_count" || key === "content_mrr_case_count" ? 1 : 0;
+    if (!Number.isSafeInteger(value) || (value as number) < minimum || (value as number) > summary.case_count) {
+      failures.push(`${label}.${key} must be an integer between ${minimum} and case_count`);
+    }
+  }
+  const rateKeys =
+    kind === "retrieval"
+      ? ["document_recall_at_5", "content_recall_at_5", "top_k_hit_rate", "content_mrr_at_10", "mrr_at_10"]
+      : [
+          "grounded_supported_rate",
+          "unsupported_correct_rate",
+          "expected_hit_rate",
+          "citation_failure_rate",
+          "numeric_grounding_failure_rate",
+          "source_governance_danger_failure_rate",
+          "stale_review_unknown_rate",
+          "review_required_rate",
+        ];
+  for (const key of rateKeys) {
+    const value = values[key];
+    if (value !== undefined && (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 1)) {
+      failures.push(`${label}.${key} must be a finite rate between 0 and 1`);
+    }
+  }
+  const latencyKey = kind === "retrieval" ? "p90_latency_ms" : "p95_latency_ms";
+  const latency = values[latencyKey];
+  if (latency !== undefined && (typeof latency !== "number" || !Number.isFinite(latency) || latency < 0)) {
+    failures.push(`${label}.${latencyKey} must be a finite non-negative duration`);
+  }
+  return failures;
+}
+
 function populationFailures(args: {
   baselineRetrieval: RetrievalGateSummary;
   candidateRetrieval: RetrievalGateSummary;
@@ -448,7 +495,11 @@ export function decideReindexGate(
     config.retrieval,
     input.chunkingExperiment ?? false,
   );
-  const gateFailures = populationFailures(input);
+  const gateFailures = [
+    ...populationFailures(input),
+    ...invalidSummaryMetrics("baselineRetrieval", input.baselineRetrieval, "retrieval"),
+    ...invalidSummaryMetrics("candidateRetrieval", input.candidateRetrieval, "retrieval"),
+  ];
 
   const hasBaselineQuality = Boolean(input.baselineQuality);
   const hasCandidateQuality = Boolean(input.candidateQuality);
@@ -480,6 +531,10 @@ export function decideReindexGate(
         failures: [...gateFailures, `quality summaries are missing required metrics: ${missingMetrics.join(", ")}`],
       };
     }
+    gateFailures.push(
+      ...invalidSummaryMetrics("baselineQuality", input.baselineQuality, "quality"),
+      ...invalidSummaryMetrics("candidateQuality", input.candidateQuality, "quality"),
+    );
     checks.push(...qualityChecks(input.baselineQuality, input.candidateQuality, config.quality));
   }
 

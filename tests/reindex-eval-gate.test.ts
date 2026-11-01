@@ -35,6 +35,26 @@ function quality(overrides: Partial<QualityGateSummary> = {}): QualityGateSummar
 }
 
 describe("decideReindexGate — retrieval", () => {
+  it.each([
+    { case_count: 0, content_mrr_case_count: 0 },
+    { content_mrr_case_count: 0 },
+    { case_count: 4.5 },
+    { content_mrr_case_count: 5 },
+    { failed_case_count: -1 },
+    { document_recall_at_5: 1.1 },
+    { content_mrr_at_10: -0.1 },
+    { mrr_at_10: Number.NaN },
+    { p90_latency_ms: -1 },
+  ])("refuses invalid evidence even when both summaries match: %j", (overrides) => {
+    const summary = retrieval(overrides);
+    expect(
+      decideReindexGate({
+        baselineRetrieval: summary,
+        candidateRetrieval: summary,
+        qualityMode: "retrieval_only",
+      }).decision,
+    ).toBe("NO_GO");
+  });
   it("returns GO when the candidate matches or beats the baseline and clears the floors", () => {
     const decision = decideReindexGate({
       baselineRetrieval: retrieval(),
@@ -245,6 +265,25 @@ describe("decideReindexGate — retrieval", () => {
 });
 
 describe("decideReindexGate — quality", () => {
+  it.each([
+    { case_count: 0, unsupported_count: 0 },
+    { unsupported_count: 5 },
+    { unsupported_count: 0.5 },
+    { citation_failure_rate: -0.1 },
+    { grounded_supported_rate: 1.1 },
+    { expected_danger_warning_missing_count: -1 },
+    { expected_hit_rate: Number.POSITIVE_INFINITY },
+    { p95_latency_ms: -1 },
+  ])("refuses invalid quality evidence: %j", (overrides) => {
+    expect(
+      decideReindexGate({
+        baselineRetrieval: retrieval(),
+        candidateRetrieval: retrieval(),
+        baselineQuality: quality(overrides),
+        candidateQuality: quality(overrides),
+      }).decision,
+    ).toBe("NO_GO");
+  });
   it("returns GO when retrieval and quality both hold", () => {
     const decision = decideReindexGate({
       baselineRetrieval: retrieval(),
