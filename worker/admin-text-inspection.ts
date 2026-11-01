@@ -20,6 +20,13 @@ import { scanWindowsDefenderBytes, type WindowsMalwareInspectionConfiguration } 
 import { scanClamAvBytes, type ClamAvInspectionConfiguration } from "./clamav-inspection";
 import { parseWorkerProviderAuthorityFacts, type WorkerProviderAuthorityFacts } from "./provider-egress";
 import type { ManagedProviderEmbeddingRequestContext } from "./managed-provider-vectors";
+import {
+  ADMIN_UNSCANNED_EXCEPTION_POLICY,
+  issueAdminUnscannedExceptionReceipt,
+  snapshotAdminUnscannedExceptionEvidence,
+  type AdminUnscannedExceptionEvidence,
+  type AdminUnscannedExceptionScope,
+} from "../supabase/functions/_shared/admin-unscanned-exception";
 
 /** A deliberately bounded first adapter, not a PDF or general document inspector. */
 export const ADMIN_TEXT_INSPECTION_MAX_BYTES = 2 * 1024 * 1024;
@@ -162,6 +169,10 @@ export type AdminTextCurrentFacts = Readonly<{
 export type AdminTextScannerConfiguration =
   | WindowsMalwareInspectionConfiguration
   | Readonly<{
+      backend: "admin_unscanned_exception";
+      evidence: AdminUnscannedExceptionEvidence;
+    }>
+  | Readonly<{
       backend: "clamav";
       configuration: ClamAvInspectionConfiguration;
     }>;
@@ -169,6 +180,12 @@ export type AdminTextScannerConfiguration =
 function snapshotScanner(supplied: AdminTextScannerConfiguration, contentSha256: ContentSha256) {
   if (!supplied || typeof supplied !== "object") return refuse("scanner_configuration_invalid");
   if ("backend" in supplied) {
+    if (supplied.backend === "admin_unscanned_exception") {
+      return Object.freeze({
+        backend: "admin_unscanned_exception" as const,
+        evidence: snapshotAdminUnscannedExceptionEvidence(supplied.evidence),
+      });
+    }
     if (supplied.backend !== "clamav") return refuse("scanner_configuration_invalid");
     const value = supplied.configuration;
     if (
@@ -306,6 +323,7 @@ export function createAdminTextInspectionLoader(options: AdminTextInspectionOpti
       let scannerPins: string | undefined;
       let currentPolicy: AdminTextCurrentFacts["policyObservations"] | undefined;
       let policyVersion: string | undefined;
+      let exceptionScope: AdminUnscannedExceptionScope | undefined;
       const current = async () => {
         active();
         if (JSON.stringify(attempt.fence) !== JSON.stringify(fence)) refuse("fence_changed");
@@ -501,6 +519,14 @@ export function createAdminTextInspectionLoader(options: AdminTextInspectionOpti
         if (identity !== undefined && identity !== observed) refuse("current_authority_changed");
         identity = observed;
         currentPolicy = Object.freeze({ ...policy, binding: Object.freeze({ ...policy.binding }) });
+        exceptionScope = Object.freeze({
+          binding,
+          ownerId,
+          admissionDigest: facts.admissionDigest,
+          catalogueKey: value.catalogueKey,
+          mimeType: facts.mimeType,
+          sourceByteLength: facts.sourceByteLength,
+        });
         // Binds the trusted current grant verdict and declared rightsEvidenceRef to
         // exact current owner/document/source/admission/fence/catalogue provenance.
         // Source permits bind the full current review and plan, while each SDK batch
@@ -523,7 +549,7 @@ export function createAdminTextInspectionLoader(options: AdminTextInspectionOpti
         // Cross-phase pins include every backend setting. Windows' exact-byte cloud
         // grant necessarily differs between source/payload; each phase checks it in full.
         const pins = JSON.stringify(
-          scanner.backend === "clamav"
+          scanner.backend !== "windows-defender"
             ? scanner
             : {
                 ...scanner,
@@ -533,6 +559,22 @@ export function createAdminTextInspectionLoader(options: AdminTextInspectionOpti
         if (scannerPins !== undefined && scannerPins !== pins) refuse("scanner_configuration_changed");
         scannerPins = pins;
         await current();
+        if (scanner.backend === "admin_unscanned_exception") {
+          // This is an explicit exception, never fallback from a scanner error.
+          // current() has already checked rights, original bytes and source-derived payload.
+          const receipt = issueAdminUnscannedExceptionReceipt(scanner.evidence, exceptionScope!, contentSha256);
+          const after = await abortable(loadScannerConfiguration(args), signal);
+          active();
+          if (JSON.stringify(snapshotScanner(after, contentSha256)) !== JSON.stringify(scanner))
+            refuse("scanner_configuration_changed");
+          await current();
+          return Object.freeze({
+            verdict: "unscanned" as const,
+            scannerVersion: ADMIN_UNSCANNED_EXCEPTION_POLICY,
+            contentSha256,
+            exceptionReceipt: receipt,
+          });
+        }
         const inspected = new Uint8Array(bytes);
         const result =
           scanner.backend === "clamav"
