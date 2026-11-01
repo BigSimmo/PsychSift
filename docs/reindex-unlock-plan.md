@@ -199,12 +199,22 @@ canary check, and retain source/clinical acceptance.
 
 ## Worker security follow-up
 
-#CK9GBW already requires weekly review of daily image-scan summaries. Next review: **2 November
-2026**, then weekly, with remediation decisions before **2 December 2026**. Inspect the latest
-`docker-image.yml` worker scan and GitHub issue #3741 after permission for that provider read;
-tie findings to the image digest and compare available fixed Debian/pip versions. This session
-did not retrieve findings, dispatch CI, build an image or verify that all 24 remain applicable.
-The existing workflow remains unchanged; this dated next action is not an external reminder.
+#CK9GBW was rechecked on **1 November 2026** against the existing completed daily image scan,
+[run 41334653850](https://github.com/BigSimmo/PsychSift/actions/runs/41334653850), at main `08fbeda`.
+The [sanitized report](audit/worker-image-recheck-2026-11-01.json) pins the image digest and
+artifact identity. It records **69 unsuppressed rows: 60 HIGH and 9 CRITICAL**. All original
+24 issue #3741 rows remain, with no fixed version listed for those exact entries. These are
+scanner observations, not independent exploitability or source-backport determinations.
+
+A separate NLTK advisory lists `3.10.4`. Compare that release with the repository's pinned
+upstream security commit before proposing an upgrade; the authentic `3.10.3` version alone
+does not establish which source repairs are present. The report also retains the fixed-version
+leads for Pillow and the two new SQLite rows since the 31 October scan. The green image job
+uses the existing advisory policy and is not security acceptance or permission to ingest.
+
+Next weekly review: **by 8 November 2026**, with remediation decisions before **2 December 2026**.
+No scan was dispatched, package changed, image built, suppression added or deployed image
+verified for this recheck. The existing workflow remains unchanged; this date is not an external reminder.
 Preserve the owner's restriction on hand backports until after the pilot. No suppression or
 advisory-window extension may be inferred from this plan.
 
@@ -240,3 +250,28 @@ no must-fix issues. Tests used synthetic inputs and scanner/provider stubs only;
 did not execute the worker. No ingestion, re-index, paid evaluation, provider operation, database
 change, merge or deployment occurred. The source changes remain local until separately authorized
 publication; no canonical task-ledger reconciliation is claimed.
+
+Publication continuation (1 November): the owner subsequently approved the recommended PR,
+deployment and small-pilot steps. General operational permission is recorded; existing rights,
+clinical/privacy, exact database-change and bounded-spending controls still apply. No priced,
+source-pinned pilot has been approved in this continuation, and no operational grant is inferred
+from document metadata.
+
+The reviewed feature branch was published at `1e312aba98fb435d96452c8d7c6d7824f32ab2b3`.
+The initial PR-local run stopped on a stale generated documentation snapshot; it was corrected,
+and all remaining selected static checks passed. The full unit run had 34,339 passes, three
+failures and two skips. All three failures were unchanged cloud-bootstrap tests requiring
+npm 11.17.0 rather than this host's 11.9.0. All 23 tests in that suite then passed through the
+documented staged-real-npm selector; no global runtime or tests changed, and no full-suite rerun
+is claimed. The explicit demo/offline application build passed, including compilation,
+TypeScript, static generation and the client-bundle secret check; its normal prebuild/postbuild
+issue-cache cycle finished with the tracked cache restored. This proves local compilation, not
+production readiness or activation.
+
+PR creation is held because another draft PR (#3866) created a paid Supabase preview despite
+reported disablement. Current metadata confirms that preview is inactive and production is
+healthy, but available tools do not expose the integration's automatic-preview setting. The
+owner has been asked to verify the current setting. Publishing this feature branch created no
+new Supabase preview. No PR, merge, deployment, new scan, ingestion, re-index or paid evaluation
+has been initiated by this continuation. The exact PR text is prepared locally; no canonical
+task-ledger reconciliation is claimed.

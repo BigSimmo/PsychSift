@@ -1,0 +1,1107 @@
+{
+  "observedDate": "2026-11-01",
+  "repository": "BigSimmo/PsychSift",
+  "source": {
+    "workflowRun": 41334653850,
+    "job": 124931792070,
+    "commit": "08fbeda5148d170f3106c80dc43c45e5f650c4b1",
+    "scanTime": "2026-11-01T18:24:25Z",
+    "url": "https://github.com/BigSimmo/PsychSift/actions/runs/41334653850",
+    "image": "clinical-kb-worker:ci",
+    "imageDigest": "sha256:e1e9c9c93bac9f932c4d9e29296c2ab3c9830eff1b908e045f3f1fc9e26e7a76",
+    "artifact": {
+      "id": 13095516581,
+      "digest": "sha256:25cb5ed567f26f2faa9c6c6c63095a96eef7faa06cc8534e1cefdd9702996450"
+    }
+  },
+  "scope": "Existing completed CI-image report; deployed image not verified; no new scan dispatched",
+  "summary": {
+    "unsuppressed": 69,
+    "high": 60,
+    "critical": 9,
+    "originalTrackedRows": 24,
+    "originalRowsListingFixedVersion": 0,
+    "additionalRows": 45
+  },
+  "originalTrackedFindings": [
+    {
+      "type": "debian",
+      "package": "bsdutils",
+      "source": "",
+      "installed": "1:2.41.5-0+deb13u1+psychsift1",
+      "fixed": "",
+      "cve": "CVE-2026-78409",
+      "severity": "HIGH"
+    },
+    {
+      "type": "debian",
+      "package": "libacl1",
+      "source": "",
+      "installed": "2.3.2-2+b1",
+      "fixed": "",
+      "cve": "CVE-2026-54369",
+      "severity": "HIGH"
+    },
+    {
+      "type": "debian",
+      "package": "libblkid1",
+      "source": "",
+      "installed": "2.41.5-0+deb13u1+psychsift1",
+      "fixed": "",
+      "cve": "CVE-2026-78409",
+      "severity": "HIGH"
+    },
+    {
+      "type": "debian",
+      "package": "libcurl4t64",
+      "source": "",
+      "installed": "8.21.0-2~bpo13+1",
+      "fixed": "",
+      "cve": "CVE-2026-12064",
+      "severity": "HIGH"
+    },
+    {
+      "type": "debian",
+      "package": "libcurl4t64",
+      "source": "",
+      "installed": "8.21.0-2~bpo13+1",
+      "fixed": "",
+      "cve": "CVE-2026-8458",
+      "severity": "HIGH"
+    },
+    {
+      "type": "debian",
+      "package": "liblastlog2-2",
+      "source": "",
+      "installed": "2.41.5-0+deb13u1+psychsift1",
+      "fixed": "",
+      "cve": "CVE-2026-78409",
+      "severity": "HIGH"
+    },
+    {
+      "type": "debian",
+      "package": "libmount1",
+      "source": "",
+      "installed": "2.41.5-0+deb13u1+psychsift1",
+      "fixed": "",
+      "cve": "CVE-2026-78409",
+      "severity": "HIGH"
+    },
+    {
+      "type": "debian",
+      "package": "libsmartcols1",
+      "source": "",
+      "installed": "2.41.5-0+deb13u1+psychsift1",
+      "fixed": "",
+      "cve": "CVE-2026-78409",
+      "severity": "HIGH"
+    },
+    {
+      "type": "debian",
+      "package": "libsystemd0",
+      "source": "",
+      "installed": "257.13-1~deb13u1",
+      "fixed": "",
+      "cve": "CVE-2026-16742",
+      "severity": "HIGH"
+    },
+    {
+      "type": "debian",
+      "package": "libtiff6",
+      "source": "",
+      "installed": "4.7.0-3+deb13u3",
+      "fixed": "",
+      "cve": "CVE-2026-36849",
+      "severity": "HIGH"
+    },
+    {
+      "type": "debian",
+      "package": "libtiff6",
+      "source": "",
+      "installed": "4.7.0-3+deb13u3",
+      "fixed": "",
+      "cve": "CVE-2026-52490",
+      "severity": "HIGH"
+    },
+    {
+      "type": "debian",
+      "package": "libudev1",
+      "source": "",
+      "installed": "257.13-1~deb13u1",
+      "fixed": "",
+      "cve": "CVE-2026-16742",
+      "severity": "HIGH"
+    },
+    {
+      "type": "debian",
+      "package": "libuuid1",
+      "source": "",
+      "installed": "2.41.5-0+deb13u1+psychsift1",
+      "fixed": "",
+      "cve": "CVE-2026-78409",
+      "severity": "HIGH"
+    },
+    {
+      "type": "debian",
+      "package": "libx11-6",
+      "source": "",
+      "installed": "2:1.8.12-1",
+      "fixed": "",
+      "cve": "CVE-2026-88806",
+      "severity": "HIGH"
+    },
+    {
+      "type": "debian",
+      "package": "libx11-data",
+      "source": "",
+      "installed": "2:1.8.12-1",
+      "fixed": "",
+      "cve": "CVE-2026-88806",
+      "severity": "HIGH"
+    },
+    {
+      "type": "debian",
+      "package": "libx11-xcb1",
+      "source": "",
+      "installed": "2:1.8.12-1",
+      "fixed": "",
+      "cve": "CVE-2026-88806",
+      "severity": "HIGH"
+    },
+    {
+      "type": "debian",
+      "package": "libxml2",
+      "source": "",
+      "installed": "2.12.7+dfsg+really2.9.14-2.1+deb13u3+psychsift1",
+      "fixed": "",
+      "cve": "CVE-2026-6653",
+      "severity": "CRITICAL"
+    },
+    {
+      "type": "debian",
+      "package": "libxml2",
+      "source": "",
+      "installed": "2.12.7+dfsg+really2.9.14-2.1+deb13u3+psychsift1",
+      "fixed": "",
+      "cve": "CVE-2026-86139",
+      "severity": "HIGH"
+    },
+    {
+      "type": "debian",
+      "package": "libxrender1",
+      "source": "",
+      "installed": "1:0.9.12-1",
+      "fixed": "",
+      "cve": "CVE-2026-88807",
+      "severity": "HIGH"
+    },
+    {
+      "type": "debian",
+      "package": "login",
+      "source": "",
+      "installed": "1:4.16.0-2+really2.41.5-0+deb13u1+psychsift1",
+      "fixed": "",
+      "cve": "CVE-2026-78409",
+      "severity": "HIGH"
+    },
+    {
+      "type": "debian",
+      "package": "mount",
+      "source": "",
+      "installed": "2.41.5-0+deb13u1+psychsift1",
+      "fixed": "",
+      "cve": "CVE-2026-78409",
+      "severity": "HIGH"
+    },
+    {
+      "type": "debian",
+      "package": "perl-base",
+      "source": "",
+      "installed": "5.40.1-6+deb13u1",
+      "fixed": "",
+      "cve": "CVE-2026-9538",
+      "severity": "HIGH"
+    },
+    {
+      "type": "debian",
+      "package": "util-linux",
+      "source": "",
+      "installed": "2.41.5-0+deb13u1+psychsift1",
+      "fixed": "",
+      "cve": "CVE-2026-78409",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "nltk",
+      "source": "",
+      "installed": "3.10.3",
+      "fixed": "",
+      "cve": "CVE-2026-81726",
+      "severity": "HIGH"
+    }
+  ],
+  "fixedVersionLeads": [
+    {
+      "type": "python-pkg",
+      "package": "nltk",
+      "source": "",
+      "installed": "3.10.3",
+      "fixed": "3.10.4",
+      "cve": "GHSA-j456-xh4h-cpf2",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-112393",
+      "severity": "CRITICAL"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-112398",
+      "severity": "CRITICAL"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-112900",
+      "severity": "CRITICAL"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-96639",
+      "severity": "CRITICAL"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-112390",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-112392",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-112399",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-112402",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-112405",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-112406",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-112892",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-112893",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-112894",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-112902",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-96637",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-96640",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-96642",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-96643",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-96644",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-96778",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "GHSA-78g4-xqwv-q3g8",
+      "severity": "HIGH"
+    }
+  ],
+  "limitations": [
+    "A successful advisory CI job is not security acceptance; scanner findings alone do not prove exploitability or absence of source backports.",
+    "Deployed image identity was not checked.",
+    "No new scan dispatched, package upgraded, suppression added or advisory window changed.",
+    "Repeated scan presentations reconciled to the final 69-row worker block; duplicate package rows inside that block are retained."
+  ],
+  "pinnedNltkSource": {
+    "commit": "8658f3e7c172abf87f99db045b59a6b1a9e80c7a",
+    "reportedVersion": "3.10.3",
+    "source": "worker/python/requirements.in and docs/worker-deploy-runbook.md",
+    "nextAction": "Compare published 3.10.4 source and compatibility against the pinned security repairs before proposing an upgrade."
+  },
+  "unsuppressedFindings": [
+    {
+      "type": "debian",
+      "package": "bsdutils",
+      "source": "",
+      "installed": "1:2.41.5-0+deb13u1+psychsift1",
+      "fixed": "",
+      "cve": "CVE-2026-78409",
+      "severity": "HIGH"
+    },
+    {
+      "type": "debian",
+      "package": "libacl1",
+      "source": "",
+      "installed": "2.3.2-2+b1",
+      "fixed": "",
+      "cve": "CVE-2026-54369",
+      "severity": "HIGH"
+    },
+    {
+      "type": "debian",
+      "package": "libblkid1",
+      "source": "",
+      "installed": "2.41.5-0+deb13u1+psychsift1",
+      "fixed": "",
+      "cve": "CVE-2026-78409",
+      "severity": "HIGH"
+    },
+    {
+      "type": "debian",
+      "package": "libcurl4t64",
+      "source": "",
+      "installed": "8.21.0-2~bpo13+1",
+      "fixed": "",
+      "cve": "CVE-2026-12064",
+      "severity": "HIGH"
+    },
+    {
+      "type": "debian",
+      "package": "libcurl4t64",
+      "source": "",
+      "installed": "8.21.0-2~bpo13+1",
+      "fixed": "",
+      "cve": "CVE-2026-8458",
+      "severity": "HIGH"
+    },
+    {
+      "type": "debian",
+      "package": "liblastlog2-2",
+      "source": "",
+      "installed": "2.41.5-0+deb13u1+psychsift1",
+      "fixed": "",
+      "cve": "CVE-2026-78409",
+      "severity": "HIGH"
+    },
+    {
+      "type": "debian",
+      "package": "libmount1",
+      "source": "",
+      "installed": "2.41.5-0+deb13u1+psychsift1",
+      "fixed": "",
+      "cve": "CVE-2026-78409",
+      "severity": "HIGH"
+    },
+    {
+      "type": "debian",
+      "package": "libsmartcols1",
+      "source": "",
+      "installed": "2.41.5-0+deb13u1+psychsift1",
+      "fixed": "",
+      "cve": "CVE-2026-78409",
+      "severity": "HIGH"
+    },
+    {
+      "type": "debian",
+      "package": "libsqlite3-0",
+      "source": "",
+      "installed": "3.46.1-7+deb13u2",
+      "fixed": "",
+      "cve": "CVE-2026-119373",
+      "severity": "HIGH"
+    },
+    {
+      "type": "debian",
+      "package": "libsqlite3-0",
+      "source": "",
+      "installed": "3.46.1-7+deb13u2",
+      "fixed": "",
+      "cve": "CVE-2026-119586",
+      "severity": "HIGH"
+    },
+    {
+      "type": "debian",
+      "package": "libsystemd0",
+      "source": "",
+      "installed": "257.13-1~deb13u1",
+      "fixed": "",
+      "cve": "CVE-2026-16742",
+      "severity": "HIGH"
+    },
+    {
+      "type": "debian",
+      "package": "libtiff6",
+      "source": "",
+      "installed": "4.7.0-3+deb13u3",
+      "fixed": "",
+      "cve": "CVE-2026-36849",
+      "severity": "HIGH"
+    },
+    {
+      "type": "debian",
+      "package": "libtiff6",
+      "source": "",
+      "installed": "4.7.0-3+deb13u3",
+      "fixed": "",
+      "cve": "CVE-2026-52490",
+      "severity": "HIGH"
+    },
+    {
+      "type": "debian",
+      "package": "libudev1",
+      "source": "",
+      "installed": "257.13-1~deb13u1",
+      "fixed": "",
+      "cve": "CVE-2026-16742",
+      "severity": "HIGH"
+    },
+    {
+      "type": "debian",
+      "package": "libuuid1",
+      "source": "",
+      "installed": "2.41.5-0+deb13u1+psychsift1",
+      "fixed": "",
+      "cve": "CVE-2026-78409",
+      "severity": "HIGH"
+    },
+    {
+      "type": "debian",
+      "package": "libx11-6",
+      "source": "",
+      "installed": "2:1.8.12-1",
+      "fixed": "",
+      "cve": "CVE-2026-88806",
+      "severity": "HIGH"
+    },
+    {
+      "type": "debian",
+      "package": "libx11-data",
+      "source": "",
+      "installed": "2:1.8.12-1",
+      "fixed": "",
+      "cve": "CVE-2026-88806",
+      "severity": "HIGH"
+    },
+    {
+      "type": "debian",
+      "package": "libx11-xcb1",
+      "source": "",
+      "installed": "2:1.8.12-1",
+      "fixed": "",
+      "cve": "CVE-2026-88806",
+      "severity": "HIGH"
+    },
+    {
+      "type": "debian",
+      "package": "libxml2",
+      "source": "",
+      "installed": "2.12.7+dfsg+really2.9.14-2.1+deb13u3+psychsift1",
+      "fixed": "",
+      "cve": "CVE-2026-6653",
+      "severity": "CRITICAL"
+    },
+    {
+      "type": "debian",
+      "package": "libxml2",
+      "source": "",
+      "installed": "2.12.7+dfsg+really2.9.14-2.1+deb13u3+psychsift1",
+      "fixed": "",
+      "cve": "CVE-2026-86139",
+      "severity": "HIGH"
+    },
+    {
+      "type": "debian",
+      "package": "libxrender1",
+      "source": "",
+      "installed": "1:0.9.12-1",
+      "fixed": "",
+      "cve": "CVE-2026-88807",
+      "severity": "HIGH"
+    },
+    {
+      "type": "debian",
+      "package": "login",
+      "source": "",
+      "installed": "1:4.16.0-2+really2.41.5-0+deb13u1+psychsift1",
+      "fixed": "",
+      "cve": "CVE-2026-78409",
+      "severity": "HIGH"
+    },
+    {
+      "type": "debian",
+      "package": "mount",
+      "source": "",
+      "installed": "2.41.5-0+deb13u1+psychsift1",
+      "fixed": "",
+      "cve": "CVE-2026-78409",
+      "severity": "HIGH"
+    },
+    {
+      "type": "debian",
+      "package": "perl-base",
+      "source": "",
+      "installed": "5.40.1-6+deb13u1",
+      "fixed": "",
+      "cve": "CVE-2026-9538",
+      "severity": "HIGH"
+    },
+    {
+      "type": "debian",
+      "package": "util-linux",
+      "source": "",
+      "installed": "2.41.5-0+deb13u1+psychsift1",
+      "fixed": "",
+      "cve": "CVE-2026-78409",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "nltk",
+      "source": "",
+      "installed": "3.10.3",
+      "fixed": "",
+      "cve": "CVE-2026-81726",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "nltk",
+      "source": "",
+      "installed": "3.10.3",
+      "fixed": "3.10.4",
+      "cve": "GHSA-j456-xh4h-cpf2",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-112393",
+      "severity": "CRITICAL"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-112393",
+      "severity": "CRITICAL"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-112398",
+      "severity": "CRITICAL"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-112398",
+      "severity": "CRITICAL"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-112900",
+      "severity": "CRITICAL"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-112900",
+      "severity": "CRITICAL"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-96639",
+      "severity": "CRITICAL"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-96639",
+      "severity": "CRITICAL"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-112390",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-112390",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-112392",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-112392",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-112399",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-112399",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-112402",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-112402",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-112405",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-112405",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-112406",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-112406",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-112892",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-112892",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-112893",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-112893",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-112894",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-112894",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-112902",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-112902",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-96637",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-96637",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-96640",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-96640",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-96642",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-96642",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-96643",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-96643",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-96644",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-96644",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-96778",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "CVE-2026-96778",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "GHSA-78g4-xqwv-q3g8",
+      "severity": "HIGH"
+    },
+    {
+      "type": "python-pkg",
+      "package": "pillow",
+      "source": "",
+      "installed": "12.3.0",
+      "fixed": "13.0.0",
+      "cve": "GHSA-78g4-xqwv-q3g8",
+      "severity": "HIGH"
+    }
+  ],
+  "previousCompletedReport": {
+    "workflowRun": 41227558959,
+    "scanDate": "2026-10-31",
+    "unsuppressed": 67,
+    "high": 58,
+    "critical": 9,
+    "sameImageDigest": true,
+    "newRowsToday": [
+      {
+        "type": "debian",
+        "package": "libsqlite3-0",
+        "source": "",
+        "installed": "3.46.1-7+deb13u2",
+        "fixed": "",
+        "cve": "CVE-2026-119373",
+        "severity": "HIGH"
+      },
+      {
+        "type": "debian",
+        "package": "libsqlite3-0",
+        "source": "",
+        "installed": "3.46.1-7+deb13u2",
+        "fixed": "",
+        "cve": "CVE-2026-119586",
+        "severity": "HIGH"
+      }
+    ]
+  }
+}
