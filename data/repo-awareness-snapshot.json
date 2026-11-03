@@ -1,7 +1,7 @@
 {
   "version": "repo-awareness-snapshot-v3",
   "captured_revision": {
-    "committed_at": "2026-11-01"
+    "committed_at": "2026-11-03"
   },
   "routes": {
     "modes": [
@@ -1696,6 +1696,10 @@
       {
         "path": "/api/differentials/presentations/[slug]",
         "file": "src/app/api/differentials/presentations/[slug]/route.ts"
+      },
+      {
+        "path": "/api/images/[id]/content",
+        "file": "src/app/api/images/[id]/content/route.ts"
       },
       {
         "path": "/api/roster/rotations/[roundId]",
@@ -3972,6 +3976,11 @@
       },
       {
         "path": "docs/decisions/2026-10-15-no-separate-github-account-for-ai-tools.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-11-03-defer-legal-review-for-internal-build.md",
         "section": "decisions",
         "catalogued": true
       },

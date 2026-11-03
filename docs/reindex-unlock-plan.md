@@ -1,5 +1,97 @@
 # Ingestion unlock and controlled rollout
 
+## 4 November 2026 local continuation — authoritative replay verified; corpus held
+
+Source intake owns this continuation of `fix/rag-preindex-readiness`. The isolated local
+branch is `local/rag-preindex-7fd0e1db2`; its verified imported starting head is
+`7fd0e1db22d45b0efc31865652f8806ac5afb4ad`, containing ten commits after
+`c92e78113abd936c53f88e7e069b2c7331c735a2`. Transfer PR #3890 at
+`dc607428728991df106d2b7b41126178111435b5` remains a separate draft. Its binary bundle
+matched SHA-256 `d0b20e68560536f00ad6f107f1ae7f88c1957fe8273d56c35b414d174d286313`;
+Git verified the prerequisite and imported head. Existing main-checkout edits were not touched.
+
+**Fresh local database evidence.** Node 24.19.0/npm 11.17.0 and installed lock parity pass.
+Docker Desktop's Linux engine was stopped, then started successfully with `overlayfs`;
+the cloud image-access/storage restrictions were not reproduced. The exact workflow-pinned
+Supabase Postgres 17.6.1.127 digest downloaded successfully. Two independent native
+`npm run drift:manifest` generations succeeded; the freshness command, with explicit
+`--committed` first-generation and `--generated` second-generation paths, reported a match.
+The committed schema mirror and four draft migrations were not edited; only the stale
+`supabase/drift-manifest.json` was regenerated.
+
+The pinned CI Supabase CLI 2.108.0 bootstrapped a task-owned disposable emulator using its
+native Postgres 17.6.1.139 image, an initially empty migrations directory, repository roles
+and the CI statement timeout. Studio's registry request returned HTTP 429, so the successful
+retry excluded that database UI only; database/auth/storage and the other emulator services
+ran normally, without an ignore-health-check override. `supabase migration up --local`
+applied the complete chain, including all four November migrations. A captured
+`schema_drift_snapshot()` passed `check:chain-mirror-parity --strict` against the regenerated
+manifest: no unallowlisted divergence, with only the existing emulator `pg_net` exception.
+Migration-role and all 153 SECURITY DEFINER function-grant checks pass; no drift allowlist,
+applied migration or sealed history was changed.
+
+The replayed database behaviour selector initially exposed a missing test registration for
+the new authenticated administrator readmission function. Its exact signature is now covered
+alongside actual ordinary-user and forged-administrator-claim refusals, absent anonymous and
+service-role execution grants, and a no-queued-jobs assertion. That corrected privacy test
+passes on the disposable emulator. Across the eighteen SQL files, seventeen pass; the
+unchanged `roster-behaviour.sql` fails its expected automatic swap approval because its fixed
+November dates are now within seven days (`needsManagerBecause: within_7_days`). That
+unrelated clock-dependent fixture was diagnosed, preserved and is not reported green.
+
+**Actual corpus evidence and remaining fidelity blocker.** A fresh read-only inventory
+confirms 2,066 PDFs, including 2,065 shared ownerless PDFs, 14,313 images and 34,856 table
+facts. All PDFs have recorded content hashes. Three bounded shared-reference originals,
+selected using existing table/image/OCR metadata, downloaded through the existing normal
+server configuration and matched their recorded SHA-256 and byte counts. Originals and
+extracted material remain outside Git and external logs. These selections are metadata-based
+samples, not proof of representative feature coverage or full-library acceptance.
+
+All three originals were refused by the actual rich inspector. Local diagnosis found
+whitespace-only spans and whole-span union rectangles producing false hidden-text/occlusion
+alarms. The inspector now checks meaningful glyph geometry, binds documented ligature
+continuations, and uses per-glyph contrast for white/complex display. Independent review
+found an initial white-text gap-paint regression; its failing reproduction and the malformed
+ligature reproductions were corrected before the final pass. Nineteen focused Python cases
+and five selected TypeScript suites / 66 tests pass. Correction review found no further
+high-confidence defect in those corrections. The final real-source rerun still refuses all
+three with `hidden_text_occluded`; no fidelity gate was weakened to obtain acceptance.
+
+The next source change requires a separate renderer-authoritative evidence profile, not
+automatic fallback after an arbitrary refusal. It must retain source/render identities and
+exclude unverified native text, native table strings and uncomposited embedded images from
+searchable evidence. Simply forcing current OCR is unsafe because the extractor merges OCR
+with native text. Its versioned inspection, source-expectation and terminal contracts must
+describe rendered/OCR evidence honestly, with explicit unresolved table/diagram relationship
+holds. Positive numbers, qualifications, relationships and late material must be validated
+against originals before claiming corpus acceptance.
+
+**Required functionality remains incomplete.** Reconciliation with the original programme
+at `38552bafe0a82a5df2a4467afd5ba211aee5b966` confirms source-anchored, generation-addressed
+summaries are required. Reuse the existing summary producer/normalizer, but integrate trusted
+exact request-body authorization, generation-specific retention and terminal/replay binding
+into the rich path; do not call its current `model_summary` deferral complete. Vision calls
+are a conditional technique; preserved visual meaning and relationships are the requirement.
+The eval-gated shadow driver remains required after the approved pilot and before wider
+batches, as described below. No new batch authority or removal of the PDF bulk 409 hold
+was introduced.
+
+**Hosted/model/approval boundary.** Supported local runtime configuration has the expected
+Supabase target and normal OpenAI/server bindings; no credential values were printed or
+copied. Supabase metadata access works. Railway's connector needs reauthentication, but its
+existing local CLI works and confirms the expected project/production environment, with both
+app and worker still at `c92e78113abd936c53f88e7e069b2c7331c735a2`. The imported implementation
+and local corrections are not deployed. Current `WORKER_PAUSED=true` was not independently
+verified; a filtered log read returned no matching pause evidence. No setting was changed.
+
+No paid inference/token-count comparison, provider model-access verification, model activation,
+production SQL, merge, deployment, production readmission, worker claim or live ingestion ran.
+Fresh model pricing/count fees/account access/monthly allowance, bounded spending approval,
+the specific owner production approvals and release evidence remain required. The local
+checkpoint is not a completion or release verdict; canonical task-ledger reconciliation is
+pending. Continue with the source-fidelity profile and required summary integration, retaining
+the exact local database evidence above. Stop before every live readmission/re-index operation.
+
 ## 3 November 2026 continuation
 
 ### Full-library continuation — local build verified; hosted gates pending

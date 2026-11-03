@@ -48,6 +48,41 @@ def digest(value):
     return "sha256:" + hashlib.sha256(value).hexdigest()
 
 
+def meaningful_glyph_boxes(span):
+    """Exclude explicit whitespace and zero-width ligature continuation boxes.
+
+    A texttrace span can contain distant characters or several lines. Its union
+    bbox is not evidence that paint in the intervening blank area hides text.
+    Unknown/nonfinite meaningful glyph geometry still refuses.
+    """
+    boxes = []
+    compound = None
+    ligatures = {"fi", "ff", "fl", "ft", "st", "ffi", "ffl"}
+    for char in span.get("chars", ()):
+        if chr(char[0]).isspace():
+            compound = None
+            continue
+        box = fitz.Rect(char[3])
+        if not all(math.isfinite(value) for value in (*box, *char[2])) or not box.is_valid:
+            refuse("hidden_text_unsupported")
+        if char[1] == -1:
+            # PyMuPDF represents the rest of an fi/ff/etc compound glyph with
+            # glyph id -1 and zero width; the first glyph covers the compound.
+            if (compound is None or box.width != 0 or box.height <= 0 or
+                    tuple(char[2]) != compound["origin"] or
+                    tuple(box) != (compound["box"].x0, compound["box"].y0,
+                                   compound["box"].x0, compound["box"].y1) or
+                    compound["text"] + chr(char[0]) not in ligatures):
+                refuse("hidden_text_unsupported")
+            compound["text"] += chr(char[0])
+            continue
+        if box.is_empty:
+            refuse("hidden_text_unsupported")
+        boxes.append(box)
+        compound = {"text": chr(char[0]), "origin": tuple(char[2]), "box": box}
+    return boxes
+
+
 def inspect_source(source_path, supplied_limits=None, profile="text", render_dir=None):
     if profile not in {"text", "rich"}:
         refuse("profile_invalid")
@@ -139,33 +174,49 @@ def inspect_source(source_path, supplied_limits=None, profile="text", render_dir
                 refuse("active_content")
             trace = page.get_texttrace()
             display = page.get_bboxlog()
+            text_paint = {}
+            for span in trace:
+                text_paint.setdefault(span["seqno"], []).extend(meaningful_glyph_boxes(span))
             text = page.get_text("text", sort=True)
             if not rich and not text.strip() and (page.get_images(full=True) or any(kind == "fill-image" for kind, _box in display)):
                 refuse("ocr_required")
             if not rich and not text.strip() and any(kind in {"fill-path", "stroke-path"} for kind, _box in display):
                 refuse("unsupported_outlined_text")
             for span in trace:
+                glyph_boxes = meaningful_glyph_boxes(span)
+                if not glyph_boxes:
+                    # Blank characters carry layout, but no hidden source text.
+                    continue
                 bbox = fitz.Rect(span["bbox"])
                 color = span.get("color", ())
                 white = ((len(color) in (1, 3) and all(component >= 0.95 for component in color)) or
                          (len(color) == 4 and all(component <= 0.05 for component in color)))
                 if (span.get("type") != 0 or span.get("opacity") != 1.0 or span.get("layer") or
                         span.get("size", 0) < 3 or (white and not rich) or len(color) not in (1, 3, 4) or
-                        bbox.is_empty or not all(math.isfinite(v) for v in bbox) or not page.rect.contains(bbox)):
+                        bbox.is_empty or not all(math.isfinite(v) for v in bbox) or
+                        any(not page.rect.contains(box) for box in glyph_boxes)):
                     refuse("hidden_text_unsupported")
                 if rich and (white or complex_display):
                     # Render the actual clipped/masked source region locally.
-                    # A flat bitmap cannot establish that extractable text is visible.
-                    pixels = page.get_pixmap(matrix=fitz.Matrix(1, 1), clip=bbox, colorspace=fitz.csGRAY, alpha=False)
-                    samples = pixels.samples
-                    if not samples or max(samples) - min(samples) < 16:
-                        refuse("hidden_text_unsupported")
+                    # Contrast elsewhere in a span's union cannot prove that an
+                    # individual meaningful glyph is visible.
+                    for glyph in glyph_boxes:
+                        deadline()
+                        pixels = page.get_pixmap(matrix=fitz.Matrix(1, 1), clip=glyph, colorspace=fitz.csGRAY, alpha=False)
+                        samples = pixels.samples
+                        if not samples or max(samples) - min(samples) < 16:
+                            refuse("hidden_text_unsupported")
                 # Later paint over a native span is ambiguous even when the span
                 # remains extractable. Reject it rather than exposing hidden text.
-                for kind, later_box in display[span["seqno"] + 1:]:
-                    if kind == "ignore-text" or (kind in {"fill-text", "fill-image", "fill-path", "fill-shade"} and fitz.Rect(later_box).intersects(bbox)):
+                for seqno in range(span["seqno"] + 1, len(display)):
+                    kind, later_box = display[seqno]
+                    if kind not in {"ignore-text", "fill-text", "fill-image", "fill-path", "fill-shade"}:
+                        continue
+                    later_boxes = text_paint.get(seqno, [fitz.Rect(later_box)]) if kind == "fill-text" else [fitz.Rect(later_box)]
+                    if any(later.intersects(glyph) for later in later_boxes for glyph in glyph_boxes):
                         refuse("hidden_text_occluded")
-            if any(kind == "ignore-text" for kind, _box in display):
+            if any(kind == "ignore-text" and (seqno not in text_paint or text_paint[seqno])
+                   for seqno, (kind, _box) in enumerate(display)):
                 refuse("hidden_text_unsupported")
             # This first functional terminal supports native text only. Do not
             # let its supplier declare empty visual obligations for mixed pages.

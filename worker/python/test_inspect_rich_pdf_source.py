@@ -7,6 +7,67 @@ import inspect_native_pdf_source as inspector
 
 
 class RichPdfInspectionTests(unittest.TestCase):
+    def test_unrelated_gap_paint_cannot_prove_white_glyph_visibility(self):
+        with tempfile.TemporaryDirectory() as folder:
+            source = Path(folder) / "synthetic.pdf"
+            with fitz.open() as document:
+                page = document.new_page()
+                page.insert_text((72, 72), "A                         Z", fontsize=12, color=(1, 1, 1))
+                page.draw_rect(fitz.Rect(100, 60, 130, 75), color=None, fill=(0, 0, 0))
+                document.save(source)
+            with self.assertRaisesRegex(inspector.InspectionRefusal, "hidden_text"):
+                inspector.inspect_source(source, profile="rich")
+
+    def test_only_bound_zero_width_ligature_continuations_are_accepted(self):
+        first = (ord("f"), 42, (72, 72), (72, 60, 80, 72))
+        continuation = (ord("i"), -1, (72, 72), (72, 60, 72, 72))
+        self.assertEqual(len(inspector.meaningful_glyph_boxes({"chars": (first, continuation)})), 1)
+        for malformed in (
+            (ord("i"), -1, (72, 72), (72, 60, 80, 60)),
+            (ord("i"), -1, (120, 72), (120, 60, 120, 72)),
+            (ord("i"), -1, (72, 72), (72, 72, 72, 60)),
+            (ord("z"), -1, (72, 72), (72, 60, 72, 72)),
+        ):
+            with self.subTest(malformed=malformed), self.assertRaisesRegex(inspector.InspectionRefusal, "hidden_text"):
+                inspector.meaningful_glyph_boxes({"chars": (first, malformed)})
+
+    def test_paint_between_distant_glyphs_does_not_hide_source_text(self):
+        with tempfile.TemporaryDirectory() as folder:
+            source = Path(folder) / "synthetic.pdf"
+            with fitz.open() as document:
+                page = document.new_page()
+                page.insert_text((72, 72), "A                         Z", fontsize=12)
+                page.draw_rect(fitz.Rect(100, 60, 130, 75), color=None, fill=(0, 0, 0))
+                page.insert_text((150, 72), "B", fontsize=12)
+                document.save(source)
+            self.assertEqual(inspector.inspect_source(source, profile="rich")["status"], "inspected")
+
+    def test_blank_spans_in_complex_display_are_not_hidden_words(self):
+        with tempfile.TemporaryDirectory() as folder:
+            source = Path(folder) / "synthetic.pdf"
+            with fitz.open() as document:
+                page = document.new_page()
+                page.insert_text((72, 72), "SYNTHETIC VISIBLE SOURCE")
+                page.insert_text((72, 100), "     ", color=(1, 1, 1))
+                document.save(source)
+            self.assertEqual(inspector.inspect_source(source, profile="rich")["status"], "inspected")
+
+    def test_actual_meaningful_glyph_occlusion_and_hidden_text_still_refuse(self):
+        for change in (
+            lambda page: page.draw_rect(fitz.Rect(70, 55, 210, 77), color=None, fill=(1, 1, 1)),
+            lambda page: page.insert_text((72, 100), "HIDDEN SYNTHETIC WORDS", render_mode=3),
+            lambda page: page.insert_text((72, 100), "WHITE SYNTHETIC WORDS", color=(1, 1, 1)),
+        ):
+            with self.subTest(change=change), tempfile.TemporaryDirectory() as folder:
+                source = Path(folder) / "synthetic.pdf"
+                with fitz.open() as document:
+                    page = document.new_page()
+                    page.insert_text((72, 72), "SYNTHETIC VISIBLE SOURCE")
+                    change(page)
+                    document.save(source)
+                with self.assertRaisesRegex(inspector.InspectionRefusal, "hidden_text"):
+                    inspector.inspect_source(source, profile="rich")
+
     def test_native_table_and_figure_inventory_is_not_declared_empty(self):
         with tempfile.TemporaryDirectory() as folder:
             source = Path(folder) / "synthetic.pdf"
