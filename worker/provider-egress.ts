@@ -8,6 +8,7 @@ import {
 import { createUnavailableIngestionProviderEgressContext } from "../supabase/functions/_shared/unavailable-ingestion-provider-egress";
 import type { JobDocument, JobRow } from "./types";
 import { z } from "zod";
+import { INGESTION_JURISDICTIONS } from "../src/lib/ingestion-jurisdiction";
 import {
   IngestionAttemptError,
   runIngestionPersistence,
@@ -54,7 +55,7 @@ const declaredAuthoritySchema = z
     licencePolicy: z.enum(["review_required", "public_index_permitted"]),
     rightsEvidenceRef: authorityText(500),
     publisher: authorityText(300),
-    jurisdiction: z.literal("Australia"),
+    jurisdiction: z.enum(INGESTION_JURISDICTIONS),
     publicationDate: authorityDate,
     effectiveDate: authorityDate,
     reviewDate: authorityDate,

@@ -418,13 +418,38 @@ That module supplies the approved-source record and the malware-scanner policy
 returns them). The worker refuses a relative, `http(s):`, `data:` or `node:` path, and refuses if the module's
 bytes change while it runs. Never write its value into a document, log, PR or ticket; only whether it is set.
 
+**Built-in internal-build alternative (3 November).** Instead of a mounted module, an explicitly
+configured `WORKER_INTERNAL_ADMIN_BUILD_POLICY_JSON` selects the native-text-only internal
+supplier. Its four strict keys are `allowedDocumentIds` (1–100 distinct UUIDs),
+`approvalReferenceSha256`, `issuedAt` and `expiresAt` (UTC; maximum 24 hours). The settings are
+server-owned execution scope, not document metadata or a public permission record. No policy
+means no activation; specifying both modes, malformed/expired scope, wrong owner/source or a
+non-administrator admission refuses. Configuration presence suppresses the missing-module
+warning but does not establish readiness; validation happens before claims.
+`WORKER_ALLOWED_DOCUMENT_IDS` must also be explicitly restricted to a nonempty subset of that
+policy's document IDs. A missing, malformed or wider claim scope refuses at startup, before
+unrelated queue jobs can have attempts consumed.
+
+This supplier actually reloads the admission event, current administrator identity, private
+original bytes and hashes. It runs a separate bounded native-PDF inspector, retains structural
+page obligations, and supplies the explicit source-scoped unscanned exception. For an
+owner-bound `uploaded_local` draft with unresolved legal review it records the
+[owner's legal deferral](decisions/2026-11-03-defer-legal-review-for-internal-build.md), never a
+public licence. It accepts only the no-visual native-text profile; raster/OCR, image/vector
+requirements and ambiguous/active/hidden content refuse. Extractor-generated fallback renders
+are retained privately and are not certified visual evidence.
+
+Deploying the additive general-PDF completion/jurisdiction migration and observing drift are
+separate from compiling this worker. Do not resume claims until that schema and the finite policy
+are verified. This documentation does not configure a policy, deploy code or run ingestion.
+
 The owner selected an explicit source-scoped administrator-only unscanned exception for local
 implementation on 1 November. Its evidence, expiry, revocation and commissioning requirements
 live in [the exception contract](reindex-unlock-plan.md#administrator-unscanned-exception-contract).
 It is a separate explicit policy mode, never automatic fallback when a scanner fails. This code
 change does not configure a mounted module, resume the worker or authorize processing.
 
-Without it there is no scanner verdict, so every ingestion provider call is refused and each job ends as
+Without either configured runtime mode there is no scanner verdict, so every ingestion provider call is refused and each job ends as
 `blocked by ingress safety checks` with `scanner_unavailable` (fail closed; pinned by
 `tests/edge-provider-egress.test.ts`). A worker started without it logs one warning saying so
 (`adminSourceRuntimeStartupWarning`). See [the current ingestion model](ingestion-state-machine.md#current-model-october-2026).

@@ -125,6 +125,12 @@ export type WorkerRuntimeOptions = {
     job: JobRow,
     sourceSha256: string,
   ) => ManagedAdminTextSourceSectionLayout | undefined | Promise<ManagedAdminTextSourceSectionLayout | undefined>;
+  /** Fresh server-owned inspection for the dynamic native-text-only PDF profile. */
+  loadManagedGeneralPdfInspection?: (
+    job: JobRow,
+    sourceSha256: string,
+    attempt: IngestionAttempt,
+  ) => Promise<import("./general-pdf-inspection").GeneralPdfInspectionReview | undefined>;
   /** Server-owned PDF roles must reference actual retained bytes and candidate IDs. */
   loadManagedNativePdfSourceRoles?: (
     input: ManagedPreparedSupplierInput,

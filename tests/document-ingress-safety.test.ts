@@ -74,6 +74,30 @@ function policyEvidence(result: ReturnType<typeof evaluateDocumentIngressSafety>
 }
 
 describe("document ingress safety decision", () => {
+  it("allows an explicit owner-deferred legal review for an administrator internal build", () => {
+    const result = evaluateDocumentIngressSafety({
+      ...cleanObservations(),
+      rights: "review_deferred",
+      indexLicence: "review_deferred",
+      legalReviewDeferral: "owner-internal-build-2026-11-03",
+      processingScope: "owner_internal_build",
+    });
+    expect(result.verdict).toBe("pass");
+    if (result.verdict === "pass") {
+      expect(result.checks).toContain("legal_review:owner_deferred:internal_build");
+      expect(result.checks).not.toContain("rights:permitted");
+    }
+  });
+  it.each([
+    { rights: "review_deferred", indexLicence: "review_deferred" },
+    { rights: "review_deferred", indexLicence: "review_deferred", legalReviewDeferral: "arbitrary" },
+    { rights: "denied", legalReviewDeferral: "owner-internal-build-2026-11-03" },
+    { indexLicence: "not_permitted", legalReviewDeferral: "owner-internal-build-2026-11-03" },
+    { source: "link_only", legalReviewDeferral: "owner-internal-build-2026-11-03" },
+    { scanner: { verdict: "unavailable" }, legalReviewDeferral: "owner-internal-build-2026-11-03" },
+  ])("does not let legal deferral bypass absent authority or an explicit refusal: %j", (overrides) => {
+    expect(evaluateDocumentIngressSafety({ ...cleanObservations(), ...overrides }).verdict).toBe("quarantine");
+  });
   it.each(["caption", "embedding", "summary", "deep_memory"] as const)(
     "passes complete trusted observations for the %s purpose",
     (purpose) => {

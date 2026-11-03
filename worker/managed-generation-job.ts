@@ -21,6 +21,7 @@ import {
 import {
   assertCandidateChunkApplicability,
   prepareCandidateChunks,
+  prepareNativeTextPdfCandidateChunks,
   serializeCandidateChunkRows,
   stageCandidateChunks,
 } from "./candidate-chunks";
@@ -39,6 +40,11 @@ import { cleanString, sanitizeJsonbRecord } from "./ingestion-sanitize";
 import type { IngestionMutation, IngestionStageContext } from "./ingestion-stage-context";
 import type { WorkerRuntimeOptions } from "./main";
 import { evaluateManagedAdminPdfCompletion, completeManagedAdminPdfAttempt } from "./managed-admin-pdf-terminal";
+import {
+  buildManagedGeneralPdfChunks,
+  prepareManagedGeneralPdfTerminalPacket,
+  completeManagedGeneralPdfAttempt,
+} from "./managed-general-pdf-terminal";
 import {
   buildManagedAdminTextChunks,
   completeManagedAdminTextAttempt,
@@ -64,7 +70,10 @@ import type { JobRow } from "./types";
 
 export type ManagedGenerationLoaders = Pick<
   WorkerRuntimeOptions,
-  "loadManagedAdminTextSectionLayout" | "loadManagedNativePdfSourceRoles" | "loadManagedAdminPdfCompletionEvidence"
+  | "loadManagedAdminTextSectionLayout"
+  | "loadManagedNativePdfSourceRoles"
+  | "loadManagedAdminPdfCompletionEvidence"
+  | "loadManagedGeneralPdfInspection"
 >;
 
 export async function runManagedGenerationJob(
@@ -130,6 +139,51 @@ export async function runManagedGenerationJob(
     packet: controlPacket,
     extracted,
   });
+  if (
+    originalWitness.status === "retained" &&
+    job.documents.file_type === "application/pdf" &&
+    options.loadManagedGeneralPdfInspection
+  ) {
+    const inspection = await options.loadManagedGeneralPdfInspection(job, packet.registration.sourceSha256, attempt);
+    attempt.check();
+    if (inspection) {
+      const candidateInput = {
+        packet,
+        originalBytes: buffer,
+        witnessBytes: originalWitness.witnessBytes,
+        extracted,
+        inspection,
+      };
+      const chunkRows = buildManagedGeneralPdfChunks({ ...candidateInput, documentId: job.document_id });
+      const chunkPlan = prepareNativeTextPdfCandidateChunks({ ...candidateInput, chunkRows });
+      const terminalPacket = prepareManagedGeneralPdfTerminalPacket({
+        ...candidateInput,
+        issued: issuedControlSnapshot,
+        ownerId: job.documents.owner_id!,
+        chunkRows,
+      });
+      await stageGenerationPrerequisite({ packet, mutation: (name, payload) => mutation(attempt, name, payload) });
+      await stageCandidateChunks({
+        plan: chunkPlan,
+        batchSize: Math.min(env.WORKER_BATCH_SIZE, 128),
+        embed: (texts) => workerEmbedTexts(job, texts),
+        assertEmbedding: assertEmbeddingDim,
+        mutation: (name, payload) => mutation(attempt, name, payload),
+        check: () => attempt.check(),
+      });
+      await completeManagedGeneralPdfAttempt({
+        attempt,
+        packet: terminalPacket,
+        stopHeartbeat: () => clearInterval(heartbeat),
+        rpc: (name, payload) =>
+          ingestionRpcClient.rpc(name, payload).abortSignal(controlPlaneAbortSignal(attempt.signal)),
+      });
+      invalidateRagCachesForDocumentMutation(job.documents.owner_id ?? "anonymous", {
+        affectsPublicCorpus: !job.documents.owner_id,
+      });
+      return;
+    }
+  }
   if (
     originalWitness.status === "retained" &&
     job.documents.file_type === "text/plain" &&

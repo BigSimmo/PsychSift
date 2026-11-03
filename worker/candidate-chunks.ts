@@ -231,6 +231,46 @@ export function prepareCandidateChunks(args: {
   chunkRows: readonly CandidateChunkRow[];
 }) {
   assertCandidateChunkApplicability(args);
+  return prepareCandidateChunkRows(args);
+}
+
+/** Native TEXT profile only: incidental render/image artifacts remain private and
+ * retained. A required visual/table obligation cannot be discharged by text chunks. */
+export function prepareNativeTextPdfCandidateChunks(args: Parameters<typeof prepareCandidateChunks>[0]) {
+  const applicability = parseOriginalApplicabilityWitness({
+    sourceExpectation: args.packet.registration.sourceExpectation,
+    originalBytes: args.originalBytes,
+    witnessBytes: args.witnessBytes,
+  });
+  if (
+    applicability.status !== "typed_original_requirements" ||
+    applicability.groups.some(
+      (group) =>
+        group.population.tag !== "known" ||
+        (group.family === "chunks"
+          ? !group.population.requirements.length
+          : group.population.requirements.length !== 0),
+    ) ||
+    args.packet.registration.sourceExpectation.units?.length !== args.extracted.pages.length ||
+    args.extracted.pages.some(
+      (page, index) =>
+        page.pageNumber !== index + 1 ||
+        page.ocrUsed ||
+        args.packet.registration.sourceExpectation.units!.filter(
+          (unit) =>
+            unit.required &&
+            unit.locator === `pdf-page:${index + 1}:native-text:${bytesDigest(Buffer.from(page.text, "utf8"))}`,
+        ).length !== 1,
+    ) ||
+    args.packet.artifacts.filter((artifact) => artifact.representation === "image_binary").length !==
+      args.extracted.images.length
+  ) {
+    throw new Error("candidate_chunks_native_text_scope_mismatch");
+  }
+  return prepareCandidateChunkRows(args);
+}
+
+function prepareCandidateChunkRows(args: Parameters<typeof prepareCandidateChunks>[0]) {
   generationEvidenceBytes(args.chunkRows);
   const packet = args.packet;
   const checkedArtifacts = packet.artifacts.map((input) => {

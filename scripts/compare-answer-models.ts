@@ -223,7 +223,11 @@ export function validateApproval(
   return Object.freeze(structuredClone(value)) as Approval;
 }
 
-export function worstCasePlan(executions: readonly Execution[], card: PriceCard) {
+export function worstCasePlan(
+  executions: readonly Execution[],
+  card: PriceCard,
+  approved?: Pick<Approval, "maxUsd" | "maxRequests" | "maxInputTokens" | "maxOutputTokens">,
+) {
   let inputTokens = 0,
     outputTokens = 0,
     usd = 0;
@@ -243,9 +247,16 @@ export function worstCasePlan(executions: readonly Execution[], card: PriceCard)
     outputTokens,
     usd,
     fitsConfiguredCaps:
+      executions.length <= comparisonConfig.maxRequests &&
       inputTokens <= comparisonConfig.maxInputTokens &&
       outputTokens <= comparisonConfig.maxOutputTokensAggregate &&
       usd <= comparisonConfig.maxUsd,
+    fitsApprovedCaps: approved
+      ? executions.length <= approved.maxRequests &&
+        inputTokens <= approved.maxInputTokens &&
+        outputTokens <= approved.maxOutputTokens &&
+        usd <= approved.maxUsd
+      : null,
   };
 }
 
@@ -407,6 +418,8 @@ export type ComparisonOutcome = Execution & {
   status: "completed" | "failed";
   latencyMs: number;
   usage?: OpenAITokenUsage;
+  providerModel?: string | null;
+  requestId?: string | null;
   checks?: ReturnType<typeof deterministicChecks>;
   answer?: string;
   review?: Pick<RagAnswer, "answerSections" | "citations" | "conflictsOrGaps">;
@@ -544,6 +557,8 @@ async function componentExecutor(mode: "offline" | "paid") {
         reason: result.truncated ? "provider_incomplete" : undefined,
         latencyMs: performance.now() - started,
         usage: result.usage,
+        providerModel: result.providerModel ?? null,
+        requestId: result.requestId ?? null,
         checks: deterministicChecks(testCase, result.text, answer),
         answer: answer.answer,
         review: {
@@ -690,6 +705,10 @@ export async function main(argv = process.argv.slice(2), cwd = process.cwd()) {
   const out = comparisonOutputPath(output, cwd);
   let approval: Approval | null = null;
   if (mode === "paid") {
+    if (card && !preflight.worstCase?.fitsConfiguredCaps)
+      throw new Error(
+        "Full comparison plan exceeds configured caps; refused before approval consumption or provider work.",
+      );
     if (!isDirectEntrypoint(import.meta.url))
       throw new Error("Paid execution requires a fresh standalone CLI process.");
     if (!approvalFile || !card || !cardText)
@@ -699,6 +718,10 @@ export async function main(argv = process.argv.slice(2), cwd = process.cwd()) {
       identity,
       digest(cardText),
     );
+    if (!worstCasePlan(plan, card, approval).fitsApprovedCaps)
+      throw new Error(
+        "Full comparison plan exceeds approved caps; refused before approval consumption or provider work.",
+      );
     if (comparisonOutputPath(approval.outputDirectory, cwd) !== out)
       throw new Error("Approval is bound to a different output directory.");
     if (!process.env.OPENAI_API_KEY) throw new Error("A server-side OpenAI credential is required.");

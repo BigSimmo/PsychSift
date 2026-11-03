@@ -204,6 +204,7 @@ describe("OpenAI query embedding cache", () => {
             return {
               withResponse: async () => ({
                 data: {
+                  model: "gpt-5.5-2026-10-27",
                   output_text: '{"answer":"ok"}',
                   usage: {
                     input_tokens: 100,
@@ -236,6 +237,8 @@ describe("OpenAI query embedding cache", () => {
     );
 
     expect(result.requestId).toBe("req_123");
+    expect(result.model).toBe("gpt-5.5");
+    expect(result.providerModel).toBe("gpt-5.5-2026-10-27");
     expect(result.usage).toMatchObject({
       input_tokens: 100,
       output_tokens: 20,

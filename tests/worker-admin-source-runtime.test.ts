@@ -225,6 +225,45 @@ function fixture() {
 }
 
 describe("approved admin source normal runtime composition", () => {
+  it("constructs the built-in internal-build runtime only from a finite explicit server policy", async () => {
+    const f = fixture();
+    const policy = JSON.stringify({
+      allowedDocumentIds: [f.job.document_id],
+      approvalReferenceSha256: `sha256:${"a".repeat(64)}`,
+      issuedAt: new Date(Date.now() - 1000).toISOString(),
+      expiresAt: new Date(Date.now() + 60000).toISOString(),
+    });
+    const hooks = await loadAdminSourceRuntimeOptions(f.client, "synthetic-bucket", "", policy, {
+      WORKER_ALLOWED_DOCUMENT_IDS: f.job.document_id,
+    });
+    expect(hooks.loadManagedGeneralPdfInspection).toBeTypeOf("function");
+    expect(hooks.loadObservationsForJob).toBeTypeOf("function");
+    await expect(loadAdminSourceRuntimeOptions(f.client, "synthetic-bucket", "", policy, {})).rejects.toThrow();
+    await expect(
+      loadAdminSourceRuntimeOptions(f.client, "synthetic-bucket", "", policy, {
+        WORKER_ALLOWED_DOCUMENT_IDS: "00000000-0000-4000-8000-000000000099",
+      }),
+    ).rejects.toThrow();
+    await expect(loadAdminSourceRuntimeOptions(f.client, "synthetic-bucket", "", "{}")).rejects.toThrow();
+    await expect(
+      loadAdminSourceRuntimeOptions(f.client, "synthetic-bucket", "/synthetic/module", policy),
+    ).rejects.toThrow();
+  });
+  it("accepts the owner-deferred legal review only for an internal draft", async () => {
+    const f = fixture();
+    Object.assign(f.job.documents.metadata!, { corpus_scope: "uploaded_local" });
+    Object.assign(f.source.policyObservations, {
+      rights: "review_deferred",
+      indexLicence: "review_deferred",
+      legalReviewDeferral: "owner-internal-build-2026-11-03",
+      processingScope: "owner_internal_build",
+    });
+    await expect(f.hooks.loadManagedAdminTextSectionLayout!(f.job, f.source.sourceSha256)).resolves.toBeDefined();
+    Object.assign(f.job.documents.metadata!, { corpus_scope: "australian_public" });
+    await expect(f.hooks.loadManagedAdminTextSectionLayout!(f.job, f.source.sourceSha256)).rejects.toThrow(
+      "current_input_required",
+    );
+  });
   it("accepts optional TXT layout absence through registration and interrupted-retention recovery", async () => {
     const f = fixture();
     const { sourceSectionLayout: _layout, ...withoutLayout } = f.source;

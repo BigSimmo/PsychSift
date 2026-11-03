@@ -2,6 +2,12 @@
 
 ## Current model (October 2026)
 
+**3 November internal-build extension:** the owner deferred legal review as an internal-build
+prerequisite. The built-in, finite native-text PDF supplier and its explicit source-scoped
+unscanned exception are documented in the [worker runbook](worker-deploy-runbook.md#pause-switches-the-scanner-module-and-the-paused-production-worker).
+This records `review_deferred` and `unscanned`, not a permitted public licence or clean scan.
+It does not alter the live worker or extend the no-visual profile to tables/images/OCR.
+
 _Added 2026-10-20 from the code on `main`. Read this section for how ingestion works now; everything below
 it is the July 2026 analysis, kept as history._
 

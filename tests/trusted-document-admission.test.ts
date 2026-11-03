@@ -93,6 +93,23 @@ function positiveRpcResult(outcome: "created" | "replayed" = "created", status =
 }
 
 describe("trusted document admission", () => {
+  it("preserves an explicitly admitted WA jurisdiction instead of broadening it to national", () => {
+    const admitted = createTrustedDocumentAdmission(
+      admissionInput({ authority: { ...authority, jurisdiction: "Australia/WA" } }),
+    );
+    expect(admitted.authority.jurisdiction).toBe("Australia/WA");
+    expect(toTrustedDocumentAdmissionRpcPayload(admitted).authority.jurisdiction).toBe("Australia/WA");
+  });
+  it.each(["WA", "Australia/NSW", "Australia/WA ", "New Zealand"])(
+    "rejects an unsupported jurisdiction %s",
+    (jurisdiction) => {
+      expect(() =>
+        createTrustedDocumentAdmission(
+          admissionInput({ authority: { ...authority, jurisdiction } as TrustedAdmissionAuthority }),
+        ),
+      ).toThrow("jurisdiction");
+    },
+  );
   it("constructs an authentic administrator admission with pure audit hashes and no raw path or filename", () => {
     const admission = createTrustedDocumentAdmission(admissionInput());
     const payload = toTrustedDocumentAdmissionRpcPayload(admission);

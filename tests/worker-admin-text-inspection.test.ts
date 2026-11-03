@@ -20,6 +20,7 @@ import { scanWindowsDefenderBytes, type WindowsMalwareInspectionConfiguration } 
 import { scanClamAvBytes, type ClamAvInspectionConfiguration } from "../worker/clamav-inspection";
 import { createWorkerProviderEgressContext, workerProviderSourceBinding } from "../worker/provider-egress";
 import type { JobRow } from "../worker/types";
+import { GENERAL_PDF_INSPECTION_VERSION, type GeneralPdfInspectionReview } from "../worker/general-pdf-inspection";
 import {
   ADMIN_UNSCANNED_EXCEPTION_POLICY,
   type AdminUnscannedExceptionEvidence,
@@ -369,6 +370,64 @@ function admittedDraft(f: ReturnType<typeof setup>) {
 }
 
 describe("current administrator plain-text inspection adapter", () => {
+  function generalPdfFixture() {
+    const f = setup(Buffer.from("%PDF-1.7\nSynthetic source bytes\n%%EOF"));
+    const pageText = "Synthetic WA reference\nA source paragraph survives intact with threshold < 3.5.";
+    Object.assign(f.current.facts, { mimeType: "application/pdf" });
+    Object.assign(f.current, { catalogueKey: "wa-health" });
+    Object.assign(f.current.facts.declaredAuthority, {
+      publisher: "WA Health",
+      sourceRole: "service_policy",
+      jurisdiction: "Australia/WA",
+    });
+    Object.assign(f.current.sourceMetadata, {
+      source_catalogue_key: "wa-health",
+      publisher_code: "WAHEALTH",
+      publisher: "WA Health",
+      source_role: "service_policy",
+      jurisdiction: "Australia/WA",
+    });
+    const review: GeneralPdfInspectionReview = {
+      version: GENERAL_PDF_INSPECTION_VERSION,
+      binding: { ...f.binding },
+      sourceSha256: f.binding.contentSha256,
+      sourceByteLength: f.current.sourceBytes.length,
+      pageCount: 1,
+      pages: [{ pageNumber: 1, text: pageText, textSha256: hash(pageText) }],
+      pageInventory: "complete",
+      activeContent: "absent",
+      encryption: "not_encrypted",
+      hiddenText: "consistent",
+      inspectedAt: new Date(Date.now() - 1000).toISOString(),
+      expiresAt: new Date(Date.now() + 60000).toISOString(),
+    };
+    Object.assign(f.current, { generalPdf: review });
+    const payload = payloadFor(["A source paragraph survives intact with threshold < 3.5."]);
+    return { ...f, review, request: { purpose: "embedding" as const, payload, payloadSha256: hash(payload) } };
+  }
+  it("inspects a general WA PDF and its exact source chunk without requiring the fixed national pilot", async () => {
+    const f = generalPdfFixture();
+    const result = await f.loader(f.request, f.binding);
+    expect(evaluateDocumentIngressSafety(result.observations).verdict).toBe("pass");
+    expect(result.observations.policyVersion).toContain(GENERAL_PDF_INSPECTION_VERSION);
+    expect(result.sourceObservations.hiddenText).toBe("consistent");
+    expect(scan).toHaveBeenCalledTimes(2);
+  });
+  it.each(["textHash", "jurisdiction", "unrelatedInput", "activeContent"])(
+    "refuses general PDF %s drift before scanning",
+    async (mutation) => {
+      const f = generalPdfFixture();
+      if (mutation === "textHash") f.review.pages[0]!.textSha256 = hash("changed");
+      if (mutation === "jurisdiction") Object.assign(f.current.facts.declaredAuthority, { jurisdiction: "Australia" });
+      if (mutation === "unrelatedInput") {
+        const payload = payloadFor(["Invented source paragraph"]);
+        f.request = { ...f.request, payload, payloadSha256: hash(payload) };
+      }
+      if (mutation === "activeContent") Object.assign(f.review, { activeContent: "detected" });
+      await expect(f.loader(f.request, f.binding)).rejects.toThrow();
+      expect(scan).not.toHaveBeenCalled();
+    },
+  );
   it("processes the current owner-bound administrator draft without granting public corpus eligibility", async () => {
     const publishedScope = setup();
     const publishedObservations = await publishedScope.loader(publishedScope.request, publishedScope.binding);
@@ -419,6 +478,30 @@ describe("current administrator plain-text inspection adapter", () => {
     await expect(draft.loader(draft.request, draft.binding)).rejects.toThrow("current_processing_policy_unavailable");
     expect(scan).not.toHaveBeenCalled();
     expect(clamScan).not.toHaveBeenCalled();
+  });
+  it("processes an internal administrator draft with owner-deferred legal review, without publishing it", async () => {
+    const f = setup();
+    Object.assign(f.current.facts.declaredAuthority, { licencePolicy: "review_required" });
+    Object.assign(f.current.sourceMetadata, { licence_policy: "review_required" });
+    admittedDraft(f);
+    Object.assign(f.current.policyObservations, {
+      rights: "review_deferred",
+      indexLicence: "review_deferred",
+      legalReviewDeferral: "owner-internal-build-2026-11-03",
+      processingScope: "owner_internal_build",
+    });
+    const result = await f.loader(f.request, f.binding);
+    expect(evaluateDocumentIngressSafety(result.observations).verdict).toBe("pass");
+    expect(classifySourceAuthority(f.current.sourceMetadata).australianAugmentationEligible).toBe(false);
+  });
+  it("does not apply the internal legal deferral to a public corpus record", async () => {
+    const f = setup();
+    Object.assign(f.current.policyObservations, {
+      rights: "review_deferred",
+      indexLicence: "review_deferred",
+      legalReviewDeferral: "owner-internal-build-2026-11-03",
+    });
+    await expect(f.loader(f.request, f.binding)).rejects.toThrow("current_processing_policy_unavailable");
   });
   it.each([
     ["publisher_code", "TGA"],

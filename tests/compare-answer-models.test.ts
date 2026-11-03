@@ -1,6 +1,6 @@
-import { readFile, mkdtemp, rm } from "node:fs/promises";
+import { access, readFile, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { basename, join, resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   comparisonConfig,
@@ -18,6 +18,7 @@ import {
   comparisonOutputPath,
   comparisonRoot,
   consumeComparisonApproval,
+  main,
   type Approval,
   type PriceCard,
 } from "../scripts/compare-answer-models";
@@ -189,6 +190,45 @@ describe("offline-first answer model comparison", () => {
     const bound = worstCasePlan(planExecutions(await fixture()), card());
     expect(bound.outputTokens).toBe(832_000);
     expect(bound.fitsConfiguredCaps).toBe(false);
+  });
+
+  it("refuses an infeasible paid plan before consuming approval, creating output or dispatching", async () => {
+    const root = await mkdtemp(join(tmpdir(), "sol61-infeasible-"));
+    const prices = join(root, "prices.json");
+    const out = resolve("output/answer-model-comparison", `infeasible-${basename(root)}`);
+    const dispatch = vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("network forbidden"));
+    try {
+      await writeFile(prices, JSON.stringify(card()));
+      await expect(main(["--paid", "--price-card", prices, "--output", out])).rejects.toThrow(
+        "Full comparison plan exceeds configured caps",
+      );
+      await expect(access(out)).rejects.toMatchObject({ code: "ENOENT" });
+      expect(dispatch).not.toHaveBeenCalled();
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it.each([{ maxUsd: 0.01 }, { maxRequests: 1 }, { maxInputTokens: 100 }, { maxOutputTokens: 16_000 }])(
+    "checks the full plan against each lower approved cap: %j",
+    async (cap) => {
+      const plan = planExecutions(await fixture()).slice(0, 2);
+      const bound = worstCasePlan(plan, card(), approval(cap));
+      expect(bound.fitsConfiguredCaps).toBe(true);
+      expect(bound.fitsApprovedCaps).toBe(false);
+      expect(worstCasePlan(plan, card(), approval()).fitsApprovedCaps).toBe(true);
+    },
+  );
+
+  it("marks offline provider identity as unverified instead of repeating the requested model", async () => {
+    const cases = await fixture();
+    const execute = await offlineComparisonExecutor();
+    const execution = planExecutions(cases)[0];
+    const outcome = await execute(
+      execution,
+      cases.find((c) => c.id === execution.caseId)!,
+    );
+    expect(outcome).toMatchObject({ providerModel: null, requestId: null });
   });
 
   it("persists immutable reservations before mock dispatch and snapshots caller price data", async () => {
@@ -368,6 +408,9 @@ describe("offline-first answer model comparison", () => {
       },
     );
     expect(result.text).toBe('{"answer":"synthetic"}');
+    expect(result.model).toBe("gpt-6.1-sol");
+    expect(result.providerModel).toBeUndefined();
+    expect(result.requestId).toBe("synthetic-request");
     expect(dispatch).toHaveBeenCalledTimes(1);
     expect(guarded.snapshot()).toMatchObject({ actualRequests: 1, dispatchAttempts: { responses: 1, embeddings: 0 } });
   });

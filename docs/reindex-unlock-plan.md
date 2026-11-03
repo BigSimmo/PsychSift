@@ -1,5 +1,64 @@
 # Ingestion unlock and controlled rollout
 
+## 3 November 2026 continuation
+
+The owner authorized implementing the functional build and deferred legal review as an
+internal-build prerequisite ([decision](decisions/2026-11-03-defer-legal-review-for-internal-build.md)).
+For an explicitly scoped owner-bound internal draft, use the recorded `review_deferred`
+policy rather than fabricating a permitted licence. Explicit prohibitions, source eligibility,
+administrator identity, privacy and source-fidelity checks still apply. Historical counsel
+prerequisites below apply to public/operational clearance, not to this internal engineering work.
+
+Existing work was recovered from `codex/rag-sol61-20261027` and
+`rag-ingestion-safety-20261101` and integrated into `fix/rag-preindex-readiness` rather than
+reimplemented. The missing programme ledger was found at
+`codex/rag-local-build-20260822`, commit `38552bafe0a82a5df2a4467afd5ba211aee5b966`,
+path `.superpowers/sdd/progress.md`. Its latest entry records U04 local implementation
+acceptance with later units unstarted; it is an older branch, not proof of today's main-line
+operational status. Preserve those accepted artifacts; do not restart U04 or merge the entire
+old branch over current code. This continuation reconciles and extends current implementation.
+
+The new general-PDF profile is explicitly native-text-only. It must retain incidental extractor
+renders privately without publishing them or claiming image/OCR fidelity. Original sources with
+required visual/OCR obligations remain outside that profile. The fixed reviewed pilot retains
+its original terminal. A draft generic completion migration is not deployed evidence.
+
+### Local implementation checkpoint — 3 November
+
+Implemented: dynamic WA/native-text PDF inspection and completion; real isolated source
+inspection; actual administrator/admission/private-storage supplier; finite internal policy with
+fresh permission reads and scoped claims; explicitly deferred legal review; preserved unscanned
+exception semantics; byte-bounded exact Unicode chunks; and additive jurisdiction/completion SQL.
+The recovered Sol candidate now retains provider-returned model/request evidence and rejects an
+infeasible paid comparison before consuming approval or spending.
+
+Observed evidence: 833 tests across the 30-suite domain selector; 43 final runtime/supplier tests
+after the claim-scope guard; 17 real-reader/producer tests and 11 Python cases against locked
+PyMuPDF 1.28.2; worker bundle compilation; focused lint and migration-role/instruction/decision
+guards. The compiler initially found fixture type errors; those were corrected. The pinned-parser
+run also found deprecated-import stdout pollution; new code now uses the supported import.
+
+Local PostgreSQL 17/pgvector proof exercised real retained-artifact and vector writes, completion,
+strict replay, partial/stale attempts, malformed/null inspection timestamps, public-scope and
+revoked-administrator refusal, and preservation of an existing generation. This scratch database
+uses auth/storage/cron/vault scaffolding; it is not Supabase hosted parity. The first SQL run
+exposed a column ambiguity, which was corrected before the passing runs.
+
+Remaining release gates are explicit. The standard digest-pinned Supabase image could not fit
+the managed Docker VFS storage. The supported rootless path was investigated, but its image
+acquisition was denied at `index.docker.io` by host network policy. No denial was bypassed.
+Consequently the authoritative drift-manifest regeneration is still pending; the committed
+manifest has not been hand-edited to disguise that missing replay. Both draft migrations match
+their appended schema definitions, but neither is approved/applied to production here.
+
+This is a functioning **scoped native-text internal build**, not full-library, table/image/OCR,
+clinical, model-quality or operational acceptance. The exact existing library IDs/admissions and
+source features still require an authorized metadata/source inspection. Source-only answer
+residuals and missing corpus coverage remain unclosed pending their actual evidence. Sol is
+prepared, not activated: model access/prices and the currently infeasible paid comparison scope
+must be resolved under the existing bounded-spending gate. No paid inference, real-source
+ingestion, re-index, public publication, production setting, merge or deployment ran.
+
 Source review: 1 November 2026, `BigSimmo/PsychSift`, base `08fbeda5148d170f3106c80dc43c45e5f650c4b1`
 (PR #3881). Source intake owns this plan. [The runbook](reindex-runbook.md) governs execution.
 The owner authorized preparation; no ingestion, re-index, paid evaluation, provider operation,
@@ -27,7 +86,9 @@ from this source review.
 Rights work and engineering can proceed in parallel. Rights approval gates only the affected
 documents and uses; no WA-wide permission may be inferred from a publisher, URL or public access.
 
-1. **Rights and current permission.** Reuse source-acquisition rights fields (`publicDisplay`,
+1. **Rights and current permission for public/operational clearance.** Internal build work uses
+   the 3 November deferral above and does not wait for counsel. For later clearance, reuse
+   source-acquisition rights fields (`publicDisplay`,
    `aiUse`, evidence, checked date, recorder), trusted admission identity and independently
    reloaded operative grants. Resolve #HGEC4B with the owner and counsel. Bind each permitted
    operation to document/source digest, publisher, jurisdiction, purpose and current policy.

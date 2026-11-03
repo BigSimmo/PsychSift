@@ -3,6 +3,12 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { z } from "zod";
+import { createInternalAdminBuildSuppliers } from "./internal-admin-build-suppliers";
+import { inspectNativePdfBytes } from "./general-pdf-inspection-producer";
+import { resolveWorkerClaimScopeFilter } from "./claim-scope";
+import { hasInternalBuildLegalReviewDeferral } from "../src/lib/document-ingress-safety";
+import { inspectGeneralPdfSource, type GeneralPdfInspectionReview } from "./general-pdf-inspection";
 import type { IngestionAttempt } from "../supabase/functions/_shared/ingestion-attempt";
 import { parseOriginalApplicabilityWitness, parseSourceExpectation } from "../src/lib/ingestion-generation-evidence";
 import {
@@ -46,6 +52,7 @@ export type ApprovedAdminSource = Readonly<{
   // Existing TXT suppliers remain valid. PDF has no synthetic TXT section layout.
   sourceFamily?: "admin_text" | "native_pdf";
   nativeInspection?: AdminTextCurrentFacts["nativePdf"];
+  generalPdf?: GeneralPdfInspectionReview;
   sourceSectionLayout?: ManagedAdminTextSourceSectionLayout;
 }>;
 
@@ -166,13 +173,17 @@ function validateSource(job: JobRow, source: ApprovedAdminSource): ApprovedAdmin
     policy.purpose !== "embedding" ||
     policy.admission !== "current" ||
     policy.ownerScope !== "permitted" ||
-    policy.rights !== "permitted" ||
+    (policy.rights !== "permitted" &&
+      !hasInternalBuildLegalReviewDeferral(policy, job.documents.metadata?.corpus_scope)) ||
     policy.purposeClearance !== "permitted" ||
     policy.source !== "eligible" ||
-    policy.indexLicence !== "permitted" ||
+    (policy.indexLicence !== "permitted" &&
+      !hasInternalBuildLegalReviewDeferral(policy, job.documents.metadata?.corpus_scope)) ||
     policy.sourcePolicy !== "matched" ||
     !policy.policyVersion ||
     !source.catalogueKey ||
+    (source.generalPdf !== undefined &&
+      (source.sourceFamily !== "native_pdf" || source.nativeInspection !== undefined)) ||
     (source.sourceFamily === "native_pdf"
       ? source.sourceSectionLayout !== undefined
       : source.sourceSectionLayout !== undefined && source.sourceSectionLayout.sourceSha256 !== source.sourceSha256)
@@ -196,6 +207,11 @@ function validateSource(job: JobRow, source: ApprovedAdminSource): ApprovedAdmin
       : { sourceSectionLayout: JSON.parse(generationEvidenceBytes(source.sourceSectionLayout).toString("utf8")) }),
     authority: JSON.parse(generationEvidenceBytes(source.authority).toString("utf8")),
     policyObservations: JSON.parse(generationEvidenceBytes(policy).toString("utf8")),
+    ...(source.generalPdf === undefined
+      ? {}
+      : {
+          generalPdf: JSON.parse(generationEvidenceBytes(source.generalPdf).toString("utf8")),
+        }),
   };
 }
 
@@ -211,6 +227,7 @@ export function createAdminSourceRuntimeOptions(
   | "loadManagedNativePdfSourceRoles"
   | "loadManagedAdminPdfCompletionEvidence"
   | "initializeManagedAdminTextGeneration"
+  | "loadManagedGeneralPdfInspection"
 > {
   async function current(job: JobRow, attempt?: IngestionAttempt) {
     attempt?.check();
@@ -273,7 +290,11 @@ export function createAdminSourceRuntimeOptions(
             catalogueKey: source.catalogueKey,
             sourceMetadata: loaded.metadata,
             sourceBytes: loaded.bytes,
-            ...(source.sourceFamily === "native_pdf" ? { nativePdf: source.nativeInspection } : {}),
+            ...(source.sourceFamily === "native_pdf"
+              ? source.generalPdf
+                ? { generalPdf: source.generalPdf }
+                : { nativePdf: source.nativeInspection }
+              : {}),
             policyObservations: source.policyObservations,
           };
         },
@@ -284,6 +305,15 @@ export function createAdminSourceRuntimeOptions(
           return config;
         },
       });
+    },
+    async loadManagedGeneralPdfInspection(job, sourceSha256, attempt) {
+      const source = await current(job, attempt);
+      if (!source?.generalPdf) return undefined;
+      if (sourceSha256 !== source.sourceSha256) return refuse();
+      const loaded = await actual(job, source, attempt);
+      inspectGeneralPdfSource(source.generalPdf, loaded.bytes, workerProviderSourceBinding(job, job.documents));
+      attempt.check();
+      return source.generalPdf;
     },
     async loadManagedAdminTextSectionLayout(job, sourceSha256) {
       const source = await current(job);
@@ -430,8 +460,13 @@ export function createAdminSourceRuntimeOptions(
  * ingestion provider call is refused and each job ends as `scanner_unavailable`. Say so once at
  * start-up. Only whether the setting is present is reported, never its value.
  */
-export function adminSourceRuntimeStartupWarning(modulePath = process.env.WORKER_ADMIN_SOURCE_RUNTIME_MODULE) {
+export function adminSourceRuntimeStartupWarning(
+  modulePath = process.env.WORKER_ADMIN_SOURCE_RUNTIME_MODULE,
+  internalPolicy = process.env.WORKER_INTERNAL_ADMIN_BUILD_POLICY_JSON,
+) {
   if (modulePath !== undefined && modulePath !== "") return null;
+  // Presence is not readiness: the loader validates the policy before claims.
+  if (internalPolicy !== undefined && internalPolicy !== "") return null;
   return (
     "WORKER_ADMIN_SOURCE_RUNTIME_MODULE is not set: there is no malware scanner, so every ingestion " +
     "provider call will be refused and jobs will fail as scanner_unavailable (see docs/worker-deploy-runbook.md)."
@@ -443,7 +478,49 @@ export async function loadAdminSourceRuntimeOptions(
   client: SupabaseClient,
   bucket: string,
   modulePath = process.env.WORKER_ADMIN_SOURCE_RUNTIME_MODULE,
+  internalPolicy = process.env.WORKER_INTERNAL_ADMIN_BUILD_POLICY_JSON,
+  claimEnvironment: Record<string, string | undefined> = process.env,
 ) {
+  if (internalPolicy !== undefined && internalPolicy !== "") {
+    if (modulePath || Buffer.byteLength(internalPolicy, "utf8") > 32768) return refuse();
+    let value: unknown;
+    try {
+      value = JSON.parse(internalPolicy);
+    } catch {
+      return refuse();
+    }
+    const policy = z
+      .object({
+        allowedDocumentIds: z
+          .array(z.uuid().transform((value) => value.toLowerCase()))
+          .min(1)
+          .max(100),
+        approvalReferenceSha256: z.string().regex(/^sha256:[0-9a-f]{64}$/),
+        issuedAt: z.iso.datetime(),
+        expiresAt: z.iso.datetime(),
+      })
+      .strict()
+      .safeParse(value);
+    if (!policy.success) return refuse();
+    // Refuse before claims rather than consuming attempts on unrelated jobs.
+    const claimScope = resolveWorkerClaimScopeFilter(claimEnvironment);
+    const allowed = new Set(policy.data.allowedDocumentIds);
+    if (
+      claimScope.claimsNothing ||
+      !claimScope.allowedDocumentIds.size ||
+      [...claimScope.allowedDocumentIds].some((id) => !allowed.has(id))
+    )
+      return refuse();
+    return createAdminSourceRuntimeOptions(
+      client,
+      createInternalAdminBuildSuppliers(client, {
+        ...policy.data,
+        bucket,
+        inspectNativePdf: inspectNativePdfBytes,
+      }),
+      bucket,
+    );
+  }
   if (modulePath === undefined || modulePath === "") return {};
   if (!path.isAbsolute(modulePath) || /^(?:https?|data|node):/i.test(modulePath)) return refuse();
   const moduleBytes = await readFile(modulePath);

@@ -68,7 +68,10 @@ type APIPromiseLike<T> = Promise<T> & {
 
 export type OpenAITextResult = {
   text: string;
+  /** Requested model selector; retained independently of provider execution evidence. */
   model: string;
+  /** Model reported by the provider response; absent means execution identity is unverified. */
+  providerModel?: string;
   operation: OpenAIOperation;
   latencyMs: number;
   requestId?: string | null;
@@ -649,9 +652,11 @@ async function createTextResult(
       });
     }
 
+    const reportedModel = (data as { model?: unknown }).model;
     return {
       text: outputText,
       model: options.model,
+      providerModel: typeof reportedModel === "string" && reportedModel.trim() ? reportedModel.trim() : undefined,
       operation,
       latencyMs: Date.now() - startedAt,
       requestId,

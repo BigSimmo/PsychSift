@@ -89,8 +89,9 @@ run and inspect the harness's approval manifest and reservations. The planned ce
 150 requests including recovery, one million input tokens, 400,000 output tokens including reasoning,
 and concurrency one. This full plan cannot fit those caps: output reservations alone are
 832,000 tokens against the 400,000 cap. A feasible revised scope and its own approval are required.
-Conservative admission can stop the experiment before all cases complete;
-an incomplete comparison never passes. No credentials or production content belong in a manifest.
+Paid mode rejects a full plan that cannot fit either the configured or approved limits before
+consuming approval, creating its output directory or dispatching any request. No cap is raised
+automatically. An incomplete comparison never passes. No credentials or production content belong in a manifest.
 Thrown failures and incomplete provider responses both stop the schedule without retries.
 Malformed output recovered into a safe refusal earns no model-quality credit; the raw response
 must contain the issued answer envelope and explicitly declare unsupported confidence.
@@ -98,6 +99,9 @@ The manifest's absolute `outputDirectory` binds it to one new ignored run direct
 atomically consumed and a durable approval receipt is written before transport; an interrupted
 or failed run cannot reuse it. Run the harness from its own checkout root so the approved hashes
 identify the code that actually executes.
+Comparison outcomes keep the requested model selector separate from the provider-reported model
+and request ID. Missing provider identity is recorded as null and remains unverified; offline
+synthetic outputs provide no provider execution evidence.
 
 Existing evaluators accept `RAG_EVAL_MODEL_PRICES_JSON` with explicit per-million USD rates keyed
 by exact model ID (`input`, `output`, optional `cachedInput` and `cacheWrite`). Attempt records
