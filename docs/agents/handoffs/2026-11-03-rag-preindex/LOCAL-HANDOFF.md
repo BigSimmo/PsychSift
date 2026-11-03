@@ -1,6 +1,36 @@
 # PsychSift local completion handoff
 
-Use this prompt in a local coding-agent chat with access to the PsychSift checkout. The accompanying Git bundle is stored beside this file. Fetch this transfer PR into an isolated worktree to obtain both files intact. The embedded implementation branch has **not** been pushed as an implementation branch, merged or deployed.
+Continue locally from [draft transfer PR #3890](https://github.com/BigSimmo/PsychSift/pull/3890). Its branch is `handoff/rag-preindex-local-7fd0e1db2`, based on `main`. It contains only this prompt and the accompanying Git bundle. The implementation is inside that bundle; it is not applied to the transfer PR's checkout and has not been merged or deployed.
+
+**Use the latest PR head for these instructions, then import the bundle before inspecting or editing the implementation.** Working directly in the transfer PR's checkout would inspect the old application code. The PR does not need to be merged to retrieve its files. Leave it draft with auto-merge off.
+
+## Local retrieval and import
+
+First identify the actual local checkout and verify its origin is `https://github.com/BigSimmo/PsychSift.git`. Preserve dirty work and inspect existing branches/worktrees. Replace each placeholder below with a verified literal path; choose unused branch names and worktree directories, or reuse an already-correct import. Do not reset, force-update, stash or overwrite another task's work.
+
+Fetch the latest transfer PR and obtain both files in an isolated worktree:
+
+```text
+git -C "<local-checkout>" fetch origin refs/pull/3890/head:refs/heads/handoff/pr-3890-transfer
+git -C "<local-checkout>" worktree add "<transfer-worktree>" handoff/pr-3890-transfer
+```
+
+The bundle is then at:
+
+```text
+<transfer-worktree>/docs/agents/handoffs/2026-11-03-rag-preindex/psychsift-preindex.bundle
+```
+
+Check its SHA-256 against the value below using `Get-FileHash -Algorithm SHA256` on PowerShell or `sha256sum` on Linux. Keep the bundle as binary bytes rather than extracting it through text redirection. Verify its prerequisite, then import into a separate implementation branch/worktree:
+
+```text
+git -C "<local-checkout>" bundle verify "<bundle-path>"
+git -C "<local-checkout>" fetch "<bundle-path>" refs/heads/fix/rag-preindex-readiness:refs/heads/local/rag-preindex-7fd0e1db2
+git -C "<local-checkout>" worktree add "<implementation-worktree>" local/rag-preindex-7fd0e1db2
+git -C "<implementation-worktree>" rev-parse HEAD
+```
+
+If the prerequisite is missing, fetch the required history from the verified origin and repeat bundle verification. Do not use a newer `main` checkout as a substitute for importing the prepared commits. The final `rev-parse` must return the exact implementation head below. Perform subsequent implementation work in **that** worktree, and read its own AGENTS.md and checkpoint before proceeding. Reconcile newer main-line changes only after establishing this exact starting revision.
 
 Bundle: `psychsift-preindex.bundle` (10 commits).
 
@@ -12,9 +42,9 @@ Bundle: `psychsift-preindex.bundle` (10 commits).
 
 ## Paste into the local chat
 
-Continue the existing PsychSift RAG/ingestion completion task. Finish the remaining prerequisites efficiently, and stop before live re-indexing or re-ingestion. Resume the existing implementation; do not rebuild it or repeat its completed audit.
+Continue the existing PsychSift RAG/ingestion completion task from https://github.com/BigSimmo/PsychSift/pull/3890. Fetch the latest PR head, read `docs/agents/handoffs/2026-11-03-rag-preindex/LOCAL-HANDOFF.md`, and follow its retrieval/import steps. Finish the remaining prerequisites efficiently, and stop before live re-indexing or re-ingestion. Resume the existing implementation; do not rebuild it or repeat its completed audit.
 
-**First establish the actual local state.** Read this checkout's AGENTS.md and required continuation, relevant host/raw-environment safeguards and `docs/agents/shared-context-and-memory.md`. Verify the repository origin, current branch, dirty files and available tools without exposing credentials. Preserve concurrent work. The cloud branch is not on GitHub: verify the accompanying bundle's SHA-256 and prerequisite, import its branch into a new local branch, and use an isolated worktree when needed. If the prerequisite is missing, fetch it from the verified repository rather than resetting current work. Confirm the imported head is exactly `7fd0e1db22d45b0efc31865652f8806ac5afb4ad` before reconciling any newer main-line changes. Use literal verified checkout paths in Git commands.
+**First establish the actual local state.** Read the local checkout's AGENTS.md and required continuation, relevant host/raw-environment safeguards and `docs/agents/shared-context-and-memory.md`. Verify repository origin, branch, dirty files and available tools without exposing credentials. Preserve concurrent work. PR #3890 publishes the transfer files, not the implementation as an ordinary code branch. Verify the accompanying bundle's SHA-256 and prerequisite, import it as described above, then read the imported worktree's instructions. Confirm its head is exactly `7fd0e1db22d45b0efc31865652f8806ac5afb4ad` before reconciling newer main-line changes. Use literal verified checkout paths in Git commands. The transfer PR is access to source, not approval to deploy or spend.
 
 **Read the current checkpoint and source:**
 
@@ -25,7 +55,7 @@ Continue the existing PsychSift RAG/ingestion completion task. Finish the remain
 
 Legal review was explicitly deferred as an internal-build prerequisite; do not reinstate counsel clearance as a coding blocker. Preserve explicit prohibitions, source fidelity, privacy, administrator identity and production controls. Do not invent historical rights, clinical approval or publication permission.
 
-**Reuse completed work and evidence.** The branch contains WA admission support, separate native-text and rich-PDF profiles, original feature inspection, actual OCR, source-bound table/image retention, current administrator readmission, local derived index/memory artifacts, atomic completion and authenticated active-generation image delivery. Fresh cloud evidence was 46 suites / 1,037 passing tests, 14 Python tests, typecheck, focused lint and worker bundle compilation. Synthetic PostgreSQL 17 tests passed completion, strict replay, image retrieval, stale/incomplete/old-admission refusals, existing-generation preservation and stage deletion lifecycle. That scratch database used scaffolding and does not prove authoritative Supabase replay or real-corpus accuracy. Reuse unchanged code evidence; rerun only checks affected by local environment, drift or fixes.
+**Reuse completed work and evidence.** The imported implementation contains WA admission support, separate native-text and rich-PDF profiles, original feature inspection, actual OCR, source-bound table/image retention, current administrator readmission, local derived index/memory artifacts, atomic completion and authenticated active-generation image delivery. Recorded cloud evidence at `7fd0e1db2` was 46 suites / 1,037 passing tests, 14 Python tests, typecheck, focused lint and worker bundle compilation. Synthetic PostgreSQL 17 tests passed completion, strict replay, image retrieval, stale/incomplete/old-admission refusals, existing-generation preservation and stage deletion lifecycle. That scratch database used scaffolding and does not prove authoritative Supabase replay or real-corpus accuracy. The transfer PR's publication added no new local or hosted verification; do not treat those checks as observed or passing. Reuse unchanged code evidence; rerun only checks affected by local environment, drift or fixes.
 
 **Complete the remaining work in this order:**
 
@@ -42,3 +72,5 @@ Legal review was explicitly deferred as an internal-build prerequisite; do not r
 **Stop boundary:** Do not run a library re-index, re-ingest sources, resume claims, run `worker:once`/the reindex pipeline or invoke the production readmission RPC as a test: readmission itself queues work. Prepare the finite source/claim policy and usable later execution procedure without starting them. Do not label the system ready until the required real-corpus, schema, deployment and model evidence exists. Report exact remaining external blockers when execution cannot proceed.
 
 Work autonomously on all independent authorized steps. Batch reads, serialize coupled writes/checks, avoid unrelated cleanup and repeated broad tests. Ask only for genuinely missing access or required bounded spending/production approvals after preparing reviewable work. Keep one checkpoint with source revision, evidence, approvals, remaining blockers and next command. Final status must distinguish implemented, locally verified, deployed, model-activated and awaiting re-indexing.
+
+**First useful checkpoint:** report the verified imported head, the actual local Docker/authentication capabilities, and the first authoritative replay result or precise blocker. Do not spend the first session repeating the completed cloud audit. New extracted/indexed artifacts require re-indexing; an accepted answer-model switch affects new queries after activation and does not require re-embedding the corpus.
