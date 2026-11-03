@@ -59,6 +59,8 @@ Distinguish prepared, send accepted, recipient acknowledged, checked/integrated 
 
 Locate before reading; read relevant headings and decisive command output. Do not reload unchanged sources or duplicate checks without an applicable trigger. Batch independent reads and keep coupled edits and shared-resource gates serial. Before compaction, session transfer or a fresh task, preserve the original objective, branch/commit, owned diff, source/evidence identities, decisions, rejected hypotheses, blocker and next exact action. Use the project's existing checkpoint/receipt route and disclose unsynced receipts. Never put raw transcripts, credentials or patient data into a public checkpoint. Validate relevant drift when resuming. Report unknown cost or token savings as unknown.
 
+When a known usage or session limit is approaching, preserve progress before access stops in the existing task checkpoint: exact checkout, branch, owned changes, decisions, evidence and next action. Push approved feature-branch progress and update a PR handoff only where that publication and PR are already authorised; otherwise preserve it locally. Do not switch accounts, widen access or publish private content without the applicable authority.
+
 ## Use memory with explicit scope
 
 Routes by host: use the commissioned Windows `curated-save-only` adapter locally (the claude.ai connector may stay on beside it) and the official authenticated Supermemory MCP in dot/cloud. Inspect actual schemas and identity/space metadata; successful metadata checks do not prove a save or semantic recall. Do not add a stock transcript-capture plugin or raw API route, request a raw key or read stored credentials.
