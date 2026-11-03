@@ -50,6 +50,7 @@ describe("reindex enrichment-lease gate (#052)", () => {
     const rpc = vi.fn();
     const from = vi.fn(() => ({
       select: vi.fn().mockReturnThis(),
+      or: vi.fn().mockReturnThis(),
       eq: vi.fn().mockReturnThis(),
       maybeSingle: vi.fn(async () => ({ data: documentRow(), error: null })),
       update: vi.fn().mockReturnThis(),
@@ -97,6 +98,7 @@ describe("reindex enrichment-lease gate (#052)", () => {
     const rpc = vi.fn(async () => ({ data: { job_id: "enrichment-job" }, error: null }));
     const from = vi.fn(() => ({
       select: vi.fn().mockReturnThis(),
+      or: vi.fn().mockReturnThis(),
       eq: vi.fn().mockReturnThis(),
       maybeSingle: vi.fn(async () => ({ data: documentRow(), error: null })),
     }));

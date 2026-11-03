@@ -131,6 +131,11 @@ export type WorkerRuntimeOptions = {
     sourceSha256: string,
     attempt: IngestionAttempt,
   ) => Promise<import("./general-pdf-inspection").GeneralPdfInspectionReview | undefined>;
+  loadManagedRichPdfInspection?: (
+    job: JobRow,
+    sourceSha256: string,
+    attempt: IngestionAttempt,
+  ) => Promise<(import("./rich-pdf-inspection").RichPdfInspectionResult & { stewardId: string }) | undefined>;
   /** Server-owned PDF roles must reference actual retained bytes and candidate IDs. */
   loadManagedNativePdfSourceRoles?: (
     input: ManagedPreparedSupplierInput,
@@ -526,12 +531,24 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
       const buffer = await downloadDocument(job.documents.storage_path);
       await updateJobProgress(job.id, { stage: "extracting text/images", progress: 20 });
       const legacyExtractionStartedAt = Date.now();
+      const richPdf =
+        evidenceInventory.managed === true && options.loadManagedRichPdfInspection
+          ? await options.loadManagedRichPdfInspection(
+              job,
+              `sha256:${createHash("sha256").update(buffer).digest("hex")}`,
+              attempt,
+            )
+          : undefined;
+      // Own temporary extraction immediately, including a failure during the next check.
+      if (richPdf) extracted = richPdf.extracted;
+      attempt.check();
       if (
         managedPreparation.pdf &&
         `sha256:${createHash("sha256").update(buffer).digest("hex")}` !== managedPreparation.pdf.sourceSha256
       )
         throw new Error("managed_native_pdf_source_changed_after_registration");
       extracted =
+        richPdf?.extracted ??
         managedPreparation.pdf?.extracted ??
         (await extractDocument({
           buffer,
@@ -542,7 +559,8 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
       const legacyExtractionWallMs = Date.now() - legacyExtractionStartedAt;
       const capturedImages =
         evidenceInventory.managed === true
-          ? (managedPreparation.pdf?.capturedImages ??
+          ? (richPdf?.capturedImages ??
+            managedPreparation.pdf?.capturedImages ??
             (await captureGenerationImages({
               extracted,
               trustedTemporaryRoots: extracted.temporaryPaths ?? [],
@@ -566,6 +584,7 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
           pageRows,
           evidenceInventory,
           issuedControlSnapshot,
+          richPdf,
         });
         recordClaimProcessed(); // A managed terminal is a successful claim for the health check too
         return;

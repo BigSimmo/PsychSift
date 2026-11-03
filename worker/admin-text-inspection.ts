@@ -114,7 +114,7 @@ function assertInertText(text: string): void {
   )
     refuse("source_not_inert_plain_text");
 }
-function bibliographicIdentifierAssessment(text: string): string {
+export function bibliographicIdentifierAssessment(text: string): string {
   // Only this public-reference adapter exempts explicitly labelled ISBN-13s.
   // Keep exact character offsets for source slices; never alter inspected bytes.
   return text.replace(
@@ -128,7 +128,7 @@ function bibliographicIdentifierAssessment(text: string): string {
     },
   );
 }
-function inspectIdentifiers(text: string, assessment = bibliographicIdentifierAssessment(text)): void {
+export function inspectIdentifiers(text: string, assessment = bibliographicIdentifierAssessment(text)): void {
   // A negative result means only that these existing identifier shapes were not
   // detected in the entire bounded text. It is not proof of perfect PHI absence.
   if (identifierShapeWarning(assessment)) refuse("identifier_shape_detected");

@@ -47,6 +47,14 @@ export type Database = {
   };
   public: {
     Tables: {
+      document_admission_events: GeneratedTable<{
+        id:string;document_id:string;ingestion_job_id:string;staging_owner_id:string|null;
+        source_channel:"admin_api"|"backend_import";actor_kind:"administrator"|"trusted_backend";
+        administrator_id:string|null;backend_principal:string|null;correlation_id:string;
+        admission_policy_version:string;content_sha256:string;file_name_sha256:string;
+        storage_path_sha256:string;mime_type:string;byte_count:number;authority:Json;
+        admission_digest:string;document_input_digest:string;request_digest:string;created_at:string;
+      }>;
       teaching_calendar_optins: {
         Row: { service_id: string; user_id: string; created_at: string };
         Insert: { service_id: string; user_id: string; created_at?: string };
@@ -4971,6 +4979,16 @@ export type Database = {
       };
     };
     Functions: {
+      read_managed_pdf_image: {
+        Args: {p_image_id:string;p_document_id:string;p_generation:string};
+        Returns: Json;
+      };
+      readmit_administrator_document_for_reindex: {
+        Args: {p_document_id:string;p_correlation_id:string;p_expected_owner_id:string|null;
+          p_expected_public_corpus:boolean;p_source_sha256:string;p_byte_count:number;
+          p_file_name_sha256:string;p_storage_path_sha256:string;p_authority:Json;p_max_attempts?:number};
+        Returns: Json;
+      };
       roster_offer_alert_work: {
         Args: {
           p_operation: string;

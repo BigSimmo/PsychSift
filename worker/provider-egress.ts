@@ -33,7 +33,7 @@ const authorityText = (max: number) =>
     .max(max)
     .refine((value) => value.trim() === value && !/[\u0000-\u001f\u007f]/.test(value));
 // Decode admitted declarations, not a new rights or clinical-policy decision.
-const declaredAuthoritySchema = z
+export const declaredAuthoritySchema = z
   .object({
     version: z.literal(1),
     sourceRole: z.enum([

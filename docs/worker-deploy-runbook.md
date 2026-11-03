@@ -443,6 +443,25 @@ Deploying the additive general-PDF completion/jurisdiction migration and observi
 separate from compiling this worker. Do not resume claims until that schema and the finite policy
 are verified. This documentation does not configure a policy, deploy code or run ingestion.
 
+**Inspected table/image/OCR alternative (3 November).**
+`WORKER_INTERNAL_RICH_PDF_BUILD_POLICY_JSON` uses the same four finite policy keys and explicit
+claim subset. It is mutually exclusive with the mounted runtime and native-text policy. It
+requires current administrator readmission, the full-PDF migration, and private original Storage.
+For an existing shared library document, its actual null owner and boolean `public_corpus` remain
+unchanged; a separately recorded current administrator takes responsibility for the re-index.
+The new admission establishes the current request, not a historical upload or publication grant.
+
+The separate original inspector inventories tables, raster images and vectors; production
+extraction and Tesseract supply actual text/OCR, table cells and captured images. Source hashes,
+provenance, native/OCR page partitions, derived rows and vectors are checked before atomic
+publication. Measured quality gates reject a degraded replacement. Retained image bytes use an
+authenticated active-generation endpoint; the `managed-pdf/…` locator is not a Storage object.
+Local sections, memory cards and index units are produced together. Model-generated summaries,
+vision interpretation and clinical semantic sign-off are explicitly deferred in this profile.
+Only embedding provider calls are enabled; other purposes require separate trusted source-bound
+bodies and purpose grants. This is an internal build with deferred legal review, not public
+clearance. Keep the worker paused until actual schema, deployment and finite policy are verified.
+
 The owner selected an explicit source-scoped administrator-only unscanned exception for local
 implementation on 1 November. Its evidence, expiry, revocation and commissioning requirements
 live in [the exception contract](reindex-unlock-plan.md#administrator-unscanned-exception-contract).

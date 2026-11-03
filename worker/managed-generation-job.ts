@@ -67,6 +67,7 @@ import type { ManagedProviderEmbeddingBatchContext } from "./managed-provider-ve
 import { produceManagedVectorFinalPacket, stageManagedVectorFinal } from "./managed-vector-final";
 import { decodeRetainedOriginalWitness } from "./original-witness-readback";
 import type { JobRow } from "./types";
+import { prepareManagedFullPdfGeneration, runManagedFullPdfGeneration } from "./managed-full-pdf-terminal";
 
 export type ManagedGenerationLoaders = Pick<
   WorkerRuntimeOptions,
@@ -89,6 +90,7 @@ export async function runManagedGenerationJob(
     pageRows: ReturnType<typeof buildDocumentPageRowsForPersistence>;
     evidenceInventory: Awaited<ReturnType<IngestionMutation>>;
     issuedControlSnapshot: ReturnType<typeof captureIssuedAttemptControl>;
+    richPdf?: import("./rich-pdf-inspection").RichPdfInspectionResult & { stewardId: string };
   },
 ): Promise<void> {
   const { ingestionRpcClient, mutation, workerEmbedTexts } = ctx;
@@ -139,6 +141,33 @@ export async function runManagedGenerationJob(
     packet: controlPacket,
     extracted,
   });
+  if (args.richPdf) {
+    if (originalWitness.status !== "retained") throw new Error("managed_rich_pdf_original_witness_required");
+    const plan = prepareManagedFullPdfGeneration({
+      job,
+      issued: issuedControlSnapshot,
+      retentionPacket: packet,
+      originalBytes: buffer,
+      review: args.richPdf.review,
+      extracted,
+      capturedImages,
+      stewardId: args.richPdf.stewardId,
+    });
+    await stageGenerationPrerequisite({ packet, mutation: (name, payload) => mutation(attempt, name, payload) });
+    await runManagedFullPdfGeneration({
+      plan,
+      attempt,
+      embed: (texts, context) => workerEmbedTexts(job, texts, context, plan.planDigest),
+      mutation: (name, payload) => mutation(attempt, name, payload),
+      stopHeartbeat: () => clearInterval(heartbeat),
+      rpc: (name, payload) =>
+        ingestionRpcClient.rpc(name, payload).abortSignal(controlPlaneAbortSignal(attempt.signal)),
+    });
+    invalidateRagCachesForDocumentMutation(job.documents.owner_id ?? "anonymous", {
+      affectsPublicCorpus: job.documents.owner_id == null,
+    });
+    return;
+  }
   if (
     originalWitness.status === "retained" &&
     job.documents.file_type === "application/pdf" &&

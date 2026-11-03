@@ -4,6 +4,11 @@ import {
   readAdminUnscannedExceptionReceipt,
   type AdminUnscannedExceptionReceipt,
 } from "./admin-unscanned-exception.ts";
+import {
+  RICH_ADMIN_UNSCANNED_POLICY,
+  readRichAdminUnscannedReceipt,
+  type RichAdminUnscannedReceipt,
+} from "./rich-admin-unscanned-exception.ts";
 
 export const PROVIDER_EGRESS_PURPOSES = ["caption", "embedding", "summary", "deep_memory"] as const;
 
@@ -68,13 +73,13 @@ export type DocumentIngressSafetyObservations = Readonly<{
   ownerScope: "permitted" | "denied";
   rights: "permitted" | "denied" | "review_deferred";
   legalReviewDeferral?: typeof INTERNAL_BUILD_LEGAL_REVIEW_DEFERRAL;
-  processingScope?: "owner_internal_build";
+  processingScope?: "owner_internal_build" | "existing_shared_library_reindex";
   purposeClearance: "permitted" | "denied";
   scanner: Readonly<{
     verdict: "clean" | "malware" | "unavailable" | "unscanned";
     scannerVersion: string;
     contentSha256: ContentSha256;
-    exceptionReceipt?: AdminUnscannedExceptionReceipt;
+    exceptionReceipt?: AdminUnscannedExceptionReceipt | RichAdminUnscannedReceipt;
   }>;
   activeContent: "absent" | "detected";
   identifiers: "absent" | "detected";
@@ -232,7 +237,21 @@ export function evaluateDocumentIngressSafety(input: unknown): DocumentIngressSa
 
   const ownerScope = normalizedStatus(record.ownerScope, ["permitted", "denied"] as const);
   const rights = normalizedStatus(record.rights, ["permitted", "denied", "review_deferred"] as const);
-  const legalReviewDeferred = hasInternalBuildLegalReviewDeferral(record, "uploaded_local");
+  const richScanner = isRecord(record.scanner) ? record.scanner : {};
+  const richException =
+    binding && purpose ? readRichAdminUnscannedReceipt(richScanner.exceptionReceipt, binding, purpose) : null;
+  const richLegalDeferral =
+    richException !== null &&
+    record.legalReviewDeferral === INTERNAL_BUILD_LEGAL_REVIEW_DEFERRAL &&
+    record.rights === "review_deferred" &&
+    record.indexLicence === "review_deferred" &&
+    record.processingScope ===
+      (richException.scope === "existing_shared_library_stewardship"
+        ? "existing_shared_library_reindex"
+        : "owner_internal_build");
+  const legalReviewDeferred = richException
+    ? richLegalDeferral
+    : hasInternalBuildLegalReviewDeferral(record, "uploaded_local");
   if (record.legalReviewDeferral !== undefined && !legalReviewDeferred) addInvalidObservation(reasons);
   if (rights === "review_deferred" && !legalReviewDeferred) addInvalidObservation(reasons);
   const purposeClearance = normalizedStatus(record.purposeClearance, ["permitted", "denied"] as const);
@@ -260,9 +279,12 @@ export function evaluateDocumentIngressSafety(input: unknown): DocumentIngressSa
   if (scannerVerdict === "malware") reasons.set("malware_detected", "remove_or_quarantine_unsafe_content");
   const exception =
     scannerVerdict === "unscanned" && binding && purpose
-      ? readAdminUnscannedExceptionReceipt(scanner.exceptionReceipt, binding, purpose)
+      ? (readAdminUnscannedExceptionReceipt(scanner.exceptionReceipt, binding, purpose) ?? richException)
       : null;
-  if (scannerVerdict === "unscanned" && (!exception || scannerVersion !== ADMIN_UNSCANNED_EXCEPTION_POLICY)) {
+  if (
+    scannerVerdict === "unscanned" &&
+    (!exception || scannerVersion !== (richException ? RICH_ADMIN_UNSCANNED_POLICY : ADMIN_UNSCANNED_EXCEPTION_POLICY))
+  ) {
     reasons.set("unscanned_exception_invalid", "repeat_safety_checks");
   }
 
@@ -316,7 +338,7 @@ export function evaluateDocumentIngressSafety(input: unknown): DocumentIngressSa
     ...(legalReviewDeferred
       ? {
           legalReviewDeferral: INTERNAL_BUILD_LEGAL_REVIEW_DEFERRAL,
-          processingScope: "owner_internal_build",
+          processingScope: richLegalDeferral ? record.processingScope : "owner_internal_build",
         }
       : {}),
     purposeClearance,

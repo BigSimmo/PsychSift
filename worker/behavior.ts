@@ -32,6 +32,8 @@ export const CONTROL_PLANE_RPCS: ReadonlySet<string> = new Set([
   "patch_ingestion_document_state",
   "complete_ingestion_job",
   "complete_managed_general_pdf",
+  "complete_managed_full_pdf",
+  "read_administrator_reindex_authority",
   "fail_or_retry_ingestion_job",
 ]);
 

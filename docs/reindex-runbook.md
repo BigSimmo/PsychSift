@@ -17,6 +17,32 @@ Use this sequence when applying RAG indexing changes to the live `PsychSift Prod
 > [`AGENTS.md`](../AGENTS.md) and [`docs/agents/shared-context-and-memory.md`](agents/shared-context-and-memory.md):
 > a named purpose, a total estimate and a hard cap, approved before the run.
 
+## Prepared current-administrator PDF readmission
+
+The prepared single-document API accepts `mode: "full"` with an explicit
+`readmission: { correlationId, authority }` object. Authority is a new current administrator
+declaration using the existing admission schema; it is never copied silently from historical
+upload metadata. The route requires current bearer/cookie administrator authentication,
+downloads and verifies that document's stored original, then uses the authenticated user's
+`readmit_administrator_document_for_reindex` RPC. The database additionally requires recent
+multi-factor authentication. Existing owner-private records or actual shared-library rows
+(`owner_id: null`, `metadata.public_corpus: true`) are the supported ownership scopes.
+
+**Invoking this API queues that exact document. Do not invoke it during preparation or before
+the owner's reindex execution approval.** It preserves ownership, visibility and the current
+index, and does not establish who uploaded the historical original or grant clinical/publication
+approval. Replays use the same correlation ID; a second legacy queue call is prohibited.
+The application and draft readmission migration must be deployed and verified before the
+contract is operational; this documentation is not deployment evidence.
+
+Full PDF requests without this explicit readmission are held with `readmission_required`.
+Bulk full/retry requests return a per-document 409 result for PDFs instead of queuing them;
+there is no new batch authority/readmission UI. Existing text and enrichment paths remain.
+The consolidated script screens current PDF job metadata against actual admission/source
+identity before recovery or worker spawn. That screen establishes scheduling prerequisites
+only; the worker still independently reloads fenced authority, current administrator facts,
+source bytes and active processing policy before any provider request.
+
 ## Consolidated pipeline command
 
 The quickest way to run a full reindex cycle is the consolidated pipeline command:

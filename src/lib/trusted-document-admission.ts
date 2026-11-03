@@ -545,6 +545,12 @@ function parseAuthority(
   });
 }
 
+/** Current declarations for a fresh administrator reindex action. This validates
+ * the declaration; it establishes no historical upload or publication approval. */
+export function parseAdministratorReindexAuthority(value: unknown): TrustedAdmissionAuthority {
+  return parseAuthority(value, "admin_api");
+}
+
 function parseActor(value: unknown, sourceChannel: TrustedAdmissionInput["sourceChannel"], ownerId: string) {
   if (!isRecord(value)) throw new Error("Trusted admission actor must be an object.");
   if (sourceChannel === "admin_api") {

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { env, isDemoMode } from "@/lib/env";
-import { jsonError, publicErrorResponse } from "@/lib/http";
+import { jsonError, publicErrorResponse, PublicApiError } from "@/lib/http";
 import {
   activeIngestionJobColumns,
   buildActiveJobsSafetyResult,
@@ -12,9 +12,18 @@ import {
 } from "@/lib/ingestion-mutation-safety";
 import { consumeApiRateLimit, rateLimitJsonResponse } from "@/lib/api-rate-limit";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { AuthenticationError, requireAuthenticatedUser, unauthorizedResponse } from "@/lib/supabase/auth";
-import { parseJsonBodyOrDefault } from "@/lib/validation/body";
+import {
+  AuthenticationError,
+  requireAuthenticatedUser,
+  requireAuthenticatedUserContext,
+  unauthorizedResponse,
+} from "@/lib/supabase/auth";
+import { readBoundedJson } from "@/lib/validation/body";
 import { parseRouteParams } from "@/lib/validation/params";
+import { prepareAdministratorDocumentReadmission } from "@/lib/admin-document-readmission";
+import { parseAdministratorReindexAuthority } from "@/lib/trusted-document-admission";
+import { MAX_UPLOAD_MB_CEILING } from "@/lib/upload-limits";
+import { withOwnerReadScope } from "@/lib/public-api-access";
 
 export const runtime = "nodejs";
 
@@ -26,6 +35,28 @@ const reindexModeSchema = z
 const reindexRouteParamsSchema = z.object({
   id: z.string().uuid(),
 });
+const readmissionRequestSchema = z
+  .object({
+    mode: z.literal("full").default("full"),
+    readmission: z
+      .object({
+        correlationId: z.uuid(),
+        authority: z.unknown().refine((value) => value !== undefined && value !== null),
+      })
+      .strict(),
+  })
+  .strict();
+const readmissionResultSchema = z
+  .object({
+    outcome: z.enum(["created", "replayed"]),
+    admissionEventId: z.uuid(),
+    jobId: z.uuid(),
+    scope: z.enum(["owner_private", "existing_shared_library_stewardship"]),
+    documentOwnerId: z.uuid().nullable(),
+    stewardId: z.uuid(),
+    generationActivated: z.literal(false).optional(),
+  })
+  .refine((result) => result.outcome !== "created" || result.generationActivated === false);
 const reindexRequestResultSchema = z.discriminatedUnion("outcome", [
   z.object({ outcome: z.literal("not_found") }),
   z.object({ outcome: z.literal("agent_enrichment_active") }),
@@ -33,9 +64,25 @@ const reindexRequestResultSchema = z.discriminatedUnion("outcome", [
   z.object({ outcome: z.literal("queued"), job: z.object({ id: z.string() }).passthrough() }),
 ]);
 
-async function readMode(request: Request) {
-  const parsed = await parseJsonBodyOrDefault(request, reindexModeSchema, { mode: "full" });
-  return parsed.mode;
+async function readInput(
+  request: Request,
+): Promise<{ mode: "full" | "enrichment"; readmission?: { correlationId: string; authority: unknown } }> {
+  const body = await readBoundedJson(request);
+  if (body && typeof body === "object" && Object.hasOwn(body, "readmission")) {
+    const parsed = readmissionRequestSchema.safeParse(body);
+    if (!parsed.success)
+      throw new PublicApiError("Explicit current readmission is invalid.", 400, { code: "invalid_readmission" });
+    try {
+      parseAdministratorReindexAuthority(parsed.data.readmission.authority);
+    } catch {
+      throw new PublicApiError("Current administrator authority is invalid.", 400, {
+        code: "invalid_readmission_authority",
+      });
+    }
+    return parsed.data;
+  }
+  const parsed = reindexModeSchema.safeParse(body);
+  return parsed.success ? parsed.data : { mode: "full" };
 }
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -46,23 +93,124 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const { id: rawId } = await params;
     const { id } = parseRouteParams({ id: rawId }, reindexRouteParamsSchema, "Invalid document id.");
     const supabase = createAdminClient();
-    const user = await requireAuthenticatedUser(request, supabase, { administrator: true });
-    const mode = await readMode(request);
+    const { mode, readmission } = await readInput(request);
+    const current = readmission
+      ? await requireAuthenticatedUserContext(request, supabase, { administrator: true })
+      : undefined;
+    const user = current?.user ?? (await requireAuthenticatedUser(request, supabase, { administrator: true }));
     const rateLimit = await consumeApiRateLimit({ supabase, ownerId: user.id, bucket: "document_reindex" });
     if (rateLimit.limited)
       return rateLimitJsonResponse("Too many document reindex requests. Retry shortly.", rateLimit);
 
-    const { data: document, error: documentError } = await supabase
-      .from("documents")
-      .select(
-        "id,owner_id,title,file_name,source_path,import_batch_id,status,error_message,page_count,chunk_count,image_count,metadata",
-      )
-      .eq("id", id)
-      .eq("owner_id", user.id)
-      .maybeSingle();
+    const documentQuery = withOwnerReadScope(
+      supabase
+        .from("documents")
+        .select(
+          "id,owner_id,title,file_name,file_type,file_size,storage_path,content_hash,source_path,import_batch_id,status,error_message,page_count,chunk_count,image_count,metadata",
+        )
+        .eq("id", id),
+      user.id,
+    );
+    const { data: document, error: documentError } = await documentQuery.maybeSingle();
 
     if (documentError) throw new Error(documentError.message);
     if (!document) return publicErrorResponse("Document not found.", 404, { code: "document_not_found" });
+    if (!readmission && document.owner_id !== user.id)
+      return publicErrorResponse("Document not found.", 404, { code: "document_not_found" });
+
+    if (readmission && current) {
+      const metadata =
+        document.metadata && typeof document.metadata === "object" && !Array.isArray(document.metadata)
+          ? (document.metadata as Record<string, unknown>)
+          : {};
+      const shared = document.owner_id === null && metadata.public_corpus === true;
+      if (document.owner_id !== user.id && !shared)
+        return publicErrorResponse("Document not found.", 404, { code: "document_not_found" });
+      const size = Number(document.file_size);
+      if (
+        document.file_type !== "application/pdf" ||
+        !document.storage_path ||
+        !Number.isSafeInteger(size) ||
+        size < 1 ||
+        size > MAX_UPLOAD_MB_CEILING * 1024 * 1024
+      )
+        return publicErrorResponse("Current readmission requires a stored PDF original with a bounded identity.", 409, {
+          code: "readmission_source_identity_mismatch",
+        });
+      const source = await supabase.storage.from(env.SUPABASE_DOCUMENT_BUCKET).download(document.storage_path);
+      if (source.error || !source.data)
+        return publicErrorResponse("The original document could not be loaded for current readmission.", 503, {
+          code: "readmission_original_unavailable",
+        });
+      if (source.data.size !== size)
+        return publicErrorResponse("The stored original no longer matches the document identity.", 409, {
+          code: "readmission_source_identity_mismatch",
+        });
+      let payload: ReturnType<typeof prepareAdministratorDocumentReadmission>;
+      try {
+        payload = prepareAdministratorDocumentReadmission(
+          {
+            administratorId: user.id,
+            correlationId: readmission.correlationId,
+            maxAttempts: env.WORKER_MAX_ATTEMPTS,
+            authority: readmission.authority,
+            document: {
+              id: document.id,
+              owner_id: document.owner_id,
+              file_name: document.file_name,
+              storage_path: document.storage_path,
+              file_type: document.file_type,
+              file_size: size,
+              content_hash: document.content_hash ?? "",
+              metadata,
+            },
+          },
+          new Uint8Array(await source.data.arrayBuffer()),
+        );
+      } catch {
+        return publicErrorResponse(
+          "The stored original or current authority could not be verified for readmission.",
+          409,
+          { code: "readmission_source_identity_mismatch" },
+        );
+      }
+      // This authenticated RPC performs current AAL2/admin checks, admission and
+      // concurrency-safe queuing atomically. Never queue again with service-role authority.
+      type ReadmitRpc = (
+        name: "readmit_administrator_document_for_reindex",
+        args: typeof payload,
+      ) => PromiseLike<{ data: unknown; error: { message: string } | null }>;
+      const rpc = current.publicationClient.rpc as ReadmitRpc;
+      const result = await rpc.call(current.publicationClient, "readmit_administrator_document_for_reindex", payload);
+      if (result.error) {
+        const assurance = ["administrator_assurance_required", "administrator_recent_authentication_required"].includes(
+          result.error.message,
+        );
+        return publicErrorResponse(
+          assurance
+            ? "Recent administrator multi-factor authentication is required."
+            : "Current readmission could not be queued safely. Retry with the same correlation ID.",
+          assurance ? 403 : 409,
+          { code: assurance ? "readmission_assurance_required" : "readmission_conflict" },
+        );
+      }
+      const decoded = readmissionResultSchema.safeParse(result.data);
+      if (
+        !decoded.success ||
+        decoded.data.stewardId !== user.id ||
+        decoded.data.documentOwnerId !== document.owner_id ||
+        decoded.data.scope !== (shared ? "existing_shared_library_stewardship" : "owner_private")
+      )
+        return publicErrorResponse(
+          "The readmission result could not be verified. Retry with the same correlation ID.",
+          502,
+          { code: "readmission_result_unverified" },
+        );
+      return NextResponse.json(
+        { mode, job: { id: decoded.data.jobId }, readmission: decoded.data, generationActivated: false },
+        { status: decoded.data.outcome === "created" ? 201 : 200 },
+      );
+    }
 
     const safety = await checkIngestionMutationSafety({
       supabase,
@@ -100,6 +248,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       }
       return NextResponse.json({ mode, queued }, { status: 202 });
     }
+
+    if (document.file_type === "application/pdf")
+      return publicErrorResponse(
+        "PDF reindexing requires an explicit current-administrator authority declaration and source readmission.",
+        409,
+        { code: "readmission_required" },
+      );
 
     const staleBefore = new Date(Date.now() - env.WORKER_STALE_AFTER_MINUTES * 60_000).toISOString();
     const { data: reindexResult, error: reindexError } = await supabase.rpc("request_ingestion_reindex_if_agent_idle", {

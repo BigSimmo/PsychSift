@@ -10,6 +10,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError, unauthorizedResponse } from "@/lib/supabase/auth";
 import { requireSignedInClinicalAccess } from "@/lib/clinical-access";
 import { enforceDocumentReadRateLimit, withOwnerReadScope } from "@/lib/public-api-access";
+import { managedPdfImageReference } from "@/lib/managed-pdf-image";
 
 export const runtime = "nodejs";
 
@@ -63,6 +64,23 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     ) {
       return publicErrorResponse("Image not found.", 404);
     }
+
+    const managed = managedPdfImageReference(
+      image.metadata,
+      document.id,
+      committedIndexGeneration(document.metadata),
+      image.storage_path,
+    );
+    if (managed)
+      return NextResponse.json(
+        {
+          url: `/api/images/${id}/content`,
+          mimeType: image.mime_type,
+          caption: image.caption,
+          expiresAt: new Date(Date.now() + signedUrlTtlSeconds * 1000).toISOString(),
+        },
+        { headers: { "Cache-Control": "private, no-store" } },
+      );
 
     const signed = await supabase.storage
       .from(env.SUPABASE_IMAGE_BUCKET)

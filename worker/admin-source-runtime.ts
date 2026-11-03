@@ -6,6 +6,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { createInternalAdminBuildSuppliers } from "./internal-admin-build-suppliers";
 import { inspectNativePdfBytes } from "./general-pdf-inspection-producer";
+import { inspectRichPdfBytes } from "./rich-pdf-inspection-producer";
+import { createInternalRichPdfBuildSuppliers } from "./internal-rich-pdf-suppliers";
+import { inspectRichPdfSource } from "./rich-pdf-inspection";
+import { readAdministratorReindexAuthorityFacts } from "./reindex-provider-authority";
+import { createRichPdfInspectionLoader } from "./rich-pdf-provider-egress";
+import type { RichAdminUnscannedEvidence } from "../supabase/functions/_shared/rich-admin-unscanned-exception";
 import { resolveWorkerClaimScopeFilter } from "./claim-scope";
 import { hasInternalBuildLegalReviewDeferral } from "../src/lib/document-ingress-safety";
 import { inspectGeneralPdfSource, type GeneralPdfInspectionReview } from "./general-pdf-inspection";
@@ -38,7 +44,8 @@ import type { WorkerRuntimeOptions } from "./main";
  * must reread operative permission and pinned licence/source-review evidence on
  * every call. Admission declarations and document metadata cannot produce it. */
 export type ApprovedAdminSource = Readonly<{
-  ownerId: string;
+  ownerId: string | null;
+  stewardId?: string;
   documentId: string;
   storagePath: string;
   sourceSha256: string;
@@ -50,19 +57,31 @@ export type ApprovedAdminSource = Readonly<{
   sourceExpectation: Parameters<typeof buildGenerationRetentionPacket>[0]["sourceExpectation"];
   sourceExpectationWitnessBytes: Buffer;
   // Existing TXT suppliers remain valid. PDF has no synthetic TXT section layout.
-  sourceFamily?: "admin_text" | "native_pdf";
+  sourceFamily?: "admin_text" | "native_pdf" | "rich_pdf";
   nativeInspection?: AdminTextCurrentFacts["nativePdf"];
   generalPdf?: GeneralPdfInspectionReview;
+  richPdf?: import("./rich-pdf-inspection").RichPdfInspectionResult;
   sourceSectionLayout?: ManagedAdminTextSourceSectionLayout;
 }>;
 
 export type AdminSourceRuntimeSuppliers = Readonly<{
   /** Undefined revokes permission for this exact current job/source/purpose. */
-  loadApprovedSource: (job: JobRow, purpose: "embedding") => Promise<ApprovedAdminSource | undefined>;
+  loadApprovedSource: (
+    job: JobRow,
+    purpose: "embedding",
+    signal?: AbortSignal,
+  ) => Promise<ApprovedAdminSource | undefined>;
   /** Fresh server-owned scanner policy; exception records include independent admin-admission provenance. */
   loadScannerConfiguration: (
     args: Parameters<AdminTextInspectionOptions["loadScannerConfiguration"]>[0] & Readonly<{ job: JobRow }>,
   ) => Promise<AdminTextScannerConfiguration>;
+  loadRichScannerConfiguration?: (args: {
+    job: JobRow;
+    request: import("../src/lib/ingestion-provider-egress").IngestionProviderEgressRequest;
+    binding: Readonly<import("../src/lib/document-ingress-safety").ProviderEgressBinding>;
+    contentSha256: import("../src/lib/document-ingress-safety").ContentSha256;
+    phase: "source" | "payload";
+  }) => Promise<{ backend: "administrator_rich_unscanned_exception"; evidence: RichAdminUnscannedEvidence }>;
   loadManagedAdminPdfCompletionEvidence?: (
     input: ManagedPreparedSupplierInput,
   ) => Promise<ManagedAdminPdfCompletionEvidence | undefined>;
@@ -72,6 +91,7 @@ export type AdminSourceRuntimeSuppliers = Readonly<{
 }>;
 
 export type AdminSourceInitializationContext = {
+  adoptPreparedExtraction?: (extracted: import("../src/lib/types").ExtractedDocument) => void;
   readInventory: () => Promise<Record<string, unknown>>;
   prepare: (source: ApprovedAdminSource, bytes: Buffer) => Promise<ReturnType<typeof buildGenerationRetentionPacket>>;
   mutation: (name: string, payload: Record<string, unknown>) => Promise<Record<string, unknown>>;
@@ -151,12 +171,23 @@ function registeredOriginalInputs(job: JobRow, source: ApprovedAdminSource, repl
 function validateSource(job: JobRow, source: ApprovedAdminSource): ApprovedAdminSource {
   const binding = workerProviderSourceBinding(job, job.documents);
   const policy = source.policyObservations;
+  const rich =
+    source.sourceFamily === "rich_pdf" &&
+    source.richPdf !== undefined &&
+    typeof source.stewardId === "string" &&
+    z.uuid().safeParse(source.stewardId).success &&
+    (source.ownerId === source.stewardId ||
+      (source.ownerId === null && job.documents.metadata?.public_corpus === true)) &&
+    job.documents.metadata?.reindex_readmission !== undefined;
+  const pdf = source.sourceFamily === "native_pdf" || rich;
+  const deferred = rich
+    ? policy.rights === "review_deferred" &&
+      policy.indexLicence === "review_deferred" &&
+      policy.legalReviewDeferral === "owner-internal-build-2026-11-03"
+    : hasInternalBuildLegalReviewDeferral(policy, job.documents.metadata?.corpus_scope);
   if (
-    !(
-      (source.sourceFamily === "native_pdf" && job.documents.file_type === "application/pdf") ||
-      (source.sourceFamily !== "native_pdf" && job.documents.file_type === "text/plain")
-    ) ||
-    !job.documents.owner_id ||
+    !((pdf && job.documents.file_type === "application/pdf") || (!pdf && job.documents.file_type === "text/plain")) ||
+    (!rich && !job.documents.owner_id) ||
     source.ownerId !== job.documents.owner_id ||
     source.documentId !== job.document_id ||
     source.storagePath !== job.documents.storage_path ||
@@ -164,8 +195,7 @@ function validateSource(job: JobRow, source: ApprovedAdminSource): ApprovedAdmin
     !Buffer.isBuffer(source.sourceBytes) ||
     source.sourceByteLength !== source.sourceBytes.length ||
     source.sourceByteLength < 1 ||
-    source.sourceByteLength >
-      (source.sourceFamily === "native_pdf" ? MAX_UPLOAD_MB_CEILING * 1024 * 1024 : ADMIN_TEXT_INSPECTION_MAX_BYTES) ||
+    source.sourceByteLength > (pdf ? MAX_UPLOAD_MB_CEILING * 1024 * 1024 : ADMIN_TEXT_INSPECTION_MAX_BYTES) ||
     digest(source.sourceBytes) !== source.sourceSha256 ||
     (job.documents.file_size != null && job.documents.file_size !== source.sourceByteLength) ||
     !same(source.authority, job.documents.metadata?.authority) ||
@@ -173,18 +203,16 @@ function validateSource(job: JobRow, source: ApprovedAdminSource): ApprovedAdmin
     policy.purpose !== "embedding" ||
     policy.admission !== "current" ||
     policy.ownerScope !== "permitted" ||
-    (policy.rights !== "permitted" &&
-      !hasInternalBuildLegalReviewDeferral(policy, job.documents.metadata?.corpus_scope)) ||
+    (policy.rights !== "permitted" && !deferred) ||
     policy.purposeClearance !== "permitted" ||
     policy.source !== "eligible" ||
-    (policy.indexLicence !== "permitted" &&
-      !hasInternalBuildLegalReviewDeferral(policy, job.documents.metadata?.corpus_scope)) ||
+    (policy.indexLicence !== "permitted" && !deferred) ||
     policy.sourcePolicy !== "matched" ||
     !policy.policyVersion ||
     !source.catalogueKey ||
     (source.generalPdf !== undefined &&
       (source.sourceFamily !== "native_pdf" || source.nativeInspection !== undefined)) ||
-    (source.sourceFamily === "native_pdf"
+    (pdf
       ? source.sourceSectionLayout !== undefined
       : source.sourceSectionLayout !== undefined && source.sourceSectionLayout.sourceSha256 !== source.sourceSha256)
   )
@@ -196,6 +224,7 @@ function validateSource(job: JobRow, source: ApprovedAdminSource): ApprovedAdmin
     originalBytes: source.sourceBytes,
     witnessBytes: source.sourceExpectationWitnessBytes,
   });
+  if (rich) inspectRichPdfSource(source.richPdf!.review, source.sourceBytes, binding);
   // Detached evidence prevents a supplier from mutating a returned plan while awaited.
   return {
     ...source,
@@ -228,10 +257,18 @@ export function createAdminSourceRuntimeOptions(
   | "loadManagedAdminPdfCompletionEvidence"
   | "initializeManagedAdminTextGeneration"
   | "loadManagedGeneralPdfInspection"
+  | "loadManagedRichPdfInspection"
 > {
-  async function current(job: JobRow, attempt?: IngestionAttempt) {
+  async function current(
+    job: JobRow,
+    attempt?: IngestionAttempt,
+    adoptPreparedExtraction?: AdminSourceInitializationContext["adoptPreparedExtraction"],
+  ) {
     attempt?.check();
-    const source = await suppliers.loadApprovedSource(job, "embedding");
+    const source = await suppliers.loadApprovedSource(job, "embedding", attempt?.signal);
+    // Transfer newly produced temporary ownership before cancellation/validation
+    // can fail. processJob's existing finally then owns every failure path.
+    if (source?.richPdf) adoptPreparedExtraction?.(source.richPdf.extracted);
     attempt?.check();
     return source === undefined ? undefined : validateSource(job, source);
   }
@@ -251,6 +288,9 @@ export function createAdminSourceRuntimeOptions(
       !same(data.metadata?.authority, source.authority)
     )
       return refuse();
+    // Rich suppliers just downloaded and hash-checked the current original. Avoid
+    // a duplicate full-file transfer after this fresh DB identity check.
+    if (source.sourceFamily === "rich_pdf") return { bytes: Buffer.from(source.sourceBytes), metadata: data.metadata };
     const result = await client.storage.from(bucket).download(data.storage_path);
     attempt.check();
     if (result.error || !result.data) return refuse();
@@ -261,6 +301,51 @@ export function createAdminSourceRuntimeOptions(
   }
   return {
     loadObservationsForJob(job, attempt, batchContext?: ManagedProviderEmbeddingRequestContext) {
+      if (job.documents.metadata?.reindex_readmission !== undefined && job.documents.file_type === "application/pdf") {
+        return createRichPdfInspectionLoader({
+          attempt,
+          binding: workerProviderSourceBinding(job, job.documents),
+          nativePdfBatch: batchContext,
+          async loadCurrent(request, binding) {
+            const source = await current(job, attempt);
+            if (!source?.richPdf || !source.stewardId || !same(binding, source.policyObservations.binding))
+              return refuse();
+            const facts = await readAdministratorReindexAuthorityFacts({
+              attempt,
+              generationId: binding.generationId,
+              sourceBinding: binding,
+              rpc: client.rpc.bind(client),
+            });
+            if (
+              facts.documentOwnerId !== source.ownerId ||
+              facts.stewardId !== source.stewardId ||
+              facts.sourceByteLength !== source.sourceByteLength ||
+              !same(facts.declaredAuthority, source.authority)
+            )
+              return refuse();
+            const loaded = await actual(job, source, attempt);
+            return {
+              facts,
+              binding,
+              sourceMetadata: loaded.metadata,
+              sourceBytes: loaded.bytes,
+              review: source.richPdf.review,
+              capturedImages: source.richPdf.capturedImages,
+              policyObservations: {
+                policyVersion: source.policyObservations.policyVersion,
+                rights: "review_deferred",
+                indexLicence: "review_deferred",
+                legalReviewDeferral: "owner-internal-build-2026-11-03",
+                purposeClearance: "permitted",
+              },
+            };
+          },
+          async loadScannerConfiguration(args) {
+            if (!suppliers.loadRichScannerConfiguration) return refuse();
+            return suppliers.loadRichScannerConfiguration({ ...args, job });
+          },
+        });
+      }
       return createAdminTextInspectionLoader({
         attempt,
         ownerId: job.documents.owner_id ?? "",
@@ -305,6 +390,14 @@ export function createAdminSourceRuntimeOptions(
           return config;
         },
       });
+    },
+    async loadManagedRichPdfInspection(job, sourceSha256, attempt) {
+      const source = await current(job, attempt);
+      if (!source?.richPdf || !source.stewardId) return undefined;
+      if (source.sourceSha256 !== sourceSha256) return refuse();
+      await actual(job, source, attempt);
+      inspectRichPdfSource(source.richPdf.review, source.sourceBytes, workerProviderSourceBinding(job, job.documents));
+      return { ...source.richPdf, stewardId: source.stewardId };
     },
     async loadManagedGeneralPdfInspection(job, sourceSha256, attempt) {
       const source = await current(job, attempt);
@@ -380,7 +473,7 @@ export function createAdminSourceRuntimeOptions(
         }
       : {}),
     async initializeManagedAdminTextGeneration(job, attempt, context) {
-      const source = await current(job, attempt);
+      const source = await current(job, attempt, context.adoptPreparedExtraction);
       if (!source) return;
       const inventory = await context.readInventory();
       attempt.check();
@@ -463,10 +556,12 @@ export function createAdminSourceRuntimeOptions(
 export function adminSourceRuntimeStartupWarning(
   modulePath = process.env.WORKER_ADMIN_SOURCE_RUNTIME_MODULE,
   internalPolicy = process.env.WORKER_INTERNAL_ADMIN_BUILD_POLICY_JSON,
+  richPolicy = process.env.WORKER_INTERNAL_RICH_PDF_BUILD_POLICY_JSON,
 ) {
   if (modulePath !== undefined && modulePath !== "") return null;
   // Presence is not readiness: the loader validates the policy before claims.
   if (internalPolicy !== undefined && internalPolicy !== "") return null;
+  if (richPolicy !== undefined && richPolicy !== "") return null;
   return (
     "WORKER_ADMIN_SOURCE_RUNTIME_MODULE is not set: there is no malware scanner, so every ingestion " +
     "provider call will be refused and jobs will fail as scanner_unavailable (see docs/worker-deploy-runbook.md)."
@@ -480,7 +575,42 @@ export async function loadAdminSourceRuntimeOptions(
   modulePath = process.env.WORKER_ADMIN_SOURCE_RUNTIME_MODULE,
   internalPolicy = process.env.WORKER_INTERNAL_ADMIN_BUILD_POLICY_JSON,
   claimEnvironment: Record<string, string | undefined> = process.env,
+  richPolicy = process.env.WORKER_INTERNAL_RICH_PDF_BUILD_POLICY_JSON,
 ) {
+  if (richPolicy) {
+    if (modulePath || internalPolicy || Buffer.byteLength(richPolicy, "utf8") > 32768) return refuse();
+    let value: unknown;
+    try {
+      value = JSON.parse(richPolicy);
+    } catch {
+      return refuse();
+    }
+    const policy = z
+      .object({
+        allowedDocumentIds: z
+          .array(z.uuid().transform((id) => id.toLowerCase()))
+          .min(1)
+          .max(100),
+        approvalReferenceSha256: z.string().regex(/^sha256:[a-f0-9]{64}$/),
+        issuedAt: z.iso.datetime(),
+        expiresAt: z.iso.datetime(),
+      })
+      .strict()
+      .parse(value);
+    const scope = resolveWorkerClaimScopeFilter(claimEnvironment),
+      allowed = new Set(policy.allowedDocumentIds);
+    if (
+      scope.claimsNothing ||
+      !scope.allowedDocumentIds.size ||
+      [...scope.allowedDocumentIds].some((id) => !allowed.has(id))
+    )
+      return refuse();
+    return createAdminSourceRuntimeOptions(
+      client,
+      createInternalRichPdfBuildSuppliers(client, { ...policy, bucket, inspectRichPdf: inspectRichPdfBytes }),
+      bucket,
+    );
+  }
   if (internalPolicy !== undefined && internalPolicy !== "") {
     if (modulePath || Buffer.byteLength(internalPolicy, "utf8") > 32768) return refuse();
     let value: unknown;

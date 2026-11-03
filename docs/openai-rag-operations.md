@@ -127,6 +127,50 @@ Pricing basis: [OpenAI pricing](https://developers.openai.com/api/docs/pricing),
 refresh before a paid run. Standard short-context Sol 6.1 is US$2 input/US$10 output per million,
 versus Terra 5.6 US$2/US$12 and Sol 5.6 US$4/US$20; token rates alone do not prove answer savings.
 
+### Feasible exact-count smoke comparison
+
+`node scripts/run-tsx.mjs scripts/smoke-answer-models.ts` prepares a provider-free plan using
+all twelve frozen synthetic cases, both arms and one measured pass: 24 generation requests,
+no warmups, no retries, concurrency one. The 16,000-token generation ceiling reserves 384,000
+output tokens, within the existing 400,000 limit. This is a small component comparison;
+it does not establish live retrieval, clinical acceptance or reliable long-tail latency.
+`--offline --output output/answer-model-comparison/<new-directory>` runs the synthetic stubs
+and writes an explicitly unaccepted report without a provider request.
+
+Live mode first makes exactly 24 `POST /v1/responses/input_tokens` requests through the installed
+SDK. Each count includes the exact model, instructions, source input, reasoning effort and strict
+JSON output format. Only after all counts return does the guard admit the full generation plan
+against exact aggregate input, context, output and spending limits. Actual generation wire fields
+must match their counted projections. Full published model context windows are not charged to
+these input reservations; no local token estimate is substituted. The count endpoint's fee is
+**unverified until checked** and is never assumed to be zero.
+
+Before live execution, prepare a fresh verified model/price card in the existing format plus
+`counting: { usdPerRequest, source, verifiedAt }`. `source` must reference official OpenAI
+documentation. Include worst-case generation/cache-write rates, current published context/output
+limits, the counting fee and account access evidence. Historical prices above are not fresh proof.
+The approved manifest binds current source/fixture/configuration/environment hashes, price-card
+hash and one absolute output directory. In addition to the existing approval fields it needs
+`remainingMonthlyUsd`, `monthlyBudgetMonth` (current UTC month), `monthlyUsageEvidenceSha256`
+and `maxRuntimeMs: 840000`. Remaining monthly allowance must be freshly observed; the run cap
+cannot exceed that allowance or US$15, and the standing monthly budget remains US$30.
+Use `maxRequests: 48`, `maxOutputTokens: 384000` and at most 1,000,000 input tokens. The exact
+complete-plan cost must fit before the first generation; count fees can already have been spent
+if a count fails or the counted plan is refused. All reservations precede dispatch and persist
+without refunds or retries. Generation has a 30-second timeout, each count has five seconds,
+and the whole run has a 14-minute bound. No retrieval, embedding, model judge, indexing, CI
+or hosted deployment is triggered by this runner.
+
+After explicit bounded approval, use `--paid --price-card <verified-json> --approval <approved-json>
+--output <the-approved-absolute-directory>` in a fresh process with the server's existing normal
+OpenAI authentication. Do not export or copy credentials. The current cloud session's lack of
+OpenAI runtime authentication/outbound access remains a live-run blocker; the runner creates
+neither access nor a new credential. Provider identity/request IDs, failed or unknown usage,
+per-arm cost per passing output and median/p90 latency remain visible in the report. Read
+`blind-review.json` before `blind-key.json` or the unblinded report. Completion never activates
+the model automatically; accepted quality/cost evidence and explicit activation authority are
+still required. Other workload defaults remain unchanged.
+
 ## Rollout sequence
 
 Change one workload at a time: classifier, indexing/enrichment, summaries, vision, fast answers,

@@ -2,6 +2,65 @@
 
 ## 3 November 2026 continuation
 
+### Full-library continuation — local build verified; hosted gates pending
+
+Objective: resolve the annotated table/image/OCR, authoritative replay, deployment and Sol 6.1
+items, stopping before actual re-ingestion/re-indexing. Current source is
+`fix/rag-preindex-readiness`, based on `af33a2517`; the continuation below is owned by this task.
+The branch is local and has not been merged or deployed.
+
+Read-only production inventory on 3 November found 2,066 PDFs: 2,065 ownerless PDFs with actual
+boolean `metadata.public_corpus=true`, and one owned PDF. Existing artifacts include 14,313 images,
+34,856 table facts and 172 documents with OCR. The shared PDFs lack the newer corpus/content-mode
+markers. A private-owner-only/native-text profile cannot process this existing library. Current
+Railway app deployment is `c92e78113abd936c53f88e7e069b2c7331c735a2` (2 November), not this branch.
+
+The continuation adds a separate independently inspected rich-PDF profile, real locked OCR,
+source-bound table/image retention, measured replacement-quality checks, dynamic local index and
+memory producers, atomic completion, and authenticated active-generation image delivery. A new
+authenticated administrator readmission preserves existing ownership/visibility and records a
+current steward; it never reconstructs a historical upload or grants publication. The new draft
+readmission/full-PDF migrations remain subject to the owner's specific production-change rule.
+Native-text and reviewed-pilot profiles remain separate. Model-generated summaries, vision
+interpretation and clinical semantic sign-off are explicitly deferred in the rich profile;
+embeddings are its only enabled provider purpose.
+
+Fresh local evidence: native tables, vector/raster captures and real Tesseract OCR pass under
+locked PyMuPDF 1.28.2/Pillow/pytesseract dependencies; 14 Python cases pass. TypeScript compilation,
+the worker bundle, source-scoped lint, access/API tests and the model smoke guards pass. The
+integrated selector passes all 46 suites / 1,037 tests; final scheduling/model tests also pass
+28 cases after the compiler/lint corrections. No provider request is made by
+these tests or the offline comparison.
+
+The isolated PostgreSQL 17 test activated a synthetic three-page generation with three chunks,
+four searchable images, two table facts, seven memory cards and 14 index units. Strict completion
+replay, retained image reads, direct-stage-delete refusal and parent-deletion cleanup passed.
+A second real admission/claim proved refusal of old-admission reuse by another job, incomplete
+images and stale leases; its outer rollback preserved the prior active shared generation, null
+owner and existing public marker. Full local schema loading also passes with auth/storage/cron/
+vault scaffolding. This is not authoritative Supabase image or migration-chain replay.
+
+The SQL tests exposed and corrected nullable-generation comparison and column ambiguities. A
+later row-parity failure exposed the existing embedding-field trigger's MD5 contract; the new
+producer now matches that contract while retaining strict readback. Independent source review
+also corrected owner/public cache invalidation and temporary-file ownership before post-load
+cancellation. All four draft SQL files occur exactly once in `supabase/schema.sql`; the migration
+role and 153-function grant guards pass. The committed drift manifest deliberately remains
+unchanged and stale until authoritative regeneration is possible.
+
+A feasible Sol smoke runner retains all 12 cases for 24 exact token-count requests followed by
+24 generation requests, no retries/warmups, at most 384,000 output tokens, a 14-minute bound and
+the existing US$15/run and US$30/month ceilings. Its offline run completes with zero provider
+requests; live pricing, count fees, account access and monthly remaining-budget evidence are
+still required before requesting a bounded paid run. Sol is not activated.
+
+The authoritative replay remains blocked by denied `index.docker.io` image acquisition; official
+OpenAI documentation/pricing hosts are also denied. An environment-domain enablement question
+is pending. No network denial was bypassed, manifest fabricated, paid model run started, live
+schema applied, worker claims resumed, source ingested or library re-indexed. Next actions:
+regenerate the authoritative manifest when access is available,
+then obtain the required concrete production/spending approvals and verify actual rollout.
+
 The owner authorized implementing the functional build and deferred legal review as an
 internal-build prerequisite ([decision](decisions/2026-11-03-defer-legal-review-for-internal-build.md)).
 For an explicitly scoped owner-bound internal draft, use the recorded `review_deferred`

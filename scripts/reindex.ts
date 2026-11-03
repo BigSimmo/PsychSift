@@ -17,10 +17,93 @@
  */
 
 import { spawn } from "node:child_process";
+import { createHash } from "node:crypto";
 import { loadEnvConfig } from "@next/env";
 import { confirm } from "./cli-utils";
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
+import { generationEvidenceDigest } from "@/lib/ingestion-generation-evidence";
 
-loadEnvConfig(process.cwd());
+/** Scheduling prerequisite only. These reads grant no provider, publication or
+ * clinical authority; the worker still reloads fenced admission/admin/source facts. */
+export async function assertReindexPdfSchedulingPrerequisites(
+  supabase: ReturnType<typeof import("@/lib/supabase/admin").createAdminClient>,
+) {
+  const record = (value: unknown): value is Record<string, unknown> =>
+    !!value && typeof value === "object" && !Array.isArray(value);
+  const hash = (value: string) => `sha256:${createHash("sha256").update(value).digest("hex")}`;
+  function refuse(): never {
+    throw new Error(
+      "pdf_reindex_readmission_required: Use authenticated per-document current-administrator readmission before recovery or worker execution.",
+    );
+  }
+  for (let offset = 0; ; offset += 1000) {
+    const result = await supabase
+      .from("ingestion_jobs")
+      .select(
+        "id,document_id,documents!inner(id,owner_id,file_type,file_size,file_name,storage_path,content_hash,metadata)",
+      )
+      .in("status", ["pending", "processing", "failed"])
+      .eq("documents.file_type", "application/pdf")
+      .order("id", { ascending: true })
+      .range(offset, offset + 999);
+    if (result.error || !Array.isArray(result.data)) refuse();
+    for (const row of result.data) {
+      const raw: unknown = row;
+      if (!record(raw)) refuse();
+      const document: unknown =
+        Array.isArray(raw.documents) && raw.documents.length === 1 ? raw.documents[0] : raw.documents;
+      if (!record(document)) refuse();
+      if (document.file_type !== "application/pdf") continue;
+      const metadata = document.metadata;
+      if (!record(metadata) || !record(metadata.reindex_readmission)) refuse();
+      const marker = metadata.reindex_readmission;
+      const shared = document.owner_id === null && metadata.public_corpus === true;
+      if (
+        document.id !== raw.document_id ||
+        marker.version !== "administrator-current-reindex-readmission-v1" ||
+        marker.scope !== (shared ? "existing_shared_library_stewardship" : "owner_private") ||
+        (!shared && document.owner_id !== marker.administratorId) ||
+        marker.documentOwnerId !== document.owner_id ||
+        marker.sourceSha256 !== `sha256:${document.content_hash}` ||
+        marker.origin !== "historical_upload_origin_not_established" ||
+        marker.clinicalApproval !== "not_granted" ||
+        marker.publicationApproval !== "not_granted" ||
+        typeof metadata.admission_event_id !== "string" ||
+        typeof document.file_name !== "string" ||
+        typeof document.storage_path !== "string"
+      )
+        refuse();
+      const admission = await supabase
+        .from("document_admission_events")
+        .select(
+          "id,document_id,staging_owner_id,administrator_id,source_channel,actor_kind,admission_policy_version,content_sha256,byte_count,file_name_sha256,storage_path_sha256,authority,admission_digest",
+        )
+        .eq("id", metadata.admission_event_id)
+        .eq("document_id", String(document.id))
+        .maybeSingle();
+      const event: unknown = admission.data;
+      if (
+        admission.error ||
+        !record(event) ||
+        event.id !== metadata.admission_event_id ||
+        event.document_id !== document.id ||
+        event.source_channel !== "admin_api" ||
+        event.actor_kind !== "administrator" ||
+        event.administrator_id !== marker.administratorId ||
+        event.staging_owner_id !== marker.administratorId ||
+        event.admission_policy_version !== "trusted-document-admission-v1" ||
+        event.content_sha256 !== marker.sourceSha256 ||
+        event.byte_count !== document.file_size ||
+        event.file_name_sha256 !== hash(document.file_name) ||
+        event.storage_path_sha256 !== hash(document.storage_path) ||
+        !/^sha256:[a-f0-9]{64}$/.test(String(event.admission_digest)) ||
+        generationEvidenceDigest(event.authority) !== generationEvidenceDigest(metadata.authority)
+      )
+        refuse();
+    }
+    if (result.data.length < 1000) return;
+  }
+}
 
 function parseArgs(argv: string[]) {
   const valueFor = (name: string) => {
@@ -72,6 +155,7 @@ async function safeCount(label: string, countPromise: PromiseLike<CountResult>) 
 }
 
 async function main() {
+  loadEnvConfig(process.cwd());
   const [
     { env, requireServerEnv },
     {
@@ -320,6 +404,7 @@ async function main() {
             jobs: freshJobs,
             staleAfterMinutes,
           });
+          await assertReindexPdfSchedulingPrerequisites(supabase);
           const results = await applyIngestionRecoveryActions(supabase, applicable);
           for (const { action, applied, reason } of results) {
             if (!applied) console.log(`  Skipped ${action.action} job ${action.jobId}: ${reason}`);
@@ -344,6 +429,7 @@ async function main() {
 
     console.log("\n[Step 4] Running worker:once...");
     try {
+      await assertReindexPdfSchedulingPrerequisites(supabase);
       await runWorkerOnce();
       console.log("  Worker run complete.");
     } catch (err) {
@@ -359,14 +445,15 @@ async function main() {
   process.exitCode = 1;
 }
 
-main().catch((error) => {
-  import("@/lib/privacy")
-    .then(({ safeErrorLogDetails }) => {
-      console.error("Reindex pipeline failed", safeErrorLogDetails(error));
-      process.exitCode = 1;
-    })
-    .catch(() => {
-      console.error(error instanceof Error ? error.message : error);
-      process.exitCode = 1;
-    });
-});
+if (isDirectEntrypoint(import.meta.url))
+  main().catch((error) => {
+    import("@/lib/privacy")
+      .then(({ safeErrorLogDetails }) => {
+        console.error("Reindex pipeline failed", safeErrorLogDetails(error));
+        process.exitCode = 1;
+      })
+      .catch(() => {
+        console.error(error instanceof Error ? error.message : error);
+        process.exitCode = 1;
+      });
+  });
