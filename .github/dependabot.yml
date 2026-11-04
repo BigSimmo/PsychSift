@@ -44,6 +44,11 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
+      # Hold the entities major (9.x removed EntityDecoder/htmlDecodeTree from
+      # entities/decode, used by supabase/functions/_shared/public-source-policy.ts).
+      # Migrate that file before taking the major. Context: closed #3884.
+      - dependency-name: "entities"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "github-actions"
     # "/" covers .github/workflows only. The composites under .github/actions pin the
@@ -82,6 +87,12 @@ updates:
     ignore:
       - dependency-name: "node"
         update-types: ["version-update:semver-major"]
+      # Hold the Python line of Dockerfile.worker: the worker image asserts
+      # Python 3.11 (locks are compiled for 3.11), so a 3.11 -> 3.15 tag bump
+      # fails the build. Move Python deliberately with regenerated locks.
+      # Context: closed #3883.
+      - dependency-name: "python"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
 
   # The ingestion worker parses attacker-supplied PDFs and images with
   # PyMuPDF, Pillow, pytesseract and docling. Without these two entries nothing
@@ -113,6 +124,10 @@ updates:
         versions: [">=1.0"]
       - dependency-name: "weasel"
         versions: [">=1.0"]
+      # networkx 3.7 (pulled in via pymupdf) requires Python >=3.12, so the
+      # Python 3.11 worker image cannot install it. Context: closed #3887.
+      - dependency-name: "networkx"
+        versions: [">=3.7"]
     groups:
       worker-python:
         patterns: ["*"]
