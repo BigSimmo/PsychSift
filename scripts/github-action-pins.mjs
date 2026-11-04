@@ -114,6 +114,12 @@ const reviewedActionPins = new Map([
       // PR checkout to the triggering head SHA (branch.ts, modes/tag) — no
       // change to permissions, tokens/secrets handling, or network endpoints.
       ["16f9f71ab9c490faf367f94dd294897edc25be33", "v1.0.261"],
+      // Reviewed 2026-11-04 for PR #3888: tag v1.0.265 (annotated tag object
+      // 2d2c14f8) dereferences to commit 6d5ae526. The upstream diff
+      // v1.0.261...v1.0.265 is Bun 1.4.4 plus Claude Code 2.1.310 -> 2.1.314 and
+      // Agent SDK 0.3.310 -> 0.3.314 version bumps and a docs example — no change
+      // to permissions, tokens/secrets handling, or network endpoints.
+      ["6d5ae526d25ce88daa2200be073e1a373167f064", "v1.0.265"],
     ]),
   ],
   ["actions/cache", new Map([["55cc8345863c7cc4c66a329aec7e433d2d1c52a9", "v6"]])],
