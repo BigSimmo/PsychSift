@@ -166,6 +166,21 @@ def prepare(source, workspace, task, names):
         return manifest
 
 
+def merge_bytes(workspace, proposed, base, latest):
+    if latest == base or latest == proposed:
+        return proposed, False
+    if proposed == base:
+        return latest, False
+    with tempfile.TemporaryDirectory(dir=workspace) as temporary:
+        paths = [Path(temporary) / n for n in ('draft', 'base', 'source')]
+        for path, data in zip(paths, (proposed, base, latest)):
+            path.write_bytes(data)
+        result = subprocess.run(['git', 'merge-file', '-p', '-L', 'draft', '-L', 'base', '-L', 'latest', *map(str, paths)], capture_output=True, timeout=30)
+        if result.returncode < 0 or result.returncode > 127:
+            raise ValueError('git merge-file failed')
+        return result.stdout, result.returncode > 0
+
+
 def reconcile(workspace, manifest, resolved):
     manifest = load(workspace, manifest['source'])
     previous_path = metadata_path(workspace, 'reconciliation.json')
@@ -188,35 +203,50 @@ def reconcile(workspace, manifest, resolved):
             draft = read_text(safe_path(workspace / 'draft', name))
             old = prior.get(name)
             conflict = False
-            # Preserve the previous candidate, including manual resolution, whenever inputs match.
-            if old and old.get('before_sha256') == digest(source) and old.get('draft_sha256') == digest(draft) and 'candidate' in old:
-                merged = read_text(safe_path(workspace, old['candidate']))
-                conflict = old['conflict']
-                if not conflict and digest(merged) != old['candidate_sha256'] and name not in resolved:
-                    raise ValueError('clean candidate edited; explicitly review with --resolved')
-                if name in resolved:
-                    if any(line.startswith((b'<<<<<<< ', b'>>>>>>> ', b'||||||| ')) for line in merged.splitlines()):
-                        raise ValueError('conflict markers remain')
-                    conflict = False
+            review_reason = None
+            if old and 'candidate' in old:
+                previous_candidate = read_text(safe_path(workspace, old['candidate']))
+                source_changed = old.get('before_sha256') != digest(source)
+                draft_changed = old.get('draft_sha256') != digest(draft)
+                edited = digest(previous_candidate) != old['candidate_sha256']
+                if not source_changed and not draft_changed:
+                    merged, conflict = previous_candidate, old['conflict']
+                    review_reason = old.get('review_reason')
+                    if not conflict and edited and name not in resolved:
+                        raise ValueError('clean candidate edited; explicitly review with --resolved')
+                    if name in resolved:
+                        if any(line.startswith((b'<<<<<<< ', b'>>>>>>> ', b'||||||| ')) for line in merged.splitlines()):
+                            raise ValueError('conflict markers remain')
+                        conflict = False
+                        review_reason = None
+                else:
+                    if name in resolved:
+                        raise ValueError('resolution inputs changed; inspect new merge')
+                    if not old.get('source_snapshot') or not old.get('draft_snapshot'):
+                        raise ValueError('previous input snapshots unavailable; preserve candidate and reconcile in a fresh task-owned workspace')
+                    old_source = read_text(safe_path(workspace, old['source_snapshot']))
+                    old_draft = read_text(safe_path(workspace, old['draft_snapshot']))
+                    if digest(old_source) != old['before_sha256'] or digest(old_draft) != old['draft_sha256']:
+                        raise ValueError('previous input snapshot changed')
+                    merged, source_conflict = merge_bytes(workspace, previous_candidate, old_source, source)
+                    merged, draft_conflict = merge_bytes(workspace, merged, old_draft, draft)
+                    # Both inputs moving can make rebasing order-dependent. Keep
+                    # all versions and require review before this proposal exports.
+                    conflict = old['conflict'] or edited or source_conflict or draft_conflict or (source_changed and draft_changed)
+                    if source_changed and draft_changed:
+                        review_reason = 'both source and draft changed; inspect retained inputs and candidate before --resolved'
             elif name in resolved:
                 raise ValueError('resolution inputs changed; inspect new merge')
-            elif source == base or source == draft:
-                merged = draft
-            elif draft == base:
-                merged = source
             else:
-                with tempfile.TemporaryDirectory(dir=workspace) as temporary:
-                    paths = [Path(temporary) / n for n in ('draft', 'base', 'source')]
-                    for path, data in zip(paths, (draft, base, source)):
-                        path.write_bytes(data)
-                    result = subprocess.run(['git', 'merge-file', '-p', '-L', 'draft', '-L', 'base', '-L', 'latest', *map(str, paths)], capture_output=True, timeout=30)
-                    if result.returncode < 0 or result.returncode > 127:
-                        raise ValueError('git merge-file failed')
-                    merged, conflict = result.stdout, result.returncode > 0
-            target = safe_path(generation, name)
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_bytes(merged)
-            output.append(dict(path=name, before_sha256=digest(source), draft_sha256=digest(draft), candidate=target.relative_to(workspace).as_posix(), candidate_sha256=digest(merged), conflict=conflict))
+                merged, conflict = merge_bytes(workspace, draft, base, source)
+            snapshots = {}
+            for folder, data in [('candidate', merged), ('source-input', source), ('draft-input', draft)]:
+                target = safe_path(generation / folder, name)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                with target.open('xb') as stream:
+                    stream.write(data)
+                snapshots[folder] = target.relative_to(workspace).as_posix()
+            output.append(dict(path=name, before_sha256=digest(source), draft_sha256=digest(draft), candidate=snapshots['candidate'], candidate_sha256=digest(merged), source_snapshot=snapshots['source-input'], draft_snapshot=snapshots['draft-input'], conflict=conflict, review_reason=review_reason))
         except (OSError, ValueError, UnicodeError, subprocess.SubprocessError) as error:
             failed = dict(prior.get(name, {}))
             failed.update(path=name, error=str(error), conflict=True)

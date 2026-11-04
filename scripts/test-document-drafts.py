@@ -140,6 +140,134 @@ class DocumentDraftTests(unittest.TestCase):
         self.assertEqual(b'human edit\n', base64.b64decode(d.export(self.workspace, self.manifest)[0]['after_base64']))
         self.assertEqual(b'human edit\n', candidate.read_bytes())
 
+    def test_acknowledged_candidate_survives_later_source_change(self):
+        base = b''.join(f'line {i}\n'.encode() for i in range(1, 16))
+        self.document.write_bytes(base)
+        self.workspace = self.root / 'reviewed-source'
+        self.manifest = d.prepare(self.source, self.workspace, 'reviewed', ['note.md'])
+        self.draft(base.replace(b'line 1\n', b'drafted one\n'))
+        initial = self.reconcile()
+        candidate = self.workspace / initial['candidate']
+        candidate.write_bytes(candidate.read_bytes().replace(b'line 5\n', b'reviewed five\n'))
+        self.assertFalse(self.reconcile(['note.md'])['conflict'])
+        latest = base.replace(b'line 12\n', b'latest twelve\n')
+        self.document.write_bytes(latest)
+        result = self.reconcile()
+        self.assertFalse(result['conflict'], result)
+        proposed = base64.b64decode(d.export(self.workspace, self.manifest)[0]['after_base64'])
+        self.assertIn(b'reviewed five\n', proposed)
+        self.assertIn(b'latest twelve\n', proposed)
+        self.assertIn(b'drafted one\n', proposed)
+        self.assertEqual(latest, self.document.read_bytes())
+        self.assertIn(b'reviewed five\n', candidate.read_bytes())
+        latest = latest.replace(b'line 15\n', b'latest fifteen\n')
+        self.document.write_bytes(latest)
+        self.assertFalse(self.reconcile()['conflict'])
+        proposed = base64.b64decode(d.export(self.workspace, self.manifest)[0]['after_base64'])
+        self.assertIn(b'reviewed five\n', proposed)
+        self.assertIn(b'latest twelve\n', proposed)
+        self.assertIn(b'latest fifteen\n', proposed)
+
+    def test_acknowledged_candidate_survives_later_draft_change(self):
+        initial = self.reconcile()
+        candidate = self.workspace / initial['candidate']
+        candidate.write_bytes(self.original.replace(b'two\n', b'reviewed two\n'))
+        self.assertFalse(self.reconcile(['note.md'])['conflict'])
+        self.draft(self.original.replace(b'five\n', b'drafted five\n'))
+        result = self.reconcile()
+        self.assertFalse(result['conflict'], result)
+        proposed = base64.b64decode(d.export(self.workspace, self.manifest)[0]['after_base64'])
+        self.assertIn(b'reviewed two\n', proposed)
+        self.assertIn(b'drafted five\n', proposed)
+
+    def test_reviewed_edit_conflicts_with_later_overlapping_source(self):
+        initial = self.reconcile()
+        candidate = self.workspace / initial['candidate']
+        candidate.write_bytes(self.original.replace(b'two\n', b'reviewed two\n'))
+        self.reconcile(['note.md'])
+        self.document.write_bytes(self.original.replace(b'two\n', b'peer two\n'))
+        result = self.reconcile()
+        self.assertTrue(result['conflict'])
+        with self.assertRaises(ValueError):
+            d.export(self.workspace, self.manifest)
+        self.assertIn(b'reviewed two', (self.workspace / result['candidate']).read_bytes())
+
+    def test_source_revert_is_preserved_with_reviewed_edit(self):
+        base = b''.join(f'line {i}\n'.encode() for i in range(1, 16))
+        self.document.write_bytes(base)
+        self.workspace = self.root / 'source-revert'
+        self.manifest = d.prepare(self.source, self.workspace, 'revert', ['note.md'])
+        self.document.write_bytes(base.replace(b'line 1\n', b'peer one\n'))
+        self.draft(base.replace(b'line 12\n', b'drafted twelve\n'))
+        initial = self.reconcile()
+        candidate = self.workspace / initial['candidate']
+        candidate.write_bytes(candidate.read_bytes().replace(b'line 6\n', b'reviewed six\n'))
+        self.reconcile(['note.md'])
+        self.document.write_bytes(base)
+        self.assertFalse(self.reconcile()['conflict'])
+        proposed = base64.b64decode(d.export(self.workspace, self.manifest)[0]['after_base64'])
+        self.assertIn(b'line 1\n', proposed)
+        self.assertNotIn(b'peer one\n', proposed)
+        self.assertIn(b'reviewed six\n', proposed)
+        self.assertIn(b'drafted twelve\n', proposed)
+
+    def test_both_inputs_changed_require_review_of_retained_candidate(self):
+        base = b''.join(f'line {i}\n'.encode() for i in range(1, 19))
+        self.document.write_bytes(base)
+        self.workspace = self.root / 'both-inputs'
+        self.manifest = d.prepare(self.source, self.workspace, 'both', ['note.md'])
+        initial = self.reconcile()
+        candidate = self.workspace / initial['candidate']
+        candidate.write_bytes(base.replace(b'line 8\n', b'reviewed eight\n'))
+        self.reconcile(['note.md'])
+        self.document.write_bytes(base.replace(b'line 17\n', b'peer seventeen\n'))
+        self.draft(base.replace(b'line 1\n', b'drafted one\n'))
+        result = self.reconcile()
+        self.assertTrue(result['conflict'])
+        self.assertIn('both', result.get('review_reason', ''))
+        with self.assertRaises(ValueError):
+            d.export(self.workspace, self.manifest)
+        proposed = (self.workspace / result['candidate']).read_bytes()
+        self.assertIn(b'reviewed eight\n', proposed)
+        self.assertIn(b'peer seventeen\n', proposed)
+        self.assertIn(b'drafted one\n', proposed)
+        self.assertNotIn(b'<<<<<<< ', proposed)
+        self.assertIn('both', self.reconcile().get('review_reason') or '')
+        self.assertFalse(self.reconcile(['note.md'])['conflict'])
+
+    def test_legacy_reconciliation_without_input_snapshots_fails_closed(self):
+        self.reconcile()
+        record_path = self.workspace / 'reconciliation.json'
+        record = json.loads(record_path.read_text())
+        record['files'][0].pop('source_snapshot', None)
+        record['files'][0].pop('draft_snapshot', None)
+        record_path.write_text(json.dumps(record))
+        self.document.write_bytes(self.original + b'peer change\n')
+        self.assertIn('snapshot', self.reconcile().get('error', ''))
+        with self.assertRaises(ValueError):
+            d.export(self.workspace, self.manifest)
+
+    def test_changed_input_snapshot_blocks_rebase_and_export(self):
+        initial = self.reconcile()
+        snapshot = self.workspace / initial['source_snapshot']
+        snapshot.write_bytes(b'tampered earlier source\n')
+        self.document.write_bytes(self.original + b'new source\n')
+        self.assertIn('snapshot changed', self.reconcile().get('error', ''))
+        with self.assertRaises(ValueError):
+            d.export(self.workspace, self.manifest)
+
+    def test_both_input_cancellation_retains_versions_for_explicit_review(self):
+        self.draft(self.original.replace(b'three\n', b'old draft three\n'))
+        self.reconcile()
+        self.document.write_bytes(self.original.replace(b'three\n', b'old draft three\n'))
+        self.draft(self.original)
+        result = self.reconcile()
+        self.assertTrue(result['conflict'])
+        with self.assertRaises(ValueError):
+            d.export(self.workspace, self.manifest)
+        self.assertIn(b'old draft three\n', (self.workspace / result['source_snapshot']).read_bytes())
+        self.assertEqual(self.original, (self.workspace / result['draft_snapshot']).read_bytes())
+
     def test_multiple_real_git_conflicts_are_preserved(self):
         base = b'first\n' + b'unchanged\n' * 12 + b'last\n'
         # Fresh workspace preserves the actual baseline for this fixture.
