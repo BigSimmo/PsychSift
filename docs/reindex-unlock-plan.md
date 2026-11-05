@@ -1,5 +1,48 @@
 # Ingestion unlock and controlled rollout
 
+## 6 November 2026 local canary checkpoint — retained relevance diagnostics
+
+Published base `45ba6b48fb1c71fb42886c237a6327888e14e102` passed all 17 selected
+jobs in CI `42066823624`. Its earlier 585 affected local tests remain valid for
+the unchanged source-trust repair; they are not verification of this new diagnostic edit.
+
+The bounded local full baseline on exact main
+`a64d237eaed20c046d49a75cae000355c8a5dd8e` is not accepted. All 36 golden retrieval
+cases passed with document/content recall 1.0. The native 44-answer blocking gate
+was unsupported-route p95 latency 5,924 ms against 4,000 ms. Separately, the admission
+paraphrase missed an expected source in its top five; uncertain embedding reservations
+also left that run's financial wrapper incomplete. No gate or expected alias was relaxed.
+
+The owner approved one additional two-case diagnostic within the unchanged US$9 task
+ceiling: US$0.50 and ten minutes, extending the batch limit from three to four. The
+original human approval and its specific preceding scope were verified directly. On
+the same main revision, it completed in 23.9 seconds with two embeddings, 155 input
+tokens, two free counts, no generations and no unsettled attempts. Conservative
+rate-ceiling cost was US$0.000005; cumulative local-canary liability is US$0.312264,
+not an invoice. Eleven uncertain embedding attempts from the earlier runs remain reserved.
+The admission source miss reproduced; unsupported latency passed this attempt at 1,530 ms.
+This diagnostic does not replace a green full baseline or establish hosted acceptance.
+
+The expected admission alias is available at answer-source rank seven, with reported
+retrieval rank three. Three synthetic replays through the actual pure selection and
+extractive functions reproduce this order when that source is partial; direct-relevance
+controls keep it in the top five. Existing bound-fact and distinct-document controls
+also accept the alternative passages actually cited. Missing live relevance verdicts
+prevent a justified decision between correct partial demotion and bad classification.
+
+Private source diagnostics now retain the existing context relevance verdict, limited
+to `direct`, `partial`, `nearby`, `none` or `null`. They do not reclassify a truncated
+preview or copy free-text relevance explanations. The new regression failed before
+the correction; all 26 tests in its suite now pass and independent technical review
+reports no blocking finding. This changes diagnostic output only, not ranking, aliases,
+authority bands, source eligibility, citations, thresholds or models.
+
+Three of four approved batches are consumed. The remaining US$3 post-merge batch is
+reserved; no additional full baseline or provider batch is approved. Specific owner
+SQL authorization and owner-manual Merge remain separate. Production deployment,
+model activation, readmission, re-indexing and ingestion remain held. Private dumps
+stay outside Git, and no new source policy or review approval is implied.
+
 ## 6 November 2026 local continuation — approved source validation and cloud reconciliation
 
 The latest transfer PR #3890 at `745bb467ca39a05598cf3636fedf6ca40649784f` was read.

@@ -232,6 +232,62 @@ describe("answer dump records", () => {
     expect(Object.keys(diagnostics[0])).not.toContain("document_id");
   });
 
+  it("retains the actual relevance band without copying explanations or reclassifying sources", () => {
+    const base = {
+      id: "synthetic-context-source",
+      document_id: "synthetic-context-document",
+      title: "Synthetic procedure",
+      file_name: "synthetic-procedure.pdf",
+      page_number: 1,
+      chunk_index: 0,
+      section_heading: null,
+      content: "The synthetic procedure requires a completed admission checklist.",
+      image_ids: [],
+      similarity: 0.5,
+      images: [],
+    };
+    const relevance = {
+      label: "SYNTHETIC_PRIVATE_EXPLANATION",
+      matchedTerms: ["SYNTHETIC_PRIVATE_EXPLANATION"],
+      missingTerms: [],
+      directSourceCount: 0,
+      weakSourceCount: 1,
+      score: 0.4,
+      supportReason: "SYNTHETIC_PRIVATE_EXPLANATION",
+      isSourceBacked: true,
+      coverageScore: 0.4,
+      rankScore: 0.4,
+      titleMatchedTerms: [],
+      contentMatchedTerms: [],
+      metadataMatchedTerms: [],
+      chips: [],
+    };
+    const sources = [
+      ...(["direct", "partial", "nearby", "none"] as const).map((verdict) => ({
+        ...base,
+        id: `synthetic-${verdict}`,
+        relevance: { ...relevance, verdict },
+      })),
+      { ...base, id: "synthetic-unclassified" },
+      { ...base, id: "synthetic-malformed", relevance: { ...relevance, verdict: "SYNTHETIC_PRIVATE_VERDICT" } },
+    ] as unknown as RagAnswer["sources"];
+
+    const diagnostics = buildRagDiagnosticDumpRecord("synthetic-context-bands", "Synthetic admission checklist", {
+      ...answer,
+      sources,
+    } as RagAnswer).sources;
+    expect(diagnostics.map((source) => source.ranking.context_relevance_verdict)).toEqual([
+      "direct",
+      "partial",
+      "nearby",
+      "none",
+      null,
+      null,
+    ]);
+    expect(JSON.stringify(diagnostics)).not.toContain("SYNTHETIC_PRIVATE");
+    expect(sources[1].relevance?.verdict).toBe("partial");
+  });
+
   it("records the scores and pipeline reasons behind each source's rank", () => {
     const [ranked, bare] = buildBoundedRagSourceDiagnostics([
       {
@@ -265,6 +321,7 @@ describe("answer dump records", () => {
       },
     ] as unknown as RagAnswer["sources"]);
     expect(ranked.ranking).toEqual({
+      context_relevance_verdict: null,
       answer_evidence_score: null,
       hybrid_score: 0.6,
       rank_score: 1.3475,
@@ -274,6 +331,7 @@ describe("answer dump records", () => {
       match_reasons: ["retrieval_signal:document_title_phrase", "second_stage_rerank"],
     });
     expect(bare.ranking).toEqual({
+      context_relevance_verdict: null,
       answer_evidence_score: null,
       hybrid_score: null,
       rank_score: null,

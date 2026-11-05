@@ -199,6 +199,9 @@ export function buildBoundedRagSourceDiagnostics(
   answerEvidenceScores?: ReadonlyMap<string, number>,
 ) {
   return sources.slice(0, MAX_DIAGNOSTIC_SOURCES).map((source, index) => {
+    const relevanceVerdict = source.relevance?.verdict;
+    const contextRelevanceVerdict =
+      relevanceVerdict && ["direct", "partial", "nearby", "none"].includes(relevanceVerdict) ? relevanceVerdict : null;
     const tableFacts = source.table_facts ?? [];
     const images = source.images ?? [];
     const tableImages = images.filter(
@@ -251,6 +254,9 @@ export function buildBoundedRagSourceDiagnostics(
       // Ordering evidence: which scores and pipeline steps put this source at this rank, so a
       // live misorder (e.g. a later rerank undoing a selection boost) is diagnosable offline.
       ranking: {
+        // Retain the actual annotation consumed by context selection, not a new
+        // classification of this truncated preview. Explanations remain private.
+        context_relevance_verdict: contextRelevanceVerdict,
         // rankAnswerEvidence score, the first answer-stage reorder after retrieval. Context
         // selection can still move sources afterwards, so where this score's order disagrees
         // with `rank`, that later stage moved the source. Retrieval scores follow.
