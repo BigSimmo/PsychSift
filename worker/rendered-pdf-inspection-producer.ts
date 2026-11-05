@@ -220,7 +220,6 @@ function childEnvironment(): NodeJS.ProcessEnv {
     "lc_all",
     "lc_ctype",
     "tessdata_prefix",
-    "tesseract_cmd",
   ]);
   return {
     NODE_ENV: "production",

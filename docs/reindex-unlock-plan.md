@@ -30,6 +30,34 @@ No implementation push, hosted CI result, production migration, deployment or mo
 is claimed. Preparing an implementation PR must account for automatic Supabase preview
 compute and any GitHub Actions charges separately from the approved OpenAI comparison.
 
+**Hosted verification and corrective evidence.** The owner subsequently approved at most
+US$5 for the prepared implementation PR's hosted CI and one temporary Supabase preview,
+including exact-preview cleanup before handback. Implementation
+[PR #3900](https://github.com/BigSimmo/PsychSift/pull/3900) was published at `d3574f14ab`
+with auto-merge off. Its first [CI run](https://github.com/BigSimmo/PsychSift/actions/runs/41961770471)
+passes the app build, browser-test build and authoritative migration replay. Required CI is
+not green: ingestion SAST found the inherited Tesseract executable override, the static guard
+required new migration seals, and one unit partition found the ordinary enrichment query's
+missing owner-only filter.
+
+The corrections remove the OCR executable override from both producer and child environment,
+restore the owner-only query for ordinary reindex while preserving explicit administrator
+readmission, and append only the six new migration hashes. All previous sealed values pass
+the immutability comparison against main. The existing privacy/readmission suites pass
+191 tests; rendered boundary/review/terminal suites pass 32; the renderer Python suite passes
+20 including the observed red/green executable-selection regression. Local Semgrep 1.172.0
+reports zero findings over the same 126 target files (796 current registry rules); its engine
+differs from the immutable CI image, whose rerun remains necessary. Scoped lint passes.
+The broad focused-test selector refused this multi-test diff; direct focused regressions
+support only the named corrections, with complete unit coverage still required in CI.
+
+The changed inspector hash required fresh private inspections: all three originals/eight
+pages still complete as `held_for_review`, with unchanged page and byte counts. The private
+review pack was regenerated; no approved owner record was created. The separate advisory
+Claude job reports a revoked OAuth credential, zero model usage and US$0; its green job
+wrapper does not constitute a completed review. Reuse the recorded independent Sol review,
+and do not rotate credentials or request another paid comparison for this correction.
+
 **Implemented and checked locally.** Source-anchored summaries now have an immutable
 candidate request, exact guarded SDK-body authorization, observed provider identity,
 generation-specific retained projection, and atomic pointer/summary/generated-label/job

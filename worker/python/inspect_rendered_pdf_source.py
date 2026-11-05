@@ -330,7 +330,9 @@ def _check_structure(document, limits, deadline):
 
 
 def _ocr_runtime(remaining):
-    command = os.environ.get("TESSERACT_CMD") or shutil.which("tesseract")
+    # Resolve only the server-installed OCR binary; inherited executable
+    # overrides must not choose a program for this version probe.
+    command = shutil.which("tesseract")
     if not command and os.name == "nt":
         command = next((path for path in (r"C:\Program Files\Tesseract-OCR\tesseract.exe",
                        r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe") if Path(path).is_file()), None)

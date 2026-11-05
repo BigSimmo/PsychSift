@@ -15,6 +15,16 @@ import inspect_rendered_pdf_source as inspector
 
 
 class RenderedPdfSourceTests(unittest.TestCase):
+    def test_tesseract_probe_ignores_environment_executable_override(self):
+        with patch.dict(os.environ, {"TESSERACT_CMD": "unapproved-program --injected"}), \
+                patch.object(inspector.shutil, "which", return_value="/trusted/bin/tesseract"), \
+                patch.object(inspector.subprocess, "run", return_value=Mock(
+                    returncode=0, stdout="tesseract 5.4.0\n")) as run:
+            command, version = inspector._ocr_runtime(5)
+            self.assertEqual(command, "/trusted/bin/tesseract")
+            self.assertEqual(version, "5.4.0")
+            self.assertEqual(run.call_args.args[0], ["/trusted/bin/tesseract", "--version"])
+
     def _windows_memory_probe(self, cap=None):
         """Query the OS job, then exercise native commit in an isolated process."""
         import subprocess

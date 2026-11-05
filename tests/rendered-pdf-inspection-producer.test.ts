@@ -158,6 +158,7 @@ describe("held rendered-original subprocess boundary", () => {
     const fixture = await setup();
     vi.stubEnv("OPENAI_API_KEY", "synthetic-do-not-forward");
     vi.stubEnv("PYTHONPATH", "synthetic-untrusted-import-path");
+    vi.stubEnv("TESSERACT_CMD", "synthetic-unapproved-ocr-program");
     vi.stubEnv("PYTHON_BIN", "explicit-python");
     childOutput();
     const result = await inspectRenderedPdfOriginal(fixture.source, fixture.root, fixture.hash);
@@ -174,6 +175,7 @@ describe("held rendered-original subprocess boundary", () => {
     const environment = boundary.spawn.mock.calls[0]![2].env;
     expect(environment.OPENAI_API_KEY).toBeUndefined();
     expect(environment.PYTHONPATH).toBeUndefined();
+    expect(environment.TESSERACT_CMD).toBeUndefined();
     expect(environment.PDF_RASTER_TABLE_OCR).toBe("0");
     expect(await readdir(fixture.root)).toHaveLength(1);
   });
