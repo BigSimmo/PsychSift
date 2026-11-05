@@ -245,6 +245,21 @@ describe("offline rendered review validation CLI", () => {
     },
   );
 
+  it("removes inspection-owned artifact directories inside the root, even when validation refuses", async () => {
+    const f = await fixture();
+    const { mkdir, realpath, stat } = await import("node:fs/promises");
+    await mkdir(f.artifactRoot, { recursive: true });
+    const owned = path.join(await realpath(f.artifactRoot), "rendered-review-synthetic");
+    const outside = path.join(path.dirname(f.artifactRoot), "outside-owned");
+    await mkdir(owned);
+    await mkdir(outside);
+    f.inspect.mockResolvedValue({ temporaryPaths: [owned, outside] } as unknown as RenderedPdfInspection);
+    f.validate.mockRejectedValue(new Error("rendered_pdf_review_synthetic_refusal"));
+    await expect(validateRenderedPdfReviewCli(f.argv, f)).rejects.toThrow("rendered_pdf_review_synthetic_refusal");
+    await expect(stat(owned)).rejects.toThrow();
+    expect((await stat(outside)).isDirectory()).toBe(true);
+  });
+
   it("refuses a different external digest instead of approving the record's own digest", async () => {
     const f = await fixture();
     f.argv[f.argv.length - 1] = otherHash;

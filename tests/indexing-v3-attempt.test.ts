@@ -195,6 +195,7 @@ describe("Edge source-anchored summary selection", () => {
       OPENAI_STRONG_ANSWER_MODEL: "gpt-6.1-sol",
     };
     expect(resolveEdgeIndexingModel((key) => settings[key])).toBe("gpt-5.6-terra");
+    expect(resolveEdgeIndexingModel((key) => (key === "OPENAI_INDEXING_MODEL" ? "  " : undefined))).toBe("gpt-5.6-sol");
   });
 });
 const attempt = () => new IngestionAttempt(parseEdgeIngestionClaim(claim(), "edge-worker", now));

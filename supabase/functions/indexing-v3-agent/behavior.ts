@@ -32,7 +32,8 @@ import {
 export function resolveEdgeIndexingModel(readEnvironment: (name: string) => string | undefined): string {
   // Match the Node worker's indexing fallback. Answer-only model activation must
   // not invalidate persisted summaries or discard their source-anchored labels.
-  return readEnvironment("OPENAI_INDEXING_MODEL") ?? "gpt-5.6-sol";
+  // A blank value is treated as unset rather than as a model name.
+  return readEnvironment("OPENAI_INDEXING_MODEL")?.trim() || "gpt-5.6-sol";
 }
 
 export function edgeProviderEgressBinding(

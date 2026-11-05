@@ -848,6 +848,10 @@ function withoutWithdrawnRecommendation(text: string) {
   // single line breaks inside the passage so wrapped instructions stay governed.
   const parts = text.split(/((?<=[.!?])\s+|\n\s*\n|\n(?=[ \t]*(?:\d+[.)]|[a-z][.)]|[•*-])(?:[ \t]|\r?\n|$)))/i);
   let withdrawNext = false;
+  // Indent of the withdrawn list item; deeper-indented items are its children and stay withheld
+  // until a sibling (or shallower) item or a blank line ends the recommendation.
+  let withdrawnIndent: number | null = null;
+  const listItem = /^([ \t]*)(?:\d+[.)]|[a-z][.)]|[•*-])(?:[ \t]|\r?\n|$)/i;
   const governsNext = (text: string) =>
     text.split(";").some((clause) => {
       // Stop at this subject's first withdrawal status; a later subject's
@@ -862,9 +866,18 @@ function withoutWithdrawnRecommendation(text: string) {
       if (index % 2 !== 0) return part;
       if (governsNext(part)) {
         withdrawNext = true;
+        withdrawnIndent = null;
         return "";
       }
+      const item = part.match(listItem);
+      if (!withdrawNext && withdrawnIndent !== null) {
+        const separator = parts[index - 1] ?? "";
+        const nested = item ? item[1].length > withdrawnIndent : !/\n/.test(separator);
+        if (nested && !/\n\s*\n/.test(separator)) return "";
+        withdrawnIndent = null;
+      }
       if (!withdrawNext) return part;
+      if (item) withdrawnIndent ??= item[1].length;
       // A pure list marker does not consume the withdrawn recommendation.
       if (!/^\s*(?:\d+[.)]|[a-z][.)]|[•*-])?\s*$/i.test(part)) withdrawNext = false;
       return "";

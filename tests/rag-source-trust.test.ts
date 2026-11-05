@@ -145,6 +145,19 @@ it("withdraws only the first unpunctuated numbered item while retaining the inde
   });
   expect(claimProofWithoutGeneratedNarrative(s).content).toContain("2) " + valid);
 });
+it("withholds nested items of a withdrawn list recommendation until the next sibling", () => {
+  const nested = "Administer synthetic action C once daily";
+  const sibling = "Contact synthetic support D";
+  const s = source(
+    "nested-list",
+    "The following recommendation is withdrawn.\n1) Treat synthetic state:\n   - " + nested + "\n2) " + sibling,
+  );
+  expect(sanitizeQuoteCards([{ chunk_id: s.id, quote: nested }], [s])).toEqual([]);
+  expect(sourceDirectlySupportsAnswerText(nested, s)).toBe(false);
+  const content = claimProofWithoutGeneratedNarrative(s).content;
+  expect(content).not.toContain(nested);
+  expect(content).toContain("2) " + sibling);
+});
 it("retains a complete independent numbered recommendation through support and finalization", () => {
   // The terse `2) Continue ...` fixture above is not independently recognized by
   // the existing directive matcher. Use a complete normative sentence here.

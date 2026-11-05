@@ -1,6 +1,6 @@
 /** Offline structural validation only; never issues an approval or starts ingestion. */
 import { constants } from "node:fs";
-import { lstat, open } from "node:fs/promises";
+import { lstat, open, realpath, rm } from "node:fs/promises";
 import path from "node:path";
 import { TextDecoder } from "node:util";
 import { inspectRenderedPdfOriginal } from "../worker/rendered-pdf-inspection-producer";
@@ -86,22 +86,33 @@ export async function validateRenderedPdfReviewCli(
 
   const originalBytes = await boundedFile(source, MAX_SOURCE_BYTES);
   const inspection = await (dependencies.inspect ?? inspectRenderedPdfOriginal)(source, artifactRoot, sourceSha256);
-  const result = await (dependencies.validate ?? validateRenderedPdfReview)({
-    review,
-    inspection,
-    sourcePath: source,
-    originalBytes,
-    approvedReviewSha256: new Set([approvedDigest]),
-  });
-  return {
-    status: "structurally_validated",
-    scope: "render_review_only_not_owner_authentication_or_clinical_acceptance",
-    sourceSha256: review.sourceSha256,
-    reviewSha256: result.reviewSha256,
-    pageCount: result.reviewedPages.length,
-    tableCount: result.reviewedTables.length,
-    diagramCount: result.reviewedDiagrams.length,
-  };
+  try {
+    const result = await (dependencies.validate ?? validateRenderedPdfReview)({
+      review,
+      inspection,
+      sourcePath: source,
+      originalBytes,
+      approvedReviewSha256: new Set([approvedDigest]),
+    });
+    return {
+      status: "structurally_validated",
+      scope: "render_review_only_not_owner_authentication_or_clinical_acceptance",
+      sourceSha256: review.sourceSha256,
+      reviewSha256: result.reviewSha256,
+      pageCount: result.reviewedPages.length,
+      tableCount: result.reviewedTables.length,
+      diagramCount: result.reviewedDiagrams.length,
+    };
+  } finally {
+    // The inspection hands ownership of its rendered rasters and OCR output to the caller.
+    // Remove only paths strictly inside the resolved artifact root.
+    const root = await realpath(artifactRoot).catch(() => null);
+    for (const owned of root ? (inspection.temporaryPaths ?? []) : []) {
+      const relative = path.relative(root as string, path.resolve(owned));
+      if (relative && !relative.startsWith("..") && !path.isAbsolute(relative))
+        await rm(owned, { recursive: true, force: true });
+    }
+  }
 }
 
 export function renderedPdfReviewCliFailure(error: unknown) {
