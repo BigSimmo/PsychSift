@@ -124,6 +124,7 @@ function setup(scope: "private" | "shared" | "other" = "private") {
     bytes,
     document,
     filters,
+    query,
     download,
     serviceRpc,
     publicationRpc,
@@ -189,6 +190,9 @@ describe("administrator PDF reindex current readmission", () => {
       expect.objectContaining({ p_expected_owner_id: null, p_expected_public_corpus: true }),
     );
     expect(f.filters).not.toContainEqual(["owner_id", administratorId]);
+    expect(f.query.or).toHaveBeenCalledWith(
+      `owner_id.eq.${administratorId},and(owner_id.is.null,metadata->>public_corpus.eq.true)`,
+    );
   });
   it("holds ordinary full PDF reindex before the legacy queue while preserving enrichment mode", async () => {
     const f = setup();
@@ -197,12 +201,30 @@ describe("administrator PDF reindex current readmission", () => {
     expect(await held.json()).toMatchObject({ code: "readmission_required" });
     expect(f.serviceRpc).not.toHaveBeenCalled();
     expect(f.publicationRpc).not.toHaveBeenCalled();
+    expect(f.filters).toContainEqual(["owner_id", administratorId]);
     const enrichment = await f.invoke({ mode: "enrichment" });
     expect(enrichment.status).toBe(202);
     expect(f.serviceRpc).toHaveBeenCalledWith("request_indexing_v3_enrichment", {
       p_document_id: id,
       p_owner_id: administratorId,
     });
+  });
+  it.each([
+    ["shared", "full"],
+    ["shared", "enrichment"],
+    ["other", "full"],
+    ["other", "enrichment"],
+  ] as const)("refuses ordinary %s document %s reindex before any mutation or child-job read", async (scope, mode) => {
+    const f = setup(scope);
+    const response = await f.invoke({ mode });
+    expect(response.status).toBe(404);
+    expect(await response.json()).toMatchObject({ code: "document_not_found" });
+    expect(f.filters).toContainEqual(["owner_id", administratorId]);
+    expect(f.safety).not.toHaveBeenCalled();
+    expect(f.client.from).not.toHaveBeenCalledWith("ingestion_jobs");
+    expect(f.download).not.toHaveBeenCalled();
+    expect(f.serviceRpc).not.toHaveBeenCalled();
+    expect(f.publicationRpc).not.toHaveBeenCalled();
   });
   it.each(["other", "unmarked-ownerless"])(
     "refuses %s ownership without reading storage or creating an admission",

@@ -1,5 +1,63 @@
 # Ingestion unlock and controlled rollout
 
+## 5 November 2026 cloud repair — PR #3900 continuation
+
+The owner directly approved continuing the recommendations in this chat: "Yes I approve.
+Go ahead with your recommendation’s." This authorises the engineering repairs and brief
+open/draft PR overlap check. It supplies no source-fidelity observations and does not turn
+an unaccepted model comparison into acceptance. The stop remains before corpus re-indexing
+or re-ingestion. Production release gates and bounded paid-run requirements remain in force.
+
+**Source and ownership.** Continue published implementation PR #3900, branch
+`local/rag-preindex-7fd0e1db2`, from `62590651aaf9a7ae403288e3f5833e53e4809496`.
+The cloud integrator uses isolated `/workspace/PsychSift-rag-followup`, branch
+`fix/rag-preindex-followup`; earlier cloud/transfer checkouts and unpublished Windows edits
+are preserved. PR #3866 is older opt-in Sol work already included in this implementation;
+#3890 is its transfer bundle. Other open/draft PRs are dependency or agent-policy work.
+No new implementation PR is needed.
+
+**Correction.** Both native and reviewed-rendered PDF egress validators now admit the
+existing source-bound `memory_cards` embedding family. Exact payload/plan matching,
+UUID keys, current source/authority, identifier scanning and byte budgets remain enforced.
+Before the fix, both new admission regressions failed with `embedding_source_plan`;
+after it, seven PDF/route/tenancy suites pass 127 tests. The reindex document query now
+exposes its existing sanctioned owner scope directly to the tenancy scanner and retains
+the additional owner-only conjunct for ordinary requests. Both scanner phases pass;
+new runtime tests refuse shared/foreign ordinary requests before mutations or job reads.
+
+**Fresh correction evidence.** Eleven focused suites pass 189 tests in three runs: the
+seven PDF/route/tenancy suites (127), comparison/smoke suites (48), and both terminal suites
+(14). The terminal lifecycle tests now send actual executor units through the real OpenAI
+SDK serializer, derived request context and real native/rendered source validator before
+synthetic vectors and RPC replies. Every producer ID, including memory cards, is checked.
+A first terminal run exposed missing cloud `pytesseract`; a task-local venv with 0.3.13
+resolved the real scan fixture. It inherits PyMuPDF 1.26.6/Pillow 12.3.0, so this is not CI
+runtime parity. No shared Python installation or workflow was changed.
+
+Final typecheck, scoped lint, both owner-scope phases, diff whitespace and offline readiness
+CI mode pass. Readiness reports missing cloud secrets and outstanding release evidence as
+CI warnings; it does not establish production acceptance. Independent correction review
+finds no P1/P2 issues in the route, validators, terminal regressions and model diagnostics.
+This is a correction review, not a complete programme acceptance or clinical sign-off.
+Model comparison artifacts now retain content-free raw versus parsed grounding/confidence
+flags without changing scoring, latency thresholds, blind-review output or model defaults.
+Previous results remain unaccepted; the changed harness identity requires a fresh bounded
+approval for any later paid comparison.
+
+The prepared PR body fixes its existing OCR-approval citation with the immutable HTTPS
+checkpoint URL; unchanged policy evaluation returns ok with no errors. Publication and fresh
+hosted results are still pending at this checkpoint. The prior published head has failed CI.
+
+**Unchanged acceptance work.** Authoritative migration replay and hosted builds already
+passed at the prior candidate; reuse that evidence until affected inputs change. The private
+three-source/eight-page fidelity pack still needs owner observations and an approved complete
+review record. Sol remains unaccepted (quality/confidence contract and latency); no new paid
+comparison, default-model change or activation is performed by these engineering checks.
+Production migrations/app/worker rollout remain unobserved for this implementation. No
+readmission RPC, provider generation, re-index or re-ingestion is used as a test. The temporary
+preview cleanup and hosted-verification cost record remain to be reconciled by the local
+operator against the recorded US$5 approval; actual preview cost is unavailable here.
+
 ## 5 November 2026 continuation — local source/summary paths verified; corpus held
 
 The same isolated task and branch continue from local checkpoint

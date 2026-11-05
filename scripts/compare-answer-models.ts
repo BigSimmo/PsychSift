@@ -414,6 +414,48 @@ export function deterministicChecks(testCase: ComparisonCase, raw: string, answe
   };
 }
 
+function comparisonAnswerDiagnostics(raw: string, answer: RagAnswer) {
+  let payload: unknown;
+  try {
+    payload = JSON.parse(raw);
+  } catch {
+    payload = null;
+  }
+  // Retain only bounded flags, never arbitrary values from malformed provider fields.
+  const rawGrounded: boolean | "missing" | "invalid" =
+    record(payload) && Object.hasOwn(payload, "grounded")
+      ? typeof payload.grounded === "boolean"
+        ? payload.grounded
+        : "invalid"
+      : "missing";
+  const rawConfidence: RagAnswer["confidence"] | "missing" | "invalid" =
+    record(payload) && Object.hasOwn(payload, "confidence")
+      ? ((["high", "medium", "low", "unsupported"] as const).find((value) => value === payload.confidence) ?? "invalid")
+      : "missing";
+  const routingReasons = answer.routingReason?.split(";").map((reason) => reason.trim()) ?? [];
+  const routingFlags = [
+    "structured_parse_fallback",
+    "partial_invalid_model_citation_ids",
+    "invalid_model_citation_ids",
+    "ungrounded_no_model_citation",
+    "numeric_faithfulness_gate_source_gap",
+    "numeric_band_coherence_gate_source_conflict",
+    "numeric_band_conflict_quote_withheld",
+    "numeric_band_conflict_nonnumeric_recovery",
+  ].filter((reason) => routingReasons.includes(reason));
+  return {
+    raw: { jsonObject: record(payload), grounded: rawGrounded, confidence: rawConfidence },
+    parsed: {
+      grounded: answer.grounded,
+      confidence: answer.confidence,
+      routingFlags,
+      otherRoutingReason: routingReasons.some((reason) => !routingFlags.includes(reason)),
+      unverifiedNumericCount: answer.unverifiedNumericTokens?.length ?? 0,
+      faithfulnessWarning: Boolean(answer.faithfulnessWarning),
+    },
+  };
+}
+
 export type ComparisonOutcome = Execution & {
   status: "completed" | "failed";
   latencyMs: number;
@@ -421,6 +463,7 @@ export type ComparisonOutcome = Execution & {
   providerModel?: string | null;
   requestId?: string | null;
   checks?: ReturnType<typeof deterministicChecks>;
+  diagnostics?: ReturnType<typeof comparisonAnswerDiagnostics>;
   answer?: string;
   review?: Pick<RagAnswer, "answerSections" | "citations" | "conflictsOrGaps">;
   reason?: string;
@@ -560,6 +603,7 @@ async function componentExecutor(mode: "offline" | "paid") {
         providerModel: result.providerModel ?? null,
         requestId: result.requestId ?? null,
         checks: deterministicChecks(testCase, result.text, answer),
+        diagnostics: comparisonAnswerDiagnostics(result.text, answer),
         answer: answer.answer,
         review: {
           answerSections: answer.answerSections,

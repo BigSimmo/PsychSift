@@ -15,7 +15,7 @@ import { createRichPdfInspectionLoader, type RichPdfInspectionCurrent } from "..
 import { RICH_PDF_INSPECTION_VERSION } from "../worker/rich-pdf-inspection";
 
 const uuid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
-function fixture() {
+function fixture(family: "chunks" | "memory_cards" | "images" = "chunks", key = uuid(8)) {
   const bytes = Buffer.from("%PDF-1.7\nSynthetic source\n%%EOF"),
     hash = bytesDigest(bytes) as ContentSha256,
     text = "Synthetic source threshold < 3.5.";
@@ -166,7 +166,7 @@ function fixture() {
     binding,
     nativePdfBatch: {
       planDigest: hash,
-      inputs: [{ providerInputText: text, sourceUnitIds: [{ family: "chunks", key: uuid(8) }] }],
+      inputs: [{ providerInputText: text, sourceUnitIds: [{ family, key }] }],
     },
     loadCurrent,
     loadScannerConfiguration,
@@ -174,6 +174,22 @@ function fixture() {
   return { source, evidence, binding, request, loader, loadCurrent, loadScannerConfiguration, attempt };
 }
 describe("rich source egress with accountable stewardship", () => {
+  it("admits bound memory-card embeddings with the same source checks", async () => {
+    const f = fixture("memory_cards");
+    const result = await f.loader(f.request, f.binding);
+    expect(evaluateDocumentIngressSafety(result.observations).verdict).toBe("pass");
+    f.request.payload = f.request.payload.replace("Synthetic source", "Unbound narrative");
+    f.request.payloadSha256 = bytesDigest(Buffer.from(f.request.payload)) as ContentSha256;
+    await expect(f.loader(f.request, f.binding)).rejects.toThrow("embedding_source_plan");
+  });
+  it.each([
+    ["images", uuid(8)],
+    ["memory_cards", "invalid-key"],
+  ] as const)("refuses unsupported embedding family or malformed source key (%s)", async (family, key) => {
+    const f = fixture(family, key);
+    await expect(f.loader(f.request, f.binding)).rejects.toThrow("embedding_source_plan");
+    expect(f.loadScannerConfiguration).not.toHaveBeenCalled();
+  });
   it.each([false, true])(
     "scans summary source fields while excluding server anchor IDs (identifier=%s)",
     async (identifier) => {

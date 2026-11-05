@@ -270,7 +270,7 @@ import {
 } from "../src/lib/document-ingress-safety";
 import type { RichAdminUnscannedEvidence } from "../supabase/functions/_shared/rich-admin-unscanned-exception";
 const uuid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
-async function egressFixture() {
+async function egressFixture(family: "chunks" | "memory_cards" | "images" = "chunks", key = uuid(8)) {
   const f = await reviewedFixture();
   const digest = hash(f.input.originalBytes) as ContentSha256;
   const binding: ProviderEgressBinding = {
@@ -387,7 +387,7 @@ async function egressFixture() {
     binding,
     nativePdfBatch: {
       planDigest: digest,
-      inputs: [{ providerInputText: text, sourceUnitIds: [{ family: "chunks" as const, key: uuid(8) }] }],
+      inputs: [{ providerInputText: text, sourceUnitIds: [{ family, key }] }],
     },
     loadCurrent,
     loadScannerConfiguration,
@@ -396,6 +396,22 @@ async function egressFixture() {
   return { ...f, source, evidence, binding, attempt, request, loadCurrent, loadScannerConfiguration, loader, options };
 }
 describe("reviewed render representation provider boundary", () => {
+  it("admits bound memory-card embeddings without admitting changed source text", async () => {
+    const f = await egressFixture("memory_cards");
+    await expect(f.loader(f.request, f.binding)).resolves.toHaveProperty("observations");
+    const payload = JSON.stringify({ model: "text-embedding-3-small", dimensions: 1536, input: ["Unbound narrative"] });
+    await expect(
+      f.loader({ ...f.request, payload, payloadSha256: hash(payload) as ContentSha256 }, f.binding),
+    ).rejects.toThrow("embedding_source_plan");
+  });
+  it.each([
+    ["images", uuid(8)],
+    ["memory_cards", "invalid-key"],
+  ] as const)("refuses unsupported embedding family or malformed source key (%s)", async (family, key) => {
+    const f = await egressFixture(family, key);
+    await expect(f.loader(f.request, f.binding)).rejects.toThrow("embedding_source_plan");
+    expect(f.loadScannerConfiguration).not.toHaveBeenCalled();
+  });
   it("admits reviewed representation only while preserving original native conflict", async () => {
     const f = await egressFixture();
     const observed = await f.loader(f.request, f.binding);

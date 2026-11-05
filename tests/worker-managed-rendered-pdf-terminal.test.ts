@@ -2,6 +2,7 @@ import { EventEmitter } from "node:events";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import OpenAI from "openai";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   bytesDigest as sha,
@@ -269,7 +270,24 @@ import {
   prepareManagedRenderedPdfGeneration,
 } from "../worker/managed-rendered-pdf-terminal";
 import type { JobRow } from "../worker/types";
-import type { ContentSha256, ProviderEgressBinding } from "../src/lib/document-ingress-safety";
+import {
+  evaluateDocumentIngressSafety,
+  INTERNAL_BUILD_LEGAL_REVIEW_DEFERRAL,
+  type ContentSha256,
+  type ProviderEgressBinding,
+} from "../src/lib/document-ingress-safety";
+import {
+  deriveManagedProviderEmbeddingRequestContext,
+  type ManagedProviderEmbeddingBatchContext,
+} from "../worker/managed-provider-vectors";
+import {
+  createReviewedRenderedPdfInspectionLoader,
+  type ReviewedRenderedPdfInspectionCurrent,
+} from "../worker/reviewed-rendered-pdf-provider-egress";
+import {
+  RICH_ADMIN_UNSCANNED_POLICY,
+  type RichAdminUnscannedEvidence,
+} from "../supabase/functions/_shared/rich-admin-unscanned-exception";
 const ids = Array.from({ length: 6 }, (_, i) => `72000000-0000-4000-8000-00000000000${i + 1}`);
 async function planFixture(reviewedAt?: string) {
   const f = await fixture();
@@ -445,7 +463,7 @@ import { IngestionAttempt } from "../supabase/functions/_shared/ingestion-attemp
 import { runManagedFullPdfGeneration } from "../worker/managed-full-pdf-terminal";
 describe("rendered packet shared executor", () => {
   it.each([false, true])(
-    "requires rendered-specific terminal seal (native substitute %s)",
+    "admits real producer SDK payloads through reviewed source inspection and requires rendered seal (native substitute %s)",
     async (nativeSubstitute) => {
       const f = await planFixture();
       const attempt = new IngestionAttempt({
@@ -467,9 +485,137 @@ describe("rendered packet shared executor", () => {
           packet: { bytesHex: bytes.toString("hex"), sha256: packetDigest, byteLength: bytes.length },
         };
       });
-      const embed = vi.fn(async (texts: string[]) =>
-        texts.map(() => Array.from({ length: 1536 }, (_, i) => (i === 0 ? 1 : 0))),
-      );
+      const { binding, job, stewardId } = f.input;
+      const source: ReviewedRenderedPdfInspectionCurrent = {
+        binding,
+        sourceMetadata: job.documents.metadata ?? {},
+        sourceBytes: f.input.originalBytes,
+        acceptedReview: f.input.acceptedReview,
+        identifierTexts: [job.documents.title, job.documents.file_name],
+        capturedImages: f.capturedImages,
+        facts: {
+          version: "administrator-reindex-authority-facts-v1",
+          scope: "existing_shared_library_stewardship",
+          documentId: binding.documentId,
+          documentOwnerId: null,
+          stewardId,
+          jobId: binding.jobId,
+          generationId: binding.generationId,
+          authorityDigest: binding.authorityDigest,
+          sourceSha256: binding.contentSha256,
+          sourceByteLength: f.input.originalBytes.length,
+          mimeType: "application/pdf",
+          fileNameSha256: hash(job.documents.file_name),
+          storagePathSha256: hash(job.documents.storage_path),
+          admissionEventId: binding.admissionEventId,
+          admissionDigest: generationEvidenceDigest({ binding, metadata: job.documents.metadata }),
+          admissionPolicyVersion: "trusted-document-admission-v1",
+          currentRightsEvidence: "unavailable",
+          historicalUploadOrigin: "not_established",
+          declaredAuthority: {
+            version: 1,
+            sourceRole: "clinical_reference",
+            authorityBasis: "administrator_template",
+            licencePolicy: "review_required",
+            rightsEvidenceRef: "Synthetic offline fixture internal deferral",
+            publisher: "Synthetic fixture publisher",
+            jurisdiction: "Australia/WA",
+            publicationDate: null,
+            effectiveDate: null,
+            reviewDate: null,
+            expiryDate: null,
+            currentness: "unknown",
+            supersedesDocumentId: null,
+            purpose: "clinical_retrieval",
+            supportedFeatures: ["images", "tables", "text"],
+            providerProcessing: "permitted",
+          },
+        },
+        policyObservations: {
+          policyVersion: "synthetic-terminal-egress-v1",
+          rights: "review_deferred",
+          indexLicence: "review_deferred",
+          legalReviewDeferral: INTERNAL_BUILD_LEGAL_REVIEW_DEFERRAL,
+          purposeClearance: "permitted",
+        },
+      };
+      const evidence: RichAdminUnscannedEvidence = {
+        version: RICH_ADMIN_UNSCANNED_POLICY,
+        grant: {
+          exceptionId: binding.admissionEventId,
+          approvalReferenceSha256: generationEvidenceDigest({ binding, purpose: "embedding" }),
+          status: "active",
+          issuedAt: new Date(Date.now() - 1000).toISOString(),
+          expiresAt: job.lease_expires_at,
+          allowedPurposes: ["embedding"],
+        },
+        provenance: {
+          documentOwnerId: source.facts.documentOwnerId,
+          stewardId: source.facts.stewardId,
+          administratorId: source.facts.stewardId,
+          administratorActive: true,
+          scope: source.facts.scope,
+          existingSharedPublic: source.sourceMetadata.public_corpus === true,
+          admissionDigest: source.facts.admissionDigest,
+          binding,
+        },
+      };
+      const inspectedUnitIds: string[] = [];
+      const embed = vi.fn(async (texts: string[], producer: ManagedProviderEmbeddingBatchContext) => {
+        const unique = [...new Set(texts)];
+        // Keep the real SDK's serialized body and provenance; only transport responses are synthetic.
+        const client = new OpenAI({
+          apiKey: "synthetic-offline-key",
+          baseURL: "https://synthetic.invalid/v1",
+          maxRetries: 0,
+          fetch: async (_url, init) => {
+            if (typeof init?.body !== "string") throw new Error("synthetic_sdk_json_body_required");
+            const request = {
+              purpose: "embedding" as const,
+              payload: init.body,
+              payloadSha256: hash(init.body) as ContentSha256,
+            };
+            const nativePdfBatch = deriveManagedProviderEmbeddingRequestContext({
+              producer,
+              expectedPlanDigest: f.plan.planDigest,
+              request,
+              batchSize: 128,
+              expectedModel: "text-embedding-3-small",
+              expectedDimensions: 1536,
+            });
+            const inspect = createReviewedRenderedPdfInspectionLoader({
+              attempt,
+              binding,
+              nativePdfBatch,
+              loadCurrent: async () => source,
+              loadScannerConfiguration: async () => ({
+                backend: "administrator_rich_unscanned_exception",
+                evidence,
+              }),
+            });
+            const observations = await inspect(request, binding);
+            expect(evaluateDocumentIngressSafety(observations.sourceObservations).verdict).toBe("pass");
+            expect(evaluateDocumentIngressSafety(observations.observations).verdict).toBe("pass");
+            inspectedUnitIds.push(
+              ...nativePdfBatch.inputs.flatMap((input) =>
+                input.sourceUnitIds.map((unit) => `${unit.family}:${unit.key}`),
+              ),
+            );
+            return Response.json({
+              data: unique.map((_, index) => ({
+                index,
+                embedding: Array.from({ length: 1536 }, (_, i) => (i === 0 ? 1 : 0)),
+              })),
+            });
+          },
+        });
+        const response = await client.embeddings.create({
+          model: "text-embedding-3-small",
+          dimensions: 1536,
+          input: unique,
+        });
+        return texts.map((text) => response.data[unique.indexOf(text)]!.embedding);
+      });
       const rpc = vi.fn(async (_name: string, payload: Record<string, unknown>) => {
         const bytes = generationEvidenceBytes({
           version: nativeSubstitute ? "managed-full-pdf-seal-v1" : "managed-rendered-pdf-seal-v1",
@@ -512,6 +658,8 @@ describe("rendered packet shared executor", () => {
         expect(rpc.mock.calls.map((c) => c[1].p_read_only)).toEqual([false, true]);
       }
       expect(embed.mock.calls.flatMap((call) => call[0])).toEqual(f.plan.embeddingUnits.map((u) => u.text));
+      expect(f.plan.embeddingUnits.some((unit) => unit.family === "memory_cards")).toBe(true);
+      expect(inspectedUnitIds.sort()).toEqual(f.plan.embeddingUnits.map((unit) => `${unit.family}:${unit.id}`).sort());
     },
   );
 });
