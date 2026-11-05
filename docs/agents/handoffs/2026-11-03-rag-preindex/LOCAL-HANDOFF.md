@@ -1,3 +1,37 @@
+# Latest continuation — 5 November swarm follow-up
+
+Use implementation PR #3900 at `f7459705d562f32a9f90ba35543b79d133292aef` as the base.
+Its complete CI run 41987788641 passed, including container and browser acceptance.
+Do not restart from the older 7fd bundle below if that implementation is already present.
+
+The additive `psychsift-followup-9052aee8a.bundle` carries one reviewed offline correction,
+`9052aee8a954f3ed816ba05dabf0d51b3bcf5bff`, on that exact prerequisite. SHA-256:
+`8c74c5829094448a895a7394896de4fbc3c361e9ffc35b0e3acc666aaf1ca62d`.
+
+It fixes lost diagnostics in the feasible paid model-smoke path and adds a provider-free,
+validation-only PDF-review CLI with explicit external canonical approval digest. Four
+focused suites pass 75 tests; full typecheck, scoped lint and independent correction review
+pass. Source review and model acceptance remain pending. There has been no new paid model
+run, production merge, deployment, re-index or ingestion. Ponytail was unavailable; three
+native agents performed the bounded swarm. No reviewer/clinical approval was created.
+
+Fetch #3900 first and preserve unpublished local edits. Verify this bundle, then fetch its
+`refs/heads/fix/rag-preindex-followup` into a fresh local follow-up branch. Merge or reconcile
+that one commit with the existing local task; do not reset or overwrite dirty work. The
+new source CLI and exact arguments are documented in `docs/reindex-runbook.md` in the bundle.
+The local private three-PDF/eight-page pack's location is unavailable in cloud. Use the
+actual owner-reviewed record, never fabricate it or infer approval from structural success.
+
+The follow-up is carried here so the active implementation PR is not advanced while its
+paid automatic preview cost remains unresolved. Its old temporary preview was removed;
+updating #3900 may create another charged preview. Obtain a fresh defensible pricing/cap
+record before such a billable verification run. Use the existing local provider access
+and fresh source-bound pricing/approval for any model comparison. Keep processing paused.
+After acceptance, production migration PR merge remains owner-manual, with exact-merge
+live-drift/history and app/worker revision verification. Never probe readmission: it queues work.
+
+The previous handoff below is retained as dated import history only.
+
 # PsychSift local completion handoff
 
 Continue locally from [draft transfer PR #3890](https://github.com/BigSimmo/PsychSift/pull/3890). Its branch is `handoff/rag-preindex-local-7fd0e1db2`, based on `main`. It contains only this prompt and the accompanying Git bundle. The implementation is inside that bundle; it is not applied to the transfer PR's checkout and has not been merged or deployed.
