@@ -61,6 +61,18 @@ unchanged TBT budgets after built-in confirmations on desktop open-shifts (+31.2
 my-day (+30.2%) and mobile on-call (+39.4%). No baseline, threshold or required check changed.
 This historical failure is not a final-head verdict; the reconciled head still needs hosted CI.
 
+The follow-up was published by normal merge `bfa9f5eb439888ad40bde5ba279cf77b69134fdc`.
+Its hosted CI `42017173919` exposed two distinct failures. The app runner exhausted disk
+during cache restoration before the build command began. Unit partition 1 passed 15,614
+tests but the new real rendered-review CLI test failed: the job's pip log explicitly says
+it defaulted to a user installation, while the hardened producer sets `PYTHONNOUSERSITE=1`.
+A separate synthetic module probe reproduced user-site invisibility and venv visibility.
+The same owner-approved unit OCR setup now installs the unchanged pinned packages in a
+runner-local venv, exports its interpreter/path, and proves imports under that safeguard.
+No production isolation, required test, coverage threshold or check was weakened. Independent
+technical review cleared this correction. The next exact-head run also retries the runner
+build; an additional old-head retry would duplicate that work. Production remains untouched.
+
 ## 5 November 2026 local reintegration — compatible cloud repair preserved
 
 The local push stopped safely when the remote feature branch advanced to
