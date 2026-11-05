@@ -102,6 +102,14 @@ evidence, not clinical sign-off. A parent typecheck whose inputs changed during 
 regressions was stopped; the final committed candidate still requires its fresh guarded
 typecheck rather than reusing that interrupted run.
 
+The enabled push guard subsequently rejected invalid query-class/section-kind values in the
+new regression fixture. They were corrected to typed `broad_summary` and `required_actions`;
+the response mode remains `clinical_pathway`. Actual baseline modules from `378f6fc4e3`, with
+the unchanged real finalizer and valid query class, still reproduce both grounded unsafe
+outputs: the desired-behavior baseline suite fails six checks and passes two. The repaired
+valid-class suites pass all 470 tests. This confirms the completed-answer failures were not
+artifacts of the invalid fixture value. No compiler or guard override was used.
+
 This is a bounded repair, not universal original-passage certification: existing structured
 table/image evidence remains eligible under its current architecture. Other withdrawal
 phrasings, adaptive delivery, browser presentation and live answer behavior remain unverified.

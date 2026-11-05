@@ -70,7 +70,7 @@ it("rejects a recommendation governed by a preceding withdrawal through the fina
   expect(sourceDirectlySupportsAnswerText(claim, s)).toBe(false);
   expect(assessAndEnforceClaimSupport(answer(claim, [s])).grounded).toBe(false);
   expect(
-    finalizeRagAnswerQuality(answer(claim, [s]), "What review does synthetic procedure Z require?", "clinical_pathway")
+    finalizeRagAnswerQuality(answer(claim, [s]), "What review does synthetic procedure Z require?", "broad_summary")
       .grounded,
   ).toBe(false);
 });
@@ -87,7 +87,7 @@ it("rejects derived-only direct proof and exact quotes through the finalizer", (
     finalizeRagAnswerQuality(
       { ...answer(quote, [s]), quoteCards: cards },
       "What review does the synthetic green marker require?",
-      "clinical_pathway",
+      "broad_summary",
     ).grounded,
   ).toBe(false);
 });
@@ -113,7 +113,7 @@ it("withdraws the substantive numbered recommendation and preserves negated with
     finalizeRagAnswerQuality(
       answer(claim, [numbered]),
       "What review does synthetic procedure Z require?",
-      "clinical_pathway",
+      "broad_summary",
     ).grounded,
   ).toBe(false);
   const negated = source("negated", "The following recommendation is not withdrawn. " + claim);
@@ -131,7 +131,7 @@ it("does not display a withdrawn quote alongside a supported safe lead", () => {
   const final = finalizeRagAnswerQuality(
     { ...answer(safe, [s]), quoteCards: cards },
     "What does synthetic procedure Z require?",
-    "clinical_pathway",
+    "broad_summary",
   );
   expect(cards).toEqual([]);
   expect(final.quoteCards ?? []).toEqual([]);
@@ -152,10 +152,12 @@ it("removes unsafe prose from the delivered lead and sections", () => {
     const final = finalizeRagAnswerQuality(
       {
         ...answer(text, [s]),
-        answerSections: [{ heading: "Recommendation", kind: "recommendation", body: text, citation_chunk_ids: [s.id] }],
+        answerSections: [
+          { heading: "Recommendation", kind: "required_actions", body: text, citation_chunk_ids: [s.id] },
+        ],
       },
       "What review does synthetic procedure Z require?",
-      "clinical_pathway",
+      "broad_summary",
     );
     expect(final.answer).not.toContain(text);
     expect((final.answerSections ?? []).map((section) => section.body).join(" ")).not.toContain(text);
@@ -170,7 +172,7 @@ it("filters duplicated withdrawn adjacent context while preserving valid adjacen
   const final = finalizeRagAnswerQuality(
     { ...answer(safe, [s]), quoteCards: cards },
     "What does synthetic procedure Z require?",
-    "clinical_pathway",
+    "broad_summary",
   );
   expect(final.quoteCards ?? []).toEqual([]);
   const valid = source("adjacent-valid", safe, { adjacent_context: claim });
