@@ -293,3 +293,30 @@ route type generation is part of CI, runtime/type targets match, Railway watches
 every image-build input, focused and broad local gates pass, exact-head hosted
 CI and review threads are green, and the merged content is verified on
 `origin/main`. Version bumps alone do not satisfy this definition.
+
+## 2026-11-05: transitive glob and minimatch security compatibility
+
+The local audit remediation uses Sentry 11.11.0 and rimraf 6.1.4 within the
+existing root ranges. Their supported glob 14 dependency removes the affected
+glob 13 path without overriding those callers' declared glob ranges.
+
+Two parent-scoped overrides select minimatch ^11.0.4 beneath
+`@typescript-eslint/typescript-estree` and `readdir-glob`. Their upstream ranges
+still request major 10; this is an explicit compatibility decision for the
+repository's required Node 24 runtime. The unrelated root minimatch 3 consumer
+remains unchanged. Do not replace these with a global major override.
+
+The actual installed consumers passed the same 32 bounded synthetic cases before
+and after resolution: TypeScript project-service admission/refusal, hidden and
+nested paths; CJS/ESM directory pattern, ignore and pruning behavior; and real
+Archiver glob/directory ZIP entries. The probe uses native package resolution,
+not mocked matching. These are Linux compatibility samples, not exhaustive
+pattern/platform or application vulnerability guarantees. The audit evidence
+package retains the reproducible diagnostic and exact installed-source hashes.
+
+Keep normal lifecycle-enabled locked installation, installed-lock parity, lint,
+typechecking, affected integration tests and both production build paths as
+acceptance gates. Reassess and remove each scoped override when its upstream
+consumer declares a compatible fixed major, then repeat the consumer probes and
+relevant repository gates. Sentry's separately configured hosted delivery and
+CodSpeed's embedded library bundle require their own evidence.

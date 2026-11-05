@@ -385,7 +385,13 @@
       "unzipper": "^0.12.5"
     },
     "braces": "^3.0.3",
-    "argparse": "^2.0.1"
+    "argparse": "^2.0.1",
+    "@typescript-eslint/typescript-estree": {
+      "minimatch": "^11.0.4"
+    },
+    "readdir-glob": {
+      "minimatch": "^11.0.4"
+    }
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",
