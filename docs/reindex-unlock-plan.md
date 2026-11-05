@@ -58,6 +58,18 @@ Claude job reports a revoked OAuth credential, zero model usage and US$0; its gr
 wrapper does not constitute a completed review. Reuse the recorded independent Sol review,
 and do not rotate credentials or request another paid comparison for this correction.
 
+The first run also exposed two missing-OCR unit fixtures and a Linux container-test error:
+the unit jobs installed only PyMuPDF, and a newly added verification test hardcoded the Windows
+Tesseract path. The test now resolves the installed OCR runtime and restores its override
+after use. The owner directly approved the prepared required-check workflow correction on
+5 November: **"Approve the CI OCR setup change"**. That approval covers adding Tesseract plus
+pinned Pillow 13.0.0 and pytesseract 0.3.13 to the existing unit jobs, under the existing US$5
+hosted-verification limit; it grants no production or ingestion authority. No tests, checks
+or thresholds are removed. Action-pin and workflow formatting checks pass. With the real
+local OCR runtime, the two affected rich/native terminal suites plus migration-immutability
+suite pass 21 tests; all 20 renderer Python tests pass after the portability correction.
+The first CI run has settled failed; the corrected candidate still needs fresh hosted results.
+
 **Implemented and checked locally.** Source-anchored summaries now have an immutable
 candidate request, exact guarded SDK-body authorization, observed provider identity,
 generation-specific retained projection, and atomic pointer/summary/generated-label/job

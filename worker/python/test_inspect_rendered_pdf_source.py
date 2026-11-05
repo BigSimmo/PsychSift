@@ -296,10 +296,10 @@ class RenderedPdfSourceTests(unittest.TestCase):
             # Every downstream bitmap must also descend from the final pixels.
             import pytesseract
             from PIL import Image
-            pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
-            for artifact in result["extraction"]["images"]:
-                with Image.open(artifact["path"]) as bitmap:
-                    self.assertNotIn("FORBIDDEN", pytesseract.image_to_string(bitmap, timeout=20))
+            with patch.object(pytesseract.pytesseract, "tesseract_cmd", inspector._ocr_runtime(5)[0]):
+                for artifact in result["extraction"]["images"]:
+                    with Image.open(artifact["path"]) as bitmap:
+                        self.assertNotIn("FORBIDDEN", pytesseract.image_to_string(bitmap, timeout=20))
 
     def test_all_pages_and_original_geometry_are_retained_without_native_provenance(self):
         with tempfile.TemporaryDirectory() as folder:
