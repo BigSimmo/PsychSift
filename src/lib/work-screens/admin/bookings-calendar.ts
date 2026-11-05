@@ -1,6 +1,6 @@
-import type { CalendarEvent } from "@/lib/calendar/calendar-event";
+import { CALENDAR_TIME_ZONE, type CalendarEvent } from "@/lib/calendar/calendar-event";
 import type { BookingCourse, BookingsState, CourseKind } from "@/lib/work-screens/admin/bookings";
-import { zonedWallToIso } from "@/lib/work-time/format";
+import { zonedDateOf, zonedTimeOf, zonedWallToIso } from "@/lib/work-time/format";
 
 /*
  * The calendar side of Admin Bookings: the reader's booked courses as calendar entries. It is kept
@@ -12,6 +12,16 @@ export const COURSE_KIND_LABELS: Readonly<Record<CourseKind, string>> = {
   course: "Course",
   requirement: "Work requirement",
 };
+
+/** A known work clock must never silently become a different calendar time. */
+export class BookingCalendarTimeError extends Error {
+  constructor(
+    message = "This course time does not exist in your work time zone. Ask the organiser to update it before exporting.",
+  ) {
+    super(message);
+    this.name = "BookingCalendarTimeError";
+  }
+}
 
 /* ------------------------------------------------------------------ calendar */
 
@@ -30,8 +40,13 @@ export function courseMinutes(course: Pick<BookingCourse, "startTime" | "endTime
  * the reader cancelled, or a course the organiser cancelled, stays as a
  * cancelled entry so a subscribed calendar removes it rather than keeping a
  * stale copy. Waitlist places are not in the calendar until they become bookings.
+ * When the work zone is known, project its wall time onto CalendarEvent's Perth clock.
  */
-export function bookingCalendarEvents(state: BookingsState, href: (courseId: string) => string): CalendarEvent[] {
+export function bookingCalendarEvents(
+  state: BookingsState,
+  href: (courseId: string) => string,
+  zone?: string,
+): CalendarEvent[] {
   const events: CalendarEvent[] = [];
   for (const course of state.courses) {
     if (course.status === "draft") continue;
@@ -41,12 +56,16 @@ export function bookingCalendarEvents(state: BookingsState, href: (courseId: str
     if (!own.length) continue;
     const live = own.some((booking) => booking.status === "booked" || booking.status === "attended");
     const cancelled = course.status === "cancelled" || !live;
+    const startsAt = zone ? zonedWallToIso(course.date, course.startTime, zone) : null;
+    const endsAt = zone ? zonedWallToIso(course.date, course.endTime, zone) : null;
+    if (zone && (!startsAt || !endsAt)) throw new BookingCalendarTimeError();
     events.push({
       id: bookingCalendarId(course.id),
       title: course.title,
-      date: course.date,
-      startTime: course.startTime,
-      durationMinutes: courseMinutes(course),
+      date: startsAt ? zonedDateOf(startsAt, CALENDAR_TIME_ZONE) : course.date,
+      startTime: startsAt ? zonedTimeOf(startsAt, CALENDAR_TIME_ZONE) : course.startTime,
+      durationMinutes:
+        startsAt && endsAt ? (Date.parse(endsAt) - Date.parse(startsAt)) / 60_000 : courseMinutes(course),
       kind: course.kind === "course" ? "teaching" : "other",
       location: course.location,
       notes: `Booked in PsychSift. Posted by ${course.organiser}.`,

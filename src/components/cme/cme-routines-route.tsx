@@ -14,6 +14,7 @@ import { cn, InlineNotice, textMuted } from "@/components/ui-primitives";
 import { perthCalendarDate } from "@/lib/cme/cpd-year";
 import { cmeSaveErrorText } from "@/lib/cme/load-state";
 import { cpdTitlePatientProblem } from "@/lib/cme/patient-detail-check";
+import { confirmShellNavigation } from "@/lib/navigation-guards";
 import {
   cmeRoutineCadenceLabels,
   cmeRoutineCadences,
@@ -74,13 +75,13 @@ export function CmeRoutinesRoute({
 
   const isDirty = useMemo(() => {
     if (!editingId) return false;
-    if (editingId === "new") return Boolean(draft.title.trim());
-    const original = routines.find((r) => r.id === editingId);
+    const original = editingId === "new" ? emptyDraft : routines.find((r) => r.id === editingId);
     if (!original) return false;
     return (
       draft.title.trim() !== original.title.trim() ||
       draft.cadence !== original.cadence ||
       draft.usualHours !== original.usualHours ||
+      JSON.stringify(draft.usualAllocations) !== JSON.stringify(original.usualAllocations) ||
       (draft.nextDue || null) !== (original.nextDue || null)
     );
   }, [editingId, draft, routines]);
@@ -98,11 +99,13 @@ export function CmeRoutinesRoute({
   }, [editingId]);
 
   function openNew() {
+    if (!confirmShellNavigation()) return;
     setDraft(emptyDraft);
     setEditingId("new");
     setError(null);
   }
   function openEdit(routine: CmeRoutine) {
+    if (!confirmShellNavigation()) return;
     const { id, ...next } = routine;
     setDraft(next);
     setEditingId(id);
@@ -246,7 +249,13 @@ export function CmeRoutinesRoute({
               <Button type="submit" variant="primary" busy={saving} busyLabel="Saving…">
                 Save routine
               </Button>
-              <Button type="button" variant="secondary" onClick={() => setEditingId(null)}>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  if (confirmShellNavigation()) setEditingId(null);
+                }}
+              >
                 Cancel
               </Button>
               {editingId !== "new" ? (
@@ -271,10 +280,12 @@ export function CmeRoutinesRoute({
         loggingDue={oneTap.logging}
         onLogDueRoutine={(prefill) => {
           void oneTap.logDueRoutine(prefill).then((result) => {
-            if (result === "form") router.push(cmeRoutineLogHref(prefill));
+            if (result === "form" && confirmShellNavigation()) router.push(cmeRoutineLogHref(prefill));
           });
         }}
-        onLogRoutine={(prefill) => router.push(cmeRoutineLogHref(prefill))}
+        onLogRoutine={(prefill) => {
+          if (confirmShellNavigation()) router.push(cmeRoutineLogHref(prefill));
+        }}
         onNewRoutine={openNew}
         onEditRoutine={openEdit}
       />

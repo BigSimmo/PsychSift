@@ -3,6 +3,7 @@ import { subscribeAccountTransition } from "@/lib/account-scoped-browser-state";
 import type { BookingsState } from "@/lib/work-screens/admin/bookings";
 import { bookingCalendarEvents } from "@/lib/work-screens/admin/bookings-calendar";
 import { ADMIN_WORK_SCREEN_HREFS } from "@/lib/work-screens/admin/hrefs";
+import { currentWorkTimeZone } from "@/lib/work-time/current-zone";
 
 /*
  * The one copy of Admin Bookings that this tab is showing, shared by the Bookings page, the
@@ -64,7 +65,11 @@ export function resetBookings(): void {
 
 /** The reader's calendar entries from bookings, for the shared work calendar. */
 export function readBookingCalendarEvents(): CalendarEvent[] {
-  return bookingCalendarEvents(snapshot.state, (courseId) => ADMIN_WORK_SCREEN_HREFS.bookingCourse(courseId));
+  return bookingCalendarEvents(
+    snapshot.state,
+    (courseId) => ADMIN_WORK_SCREEN_HREFS.bookingCourse(courseId),
+    currentWorkTimeZone(),
+  );
 }
 
 subscribeAccountTransition(() => resetBookings());

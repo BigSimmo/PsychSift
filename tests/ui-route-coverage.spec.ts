@@ -587,6 +587,58 @@ test.describe("previously uncovered production routes", () => {
     );
   });
 
+  test("Differential search anchored filters receive keyboard focus after placement and restore it on Escape", async ({
+    page,
+  }) => {
+    // This consumer searches both catalogues and source evidence. Keep its
+    // responses local to this case rather than widening the shared fixture.
+    await page.route("**/api/search", (route) => route.fulfill({ json: { documentMatches: [], demoMode: true } }));
+    await page.route("**/api/differentials?*", async (route) => {
+      const diagnosis = new URL(route.request().url()).searchParams.get("kind") === "diagnosis";
+      await route.fulfill({
+        json: {
+          matches: diagnosis
+            ? [{ record: getDifferentialRecord("delirium"), score: 1, reasons: ["Synthetic browser fixture"] }]
+            : [],
+          demoMode: true,
+        },
+      });
+    });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await gotoApp(page, "/differentials/search?q=agitation");
+    const trigger = visibleByTestId(page, "differential-filter-trigger-desktop");
+    await expect(trigger).toBeVisible();
+    await waitForReactEventHandler(trigger);
+
+    const motionConditions = [
+      { os: "reduce", preference: null },
+      { os: "no-preference", preference: null },
+      { os: "no-preference", preference: "reduced" },
+    ] as const;
+    for (const motion of motionConditions) {
+      await page.emulateMedia({ reducedMotion: motion.os });
+      // Exercise OS and in-app suppression separately, without a stored Full
+      // preference masking the OS condition in this synthetic browser fixture.
+      await page.evaluate((preference) => {
+        if (preference) document.documentElement.dataset.motion = preference;
+        else delete document.documentElement.dataset.motion;
+      }, motion.preference);
+      for (const key of ["Enter", "Space"]) {
+        await trigger.focus();
+        await page.keyboard.press(key);
+        const panel = visibleByTestId(page, "differential-filter-panel");
+        await expect(panel).toBeVisible();
+        await expect(panel).not.toHaveAttribute("aria-modal");
+        await expect.poll(() => panel.evaluate((element) => element.contains(document.activeElement))).toBe(true);
+        await page.keyboard.press("Tab");
+        await expect(panel.getByRole("button", { name: "Close filter differentials" })).toBeFocused();
+        await page.keyboard.press("Escape");
+        await expect(page.getByTestId("differential-filter-panel")).toHaveCount(0);
+        await expect(trigger).toBeFocused();
+      }
+    }
+  });
+
   test("Differential streams use lightweight controls and open a local entry", async ({ page, browserName }) => {
     const consoleErrors: string[] = [];
     page.on("console", (message) => {
@@ -641,6 +693,7 @@ test.describe("previously uncovered production routes", () => {
 
         const filterTrigger = visibleByTestId(currentPage, "differentials-stream-filter-trigger");
         await expect(filterTrigger).toBeVisible();
+        await waitForReactEventHandler(filterTrigger);
         await filterTrigger.focus();
         await currentPage.keyboard.press("Enter");
 
@@ -682,6 +735,7 @@ test.describe("previously uncovered production routes", () => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await expect(visibleByTestId(page, "search-query-ribbon")).toBeVisible();
     const presentationBrowseTrigger = visibleByTestId(page, "differentials-stream-filter-trigger-desktop");
+    await waitForReactEventHandler(presentationBrowseTrigger);
     await presentationBrowseTrigger.click();
     await expect(page.getByRole("radiogroup", { name: "Clinical urgency" })).toBeVisible();
     await page.getByTestId("differentials-stream-filter-panel-done").click();
@@ -706,6 +760,7 @@ test.describe("previously uncovered production routes", () => {
 
     await page.setViewportSize({ width: 390, height: 844 });
     const presentationFilterTrigger = visibleByTestId(page, "differentials-stream-filter-trigger");
+    await waitForReactEventHandler(presentationFilterTrigger);
     await presentationFilterTrigger.focus();
     await page.keyboard.press("Enter");
     const presentationFilterPanel = visibleByTestId(page, "differentials-stream-filter-panel");

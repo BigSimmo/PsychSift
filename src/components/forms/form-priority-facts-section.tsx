@@ -51,7 +51,7 @@ export function priorityFactBody(
   };
 
   if (cardId === "clock") {
-    return fromCard(details.priorityFacts?.clock, details.clock, details.indexedClock);
+    return fromCard(details.priorityFacts?.clock, details.clock);
   }
   if (cardId === "authority") {
     return fromCard(
@@ -90,13 +90,12 @@ function GlanceFact({ card, body }: { card: ServiceSummaryCard; body: string | n
   const label = hasText(card.label) ? card.label.trim() : "Priority fact";
   const title = hasText(card.title) ? card.title.trim() : "";
   return (
-    <div className={cn("flex min-w-0 flex-col gap-0.5", body && "@[15rem]:col-span-2")}>
+    <div className="flex min-w-0 flex-col gap-0.5 @[15rem]:col-span-2">
       <dt className="text-xs text-[color:var(--text-muted)]">{label}</dt>
       <dd className="m-0 min-w-0 break-words">
         <h3 className="m-0 text-sm font-semibold leading-6 text-[color:var(--text-heading)]">{title}</h3>
-        {/* Rendered only when there is a sub-line. The 34 forms with no indexed clock cue
-            used to print "Not listed" here, which reads as a fact about the form rather
-            than an absence of one, and there is no honest substitute in the catalogue. */}
+        {/* Missing curated detail is an absent sub-line, rather than "Not listed"
+            or an unqualified duration extracted during indexing. */}
         {hasText(card.detail) ? (
           <p className={cn("m-0 text-xs font-medium leading-5", textMuted)}>{card.detail.trim()}</p>
         ) : null}

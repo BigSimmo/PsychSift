@@ -83,7 +83,9 @@ function summaryCardsForDetails(details: FormCatalogDetails, availabilityLabel: 
       id: "clock",
       label: PRIORITY_FACT_CARD_LABELS.clock,
       title: facts?.clock?.title ?? details.clock,
-      detail: facts?.clock?.detail ?? details.indexedClock,
+      // Indexed durations are extraction cues, without the canonical clock's
+      // start point or pathway boundary. Only curated detail belongs beside it.
+      detail: facts?.clock?.detail,
     },
     {
       id: "authority",

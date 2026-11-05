@@ -88,10 +88,18 @@ export async function readAnswerStream(
   onRevising?: () => void,
   onActivity?: () => void,
   onEvidencePreview?: (preview: VerifiedEvidencePreviewUnit | null) => void,
+  signal?: AbortSignal,
 ): Promise<AnswerPayload> {
+  const abortReason = () =>
+    signal?.reason instanceof Error ? signal.reason : new DOMException("The operation was aborted.", "AbortError");
+  if (signal?.aborted) throw abortReason();
   if (!response.body) throw makeSearchError("Answer stream could not be opened.", undefined, true);
 
   const reader = response.body.getReader();
+  const cancelReader = () => {
+    void reader.cancel(signal?.reason).catch(() => undefined);
+  };
+  signal?.addEventListener("abort", cancelReader, { once: true });
   const decoder = new TextDecoder();
   let buffer = "";
   let pendingCompletion: AnswerProgressUpdate | null = null;
@@ -194,7 +202,9 @@ export async function readAnswerStream(
 
   try {
     while (true) {
+      if (signal?.aborted) throw abortReason();
       const { value, done } = await reader.read();
+      if (signal?.aborted) throw abortReason();
       if (value && value.length > 0) onActivity?.();
       buffer += decoder.decode(value, { stream: !done });
 
@@ -204,7 +214,9 @@ export async function readAnswerStream(
         buffer = buffer.slice(separator.index + separator.length);
         const finalPayload = block ? processEvent(block) : null;
         if (finalPayload) {
-          await reader.cancel().catch(() => undefined);
+          // A valid final is terminal. Releasing the transport must not hold
+          // the answer hostage to a stalled source cancellation promise.
+          void reader.cancel().catch(() => undefined);
           return finalPayload;
         }
         separator = findSseSeparator(buffer);
@@ -221,6 +233,9 @@ export async function readAnswerStream(
   } catch (error) {
     clearEvidencePreview();
     throw error;
+  } finally {
+    signal?.removeEventListener("abort", cancelReader);
+    reader.releaseLock();
   }
 }
 

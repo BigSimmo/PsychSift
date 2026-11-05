@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Info } from "lucide-react";
 import { createRef, useState } from "react";
@@ -1208,6 +1208,65 @@ describe("Pagination", () => {
 });
 
 describe("ConfirmDialog", () => {
+  it("keeps keyboard focus inside a busy confirmation with no enabled controls", async () => {
+    render(
+      <ConfirmDialog
+        open
+        busy
+        onCancel={() => {}}
+        onConfirm={() => {}}
+        title="Delete synthetic record?"
+        description="The record will be removed."
+        confirmLabel="Delete record"
+      />,
+    );
+    const dialog = screen.getByRole("dialog", { name: "Delete synthetic record?" });
+    await waitFor(() => expect(dialog).toHaveFocus());
+    await userEvent.tab();
+    expect(dialog).toHaveFocus();
+  });
+
+  it.each(["header", "Escape", "backdrop"])(
+    "blocks %s cancellation while busy and permits it after the operation settles",
+    async (route) => {
+      const onCancel = vi.fn();
+      const view = (busy: boolean) => (
+        <ConfirmDialog
+          open
+          onCancel={onCancel}
+          onConfirm={() => {}}
+          title="Delete synthetic record?"
+          description="The record will be removed."
+          confirmLabel="Delete record"
+          busy={busy}
+          busyLabel="Deleting…"
+        />
+      );
+      const { rerender } = render(view(true));
+      const dialog = screen.getByRole("dialog", { name: "Delete synthetic record?" });
+      const cancel = within(dialog).getAllByRole("button", { name: "Cancel" });
+      expect(cancel.at(-1)).toBeDisabled();
+      const dismiss = async () => {
+        if (route === "header") await userEvent.click(cancel[0]!);
+        else if (route === "Escape") await userEvent.keyboard("{Escape}");
+        else {
+          const backdrop = dialog.parentElement!;
+          fireEvent.pointerDown(backdrop);
+          fireEvent.click(backdrop);
+        }
+      };
+
+      await dismiss();
+      expect(onCancel).not.toHaveBeenCalled();
+      expect(cancel[0]).toBeDisabled();
+
+      rerender(view(false));
+      expect(cancel[0]).toBeEnabled();
+      await dismiss();
+      expect(onCancel).toHaveBeenCalledOnce();
+    },
+  );
+
   it("holds the destructive action until the confirmation phrase matches exactly", async () => {
     const onConfirm = vi.fn();
     render(

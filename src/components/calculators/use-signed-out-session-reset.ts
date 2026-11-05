@@ -18,10 +18,12 @@ export function useSignedOutSessionReset<T extends Record<string, unknown>>(
   session: T,
   setSession: (next: T) => void,
 ): T {
-  const locked = clinicalToolLocked(useClinicalToolAccess());
+  const access = useClinicalToolAccess();
+  const denied = clinicalToolLocked(access);
   const hasAnswers = Object.keys(session).length > 0;
   useEffect(() => {
-    if (locked && hasAnswers) setSession({} as T);
-  }, [locked, hasAnswers, setSession]);
-  return locked ? (EMPTY as T) : session;
+    if (denied && hasAnswers) setSession({} as T);
+  }, [denied, hasAnswers, setSession]);
+  // Retain a draft during revalidation, without exposing scores before admission.
+  return access === "allowed" ? session : (EMPTY as T);
 }

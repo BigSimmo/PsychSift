@@ -1,4 +1,5 @@
-import { cleanup, fireEvent, render, renderHook, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, renderHook, screen, within } from "@testing-library/react";
+import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Answer, Patient details, therapy ranking, scoring and the originals need sign-in from
@@ -36,7 +37,12 @@ vi.mock("@/components/clinical-dashboard/account-setup-dialog", () => ({
 
 import { PatientDetailsGate } from "@/components/clinical-dashboard/patient-details-gate";
 import { PatientProfileProvider, usePatientProfile } from "@/components/clinical-dashboard/patient-profile-context";
-import { CalculatorItems } from "@/components/calculators/calculator-ui";
+import {
+  CalculatorItems,
+  CopyResultButton,
+  deriveCalculator,
+  type AnswerMap,
+} from "@/components/calculators/calculator-ui";
 import { CalculatorSheet } from "@/components/calculators/calculator-sheet";
 import { calculators } from "@/components/calculators/calculator-fixtures";
 import { useSignedOutSessionReset } from "@/components/calculators/use-signed-out-session-reset";
@@ -220,6 +226,94 @@ describe("Patient details", () => {
 
 describe("Questionnaire scoring", () => {
   const calc = calculators[0]!;
+
+  it("keeps pending-auth questions readable without offering scoring or flashing a sign-in card", () => {
+    auth.status = "loading";
+    const onAnswersChange = vi.fn();
+    render(<CalculatorItems calc={calc} answers={{}} onAnswersChange={onAnswersChange} />);
+
+    expect(screen.getByTestId("calculator-items-read-only").querySelectorAll("li")).toHaveLength(calc.items.length);
+    expect(screen.getByText(calc.items[0]!.text)).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(/checking/i);
+    expect(screen.queryByRole("button")).toBeNull();
+    expect(screen.queryByText(CLINICAL_SIGN_IN_COPY.scoring.title)).toBeNull();
+    expect(onAnswersChange).not.toHaveBeenCalled();
+  });
+
+  it("masks a completed draft while auth is pending and restores it when the same declared user returns", () => {
+    Element.prototype.scrollTo = vi.fn();
+    auth.status = "authenticated";
+    const completed: AnswerMap = Object.fromEntries(calc.items.map((item) => [item.id, 1]));
+    function DraftHarness() {
+      const [stored, setStored] = useState<Record<string, AnswerMap>>({ [calc.id]: completed });
+      const visible = useSignedOutSessionReset(stored, setStored);
+      return (
+        <>
+          <output data-testid="stored-calculator-draft">{JSON.stringify(stored)}</output>
+          <CalculatorSheet
+            calc={calc}
+            answers={visible[calc.id] ?? {}}
+            onAnswersChange={(next) => setStored((previous) => ({ ...previous, [calc.id]: next }))}
+            onClose={() => {}}
+          />
+        </>
+      );
+    }
+
+    const view = render(<DraftHarness />);
+    const dialog = screen.getByRole("dialog", { name: `${calc.abbrev} calculator` });
+    expect(within(dialog).getByRole("button", { name: "Copy result" })).not.toHaveAttribute("aria-disabled");
+
+    auth.status = "loading";
+    view.rerender(<DraftHarness />);
+    expect(screen.getByTestId("stored-calculator-draft")).toHaveTextContent(JSON.stringify({ [calc.id]: completed }));
+    expect(within(dialog).queryAllByText(`${calc.items.length} of ${calc.items.length} answered`)).toHaveLength(0);
+    expect(within(dialog).getByRole("button", { name: "Copy result" })).toHaveAttribute("aria-disabled", "true");
+    expect(within(dialog).getByTestId("calculator-items-read-only")).toBeInTheDocument();
+
+    auth.status = "authenticated";
+    view.rerender(<DraftHarness />);
+    expect(within(dialog).getAllByText(`${calc.items.length} of ${calc.items.length} answered`).length).toBeGreaterThan(
+      0,
+    );
+    expect(within(dialog).getByRole("button", { name: "Copy result" })).not.toHaveAttribute("aria-disabled");
+    expect(screen.getByTestId("stored-calculator-draft")).toHaveTextContent(JSON.stringify({ [calc.id]: completed }));
+  });
+
+  it.each(["signed_out", "expired", "error"])(
+    "clears the retained draft when pending auth resolves to %s",
+    (status) => {
+      auth.status = "loading";
+      const stored = { [calc.id]: { [calc.items[0]!.id]: 1 } };
+      const setSession = vi.fn();
+      const { result, rerender } = renderHook(() => useSignedOutSessionReset(stored, setSession));
+      expect(result.current).toEqual({});
+      expect(setSession).not.toHaveBeenCalled();
+
+      auth.status = status;
+      rerender();
+      expect(result.current).toEqual({});
+      expect(setSession).toHaveBeenCalledWith({});
+    },
+  );
+
+  it("blocks clipboard activation while auth is pending even if a caller supplies a completed result", () => {
+    auth.status = "loading";
+    const state = deriveCalculator(calc, Object.fromEntries(calc.items.map((item) => [item.id, 1])));
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    const previous = Object.getOwnPropertyDescriptor(navigator, "clipboard");
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+    try {
+      render(<CopyResultButton calc={calc} state={state} />);
+      const copy = screen.getByRole("button", { name: "Copy result" });
+      expect(copy).toHaveAttribute("aria-disabled", "true");
+      fireEvent.click(copy);
+      expect(writeText).not.toHaveBeenCalled();
+    } finally {
+      if (previous) Object.defineProperty(navigator, "clipboard", previous);
+      else Reflect.deleteProperty(navigator, "clipboard");
+    }
+  });
 
   it("keeps the questions readable but offers no way to answer them when signed out", () => {
     const onAnswersChange = vi.fn();

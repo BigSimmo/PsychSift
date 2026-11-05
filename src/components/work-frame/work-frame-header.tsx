@@ -10,6 +10,7 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
+  type ComponentProps,
   type ReactNode,
   type RefObject,
 } from "react";
@@ -35,6 +36,7 @@ import {
 import { useWorkTabPicks } from "@/components/work-frame/work-tab-picks";
 import { useWorkFrameGateOpen } from "@/components/work-frame/use-work-frame-gate-open";
 import type { AppModeId } from "@/lib/app-modes";
+import { confirmShellNavigation } from "@/lib/navigation-guards";
 import {
   WORK_AREAS,
   WORK_TAB_PICKS_MAX,
@@ -49,6 +51,24 @@ import {
 import { universalHeaderLeadingSlotId } from "@/components/work-frame/universal-header-slot";
 
 export { universalHeaderLeadingSlotId };
+
+/** Guard only same-tab navigation; Next leaves modified/open-tab clicks alone. */
+function GuardedWorkLink({ onNavigate, ...props }: ComponentProps<typeof Link>) {
+  return (
+    <Link
+      {...props}
+      // CPD's document-level link guard defers to this link's registry check.
+      data-navigation-guarded=""
+      onNavigate={(event) => {
+        if (!confirmShellNavigation()) {
+          event.preventDefault();
+          return;
+        }
+        onNavigate?.(event);
+      }}
+    />
+  );
+}
 
 export type WorkFrameHeaderProps = {
   readonly area: WorkArea;
@@ -170,7 +190,7 @@ export function WorkFrameHeader({
     // Hidden tabs keep their badge, so a tab measures the same hidden or shown.
     const count = counts?.[item.id] ?? 0;
     return (
-      <Link
+      <GuardedWorkLink
         key={item.id}
         href={item.href!}
         className="work-band__tab"
@@ -187,7 +207,7 @@ export function WorkFrameHeader({
             <span className="sr-only">, {count} to do</span>
           </span>
         ) : null}
-      </Link>
+      </GuardedWorkLink>
     );
   };
 
@@ -301,15 +321,15 @@ function WorkFrameBack({ area, parent }: { area: WorkArea; parent: WorkArea }) {
   );
   if (!host || claimed || !back) return null;
   return createPortal(
-    <Link
+    <GuardedWorkLink
       href={back.href}
-      onClick={markWorkReturn}
+      onNavigate={markWorkReturn}
       className="universal-header-icon-control work-frame-back"
       aria-label={`Back to ${back.name}`}
       data-testid="work-frame-back"
     >
       <ChevronLeft aria-hidden="true" className="size-icon-lg" strokeWidth={2.25} />
-    </Link>,
+    </GuardedWorkLink>,
     host,
   );
 }
@@ -497,10 +517,10 @@ export function WorkMoreSheet({
             ) : null}
             {back && !needle ? (
               <section aria-label={`Leave ${area.name}`} className="work-more-sheet__group">
-                <Link
+                <GuardedWorkLink
                   href={back.href}
                   className="work-more-area"
-                  onClick={() => {
+                  onNavigate={() => {
                     markWorkReturn();
                     close();
                   }}
@@ -513,7 +533,7 @@ export function WorkMoreSheet({
                     <span className="work-more-tile__name">Back to {back.name}</span>
                     <span className="work-more-tile__sub">Where you left it</span>
                   </span>
-                </Link>
+                </GuardedWorkLink>
               </section>
             ) : null}
           </>
@@ -617,7 +637,7 @@ function WorkTabPicker({
 function WorkMoreAreaRow({ item, onClose }: { item: WorkFrameItem; onClose: () => void }) {
   const Icon = workFrameIcons[item.icon];
   return (
-    <Link href={item.href!} className="work-more-area" onClick={onClose}>
+    <GuardedWorkLink href={item.href!} className="work-more-area" onNavigate={onClose}>
       <span aria-hidden="true" className="work-ic work-ic--sm">
         <Icon aria-hidden="true" strokeWidth={2} />
       </span>
@@ -629,7 +649,7 @@ function WorkMoreAreaRow({ item, onClose }: { item: WorkFrameItem; onClose: () =
         Own tabs<span className="sr-only">. Opens {item.label} with its own tabs</span>
       </span>
       <ChevronRight aria-hidden="true" className="work-more-area__chev" strokeWidth={2} />
-    </Link>
+    </GuardedWorkLink>
   );
 }
 
@@ -686,15 +706,15 @@ function WorkMoreTile({
     );
   }
   return (
-    <Link
+    <GuardedWorkLink
       href={item.href!}
       className={className}
       aria-current={current ? "page" : undefined}
       data-current={current ? "" : undefined}
-      onClick={onClose}
+      onNavigate={onClose}
     >
       {body}
-    </Link>
+    </GuardedWorkLink>
   );
 }
 

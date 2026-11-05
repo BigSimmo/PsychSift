@@ -431,6 +431,7 @@
     "tests/work-first-run-empty-states.dom.test.tsx",
     "tests/work-first-use.dom.test.tsx",
     "tests/work-frame-back-trail.dom.test.tsx",
+    "tests/work-frame-dirty-navigation.dom.test.tsx",
     "tests/work-frame-large-text.test.ts",
     "tests/work-frame-navigation.test.ts",
     "tests/work-frame-route.test.ts",

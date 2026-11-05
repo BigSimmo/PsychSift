@@ -1,5 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
+import { APP_PREFERENCES_STORAGE_KEY } from "@/lib/account-scoped-browser-state";
+import { eventUtcRange } from "@/lib/calendar/calendar-event";
+import { toIcs } from "@/lib/calendar/ics";
 import { exampleBookings } from "@/lib/example-data/datasets/admin-bookings";
 import { EXAMPLE_SELF } from "@/lib/example-data/people";
 import {
@@ -41,6 +44,7 @@ import {
 } from "@/lib/work-screens/admin/bookings";
 import { zonedToday } from "@/lib/work-time/format";
 import { looksLikePatientDetail } from "@/lib/work-text/patient-detail-check";
+import { readBookingCalendarEvents, resetBookings, seedBookings } from "@/lib/work-screens/admin/bookings-store";
 
 const ZONE = "Australia/Perth";
 // 10:00 in Perth on Thursday 8 October 2026.
@@ -570,6 +574,108 @@ describe("validateCourseDraft", () => {
 
 describe("bookingCalendarEvents", () => {
   const href = (id: string) => `/admin/bookings?course=${encodeURIComponent(id)}`;
+
+  it("uses the cached work zone for the page-memory booking calendar adapter", () => {
+    vi.stubGlobal("window", {
+      localStorage: {
+        getItem: (key: string) =>
+          key === APP_PREFERENCES_STORAGE_KEY ? JSON.stringify({ timeZone: "Australia/Sydney" }) : null,
+      },
+    });
+    const c = course("booked", { date: "2027-01-15", startTime: "13:00", endTime: "14:30" });
+    seedBookings("synthetic", state([c], [booking("me", c.id, "booked", "2026-10-01T00:00:00Z", { self: true })]));
+    try {
+      const [event] = readBookingCalendarEvents();
+      expect(eventUtcRange(event!)?.start.toISOString()).toBe("2027-01-15T02:00:00.000Z");
+    } finally {
+      resetBookings();
+    }
+  });
+
+  it.each([
+    {
+      name: "Sydney summer",
+      zone: "Australia/Sydney",
+      date: "2027-01-15",
+      time: "13:00",
+      utc: "2027-01-15T02:00:00.000Z",
+    },
+    {
+      name: "Sydney winter",
+      zone: "Australia/Sydney",
+      date: "2027-07-15",
+      time: "13:00",
+      utc: "2027-07-15T03:00:00.000Z",
+    },
+    { name: "Perth", zone: "Australia/Perth", date: "2027-01-15", time: "13:00", utc: "2027-01-15T05:00:00.000Z" },
+    {
+      name: "Sydney midnight crossing",
+      zone: "Australia/Sydney",
+      date: "2027-01-15",
+      time: "01:30",
+      utc: "2027-01-14T14:30:00.000Z",
+    },
+    {
+      name: "Adelaide summer",
+      zone: "Australia/Adelaide",
+      date: "2027-01-15",
+      time: "13:00",
+      utc: "2027-01-15T02:30:00.000Z",
+    },
+  ])("exports the same booking instant as the work calendar in $name", ({ zone, date, time, utc }) => {
+    const c = course("booked", { date, startTime: time, endTime: time === "01:30" ? "03:00" : "14:30" });
+    const s = state([c], [booking("me", c.id, "booked", "2026-10-01T00:00:00Z", { self: true })]);
+    const events = bookingCalendarEvents(s, href, zone);
+    const [shared] = bookingWorkCalendarEntries(s, href, zone);
+    expect(shared?.startsAt).toBe(utc);
+    expect(events).toHaveLength(1);
+    const range = eventUtcRange(events[0]!);
+    expect(range?.start.toISOString()).toBe(shared?.startsAt);
+    expect(range?.end.toISOString()).toBe(shared?.endsAt);
+    expect(toIcs(events)).toContain(`DTSTART:${utc.replace(/[-:]/g, "").replace(".000", "")}`);
+    expect(events[0]?.id).toBe(bookingCalendarEvents(s, href)[0]?.id);
+    // Work-calendar display stays on the course's own work clock.
+    expect(shared).toMatchObject({ start: date, end: date, startTime: time });
+  });
+
+  it.each([
+    { name: "Sydney spring", zone: "Australia/Sydney", date: "2026-10-04", minutes: 60 },
+    { name: "Sydney autumn", zone: "Australia/Sydney", date: "2026-04-05", minutes: 180 },
+    { name: "Adelaide spring", zone: "Australia/Adelaide", date: "2026-10-04", minutes: 60 },
+    { name: "Adelaide autumn", zone: "Australia/Adelaide", date: "2026-04-05", minutes: 180 },
+  ])("preserves elapsed booking duration across the $name clock change", ({ zone, date, minutes }) => {
+    const c = course("clock-change", { date, startTime: "01:30", endTime: "03:30" });
+    const s = state([c], [booking("me", c.id, "booked", "2026-01-01T00:00:00Z", { self: true })]);
+    const [event] = bookingCalendarEvents(s, href, zone);
+    const [shared] = bookingWorkCalendarEntries(s, href, zone);
+    expect(event?.durationMinutes).toBe(minutes);
+    expect(eventUtcRange(event!)?.start.toISOString()).toBe(shared?.startsAt);
+    expect(eventUtcRange(event!)?.end.toISOString()).toBe(shared?.endsAt);
+  });
+
+  it.each([
+    { startTime: "02:30", endTime: "03:30" },
+    { startTime: "01:30", endTime: "02:30" },
+  ])(
+    "rejects a booking whose $startTime to $endTime clock range does not exist in its work zone",
+    ({ startTime, endTime }) => {
+      const c = course("clock-gap", { date: "2026-10-04", startTime, endTime });
+      const s = state([c], [booking("me", c.id, "booked", "2026-01-01T00:00:00Z", { self: true })]);
+      expect(() => bookingCalendarEvents(s, href, "Australia/Sydney")).toThrow(/does not exist in your work time zone/);
+    },
+  );
+
+  it("keeps the cancellation and stable UID when exporting a booking in another work zone", () => {
+    const c = course("cancelled", { date: "2027-01-15", startTime: "01:30", endTime: "03:00", status: "cancelled" });
+    const s = state([c], [booking("me", c.id, "booked", "2026-10-01T00:00:00Z", { self: true })]);
+    const events = bookingCalendarEvents(s, href, "Australia/Sydney");
+    expect(events[0]).toMatchObject({ id: bookingCalendarId(c.id), status: "cancelled", durationMinutes: 90 });
+    const ics = toIcs(events);
+    expect(ics).toContain("UID:booking-cancelled@psychiatry.tools");
+    expect(ics).toContain("STATUS:CANCELLED");
+    expect(ics).toContain("DTSTART:20270114T143000Z");
+    expect(ics).toContain("DTEND:20270114T160000Z");
+  });
 
   it("puts only the reader's booked and attended courses in the calendar", () => {
     const s = state(

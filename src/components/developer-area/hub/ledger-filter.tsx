@@ -66,8 +66,8 @@ export function LedgerFilter({ groups }: { groups: LedgerFilterGroup[] }) {
   const shown = filtered.reduce((sum, group) => sum + group.items.length, 0);
 
   return (
-    <div className="grid gap-4">
-      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4">
+      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
         <div>
           <label htmlFor={searchId} className={fieldLabel}>
             Search the task list
@@ -131,7 +131,7 @@ export function LedgerFilter({ groups }: { groups: LedgerFilterGroup[] }) {
        * markup. Every open item still sits under this single test id, in
        * P1 -> P2 -> P3 order.
        */}
-      <div data-testid="developer-ledger-open" className="grid gap-6">
+      <div data-testid="developer-ledger-open" className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6">
         {filtered.map((group) => {
           if (group.items.length === 0) return null;
           return (
@@ -140,11 +140,11 @@ export function LedgerFilter({ groups }: { groups: LedgerFilterGroup[] }) {
               headingId={`developer-ledger-open-${group.key}`}
               headingLevel="h3"
               headingClassName={GROUP_HEADING_CLASS}
-              className="grid gap-2"
+              className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2"
               heading={`${group.heading} · ${group.items.length}`}
             >
               <p className={META_CLASS}>{group.note}</p>
-              <ul className="grid gap-3">
+              <ul className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3">
                 {group.items.map((item) => (
                   <LedgerItem key={item.id} item={item} />
                 ))}

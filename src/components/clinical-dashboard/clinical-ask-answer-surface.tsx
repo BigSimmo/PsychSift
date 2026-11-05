@@ -6,7 +6,12 @@ import { ignoreUnavailableActivation } from "@/components/ui-primitives";
 import { announce } from "@/components/ui/live-announcer";
 import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
 import type { AnswerFeedbackType } from "@/lib/answer-feedback";
-import type { ClinicalAskFeedbackMetadata, ClinicalAskResponse } from "@/lib/clinical-ask/contracts";
+import type {
+  ClinicalAskClaim,
+  ClinicalAskEvidence,
+  ClinicalAskFeedbackMetadata,
+  ClinicalAskResponse,
+} from "@/lib/clinical-ask/contracts";
 import { clinicalAskModeProfile } from "@/lib/clinical-ask/mode-profiles";
 
 const verificationReminder = "Clinician Confirmation is required for clinically material suggestions.";
@@ -19,6 +24,17 @@ const clinicalAskFeedbackChoices: ReadonlyArray<{ value: AnswerFeedbackType; lab
   { value: "outdated_source", label: "Outdated source" },
   { value: "presentation_problem", label: "Presentation problem" },
 ];
+
+function claimEvidenceNumbers(claim: ClinicalAskClaim, evidence: ClinicalAskEvidence[]) {
+  return claim.evidenceIds.flatMap((id) => {
+    const index = evidence.findIndex((item) => item.id === id);
+    return index >= 0 ? [index + 1] : [];
+  });
+}
+
+function claimExportText(claim: ClinicalAskClaim, evidence: ClinicalAskEvidence[]) {
+  return [claim.text, ...claimEvidenceNumbers(claim, evidence).map((number) => `[${number}]`)].join(" ");
+}
 
 export function clinicalAskExportText(
   response: Extract<ClinicalAskResponse, { state: "answered" }>,
@@ -33,14 +49,20 @@ export function clinicalAskExportText(
     `Clinical Ask — ${mode}`,
     question ? `Question: ${question}` : null,
     "",
-    response.lead.text,
-    ...response.sections.flatMap((section) => ["", section.title, ...section.claims.map((claim) => claim.text)]),
+    claimExportText(response.lead, response.evidence),
+    ...response.sections.flatMap((section) => [
+      "",
+      section.title,
+      ...section.claims.map((claim) => claimExportText(claim, response.evidence)),
+    ]),
     "",
     "Caveats and missing information",
     ...(response.missingInformation.length ? response.missingInformation : ["None stated."]),
     "",
     "Conflicting evidence",
-    ...(response.conflicts.length ? response.conflicts.map((claim) => claim.text) : ["None stated."]),
+    ...(response.conflicts.length
+      ? response.conflicts.map((claim) => claimExportText(claim, response.evidence))
+      : ["None stated."]),
     "",
     "Citations",
     ...evidence,
@@ -78,6 +100,7 @@ export function ClinicalAskAnswerSurface({
 }) {
   const label = clinicalAskModeProfile(response.mode).label;
   const clarificationUnavailableId = useId();
+  const evidenceIdPrefix = useId();
   const firstClarificationRef = useRef<HTMLInputElement>(null);
   const [includeQuestion, setIncludeQuestion] = useState(false);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
@@ -159,7 +182,7 @@ export function ClinicalAskAnswerSurface({
         {response.nextActions.length ? (
           <ListDisclosure title="Possible next checks" items={response.nextActions} />
         ) : null}
-        <Evidence evidence={response.evidence} />
+        <Evidence evidence={response.evidence} idPrefix={evidenceIdPrefix} />
       </section>
     );
 
@@ -206,21 +229,34 @@ export function ClinicalAskAnswerSurface({
       <header>
         <p>{label}</p>
         {includeQuestion && question ? <p>Question: {question}</p> : null}
-        <h2>{response.lead.text}</h2>
+        <h2>
+          {response.lead.text}
+          <ClaimCitations claim={response.lead} evidence={response.evidence} idPrefix={evidenceIdPrefix} />
+        </h2>
       </header>
       {response.sections.map((section) => (
         <section key={section.id}>
           <h3>{section.title}</h3>
           {section.claims.map((claim) => (
-            <p key={claim.id}>{claim.text}</p>
+            <p key={claim.id}>
+              {claim.text}
+              <ClaimCitations claim={claim} evidence={response.evidence} idPrefix={evidenceIdPrefix} />
+            </p>
           ))}
         </section>
       ))}
-      {response.conflicts.length ? <ClaimDisclosure title="Conflicting evidence" claims={response.conflicts} /> : null}
+      {response.conflicts.length ? (
+        <ClaimDisclosure
+          title="Conflicting evidence"
+          claims={response.conflicts}
+          evidence={response.evidence}
+          idPrefix={evidenceIdPrefix}
+        />
+      ) : null}
       {response.missingInformation.length ? (
         <ListDisclosure title="Missing information" items={response.missingInformation} />
       ) : null}
-      <Evidence evidence={response.evidence} />
+      <Evidence evidence={response.evidence} idPrefix={evidenceIdPrefix} />
       {response.followUps.length ? (
         <section data-print-hide aria-label="Follow-up questions">
           <h3>Follow up</h3>
@@ -287,12 +323,52 @@ export function ClinicalAskAnswerSurface({
   );
 }
 
-function ClaimDisclosure({ title, claims }: { title: string; claims: Array<{ id: string; text: string }> }) {
+function ClaimCitations({
+  claim,
+  evidence,
+  idPrefix,
+}: {
+  claim: ClinicalAskClaim;
+  evidence: ClinicalAskEvidence[];
+  idPrefix: string;
+}) {
+  return claimEvidenceNumbers(claim, evidence).map((number) => (
+    <span key={number}>
+      {" "}
+      <a
+        href={`#${idPrefix}-evidence-${number}`}
+        aria-label={`Source ${number}`}
+        onClick={() => {
+          const row = document.getElementById(`${idPrefix}-evidence-${number}`);
+          const disclosure = row?.closest("details");
+          if (disclosure) disclosure.open = true;
+        }}
+      >
+        [{number}]
+      </a>
+    </span>
+  ));
+}
+
+function ClaimDisclosure({
+  title,
+  claims,
+  evidence,
+  idPrefix,
+}: {
+  title: string;
+  claims: ClinicalAskClaim[];
+  evidence: ClinicalAskEvidence[];
+  idPrefix: string;
+}) {
   return (
     <details>
       <summary>{title}</summary>
       {claims.map((claim) => (
-        <p key={claim.id}>{claim.text}</p>
+        <p key={claim.id}>
+          {claim.text}
+          <ClaimCitations claim={claim} evidence={evidence} idPrefix={idPrefix} />
+        </p>
       ))}
     </details>
   );
@@ -313,16 +389,18 @@ function ListDisclosure({ title, items }: { title: string; items: string[] }) {
 
 function Evidence({
   evidence,
+  idPrefix,
 }: {
   evidence: Extract<ClinicalAskResponse, { state: "answered" | "evidence_gap" }>["evidence"];
+  idPrefix: string;
 }) {
   return (
     <details>
       <summary>Evidence and sources</summary>
       {evidence.length === 0 ? <p>No governed source met the threshold for this Evidence Gap.</p> : null}
       <ol>
-        {evidence.map((item) => (
-          <li key={item.id}>
+        {evidence.map((item, index) => (
+          <li key={item.id} id={`${idPrefix}-evidence-${index + 1}`} tabIndex={-1}>
             <a href={item.href} target="_blank" rel="noopener noreferrer">
               {item.title}
             </a>{" "}

@@ -5,6 +5,8 @@ import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ToastProvider } from "@/components/ui/toast";
+import { APP_PREFERENCES_STORAGE_KEY } from "@/lib/account-scoped-browser-state";
+import { downloadTextFile } from "@/lib/admin/download-file";
 import { addDays } from "@/lib/calendar/calendar-event";
 import { resetExampleDataForTests, setExampleDataOn } from "@/lib/example-data/store";
 import { bookingCalendarId } from "@/lib/work-screens/admin/bookings";
@@ -36,6 +38,7 @@ vi.mock("@/components/account-data-provider", () => ({
 
 // The sign-in dialog needs the auth provider, which a unit render does not mount.
 vi.mock("@/components/clinical-dashboard/account-setup-dialog", () => ({ AccountSetupDialog: () => null }));
+vi.mock("@/lib/admin/download-file", () => ({ downloadTextFile: vi.fn() }));
 
 // Signed in, not a brand-new account: the example data switch follows only what the test sets.
 const auth = vi.hoisted(() => ({ session: null as null | { user: { id: string } } }));
@@ -69,6 +72,7 @@ beforeEach(() => {
   resetExampleDataForTests();
   resetBookings();
   router.push.mockClear();
+  vi.mocked(downloadTextFile).mockClear();
   search.params = new URLSearchParams();
 });
 
@@ -76,6 +80,74 @@ afterEach(() => {
   cleanup();
   resetBookings();
   vi.restoreAllMocks();
+});
+
+describe("saved booking calendar downloads", () => {
+  const savedCourse = (id: string, startTime: string) => ({
+    id,
+    title: "Synthetic course",
+    kind: "course",
+    about: "Synthetic course details",
+    date: "2027-10-03",
+    startTime,
+    endTime: startTime === "02:30" ? "03:30" : "14:30",
+    location: "Synthetic room",
+    capacity: 2,
+    closesOn: null,
+    organiser: "Synthetic organiser",
+    renewal: null,
+    waitlist: true,
+    status: "posted",
+    updatedAt: "2026-10-01T00:00:00Z",
+    change: null,
+  });
+  const loadSaved = (courseId: string) => {
+    auth.session = { user: { id: "synthetic-reader" } };
+    window.localStorage.setItem(APP_PREFERENCES_STORAGE_KEY, JSON.stringify({ timeZone: "Australia/Sydney" }));
+    act(() => setExampleDataOn(false));
+    const courses = [savedCourse("clock-gap", "02:30"), savedCourse("valid", "13:00")];
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
+      Response.json({
+        status: "ready",
+        state: {
+          courses,
+          bookings: courses.map((course) => ({
+            id: `booking-${course.id}`,
+            courseId: course.id,
+            person: "Me",
+            self: true,
+            status: "booked",
+            at: "2026-10-01T00:00:00Z",
+          })),
+        },
+        managed: [],
+        organiser: { administrator: false, teams: [] },
+      }),
+    );
+    at(`course=${courseId}`);
+    withToasts(<AdminBookingsPage />);
+  };
+
+  it("explains a nonexistent booking time without downloading a shifted file", async () => {
+    loadSaved("clock-gap");
+    fireEvent.click(await screen.findByTestId("admin-bookings-ics", undefined, LOAD));
+    const notice = await screen.findByTestId("admin-bookings-notice");
+    expect(notice).toHaveAttribute("role", "status");
+    expect(notice).toHaveTextContent(/does not exist in your work time zone/);
+    expect(notice).toHaveTextContent(/organiser/);
+    expect(downloadTextFile).not.toHaveBeenCalled();
+  });
+
+  it("exports a valid target in its work zone even if another booking has a nonexistent time", async () => {
+    loadSaved("valid");
+    fireEvent.click(await screen.findByTestId("admin-bookings-ics", undefined, LOAD));
+    expect(downloadTextFile).toHaveBeenCalledWith(
+      expect.stringContaining("DTSTART:20271003T020000Z"),
+      expect.stringMatching(/\.ics$/),
+      "text/calendar;charset=utf-8",
+    );
+    expect(screen.queryByTestId("admin-bookings-notice")).toBeNull();
+  });
 });
 
 describe("Example data off, bookings not set up", () => {

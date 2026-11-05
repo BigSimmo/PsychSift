@@ -16,6 +16,7 @@ import { consumeUniversalSearchNdjson } from "@/lib/universal-search-stream";
 import type { AppModeId } from "@/lib/app-modes";
 import { useAuthSession } from "@/lib/supabase/client";
 import { identifierShapeWarning } from "@/lib/clinical-ask/context";
+import { createClientRequestBudget } from "@/components/clinical-dashboard/client-request-budget";
 
 export type UniversalSearchState = {
   groups: UniversalSearchGroup[];
@@ -90,6 +91,7 @@ const minQueryLength = 2;
 // A longer query would only earn a 400, so it is reported locally instead of fetched.
 export const universalSearchMaxQueryLength = 200;
 const requestFailedMessage = "Could not load matches from other areas. Edit the search to try again.";
+const requestTimedOutMessage = "Matches from other areas timed out. Edit the search to try again.";
 
 // Small client-side LRU so backspace/retype and revisited prefixes resolve instantly instead of
 // re-hitting the server. Module-scoped so the phone and tablet+ command surfaces share it. The
@@ -233,6 +235,7 @@ export function useUniversalSearch(args: {
     // Cancel the superseded request on the next keystroke: dropping the stale response client-side
     // is not enough — abort frees the server/DB work too.
     const controller = new AbortController();
+    let budget: ReturnType<typeof createClientRequestBudget> | undefined;
     const timer = window.setTimeout(async () => {
       const check = await patientCheck;
       if (controller.signal.aborted || requestId !== requestSeqRef.current) return;
@@ -259,7 +262,15 @@ export function useUniversalSearch(args: {
         mode: args.contextMode,
         stream: "ndjson",
       });
-      fetch(`/api/search/universal?${params.toString()}`, { headers: authorizationHeader, signal: controller.signal })
+      budget = createClientRequestBudget(controller);
+      const requestBudget = budget;
+      requestBudget
+        .wait(
+          fetch(`/api/search/universal?${params.toString()}`, {
+            headers: authorizationHeader,
+            signal: controller.signal,
+          }),
+        )
         .then(async (response) => {
           if (requestId !== requestSeqRef.current) return;
           if (!response.ok) {
@@ -273,29 +284,35 @@ export function useUniversalSearch(args: {
             });
             return;
           }
-          const payload = await consumeUniversalSearchNdjson(response, {
-            signal: controller.signal,
-            onGroup: (group, streamedQuery) => {
-              if (controller.signal.aborted || requestId !== requestSeqRef.current || streamedQuery !== trimmedQuery) {
-                return;
-              }
+          const payload = await requestBudget.wait(
+            consumeUniversalSearchNdjson(response, {
+              signal: controller.signal,
+              onGroup: (group, streamedQuery) => {
+                if (
+                  controller.signal.aborted ||
+                  requestId !== requestSeqRef.current ||
+                  streamedQuery !== trimmedQuery
+                ) {
+                  return;
+                }
 
-              setResult((current) => {
-                if (controller.signal.aborted || requestId !== requestSeqRef.current) return current;
-                const groups =
-                  current.query === trimmedQuery && current.contextMode === args.contextMode && !current.complete
-                    ? current.groups.filter((candidate) => candidate.kind !== group.kind)
-                    : [];
-                if (groupIsWorthShowing(group)) groups.push(group);
-                return {
-                  groups,
-                  query: trimmedQuery,
-                  contextMode: args.contextMode,
-                  complete: false,
-                };
-              });
-            },
-          });
+                setResult((current) => {
+                  if (controller.signal.aborted || requestId !== requestSeqRef.current) return current;
+                  const groups =
+                    current.query === trimmedQuery && current.contextMode === args.contextMode && !current.complete
+                      ? current.groups.filter((candidate) => candidate.kind !== group.kind)
+                      : [];
+                  if (groupIsWorthShowing(group)) groups.push(group);
+                  return {
+                    groups,
+                    query: trimmedQuery,
+                    contextMode: args.contextMode,
+                    complete: false,
+                  };
+                });
+              },
+            }),
+          );
           if (controller.signal.aborted || requestId !== requestSeqRef.current) return;
           const next: UniversalSearchResult = {
             groups: (payload.groups ?? []).filter(groupIsWorthShowing),
@@ -312,22 +329,32 @@ export function useUniversalSearch(args: {
           setResult(next);
         })
         .catch((error: unknown) => {
-          // An aborted fetch is a superseded keystroke, not a failure — leave state to the newer request.
-          if (controller.signal.aborted || (error instanceof DOMException && error.name === "AbortError")) return;
           if (requestId !== requestSeqRef.current) return;
-          setResult({
-            groups: [],
+          // Our deadline is a visible failure; cancellation still belongs to
+          // the newer query or the user closing the search surface.
+          if (
+            !requestBudget.timedOut &&
+            (controller.signal.aborted || (error instanceof DOMException && error.name === "AbortError"))
+          )
+            return;
+          setResult((current) => ({
+            groups:
+              requestBudget.timedOut && current.query === trimmedQuery && current.contextMode === args.contextMode
+                ? current.groups
+                : [],
             query: trimmedQuery,
             contextMode: args.contextMode,
             complete: true,
-            error: requestFailedMessage,
-          });
-        });
+            error: requestBudget.timedOut ? requestTimedOutMessage : requestFailedMessage,
+          }));
+        })
+        .finally(() => requestBudget.cancel());
     }, debounceMs);
 
     return () => {
       window.clearTimeout(timer);
       controller.abort();
+      budget?.cancel();
     };
   }, [active, cacheKey, trimmedQuery, excludedDomainsKey, limitPerDomain, authorizationHeader, args.contextMode]);
 

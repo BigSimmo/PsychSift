@@ -233,6 +233,51 @@ describe("Teaching depth journeys", () => {
     expect(screen.queryByRole("button", { name: "Import these sessions" })).not.toBeInTheDocument();
   });
 
+  it.each([
+    ["csv", "unmount"],
+    ["csv", "account change"],
+    ["xlsx", "unmount"],
+    ["xlsx", "account change"],
+  ])("does not preview a pending %s read after %s", async (extension, interruption) => {
+    let finishRead!: (value: string | Response) => void;
+    const pendingRead = new Promise<string | Response>((resolve) => {
+      finishRead = resolve;
+    });
+    vi.mocked(fetch).mockImplementation(async (url, options) => {
+      if (String(url) === "/api/teaching/import/read") return (await pendingRead) as Response;
+      if (options?.method === "POST") return reply({ rows: [], ready: [] });
+      return reply({ teams: [{ id: serviceId, name: "Synthetic service", role: "organiser" }] });
+    });
+    const view = render(<TeachingImport demoMode={false} />);
+    const input = await screen.findByLabelText(/Choose CSV/);
+    const file = new File([], `synthetic.${extension}`);
+    Object.defineProperty(file, "text", { value: () => pendingRead });
+    fireEvent.change(input, { target: { files: [file] } });
+    if (extension === "xlsx") expect(posts()).toHaveLength(1);
+    if (interruption === "unmount") view.unmount();
+    else {
+      auth.authEpoch++;
+      view.rerender(<TeachingImport demoMode={false} />);
+    }
+    await act(async () => {
+      finishRead(
+        extension === "csv"
+          ? IMPORT_TEMPLATE_HEADERS.join(",") + "\nSynthetic session,lecture,once,2026-09-28,,12:30,60,Synthetic room,,"
+          : reply({
+              rows: [
+                IMPORT_TEMPLATE_HEADERS,
+                ["Synthetic session", "lecture", "once", "2026-09-28", "", "12:30", "60", "Synthetic room", "", ""],
+              ],
+            }),
+      );
+      await pendingRead;
+    });
+    const previews = posts().filter(
+      ([, options]) => typeof options?.body === "string" && JSON.parse(options.body).action === "import.preview",
+    );
+    expect(previews).toHaveLength(0);
+  });
+
   it("keeps the synthetic depth demo away from all API writes", async () => {
     render(<TeachingFeedback demoMode />);
     // The demo owes feedback on two sessions, as My record says; answer the first.

@@ -3,15 +3,17 @@ import { expect, test, type Locator, type Page, type TestInfo } from "playwright
 
 import { stubZeroTouchPoints } from "./helpers/zero-touch";
 import { expectNoPageHorizontalOverflow, gotoApp } from "./helpers/spec-navigation";
-import { demoAnswer, demoDocuments } from "../src/lib/demo-data";
+import { demoAnswer, demoChunks, demoDocuments, getDemoDocument, getDemoDocumentPayload } from "../src/lib/demo-data";
+import { getFormRecord } from "../src/lib/forms";
+import { clickWhenSettled, expectHydrated, expectSingleSettledOwner } from "./playwright-settlement";
 import { toClientAnswerPayload } from "../src/lib/answer-client-payload";
 import { TERMS_VERSION } from "../src/lib/front-door-content";
 
 /**
- * Live Browser Testing — User Journeys Suite.
+ * Browser user journeys with synthetic API responses for clinical workflows.
  *
  * Implements the core testing principles:
- * 1. Test user journeys, not isolated components (Login, core workflow, data submission, error state).
+ * 1. Test user journeys with task postconditions (account setup, synthetic evidence, reference guidance, local plans).
  * 2. Focused volume: 8 journeys, six answer/retry negative controls, and an offline preview-origin regression.
  * 3. Accessibility in the same run: in-flow @axe-core/playwright scans on key journey states.
  * 4. Sparing visual regression: high-fidelity snapshot attachments and optional visual assertions on 2–3 key views.
@@ -24,7 +26,7 @@ const syntheticFailure = "Synthetic answer service unavailable. Please retry.";
 const syntheticAnswerText = (query: string) =>
   `Synthetic fixture completed for: ${query}\n\n${demoAnswer(query).answer.split("\n\n")[0]}`;
 
-async function installSyntheticAnswerApis(page: Page, query: string, baseURL: string | undefined) {
+async function installSyntheticJourneyApis(page: Page, query: string, baseURL: string | undefined) {
   if (!baseURL) throw new Error("Synthetic journeys require an explicit app baseURL.");
   const appOrigin = new URL(baseURL).origin;
   const state = {
@@ -96,7 +98,90 @@ async function installSyntheticAnswerApis(page: Page, query: string, baseURL: st
       return;
     }
     if (url.pathname === "/api/documents") {
-      await route.fulfill({ json: { documents: demoDocuments, demoMode: true } });
+      await route.fulfill({
+        json: {
+          documents: demoDocuments,
+          pagination: {
+            limit: 150,
+            offset: 0,
+            total: demoDocuments.length,
+            nextOffset: demoDocuments.length,
+            hasMore: false,
+          },
+          demoMode: true,
+        },
+      });
+      return;
+    }
+    if (url.pathname === "/api/search") {
+      const document = demoDocuments[0];
+      const results = demoChunks.filter((chunk) => chunk.document_id === document.id);
+      await route.fulfill({
+        json: {
+          results,
+          visualEvidence: [],
+          relatedDocuments: [],
+          documentMatches: [
+            {
+              document_id: document.id,
+              title: document.title,
+              file_name: document.file_name,
+              labels: [],
+              summarySnippet: document.description,
+              bestPages: [1],
+              bestChunkIds: [results[0].id],
+              imageCount: 0,
+              tableCount: 0,
+              matchReason: "Matched synthetic indexed passage",
+              score: 0.92,
+            },
+          ],
+          smartPanel: {},
+          demoMode: true,
+        },
+      });
+      return;
+    }
+    const signedUrlId = /^\/api\/documents\/([^/]+)\/signed-url$/.exec(url.pathname)?.[1];
+    if (signedUrlId) {
+      const document = getDemoDocument(signedUrlId);
+      await route.fulfill(
+        document
+          ? { json: { url: document.storage_path, fileType: document.file_type, demoMode: true } }
+          : { status: 404, json: { error: "Synthetic document not found." } },
+      );
+      return;
+    }
+    const documentId = /^\/api\/documents\/([^/]+)$/.exec(url.pathname)?.[1];
+    if (documentId) {
+      const detail = getDemoDocumentPayload(documentId, url.searchParams.get("chunk"));
+      await route.fulfill(
+        detail
+          ? { json: { ...detail, demoMode: true } }
+          : { status: 404, json: { error: "Synthetic document not found." } },
+      );
+      return;
+    }
+    const formSlug = /^\/api\/registry\/records\/([^/]+)$/.exec(url.pathname)?.[1];
+    if (formSlug && url.searchParams.get("kind") === "form") {
+      const record = getFormRecord(formSlug);
+      await route.fulfill(
+        record
+          ? {
+              json: {
+                record,
+                linkedDocuments: [],
+                governance: {
+                  sourceStatus: "current",
+                  validationStatus: "unverified",
+                  lastReviewedAt: null,
+                  reviewDueAt: null,
+                },
+                demoMode: true,
+              },
+            }
+          : { status: 404, json: { error: "Local reference form not found." } },
+      );
       return;
     }
     await route.fulfill({ json: { demoMode: true } });
@@ -139,7 +224,7 @@ async function hydratedAnswerSubmit(page: Page, query: string) {
 
 async function expectSyntheticAnswer(
   page: Page,
-  state: Awaited<ReturnType<typeof installSyntheticAnswerApis>>,
+  state: Awaited<ReturnType<typeof installSyntheticJourneyApis>>,
   query: string,
   requestCount: number,
   timeout = 10_000,
@@ -157,7 +242,7 @@ async function expectSyntheticAnswer(
   return prose;
 }
 
-async function expectSyntheticFailure(page: Page, state: Awaited<ReturnType<typeof installSyntheticAnswerApis>>) {
+async function expectSyntheticFailure(page: Page, state: Awaited<ReturnType<typeof installSyntheticJourneyApis>>) {
   await expect.poll(() => state.responses.filter((status) => status === 503).length).toBeGreaterThan(0);
   await expect(page.getByTestId("answer-error")).toBeVisible();
   await expect(page.getByTestId("answer-error")).toContainText(syntheticFailure);
@@ -211,7 +296,7 @@ async function recordVisualSparing(locator: Locator, snapshotName: string, testI
 
 test.beforeEach(stubZeroTouchPoints);
 
-test.describe("Live Browser User Journeys", () => {
+test.describe("Browser User Journeys (offline API fixtures)", () => {
   test.describe.configure({ timeout: 60_000 });
 
   // -------------------------------------------------------------------------
@@ -256,10 +341,10 @@ test.describe("Live Browser User Journeys", () => {
 
     // Dismiss dialog cleanly
     const closeButton = dialog.getByRole("button", { name: "Close account setup", exact: true });
-    if (await closeButton.isVisible()) {
-      await closeButton.click();
-      await expect(dialog).toBeHidden();
-    }
+    await expect(closeButton).toBeVisible();
+    await expectHydratedHandler(closeButton, "onClick");
+    await closeButton.click();
+    await expect(dialog).toBeHidden();
   });
 
   test("Journey 2 (Login/Auth): OAuth callback failure resilience and graceful return", async ({ page }) => {
@@ -279,7 +364,7 @@ test.describe("Live Browser User Journeys", () => {
     baseURL,
   }, testInfo) => {
     const query = "What are the clinical signs of lithium toxicity?";
-    const state = await installSyntheticAnswerApis(page, query, baseURL);
+    const state = await installSyntheticJourneyApis(page, query, baseURL);
     const submit = await hydratedAnswerSubmit(page, query);
     await submit.click();
     const answerContainer = await expectSyntheticAnswer(page, state, query, 1);
@@ -291,64 +376,136 @@ test.describe("Live Browser User Journeys", () => {
     await expectNoBlockingAxeViolations(page, testInfo, { context: "core-answer-view" });
   });
 
-  test("Journey 4 (Core Workflow): source evidence and document inspection without layout overflow", async ({
+  test("Journey 4 (Core Workflow): inspect a synthetic document and its indexed source text", async ({
     page,
+    baseURL,
   }) => {
-    // Navigate to documents directory
-    await page.goto("/documents/search?mode=documents");
-    await expect(page.locator("#main-content").first()).toBeVisible({ timeout: 15_000 });
+    await installSyntheticJourneyApis(page, "lithium monitoring", baseURL);
+    await gotoApp(page, "/documents/search?mode=documents&q=lithium+monitoring&run=1");
+    const document = demoDocuments[0];
+    const workspace = await expectSingleSettledOwner(page.getByTestId("document-search-workspace"));
+    const openDocument = workspace.getByRole("link", { name: `Open ${document.title}`, exact: true });
+    await expect(openDocument).toBeVisible();
+    await expectHydratedHandler(openDocument, "onClick");
+    await openDocument.click();
+    await expect(page).toHaveURL((url) => url.pathname === `/documents/${document.id}`);
+    // The viewer uses the canonical display title rather than the raw catalogue title.
+    await expectSingleSettledOwner(
+      page.getByRole("heading", { name: "Synthetic Lithium Monitoring Protocol", level: 1, exact: true }),
+    );
 
-    // Verify document cards or results render
-    const documentResults = page.locator('a[href*="/documents/"], [data-testid*="document"]').first();
-    if (await documentResults.isVisible()) {
-      await documentResults.click();
-      await expect(page).toHaveURL(/\/documents\//);
-    }
-
-    // Verify zero horizontal page overflow across responsive shell
+    const sourceText = await expectSingleSettledOwner(page.locator("#source-text"));
+    await expect(sourceText).toHaveJSProperty("open", false);
+    await clickWhenSettled(sourceText.locator(":scope > summary"));
+    await expect(sourceText).toHaveJSProperty("open", true);
+    // The result link selects the first passage. It must remain expanded when
+    // the enclosing indexed-text disclosure is opened, and show its actual body.
+    const sourcePassage = sourceText.locator(`details[data-source-chunk-id="${demoChunks[0].id}"]`);
+    await expect(sourcePassage).toHaveJSProperty("open", true);
+    await expect(sourcePassage.locator(":scope > div")).toBeVisible();
+    await expect(sourcePassage.locator(":scope > div")).toContainText(demoChunks[0].content);
     await expectNoPageHorizontalOverflow(page);
   });
 
   // -------------------------------------------------------------------------
-  // Journey 3: Data Submission & Interactive Workspaces
+  // Journey 3: Reference Guidance & Local Interactive Workspaces
   // -------------------------------------------------------------------------
-  test("Journey 5 (Data Submission): statutory mental health crisis form completion", async ({ page }, testInfo) => {
-    await page.goto("/forms/transport-crisis-form");
-    await expect(page.locator("#main-content").first()).toBeVisible({ timeout: 15_000 });
+  test("Journey 5 (Reference Guidance): statutory form boundaries and expanded information", async ({
+    page,
+    baseURL,
+  }, testInfo) => {
+    await installSyntheticJourneyApis(page, "statutory form reference", baseURL);
+    await gotoApp(page, "/forms/transport-crisis-form");
+    const formSection = await expectSingleSettledOwner(
+      page.getByRole("region", { name: "Form information", exact: true }),
+    );
+    await expectSingleSettledOwner(page.getByRole("heading", { name: "Transport order", level: 1, exact: true }));
+    await expect(page.getByTestId("form-product-boundary")).toBeVisible();
+    await expect(page.getByTestId("form-product-boundary")).toContainText(
+      "It does not fill in, sign or submit this form for you",
+    );
+    await expect(page.getByTestId("form-product-boundary")).toContainText("complete and lodge it on the official form");
+    const officialForm = getFormRecord("transport-crisis-form");
+    if (!officialForm?.source?.url) throw new Error("Form 4A fixture must include its official source URL.");
+    await expect(
+      page.getByTestId("form-attachment-row").getByRole("link", { name: "Official", exact: true }),
+    ).toHaveAttribute("href", officialForm.source.url);
 
-    // Verify in-page form sections and guidance disclosures
-    const formSection = page.getByRole("region", { name: /form/i }).first();
-    await expect(formSection).toBeVisible({ timeout: 15_000 });
+    const disclosureTrigger = formSection.getByRole("button", { name: "Does not authorise", exact: true });
+    await expect(disclosureTrigger).toHaveAttribute("aria-expanded", "false");
+    const panelId = await disclosureTrigger.getAttribute("aria-controls");
+    if (!panelId) throw new Error("Form information disclosure must identify its controlled panel.");
+    await clickWhenSettled(disclosureTrigger);
+    await expect(disclosureTrigger).toHaveAttribute("aria-expanded", "true");
+    const disclosurePanel = page.locator(`[id="${panelId}"]`);
+    await expect(disclosurePanel).toBeVisible();
+    const boundaryText = officialForm.referralInfo?.find((row) => row.label === "Does not authorise")?.value;
+    if (!boundaryText) throw new Error("Form 4A fixture must include the Does not authorise guidance.");
+    await expect(disclosurePanel).toContainText(boundaryText);
 
-    // Expand disclosure details
-    const disclosureTrigger = page.locator('[data-testid="disclosure"] button, summary').first();
-    if (await disclosureTrigger.isVisible()) {
-      await disclosureTrigger.click();
-    }
-
-    // Sparing visual regression on the statutory form surface
     await recordVisualSparing(formSection, "journey-statutory-form-view.png", testInfo);
-
-    // In-flow accessibility check on statutory form elements
-    await expectNoBlockingAxeViolations(page, testInfo, { context: "statutory-form" });
+    await expectNoBlockingAxeViolations(page, testInfo, { context: "statutory-form-reference" });
   });
 
-  test("Journey 6 (Data Submission): clinical safety plan generation and draft persistence", async ({ page }) => {
-    await page.goto("/safety-plan");
-    await expect(page.locator("#main-content").first()).toBeVisible({ timeout: 15_000 });
+  test("Journey 6 (Local Workspace): safety plan editing, preview, and reset after reload", async ({
+    page,
+    baseURL,
+  }) => {
+    await installSyntheticJourneyApis(page, "local safety plan", baseURL);
+    const marker = "Synthetic rehearsal cue: pause the practice timer";
+    const transmittedMarkers: string[] = [];
+    page.on("request", (request) => {
+      const url = new URL(request.url());
+      const body = request.postData() ?? "";
+      const requestValues = [url.href, ...url.searchParams.values(), body, ...new URLSearchParams(body).values()];
+      if (requestValues.some((value) => value.includes(marker))) transmittedMarkers.push(url.pathname);
+    });
+    await gotoApp(page, "/safety-plan");
+    const builder = await expectSingleSettledOwner(page.locator("#spg-panel-build"));
+    await expect(page.getByRole("region", { name: "Safety plan privacy" })).toContainText(
+      "Working content is kept only in this browser tab; PsychSift does not save it or send it to a server.",
+    );
+    const warningInput = builder.getByRole("textbox", { name: "Warning signs: new entry", exact: true });
+    await expectHydratedHandler(warningInput, "onChange");
+    await expect(builder.getByRole("button", { name: `Remove “${marker}”`, exact: true })).toHaveCount(0);
+    await warningInput.fill(marker);
+    const addWarning = builder.getByRole("button", { name: "Add to Warning signs", exact: true });
+    await clickWhenSettled(addWarning);
+    await expect(warningInput).toHaveValue("");
+    await expect(builder.getByRole("button", { name: `Remove “${marker}”`, exact: true })).toBeVisible();
+    await expect(builder.getByTestId("safety-plan-step-count").first()).toContainText("1 entry");
 
-    // Trigger demo/seed example data
-    const loadExampleBtn = page.getByRole("button", { name: /load example/i });
-    if (await loadExampleBtn.isVisible()) {
-      await loadExampleBtn.click();
+    // The two panels share a wide layout; the phone uses an actual preview tab.
+    const previewTab = page.getByRole("tab", { name: "Plan preview", exact: true });
+    if (await previewTab.isVisible()) {
+      await clickWhenSettled(previewTab);
+      await expect(previewTab).toHaveAttribute("aria-selected", "true");
     }
-
-    // Verify patient preview reflects interactive plan
-    const previewHeading = page.getByText(/safety plan/i).first();
-    await expect(previewHeading).toBeVisible();
-
-    // Verify no horizontal overflow in patient export view
+    const preview = await expectSingleSettledOwner(page.locator("#spg-panel-preview"));
+    await expect(preview).toContainText(marker);
+    await expect(preview.getByRole("note")).toContainText("Draft — this plan is incomplete");
+    const storedMarker = await page.evaluate(
+      (value) =>
+        [localStorage, sessionStorage].some((storage) =>
+          Object.values(storage).some((item) => String(item).includes(value)),
+        ),
+      marker,
+    );
+    expect(storedMarker, "Working plan text must remain in component memory").toBe(false);
+    expect(transmittedMarkers, "Working plan text must not be sent in browser requests").toEqual([]);
     await expectNoPageHorizontalOverflow(page);
+
+    page.once("dialog", (dialog) => dialog.accept());
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await expectHydrated(page.locator("#spg-panel-build"));
+    await expect(
+      page.locator("#spg-panel-build").getByRole("textbox", { name: "Warning signs: new entry", exact: true }),
+    ).toHaveValue("");
+    await expect(page.getByText(marker, { exact: true })).toHaveCount(0);
+    await expect(page.locator("#spg-panel-build").getByTestId("safety-plan-step-count").first()).toContainText(
+      "0 entries",
+    );
+    expect(transmittedMarkers).toEqual([]);
   });
 
   // -------------------------------------------------------------------------
@@ -375,7 +532,7 @@ test.describe("Live Browser User Journeys", () => {
 
   test("Journey 8 (Error State): simulated API network failure and retry recovery", async ({ page, baseURL }) => {
     const query = "What monitoring does the synthetic clozapine table describe?";
-    const state = await installSyntheticAnswerApis(page, query, baseURL);
+    const state = await installSyntheticJourneyApis(page, query, baseURL);
     state.fail = true;
     const submit = await hydratedAnswerSubmit(page, query);
     await submit.click();
@@ -389,7 +546,7 @@ test.describe("Live Browser User Journeys", () => {
   for (const control of ["no-op", "failed", "unfinished"] as const) {
     test(`Answer completion negative control: ${control}`, async ({ page, baseURL }) => {
       const query = "Synthetic lithium toxicity completion control";
-      const state = await installSyntheticAnswerApis(page, query, baseURL);
+      const state = await installSyntheticJourneyApis(page, query, baseURL);
       state.fail = control === "failed";
       state.unfinished = control === "unfinished";
       const submit = await hydratedAnswerSubmit(page, query);
@@ -414,7 +571,7 @@ test.describe("Live Browser User Journeys", () => {
   for (const control of ["missing-request", "missing-retry", "persistent-failure"] as const) {
     test(`Answer recovery negative control: ${control}`, async ({ page, baseURL }) => {
       const query = "Synthetic clozapine monitoring recovery control";
-      const state = await installSyntheticAnswerApis(page, query, baseURL);
+      const state = await installSyntheticJourneyApis(page, query, baseURL);
       state.fail = true;
       const submit = await hydratedAnswerSubmit(page, query);
       if (control !== "missing-request") {
@@ -482,7 +639,7 @@ test.describe("Synthetic preview-origin navigation", () => {
       });
     });
     const query = "Synthetic preview-origin lithium completion";
-    const state = await installSyntheticAnswerApis(page, query, baseURL);
+    const state = await installSyntheticJourneyApis(page, query, baseURL);
     const submit = await hydratedAnswerSubmit(page, query);
     await submit.click();
     await expectSyntheticAnswer(page, state, query, 1);
