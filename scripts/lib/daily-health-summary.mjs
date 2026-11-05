@@ -246,7 +246,11 @@ export function assessSource(
   { latestRun = null, issue = null, recentMarkers = null, botActivityAt = null, clearingRun = null, now },
 ) {
   const nowMs = time(now) ?? Date.now();
-  const link = issueLink(issue);
+  const runLink =
+    typeof latestRun?.html_url === "string" && /^https:\/\/[^\s()]+$/.test(latestRun.html_url)
+      ? `[run](${latestRun.html_url})`
+      : "";
+  const link = issueLink(issue) || runLink;
   const runAt = time(latestRun?.updated_at ?? latestRun?.run_started_at ?? latestRun?.created_at);
   const stale = source.maxAgeHours !== null && (runAt === null || nowMs - runAt > source.maxAgeHours * HOUR);
   const staleText =
@@ -297,6 +301,17 @@ export function assessSource(
     } else {
       detail = "service ok, answers within limits";
     }
+  }
+
+  // Freshness proves only that the detector attempted a run. Failures (including a failed
+  // issue write), cancellations, skips and unknown conclusions cannot establish service health.
+  // Preserve intentionally inert/event-driven no-run defaults and any stronger service alert.
+  if (latestRun && latestRun.conclusion !== "success") {
+    detail =
+      status === "green"
+        ? "latest monitoring run did not succeed; health is unassessed"
+        : `latest monitoring run did not succeed; last known: ${detail}`;
+    if (status === "green") status = "amber";
   }
 
   if (stale) {

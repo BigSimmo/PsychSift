@@ -330,6 +330,39 @@ describe("runClinicalAsk", () => {
     expect(dependencies.synthesize).not.toHaveBeenCalled();
   });
 
+  it.each(["before entry", "during progress"])("does not start dependencies when cancelled %s", async (when) => {
+    const controller = new AbortController();
+    const dependencies = fakes();
+    // A provider rejection from a detached, eagerly-started dependency would be
+    // unowned. A cancelled run must never create that operation in the first place.
+    dependencies.suggestContext.mockImplementation(() => Promise.reject(new Error("synthetic dependency failure")));
+    if (when === "before entry") controller.abort();
+    const response = await runClinicalAsk(request(), scope, dependencies, controller.signal, () => {
+      if (when === "during progress") controller.abort();
+    });
+    expect(response).toMatchObject({ state: "failed", code: "aborted" });
+    for (const dependency of Object.values(dependencies)) expect(dependency).not.toHaveBeenCalled();
+  });
+
+  it("owns synchronous dependency failures when the caller cancels at dispatch", async () => {
+    const controller = new AbortController();
+    const dependencies = fakes();
+    const unhandled = vi.fn();
+    process.on("unhandledRejection", unhandled);
+    try {
+      dependencies.suggestContext.mockImplementation(() => {
+        controller.abort();
+        throw new Error("synthetic synchronous dependency failure");
+      });
+      const response = await runClinicalAsk(request(), scope, dependencies, controller.signal, vi.fn());
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      expect(response).toMatchObject({ state: "failed", code: "aborted" });
+      expect(unhandled).not.toHaveBeenCalled();
+    } finally {
+      process.removeListener("unhandledRejection", unhandled);
+    }
+  });
+
   it("returns an evidence-only fallback at the 45-second deadline", async () => {
     vi.useFakeTimers();
     const dependencies = fakes();

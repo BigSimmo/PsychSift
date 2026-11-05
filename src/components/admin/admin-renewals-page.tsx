@@ -1,5 +1,9 @@
 "use client";
 
+import { OnCallEntrySessionBoundary } from "@/components/on-call/on-call-entry-session-boundary";
+
+import { peekOnCallEntrySessionEpoch } from "@/lib/on-call/entry-cache-keys";
+
 import { CalendarPlus, Copy, Ellipsis, Plus, RotateCw } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -128,7 +132,8 @@ function keepViewFor(kind: "catalogue" | "personal", current: RenewalsView): Ren
   return current === "group" ? "group" : "checklist";
 }
 
-export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
+function AdminRenewalsPageSession({ now: nowProp }: { now?: Date } = {}) {
+  const sessionEpoch = peekOnCallEntrySessionEpoch();
   const state = useOnCallEntries();
   const now = useJuniorNow(nowProp);
   // `cacheOnCallEntries` (called from `upsert` below) writes through to the
@@ -229,9 +234,10 @@ export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
   }
 
   function upsert(entry: OnCallEntry) {
+    if (sessionEpoch !== peekOnCallEntrySessionEpoch()) return;
     // The latest cache, not this render's list: two saves in flight would otherwise undo each other.
     const latest = readCachedOnCallEntries()?.entries ?? state.entries;
-    cacheOnCallEntries([...latest.filter((existing) => existing.id !== entry.id), entry]);
+    cacheOnCallEntries([...latest.filter((existing) => existing.id !== entry.id), entry], sessionEpoch);
     setEntryVersion((version) => version + 1);
     setDetailSubject((current) => {
       if (!current || !current.entry || current.entry.id !== entry.id) return current;
@@ -242,12 +248,17 @@ export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
   }
 
   function removeEntry(id: string) {
+    if (sessionEpoch !== peekOnCallEntrySessionEpoch()) return;
     const latest = readCachedOnCallEntries()?.entries ?? state.entries;
-    cacheOnCallEntries(latest.filter((existing) => existing.id !== id));
+    cacheOnCallEntries(
+      latest.filter((existing) => existing.id !== id),
+      sessionEpoch,
+    );
     setEntryVersion((version) => version + 1);
   }
 
   async function setIssuerCheck(entry: OnCallEntry, checkedOn: string | null) {
+    if (sessionEpoch !== peekOnCallEntrySessionEpoch()) return;
     const result = buildIssuerCheckStampBody(entry, checkedOn);
     if (!result.ok) throw new Error("Use the date as YYYY-MM-DD.");
     const saved = await parsedEntry(
@@ -257,6 +268,7 @@ export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
         body: JSON.stringify(result.body),
       }),
     );
+    if (sessionEpoch !== peekOnCallEntrySessionEpoch()) return;
     upsert(saved);
   }
 
@@ -369,6 +381,7 @@ export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
   }
 
   async function setNotForThisJob(entry: OnCallEntry, flag: boolean) {
+    if (sessionEpoch !== peekOnCallEntrySessionEpoch()) return;
     const saved = await parsedEntry(
       await fetch(`/api/on-call/entries/${entry.id}`, {
         method: "PATCH",
@@ -376,10 +389,12 @@ export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
         body: JSON.stringify(buildNotForThisJobToggleBody(entry, flag)),
       }),
     );
+    if (sessionEpoch !== peekOnCallEntrySessionEpoch()) return;
     upsert(saved);
     setUndoBar({
       message: flag ? `Not for this job · ${entry.title}` : `Moved back · ${entry.title}`,
       undo: async () => {
+        if (sessionEpoch !== peekOnCallEntrySessionEpoch()) return;
         const restored = await parsedEntry(
           await fetch(`/api/on-call/entries/${entry.id}`, {
             method: "PATCH",
@@ -394,6 +409,7 @@ export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
 
   /** "Not for this job" on a catalogue item never recorded: a minimal row, and Undo deletes it. */
   async function markItemNotForThisJob(item: CatalogueItem) {
+    if (sessionEpoch !== peekOnCallEntrySessionEpoch()) return;
     const created = await parsedEntry(
       await fetch("/api/on-call/entries", {
         method: "POST",
@@ -401,10 +417,12 @@ export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
         body: JSON.stringify(buildNotForThisJobCreateBody(item, crypto.randomUUID().slice(0, 6))),
       }),
     );
+    if (sessionEpoch !== peekOnCallEntrySessionEpoch()) return;
     upsert(created);
     setUndoBar({
       message: `Not for this job · ${item.title}`,
       undo: async () => {
+        if (sessionEpoch !== peekOnCallEntrySessionEpoch()) return;
         const response = await fetch(`/api/on-call/entries/${created.id}`, { method: "DELETE" });
         if (!response.ok) throw await parseApiErrorResponse(response);
         removeEntry(created.id);
@@ -714,5 +732,13 @@ export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
         />
       ) : null}
     </AdminPage>
+  );
+}
+
+export function AdminRenewalsPage(props: Parameters<typeof AdminRenewalsPageSession>[0] = {}) {
+  return (
+    <OnCallEntrySessionBoundary>
+      <AdminRenewalsPageSession {...props} />
+    </OnCallEntrySessionBoundary>
   );
 }

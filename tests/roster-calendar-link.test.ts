@@ -1,10 +1,11 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   fetchCalendarLink,
   normaliseCalendarLink,
   pinnedLookup,
   type LinkRequest,
+  type LinkResolver,
 } from "@/lib/roster/calendar-link-fetch";
 
 vi.mock("server-only", () => ({}));
@@ -13,6 +14,8 @@ vi.mock("server-only", () => ({}));
 
 const PUBLIC = async () => [{ address: "93.184.216.34", family: 4 as const }];
 const ICS = "BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n";
+
+afterEach(() => vi.useRealTimers());
 
 function reply(status: number, body = "", location: string | null = null): ReturnType<LinkRequest> {
   return Promise.resolve({
@@ -58,6 +61,40 @@ describe("pinnedLookup", () => {
 });
 
 describe("fetchCalendarLink", () => {
+  it.each(["resolve", "reject"])(
+    "times out stalled DNS and owns its late %s without dispatching HTTP",
+    async (outcome) => {
+      vi.useFakeTimers();
+      let release!: () => void;
+      const resolve: LinkResolver = () =>
+        new Promise((resolve, reject) => {
+          release = () =>
+            outcome === "resolve"
+              ? resolve([{ address: "93.184.216.34", family: 4 }])
+              : reject(new Error("synthetic resolver failure"));
+        });
+      const request = vi.fn<LinkRequest>(async ({ signal }) => {
+        signal.throwIfAborted();
+        return reply(200, ICS);
+      });
+      let failure: unknown;
+      const pending = fetchCalendarLink("https://roster.example.org/a.ics", { resolve, request }).catch(
+        (error: unknown) => {
+          failure = error;
+        },
+      );
+      try {
+        await vi.advanceTimersByTimeAsync(10_000);
+        expect(failure).toMatchObject({ reason: "timeout" });
+        expect(request).not.toHaveBeenCalled();
+      } finally {
+        release();
+        await pending;
+      }
+      expect(request).not.toHaveBeenCalled();
+    },
+  );
+
   it("returns a calendar from a public address, pinned to the checked address", async () => {
     const request = vi.fn<LinkRequest>(() => reply(200, ICS));
     await expect(fetchCalendarLink("https://roster.example.org/a.ics", { resolve: PUBLIC, request })).resolves.toBe(

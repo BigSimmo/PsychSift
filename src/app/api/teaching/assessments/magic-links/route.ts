@@ -30,9 +30,13 @@ function magicLinkErrorResponse(error: unknown): Response {
 }
 
 export async function GET(request: Request) {
-  return withTeachingApi(request, async (client, ownerId) => ({
-    links: await new DurableEpaMagicLinkRepository(client).listForRegistrar(ownerId),
-  }));
+  return withTeachingApi(request, async (client, ownerId) =>
+    new DurableEpaMagicLinkRepository(client).listForRegistrarPage(
+      ownerId,
+      new Date(),
+      new URL(request.url).searchParams.get("cursor"),
+    ),
+  );
 }
 
 export async function POST(request: Request) {

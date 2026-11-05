@@ -1,5 +1,9 @@
+import {
+  assertLegacyMaintenanceSnapshot,
+  maintenanceMetadata,
+  replaceMaintenanceArtifacts,
+} from "@/lib/ingestion-maintenance";
 import { loadEnvConfig } from "@next/env";
-import type { Json, TablesInsert } from "@/lib/supabase/database.types";
 import {
   buildVisualDocumentIndexUnitInputs,
   embeddingTextForDocumentIndexUnit,
@@ -34,6 +38,7 @@ type BackfillImageRow = {
   source_kind: string | null;
   labels: string[] | null;
   metadata: Record<string, unknown> | null;
+  index_generation_id: string | null;
 };
 
 type BackfillDocumentRow = {
@@ -41,6 +46,8 @@ type BackfillDocumentRow = {
   owner_id: string | null;
   title: string;
   file_name: string;
+  metadata: Record<string, unknown>;
+  updated_at: string;
 };
 
 function argValue(name: string, fallback: string) {
@@ -123,7 +130,7 @@ function imageToVisualInput(image: BackfillImageRow): IndexUnitVisualImage {
 async function loadCandidateImages() {
   const { data, error } = await supabase
     .from("document_images")
-    .select("id,document_id,page_number,caption,image_type,source_kind,labels,metadata")
+    .select("id,document_id,page_number,caption,image_type,source_kind,labels,metadata,index_generation_id")
     .eq("searchable", true)
     .or(
       [
@@ -223,35 +230,32 @@ async function printCoverageReport(images: BackfillImageRow[]) {
 async function loadDocument(documentId: string) {
   const { data, error } = await supabase
     .from("documents")
-    .select("id,owner_id,title,file_name")
+    .select("id,owner_id,title,file_name,metadata,updated_at")
     .eq("id", documentId)
     .single();
   if (error) throw new Error(error.message);
   return data as BackfillDocumentRow;
 }
 
-async function loadChunks(documentId: string) {
-  const { data, error } = await supabase
+async function loadChunks(documentId: string, generation: string | null) {
+  let query = supabase
     .from("document_chunks")
     .select("id,document_id,page_number,chunk_index,section_heading,section_path,content,metadata,image_ids")
-    .eq("document_id", documentId)
-    .order("chunk_index", { ascending: true });
+    .eq("document_id", documentId);
+  query = generation ? query.eq("index_generation_id", generation) : query.is("index_generation_id", null);
+  const { data, error } = await query.order("chunk_index", { ascending: true });
   if (error) throw new Error(error.message);
   return (data ?? []) as IndexUnitChunk[];
 }
 
-async function markImage(image: BackfillImageRow, patch: Record<string, unknown>) {
-  const metadata = { ...(image.metadata ?? {}), ...patch };
-  const { error } = await supabase
-    .from("document_images")
-    .update({ metadata: metadata as Json })
-    .eq("id", image.id);
-  if (error) throw new Error(error.message);
-}
-
 async function backfillDocument(documentId: string, images: BackfillImageRow[]) {
   const document = await loadDocument(documentId);
-  const chunks = await loadChunks(documentId);
+  if (!dryRun) assertLegacyMaintenanceSnapshot(document);
+  const generationValue = maintenanceMetadata(document.metadata).index_generation_id;
+  const generation = typeof generationValue === "string" ? generationValue : null;
+  images = images.filter((image) => image.index_generation_id === generation);
+  if (images.length === 0) return;
+  const chunks = await loadChunks(documentId, generation);
   const visualImages = images.map(imageToVisualInput);
   const units = buildVisualDocumentIndexUnitInputs({ document, chunks, images: visualImages });
   const counts = unitCounts(units);
@@ -260,55 +264,31 @@ async function backfillDocument(documentId: string, images: BackfillImageRow[]) 
   );
   if (dryRun) return;
 
-  const imageIds = images.map((image) => image.id);
-  for (const image of images) {
-    await markImage(image, {
-      visual_backfill_status: "processing",
-      visual_backfill_started_at: new Date().toISOString(),
-    });
-  }
-  const { error: deleteError } = await supabase
-    .from("document_index_units")
-    .delete()
-    .eq("document_id", documentId)
-    .in("source_image_id", imageIds)
-    .in("unit_type", [
-      "visual_summary",
-      "flowchart_step",
-      "diagram_decision",
-      "risk_matrix_cell",
-      "medication_chart_row",
-      "chart_finding",
-      "visual_askable_question",
-      "table_threshold",
-    ]);
-  // Inserting on top of rows that failed to delete would leave duplicate visual units.
-  if (deleteError) throw new Error(deleteError.message);
-
-  if (units.length > 0) {
-    const embeddings = await embedTexts(units.map(embeddingTextForDocumentIndexUnit));
-    for (let start = 0; start < units.length; start += 50) {
-      const batch = units.slice(start, start + 50).map((unit, index) => ({
-        ...unit,
-        embedding: embeddings[start + index],
-      }));
-      const { error } = await supabase
-        .from("document_index_units")
-        .insert(batch as unknown as TablesInsert<"document_index_units">[]);
-      if (error) throw new Error(error.message);
-    }
-  }
-
-  for (const image of images) {
-    const profile = imageToVisualInput(image).structuredVisualProfile;
-    await markImage(image, {
-      visual_intelligence_version: visualIntelligenceVersion,
-      structured_visual_profile: profile,
-      structured_extraction_confidence: profile?.confidence ?? null,
-      visual_backfill_status: "completed",
-      visual_backfill_completed_at: new Date().toISOString(),
-    });
-  }
+  // Prepare every embedding before replacing any searchable evidence.
+  const embeddings = units.length ? await embedTexts(units.map(embeddingTextForDocumentIndexUnit)) : [];
+  if (embeddings.length !== units.length) throw new Error("Visual embedding count mismatch.");
+  await replaceMaintenanceArtifacts({
+    supabase,
+    document,
+    operation: "visual",
+    payload: {
+      image_ids: images.map((image) => image.id),
+      units: units.map((unit, index) => ({ ...unit, index_generation_id: generation, embedding: embeddings[index] })),
+      image_patches: images.map((image) => {
+        const profile = imageToVisualInput(image).structuredVisualProfile;
+        return {
+          id: image.id,
+          metadata: {
+            visual_intelligence_version: visualIntelligenceVersion,
+            structured_visual_profile: profile,
+            structured_extraction_confidence: profile?.confidence ?? null,
+            visual_backfill_status: "completed",
+            visual_backfill_completed_at: new Date().toISOString(),
+          },
+        };
+      }),
+    },
+  });
 }
 
 async function main() {
@@ -339,14 +319,8 @@ async function main() {
       const message = error instanceof Error ? error.message : String(error);
       failedDocuments += 1;
       console.warn(`Visual backfill failed for document ${documentId}: ${message}`);
-      if (!dryRun) {
-        for (const image of documentImages) {
-          await markImage(image, {
-            visual_backfill_status: "retry",
-            visual_backfill_error: message.slice(0, 500),
-          });
-        }
-      }
+      // The original evidence and image metadata remain unchanged on failure.
+      // A later invocation recomputes from a fresh committed snapshot.
     }
   }
   if (failedDocuments > 0) {

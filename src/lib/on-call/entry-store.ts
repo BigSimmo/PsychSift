@@ -30,7 +30,7 @@ import {
   removeLegacyOnCallEntryCaches,
 } from "@/lib/on-call/entry-cache-keys";
 import { onCallEntrySchema, type OnCallEntry } from "@/lib/on-call/entry-model";
-import { sharedGet } from "@/lib/shared-get";
+import { forgetSharedGets, sharedGet } from "@/lib/shared-get";
 
 export { clearOnCallEntryCache, onCallEntryCacheChangedEvent, onCallEntryCacheStorageKey, peekOnCallEntrySessionEpoch };
 
@@ -91,6 +91,9 @@ function devicePayload(payload: CachedOnCallEntries): string | null {
 // Private entries belong to the current session, never durable device storage.
 let sessionCache: string | null = null;
 let sessionCacheEpoch = peekOnCallEntrySessionEpoch();
+// Local writes supersede list requests started before them. Shared GET
+// subscribers may all accept the same response without superseding each other.
+let cacheRevision = 0;
 
 const cachedEntriesSchema = z
   .object({
@@ -133,8 +136,15 @@ export function readCachedOnCallEntries(): CachedOnCallEntries | null {
  * device copy); callers still have the freshly fetched entries for this render
  * even when it did not.
  */
-export function cacheOnCallEntries(entries: OnCallEntry[]): boolean {
-  if (typeof window === "undefined") return false;
+export function cacheOnCallEntries(
+  entries: OnCallEntry[],
+  expectedEpoch = peekOnCallEntrySessionEpoch(),
+  expectedRevision?: number,
+): boolean {
+  if (typeof window === "undefined" || expectedEpoch !== peekOnCallEntrySessionEpoch()) return false;
+  if (expectedRevision !== undefined && expectedRevision !== cacheRevision) return false;
+  // No writer may replace the last good list with an unreadable payload.
+  if (!z.array(onCallEntrySchema).safeParse(entries).success) return false;
   // Example rows shown by the example data switch are display only. A screen
   // that writes back the list it was given (verify all, an edit's upsert) must
   // never put them in the account's cache, so the whole write is refused and
@@ -143,6 +153,11 @@ export function cacheOnCallEntries(entries: OnCallEntry[]): boolean {
   try {
     const payload: CachedOnCallEntries = { entries, savedAt: new Date().toISOString() };
     sessionCache = JSON.stringify(payload);
+    if (expectedRevision === undefined) {
+      cacheRevision += 1;
+      // A newly mounted reader must not join a GET from before this write.
+      forgetSharedGets("/api/on-call/entries");
+    }
     sessionCacheEpoch = peekOnCallEntrySessionEpoch();
     // The only `localStorage` write of On Call entries.
     const device = devicePayload(payload);
@@ -170,11 +185,12 @@ export function cacheOnCallEntries(entries: OnCallEntry[]): boolean {
 export function updateCachedOnCallEntries(
   fallback: readonly OnCallEntry[],
   update: (current: OnCallEntry[]) => OnCallEntry[],
+  expectedEpoch: number,
 ): boolean {
-  if (typeof window === "undefined") return false;
+  if (typeof window === "undefined" || expectedEpoch !== peekOnCallEntrySessionEpoch()) return false;
   if (fallback.some((entry) => shownExampleEntries.has(entry))) return false;
   const current = readCachedOnCallEntries()?.entries ?? [...fallback];
-  return cacheOnCallEntries(update(current));
+  return cacheOnCallEntries(update(current), expectedEpoch);
 }
 
 function scrubPersistedOnCallCache(): void {
@@ -388,6 +404,7 @@ export function useStoredOnCallEntries(): OnCallEntriesState {
 
   useEffect(() => {
     const epochAtStart = peekOnCallEntrySessionEpoch();
+    const revisionAtStart = cacheRevision;
     let cancelled = false;
     const controller = new AbortController();
 
@@ -402,17 +419,17 @@ export function useStoredOnCallEntries(): OnCallEntriesState {
         const parsedResponse = onCallEntriesResponseSchema.safeParse(rawBody);
         if (!parsedResponse.success) throw new Error("On Call entries response was malformed.");
 
-        const entries = parsedResponse.data.entries
-          .map((entry) => onCallEntrySchema.safeParse(entry))
-          .filter((result): result is { success: true; data: OnCallEntry } => result.success)
-          .map((result) => result.data)
-          .filter(
-            (entry) =>
-              !parsedResponse.data.signedOut ||
-              (!entry.isPersonal && !mayContainOnCallCompliance(entry.section, entry.details)),
-          );
+        const parsedEntries = z.array(onCallEntrySchema).safeParse(parsedResponse.data.entries);
+        if (!parsedEntries.success) throw new Error("On Call entries response was malformed.");
+        // A successful list is authoritative. Never publish a partial parse as
+        // a withdrawal: one incompatible row makes this a failed refresh.
+        const entries = parsedEntries.data.filter(
+          (entry) =>
+            !parsedResponse.data.signedOut ||
+            (!entry.isPersonal && !mayContainOnCallCompliance(entry.section, entry.details)),
+        );
 
-        if (cancelled || peekOnCallEntrySessionEpoch() !== epochAtStart) return;
+        if (cancelled || peekOnCallEntrySessionEpoch() !== epochAtStart || cacheRevision !== revisionAtStart) return;
         setIsOffline(false);
         setLoadError(null);
         setSignedOut(parsedResponse.data.signedOut);
@@ -423,7 +440,7 @@ export function useStoredOnCallEntries(): OnCallEntriesState {
         // request may fall back to cache. Synthetic preview is an explicit,
         // separately marked choice and is not overwritten by real responses.
         if (!isOnCallDemoPreviewActive()) {
-          cacheOnCallEntries(entries);
+          cacheOnCallEntries(entries, epochAtStart, revisionAtStart);
         }
       } catch (error) {
         // Abort is the account-transition path, not a network failure.

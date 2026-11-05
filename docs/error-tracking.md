@@ -95,6 +95,21 @@ View samples in Sentry under **Explore → Logs**. Set `SENTRY_ENABLE_LOGS=false
 
 ## Operator approval and rollout
 
+The GitHub Sentry poller (`.github/workflows/sentry-alerts.yml`) reports **new groups** only:
+unresolved error/fatal groups first seen in its six-hour lookback, deduplicated by issue ID.
+It does not report every recurrence of an older group and cannot guarantee catch-up after a
+longer polling outage. The daily summary's “New errors (Sentry)” line describes this limited
+signal. A missing poller token now fails the workflow as unavailable; a fresh non-successful
+detector run is non-green in the summary. A later successful run establishes detector recovery,
+while an outstanding service-failure issue retains its own severity. These are source contracts,
+not evidence of current Sentry configuration, received events or notification delivery.
+
+If ongoing recurrence coverage is required, first agree its recurrence/cooldown and outage
+catch-up policy. A last-seen query alone is insufficient while persistent issue-ID deduplication
+remains. An implementation would need a bounded recurrence cursor, privacy-safe report markers,
+pagination/burst limits and synthetic old-group-recurrence/outage/recovery tests. Provider-side
+alert rules and delivery must be checked separately under the existing approval boundary.
+
 Before setting `SENTRY_DSN`, the operator must approve the vendor/project, data region, retention period, access roles, sampling rate, cost budget, and alert destination. Configure a server-side DSN only; never use a `NEXT_PUBLIC_*` DSN. Keep provider-side IP/user enrichment disabled and restrict project access. Start with a non-production synthetic exception and inspect the received event before enabling production alerts.
 
 When enabling tracing, also review a sampled transaction in Sentry and confirm span descriptions contain only table/operation metadata (no filter literals, clinical text, or mutation payloads). Set `SENTRY_TRACES_SAMPLE_RATE=0` to roll tracing back without removing the DSN.

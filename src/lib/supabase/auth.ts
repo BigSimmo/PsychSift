@@ -269,10 +269,13 @@ export async function resolveOptionalAuthentication(
     return bearerUser ? { status: "valid", user: bearerUser } : { status: "invalid" };
   }
 
-  // Fast path: Forwarded verified claims from Next.js proxy
+  // Locally verified claims retain the read fast path. Consequential optional
+  // requests need the same live account check as required-auth saves.
   const proxyUser = extractProxyAuthenticatedUser(request);
   if (proxyUser) {
-    return { status: "valid", user: proxyUser };
+    if (!isStateChangingRequest(request)) return { status: "valid", user: proxyUser };
+    const freshUser = await getFreshRequestUser(request, supabase);
+    return freshUser ? { status: "valid", user: freshUser } : { status: "invalid" };
   }
 
   const currentCookieToken = extractCurrentCookieSessionAccessToken(request);
@@ -306,6 +309,11 @@ function usedProxyClaims(request: Request): boolean {
   return !request.headers.has("authorization") && extractProxyAuthenticatedUser(request) !== null;
 }
 
+async function getFreshRequestUser(request: Request, supabase: AdminClient): Promise<AuthenticatedUser | null> {
+  const token = extractSessionAccessToken(request);
+  return token ? getUserFromAccessToken(supabase, token) : getUserFromRequestCookies(request);
+}
+
 export async function requireAuthenticatedUser(
   request: Request,
   supabase: AdminClient,
@@ -318,15 +326,10 @@ export async function requireAuthenticatedUser(
     );
   }
   let { user } = authentication;
-  if (requirement.administrator || (isStateChangingRequest(request) && usedProxyClaims(request))) {
-    // Administrator routes never trust proxy-forwarded claims. A missing live
-    // Auth user fails closed (401) instead of keeping a signed header. Saves and
-    // deletes recheck the same way: the proxy verifies the access token locally,
-    // so a signed-out or blocked session would otherwise keep writing until the
-    // token expires, up to an hour later (PP-04, 26 Oct 2026).
-    const token = extractSessionAccessToken(request);
-    const freshUser =
-      (token ? await getUserFromAccessToken(supabase, token) : null) ?? (await getUserFromRequestCookies(request));
+  if (requirement.administrator && !isStateChangingRequest(request) && usedProxyClaims(request)) {
+    // All other paths were checked live by optional authentication already.
+    // Administrator reads also require fresh account metadata.
+    const freshUser = await getFreshRequestUser(request, supabase);
     if (!freshUser) {
       throw new AuthenticationError();
     }

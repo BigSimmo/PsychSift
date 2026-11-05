@@ -1,5 +1,9 @@
 "use client";
 
+import { OnCallEntrySessionBoundary } from "@/components/on-call/on-call-entry-session-boundary";
+
+import { peekOnCallEntrySessionEpoch } from "@/lib/on-call/entry-cache-keys";
+
 import { useEffect, useRef, useState } from "react";
 
 import { InlineNotice } from "@/components/primitive-recipes/feedback";
@@ -64,7 +68,7 @@ function recordDatesSummary({ recorded, skipped, notForThisJob }: Tally): string
  * `items` is the queue as it stood when the sheet opened, so recording an
  * item never reshuffles the steps under the reader. Mounted per opening.
  */
-export function RecordDatesSheet({
+function RecordDatesSheetSession({
   items,
   readOnly,
   onClose,
@@ -81,6 +85,7 @@ export function RecordDatesSheet({
   readonly onRetryLoad?: () => void;
   readonly testId?: string;
 }) {
+  const sessionEpoch = peekOnCallEntrySessionEpoch();
   const [index, setIndex] = useState(0);
   const [date, setDate] = useState("");
   const [busy, setBusy] = useState(false);
@@ -111,6 +116,7 @@ export function RecordDatesSheet({
   }
 
   async function run(action: () => Promise<void>, failureMessage: string) {
+    if (sessionEpoch !== peekOnCallEntrySessionEpoch()) return;
     setBusy(true);
     setFailure(null);
     try {
@@ -133,6 +139,7 @@ export function RecordDatesSheet({
     const body = result.body;
     void run(async () => {
       const saved = await postEntry(body);
+      if (sessionEpoch !== peekOnCallEntrySessionEpoch()) return;
       onSaved(saved);
       advance("recorded");
     }, `Couldn't save ${item.title}.`);
@@ -148,6 +155,7 @@ export function RecordDatesSheet({
     const body = buildNotForThisJobCreateBody(item, suffix);
     void run(async () => {
       const saved = await postEntry(body);
+      if (sessionEpoch !== peekOnCallEntrySessionEpoch()) return;
       onSaved(saved);
       advance("notForThisJob");
     }, `Couldn't save ${item.title}.`);
@@ -270,5 +278,13 @@ export function RecordDatesSheet({
         </div>
       )}
     </AdminSheet>
+  );
+}
+
+export function RecordDatesSheet(props: Parameters<typeof RecordDatesSheetSession>[0]) {
+  return (
+    <OnCallEntrySessionBoundary open>
+      <RecordDatesSheetSession {...props} />
+    </OnCallEntrySessionBoundary>
   );
 }

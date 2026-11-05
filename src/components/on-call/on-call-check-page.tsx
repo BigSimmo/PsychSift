@@ -1,5 +1,7 @@
 "use client";
 
+import { OnCallEntrySessionBoundary } from "@/components/on-call/on-call-entry-session-boundary";
+
 import { CalendarCheck } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -14,7 +16,8 @@ import { OnCallEmptyState } from "@/components/on-call/kit/empty-state";
 import { cn, eyebrowText, floatingControl, textMuted } from "@/components/ui-primitives";
 import { formatClinicalDate } from "@/lib/source-metadata";
 import { updateCachedOnCallEntries, useOnCallEntries } from "@/lib/on-call/entry-store";
-import type { OnCallEntry } from "@/lib/on-call/entry-model";
+import { peekOnCallEntrySessionEpoch } from "@/lib/on-call/entry-cache-keys";
+import { mergeOnCallEntryVerification, onCallEntrySchema, type OnCallEntry } from "@/lib/on-call/entry-model";
 import { msUntilNextOnCallLocalDay } from "@/lib/on-call/local-date";
 import { buildOnCallReviewQueue, type OnCallReviewItem } from "@/lib/on-call/review-queue";
 import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
@@ -28,7 +31,8 @@ import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
  * thirty days, each with "Still correct" (stamps today's date) and a link to
  * edit it where it lives.
  */
-export function OnCallCheckPage({ now: nowProp }: { now?: Date } = {}) {
+function OnCallCheckPageSession({ now: nowProp }: { now?: Date } = {}) {
+  const sessionEpoch = peekOnCallEntrySessionEpoch();
   const { zone } = useWorkTimeZone();
   const { entries, loading, isOffline, loadError, retry, cachedAt, signedOut, demoMode } = useOnCallEntries();
   const [tick, setTick] = useState(() => new Date());
@@ -43,18 +47,42 @@ export function OnCallCheckPage({ now: nowProp }: { now?: Date } = {}) {
   const [error, setError] = useState<string | null>(null);
 
   async function confirm(entry: OnCallEntry) {
+    if (sessionEpoch !== peekOnCallEntrySessionEpoch()) return;
     setPending(entry.id);
     setError(null);
     try {
-      const response = await fetch(`/api/on-call/entries/${entry.id}/verify`, { method: "POST" });
-      if (!response.ok) throw new Error(`Could not confirm ${entry.title}. Try again.`);
-      const payload: unknown = await response.json();
-      const updated = (payload as { entry?: OnCallEntry } | null)?.entry;
-      // After the await, so update the latest cached list, not this render's snapshot.
-      if (updated) {
-        updateCachedOnCallEntries(entries, (current) =>
-          current.map((existing) => (existing.id === updated.id ? updated : existing)),
+      if (!entry.updatedAt) throw new Error("Reload this entry and review the latest content before confirming it.");
+      const response = await fetch(`/api/on-call/entries/${entry.id}/verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ expectedUpdatedAt: entry.updatedAt }),
+      });
+      if (!response.ok)
+        throw new Error(
+          response.status === 409 || response.status === 428
+            ? `Could not confirm ${entry.title}. Reload and review the latest entry before trying again.`
+            : `Could not confirm ${entry.title}. Try again.`,
         );
+      const payload: unknown = await response.json().catch(() => null);
+      const parsed = onCallEntrySchema.safeParse((payload as { entry?: unknown } | null)?.entry);
+      if (!parsed.success || parsed.data.id !== entry.id) {
+        throw new Error(`The confirmation response for ${entry.title} was invalid. Try again.`);
+      }
+      // After the await, so update the latest cached list, not this render's snapshot.
+      let applied = false;
+      updateCachedOnCallEntries(
+        entries,
+        (current) =>
+          current.map((existing) => {
+            if (existing.id !== entry.id) return existing;
+            const merged = mergeOnCallEntryVerification(existing, entry, parsed.data);
+            applied = merged !== null;
+            return merged ?? existing;
+          }),
+        sessionEpoch,
+      );
+      if (!applied && sessionEpoch === peekOnCallEntrySessionEpoch()) {
+        throw new Error("This entry changed or was removed while confirming. Review it and try again.");
       }
     } catch (failure) {
       const isOffline = typeof navigator !== "undefined" && !navigator.onLine;
@@ -192,5 +220,13 @@ export function OnCallCheckPage({ now: nowProp }: { now?: Date } = {}) {
         )}
       </InformationPageShell>
     </>
+  );
+}
+
+export function OnCallCheckPage(props: Parameters<typeof OnCallCheckPageSession>[0] = {}) {
+  return (
+    <OnCallEntrySessionBoundary>
+      <OnCallCheckPageSession {...props} />
+    </OnCallEntrySessionBoundary>
   );
 }

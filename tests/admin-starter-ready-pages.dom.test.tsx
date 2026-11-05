@@ -1,9 +1,10 @@
 /** @vitest-environment jsdom */
 
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ReadyForDayOnePage } from "@/components/admin/ready/ready-for-day-one-page";
+import { clearOnCallEntryCache } from "@/lib/on-call/entry-cache-keys";
 import { StarterPackPage } from "@/components/admin/starter/starter-pack-page";
 import { BOTH_REMINDERS_ON, CONTRACT_END_SLUG_PREFIX, reminderFields } from "@/lib/admin/contract-end";
 import { STARTER_DATE_SLUG_PREFIX } from "@/lib/admin/starter-pack";
@@ -40,6 +41,8 @@ vi.mock("@/lib/on-call/entry-store", () => ({
   // Like the real store, each read is its own snapshot, so a closure kept from an earlier render goes stale.
   useOnCallEntries: () => ({ ...entryState }),
   cacheOnCallEntries: (entries: OnCallEntry[]) => cacheOnCallEntries(entries),
+  updateCachedOnCallEntries: (_fallback: readonly OnCallEntry[], update: (current: OnCallEntry[]) => OnCallEntry[]) =>
+    cacheOnCallEntries(update([...entryState.entries])),
 }));
 
 const NOW = new Date("2026-10-06T01:00:00Z");
@@ -143,6 +146,18 @@ describe("StarterPackPage", () => {
     expect(calls.find((call) => call.method === "POST")?.url).toBe("/api/on-call/entries");
     fireEvent.click(screen.getByTestId("admin-starter-undo-undo"));
     await waitFor(() => expect(calls.some((call) => call.method === "DELETE")).toBe(true));
+  });
+
+  it("clears a retained saved-date Undo when the account changes", async () => {
+    const view = render(<StarterPackPage now={NOW} />);
+    fireEvent.click(screen.getByTestId("admin-starter-add-first"));
+    fireEvent.click(screen.getByTestId("admin-starter-kind-visa-end"));
+    fireEvent.change(screen.getByTestId("admin-starter-date-date"), { target: { value: "2027-01-14" } });
+    fireEvent.click(screen.getByTestId("admin-starter-date-save"));
+    await waitFor(() => expect(screen.getByTestId("admin-starter-undo")).toBeTruthy());
+    act(() => clearOnCallEntryCache());
+    view.rerender(<StarterPackPage now={NOW} />);
+    expect(screen.queryByTestId("admin-starter-undo")).toBeNull();
   });
 
   it("keeps a change made during the ten seconds when Undo removes the new date", async () => {

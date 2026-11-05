@@ -35,6 +35,7 @@ describe("drift manifest freshness (offline half of check:drift)", () => {
       "constraints",
       "triggers",
       "storage_buckets",
+      "private_objects",
     ]) {
       expect(Array.isArray(snapshot[category]), `manifest.snapshot.${category} missing`).toBe(true);
       expect((snapshot[category] as unknown[]).length, `manifest.snapshot.${category} empty`).toBeGreaterThan(0);
@@ -44,6 +45,7 @@ describe("drift manifest freshness (offline half of check:drift)", () => {
     expect((snapshot.functions as unknown[]).length).toBeGreaterThan(40);
     expect((snapshot.indexes as unknown[]).length).toBeGreaterThan(100);
     expect((snapshot.tables as unknown[]).length).toBeGreaterThan(30);
+    expect((snapshot.private_objects as unknown[]).length).toBeGreaterThan(17);
   });
 
   it("manifest snapshot is v2 with the migration-history probe (empty on replay — no history table)", () => {
@@ -75,7 +77,7 @@ describe("local drift replay container safety", () => {
 
 describe("schema_drift_snapshot definition parity (migration vs schema.sql)", () => {
   const extract = (text: string) => {
-    const start = text.indexOf("create or replace function public.schema_drift_snapshot()");
+    const start = text.lastIndexOf("create or replace function public.schema_drift_snapshot()");
     expect(start, "schema_drift_snapshot definition not found").toBeGreaterThanOrEqual(0);
     const end = text.indexOf("grant execute on function public.schema_drift_snapshot() to service_role;", start);
     expect(end, "schema_drift_snapshot grants not found").toBeGreaterThan(start);
@@ -83,7 +85,7 @@ describe("schema_drift_snapshot definition parity (migration vs schema.sql)", ()
   };
 
   // The newest migration that redefines schema_drift_snapshot(); schema.sql must mirror it.
-  const LATEST_DEFINER_MIGRATION = "20261021180000_schema_drift_snapshot_literal_safe_comments.sql";
+  const LATEST_DEFINER_MIGRATION = "20261105144240_audit_private_evidence_lifecycle_and_drift.sql";
 
   it(`migration ${LATEST_DEFINER_MIGRATION.slice(0, 14)} (latest definer) and schema.sql carry byte-identical definitions`, () => {
     const fromMigration = extract(read(`supabase/migrations/${LATEST_DEFINER_MIGRATION}`));

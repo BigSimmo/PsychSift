@@ -1,4 +1,9 @@
 import {
+  assertLegacyMaintenanceSnapshot,
+  commitMaintenanceDeepMemory,
+  type MaintenanceDocument,
+} from "@/lib/ingestion-maintenance";
+import {
   parseIngestionFence,
   runIngestionPersistence,
   IngestionAttemptError,
@@ -109,79 +114,22 @@ function derivedChunkAnchor(chunk: MemoryChunk) {
   return `${page}-c${chunk.chunk_index}-${heading}`.slice(0, 80);
 }
 
-async function repairMissingChunkAnchors(supabase: SupabaseClient, chunks: MemoryChunk[]) {
-  const missing = chunks.filter((chunk) => chunk.anchor_id === null);
-  let repaired = 0;
-
-  for (let start = 0; start < missing.length; start += 10) {
-    const batch = missing.slice(start, start + 10);
-    await Promise.all(
-      batch.map(async (chunk) => {
-        const anchor = derivedChunkAnchor(chunk);
-        const { error } = await supabase
-          .from("document_chunks")
-          .update({
-            anchor_id: anchor,
-            metadata: {
-              ...metadataRecord(chunk.metadata),
-              anchor_id: anchor,
-              anchor_repaired_by: documentIntelligenceVersion,
-            },
-          })
-          .eq("id", chunk.id)
-          .is("anchor_id", null);
-        if (error) throw new Error(error.message);
-        chunk.anchor_id = anchor;
-        chunk.metadata = {
-          ...metadataRecord(chunk.metadata),
-          anchor_id: anchor,
-          anchor_repaired_by: documentIntelligenceVersion,
-        };
-        repaired += 1;
-      }),
-    );
-  }
-
-  return repaired;
-}
-
-async function stampDeepMemoryChunks(args: { supabase: SupabaseClient; documentId: string }) {
+function prepareMaintenanceChunkPatches(chunks: MemoryChunk[]) {
   const stampedAt = new Date().toISOString();
-
-  const { data: chunks, error: chunksError } = await args.supabase
-    .from("document_chunks")
-    .select("id,metadata")
-    .eq("document_id", args.documentId);
-  if (chunksError) throw new Error(chunksError.message);
-
-  const chunksToUpdate = (chunks ?? []).filter((chunk) => {
-    const record = metadataRecord(chunk.metadata);
-    return record.rag_memory_version !== ragDeepMemoryVersion && record.rag_indexing_version !== ragDeepMemoryVersion;
+  return chunks.map((chunk) => {
+    const anchor = chunk.anchor_id === null ? derivedChunkAnchor(chunk) : undefined;
+    return {
+      id: chunk.id,
+      ...(anchor ? { anchor_id: anchor } : {}),
+      metadata: {
+        ...(anchor ? { anchor_id: anchor, anchor_repaired_by: documentIntelligenceVersion } : {}),
+        rag_indexing_version: ragDeepMemoryVersion,
+        rag_memory_version: ragDeepMemoryVersion,
+        rag_memory_updated_at: stampedAt,
+        document_intelligence_version: documentIntelligenceVersion,
+      },
+    };
   });
-
-  if (chunksToUpdate.length > 0) {
-    const limit = 5;
-    for (let start = 0; start < chunksToUpdate.length; start += limit) {
-      const batch = chunksToUpdate.slice(start, start + limit);
-      await Promise.all(
-        batch.map(async (chunk) => {
-          const { error } = await args.supabase
-            .from("document_chunks")
-            .update({
-              metadata: {
-                ...metadataRecord(chunk.metadata),
-                rag_indexing_version: ragDeepMemoryVersion,
-                rag_memory_version: ragDeepMemoryVersion,
-                rag_memory_updated_at: stampedAt,
-                document_intelligence_version: documentIntelligenceVersion,
-              },
-            })
-            .eq("id", chunk.id);
-          if (error) throw new Error(error.message);
-        }),
-      );
-    }
-  }
 }
 
 type DeepMemoryArtifactTable = "document_sections" | "document_memory_cards" | "document_index_units";
@@ -209,7 +157,11 @@ function artifactOwnership(
   return "ambiguous";
 }
 
-export async function assertLocalDeepMemoryOwnership(supabase: SupabaseClient, documentId: string) {
+export async function assertLocalDeepMemoryOwnership(
+  supabase: SupabaseClient,
+  documentId: string,
+  requireAssignedGeneration = false,
+) {
   const tables: DeepMemoryArtifactTable[] = ["document_sections", "document_memory_cards", "document_index_units"];
 
   const artifactResults = await Promise.all(
@@ -217,7 +169,7 @@ export async function assertLocalDeepMemoryOwnership(supabase: SupabaseClient, d
       table,
       result: await supabase
         .from(table)
-        .select("producer,artifact_generation_id,metadata")
+        .select("producer,artifact_generation_id,index_generation_id,metadata")
         .eq("document_id", documentId),
     })),
   );
@@ -229,6 +181,9 @@ export async function assertLocalDeepMemoryOwnership(supabase: SupabaseClient, d
     if (error) throw new Error(error.message);
     if (!Array.isArray(data) || data.some((row) => artifactOwnership(table, row) !== "local")) {
       throw new DeepMemoryOwnershipConflictError(documentId);
+    }
+    if (requireAssignedGeneration && data.some((row) => row.index_generation_id === null)) {
+      throw new Error("legacy_generation_lineage_requires_fenced_reindex");
     }
   }
 }
@@ -260,9 +215,11 @@ async function upsertLegacyDocumentDeepMemory(args: {
   images?: MemoryImage[];
   summary?: string | null;
 }) {
+  const maintenanceDocument = args.document as MemoryDocument & MaintenanceDocument;
+  assertLegacyMaintenanceSnapshot(maintenanceDocument);
   if (args.chunks.length === 0) throw new Error("Cannot build deep memory for a document with no chunks.");
 
-  await assertLocalDeepMemoryOwnership(args.supabase, args.document.id);
+  await assertLocalDeepMemoryOwnership(args.supabase, args.document.id, true);
 
   const sections = buildDocumentSections(args);
   let modelProfile: ModelIndexProfile | null = null;
@@ -336,7 +293,7 @@ async function upsertLegacyDocumentDeepMemory(args: {
   if (indexUnits.length > 0 && indexUnitEmbeddings.length !== indexUnits.length) {
     throw new Error("OpenAI returned an unexpected index-unit embedding count.");
   }
-  let repairedAnchorCount = 0;
+  const repairedAnchorCount = args.chunks.filter((chunk) => chunk.anchor_id === null).length;
   const indexUnitCountsByType = countDocumentIndexUnitsByType(indexUnits);
 
   const artifactGenerationId = crypto.randomUUID();
@@ -416,9 +373,6 @@ async function upsertLegacyDocumentDeepMemory(args: {
         if (error) throw new Error(error.message);
       }
     }
-
-    repairedAnchorCount = await repairMissingChunkAnchors(args.supabase, args.chunks);
-    await stampDeepMemoryChunks({ supabase: args.supabase, documentId: args.document.id });
   } catch (error) {
     await cleanupStagedArtifacts();
     throw error;
@@ -427,43 +381,37 @@ async function upsertLegacyDocumentDeepMemory(args: {
   // The RPC may have committed even when its response is lost. Never clean up
   // after invocation: committed rows now share the document generation, while
   // genuinely staged leftovers remain invisible and are superseded later.
-  const { error: commitError } = await args.supabase.rpc("commit_document_deep_memory_generation", {
-    p_document_id: args.document.id,
-    p_producer: localDeepMemoryProducer,
-    p_artifact_generation_id: artifactGenerationId,
-    p_rag_memory_version: ragDeepMemoryVersion,
-    p_document_intelligence_version: documentIntelligenceVersion,
-    p_section_count: sections.length,
-    p_memory_card_count: cards.length,
-    p_index_unit_counts_by_type: indexUnitCountsByType,
-    p_repaired_anchor_count: repairedAnchorCount,
+  const aliases = (modelProfile?.aliases ?? [])
+    .filter((alias) => alias.confidence >= 0.65)
+    .map((alias) => ({
+      alias: alias.alias,
+      canonical: alias.canonical,
+      alias_type: alias.alias_type,
+      weight: Math.max(0.5, Math.min(1.5, alias.confidence + 0.25)),
+      enabled: true,
+      metadata: {
+        source: "model_index_profile",
+        document_id: args.document.id,
+        source_chunk_ids: alias.source_chunk_ids,
+        model_index_version: modelIndexExtractionVersion,
+      },
+    }));
+  await commitMaintenanceDeepMemory({
+    supabase: args.supabase,
+    document: maintenanceDocument,
+    payload: {
+      p_chunk_patches: prepareMaintenanceChunkPatches(args.chunks),
+      p_aliases: aliases,
+      p_producer: localDeepMemoryProducer,
+      p_artifact_generation_id: artifactGenerationId,
+      p_rag_memory_version: ragDeepMemoryVersion,
+      p_document_intelligence_version: documentIntelligenceVersion,
+      p_section_count: sections.length,
+      p_memory_card_count: cards.length,
+      p_index_unit_counts_by_type: indexUnitCountsByType,
+      p_repaired_anchor_count: repairedAnchorCount,
+    },
   });
-  if (commitError) throw new Error(commitError.message);
-
-  if (modelProfile?.aliases.length) {
-    const aliases = modelProfile.aliases
-      .filter((alias) => alias.confidence >= 0.65)
-      .map((alias) => ({
-        owner_id: args.document.owner_id ?? null,
-        alias: alias.alias,
-        canonical: alias.canonical,
-        alias_type: alias.alias_type,
-        weight: Math.max(0.5, Math.min(1.5, alias.confidence + 0.25)),
-        enabled: true,
-        metadata: {
-          source: "model_index_profile",
-          document_id: args.document.id,
-          source_chunk_ids: alias.source_chunk_ids,
-          model_index_version: modelIndexExtractionVersion,
-        },
-      }));
-    if (aliases.length) {
-      await args.supabase
-        .from("rag_aliases")
-        .insert(aliases)
-        .then(undefined, () => undefined);
-    }
-  }
 
   return { sections, memoryCards: cards, indexUnits, modelProfile };
 }

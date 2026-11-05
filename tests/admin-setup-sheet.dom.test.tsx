@@ -1,7 +1,8 @@
 /** @vitest-environment jsdom */
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { clearOnCallEntryCache } from "@/lib/on-call/entry-cache-keys";
 import { AdminSetupSheet } from "@/components/admin/admin-setup-sheet";
 
 const created = (title: string) => ({
@@ -36,6 +37,28 @@ function fillDates() {
 }
 
 describe("AdminSetupSheet", () => {
+  it("stops its bulk save after an account transition without delivering the old row", async () => {
+    let release!: (response: Response) => void;
+    const request = vi.spyOn(globalThis, "fetch").mockReturnValue(
+      new Promise<Response>((resolve) => {
+        release = resolve;
+      }),
+    );
+    const onCreated = vi.fn();
+    const onClose = vi.fn();
+    render(<AdminSetupSheet open onClose={onClose} existingEntries={[]} onCreated={onCreated} />);
+    fillDates();
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(request).toHaveBeenCalledTimes(1);
+    clearOnCallEntryCache();
+    await act(async () => {
+      release(json(created("Registration"), 201));
+    });
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(onCreated).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
   it("echoes each date back in words, creates both rows, and stores nothing on the device", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")

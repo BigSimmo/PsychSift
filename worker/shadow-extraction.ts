@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { z } from "zod";
@@ -350,6 +350,78 @@ function appendTail(current: string, chunk: Buffer | string) {
 }
 
 /**
+ * The parser receives untrusted original bytes after the legacy index has committed. Pass
+ * runtime settings explicitly instead of inheriting the worker's credentials, proxies and
+ * interpreter injection variables. This reduces exposure; it is not an OS sandbox.
+ * Model caches may be shared only inside the explicitly configured artifact directory.
+ */
+export function buildDoclingShadowEnvironment(
+  workDir: string,
+  environment: Partial<NodeJS.ProcessEnv> = process.env,
+): NodeJS.ProcessEnv {
+  // Next augments ProcessEnv with required NODE_ENV. Keep it explicit and benign;
+  // the Python child must never inherit the parent's environment wholesale.
+  const childEnvironment: NodeJS.ProcessEnv = { NODE_ENV: "production" };
+  for (const key of [
+    "PATH",
+    "LANG",
+    "LC_ALL",
+    "LC_CTYPE",
+    "TZ",
+    "SystemRoot",
+    "SYSTEMROOT",
+    "WINDIR",
+    "COMSPEC",
+    "PATHEXT",
+    "TESSDATA_PREFIX",
+    "OMP_NUM_THREADS",
+    "MKL_NUM_THREADS",
+    "OPENBLAS_NUM_THREADS",
+    "NUMEXPR_NUM_THREADS",
+    "TOKENIZERS_PARALLELISM",
+  ]) {
+    if (environment[key] !== undefined) childEnvironment[key] = environment[key];
+  }
+  const artifacts = environment.DOCLING_ARTIFACTS_PATH?.trim();
+  if (artifacts) childEnvironment.DOCLING_ARTIFACTS_PATH = artifacts;
+  const artifactCache = (value: string | undefined) => {
+    if (!artifacts || !path.isAbsolute(artifacts) || !value || !path.isAbsolute(value)) return undefined;
+    const root = path.resolve(artifacts);
+    if (root === path.parse(root).root) return undefined;
+    const relative = path.relative(root, path.resolve(value));
+    return relative !== ".." && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative) ? value : undefined;
+  };
+  const cache = path.join(workDir, "cache");
+  const hfHome = artifactCache(environment.HF_HOME) ?? path.join(cache, "huggingface");
+  const hub =
+    artifactCache(environment.HF_HUB_CACHE) ??
+    artifactCache(environment.HUGGINGFACE_HUB_CACHE) ??
+    path.join(hfHome, "hub");
+  return {
+    ...childEnvironment,
+    HOME: path.join(workDir, "home"),
+    USERPROFILE: path.join(workDir, "home"),
+    TMPDIR: path.join(workDir, "tmp"),
+    TEMP: path.join(workDir, "tmp"),
+    TMP: path.join(workDir, "tmp"),
+    XDG_CACHE_HOME: cache,
+    HF_HOME: hfHome,
+    HF_HUB_CACHE: hub,
+    HUGGINGFACE_HUB_CACHE: artifactCache(environment.HUGGINGFACE_HUB_CACHE) ?? hub,
+    HF_DATASETS_CACHE: artifactCache(environment.HF_DATASETS_CACHE) ?? path.join(cache, "huggingface", "datasets"),
+    TRANSFORMERS_CACHE: artifactCache(environment.TRANSFORMERS_CACHE) ?? hub,
+    TORCH_HOME: artifactCache(environment.TORCH_HOME) ?? path.join(cache, "torch"),
+    PYTHONDONTWRITEBYTECODE: "1",
+    PYTHONUNBUFFERED: "1",
+    TORCHDYNAMO_DISABLE: "1",
+    HF_HUB_OFFLINE: "1",
+    TRANSFORMERS_OFFLINE: "1",
+    HF_DATASETS_OFFLINE: "1",
+    HF_HUB_DISABLE_TELEMETRY: "1",
+  };
+}
+
+/**
  * Default runner: writes the PDF to a private temp dir, spawns the docling venv interpreter on
  * worker/python/shadow_docling_extract.py, kills the whole process tree at the deadline, and
  * returns the parsed result file. stdout/stderr are never persisted (a bounded tail is kept
@@ -363,16 +435,15 @@ export const runDoclingShadowScript: ShadowScriptRunner = async (input) => {
   const resultPath = path.join(workDir, "result.json");
   const startedAt = Date.now();
   try {
+    for (const directory of ["home", "tmp", "cache"]) {
+      await mkdir(path.join(workDir, directory), { mode: 0o700 });
+    }
     await writeFile(pdfPath, input.buffer);
     const spawnResult = await new Promise<Omit<ShadowRunnerResult, "payload" | "wallMs"> & { stderrTail: string }>(
       (resolve) => {
         const child = spawn(input.pythonBin, [scriptPath, pdfPath, resultPath], {
           cwd: process.cwd(),
-          env: {
-            ...process.env,
-            TORCHDYNAMO_DISABLE: "1",
-            HF_HUB_OFFLINE: process.env.HF_HUB_OFFLINE ?? "1",
-          },
+          env: buildDoclingShadowEnvironment(workDir),
           stdio: ["ignore", "pipe", "pipe"],
           detached: process.platform !== "win32",
           windowsHide: true,

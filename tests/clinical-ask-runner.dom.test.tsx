@@ -33,6 +33,12 @@ function RunnerHarness({ query, online = true }: { query: string; online?: boole
       <button type="button" onClick={run}>
         Run
       </button>
+      <button type="button" onClick={session.cancel}>
+        Stop
+      </button>
+      <button type="button" onClick={session.clear}>
+        Clear
+      </button>
       <output data-testid="runner-state">
         {JSON.stringify({
           draft: session.draft,
@@ -69,6 +75,56 @@ function ModeResetHarness({ mode }: { mode: AppModeId }) {
 describe("useClinicalAskRunner", () => {
   beforeEach(() => {
     streamClinicalAsk.mockReset();
+  });
+
+  it.each(["Stop", "Clear", "account change", "unmount"])(
+    "skips deferred stream initialization after %s",
+    async (action) => {
+      const view = render(
+        <ClinicalAskSessionProvider accountId="account-a">
+          <RunnerHarness query="Synthetic question" />
+        </ClinicalAskSessionProvider>,
+      );
+      fireEvent.click(screen.getByRole("button", { name: "Run" }));
+      if (action === "unmount") view.unmount();
+      else if (action === "account change")
+        view.rerender(
+          <ClinicalAskSessionProvider accountId="account-b">
+            <RunnerHarness query="Synthetic question" />
+          </ClinicalAskSessionProvider>,
+        );
+      else fireEvent.click(screen.getByRole("button", { name: action }));
+      await act(async () => {
+        await vi.dynamicImportSettled();
+      });
+      expect(streamClinicalAsk).not.toHaveBeenCalled();
+    },
+  );
+
+  it("starts only the latest request when replacement happens before lazy initialization", async () => {
+    const realClient = await vi.importActual<typeof import("@/lib/clinical-ask/client-stream")>(
+      "@/lib/clinical-ask/client-stream",
+    );
+    streamClinicalAsk.mockImplementation(realClient.streamClinicalAsk);
+    const fetch = vi.fn().mockResolvedValue(new Response(null, { status: 401 }));
+    vi.stubGlobal("fetch", fetch);
+    const view = render(
+      <ClinicalAskSessionProvider>
+        <RunnerHarness query="Question A" />
+      </ClinicalAskSessionProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Run" }));
+    view.rerender(
+      <ClinicalAskSessionProvider>
+        <RunnerHarness query="Question B" />
+      </ClinicalAskSessionProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Run" }));
+    await act(async () => {
+      await vi.dynamicImportSettled();
+    });
+    expect(fetch).toHaveBeenCalledOnce();
+    expect(JSON.parse(fetch.mock.calls[0]?.[1].body)).toMatchObject({ question: "Question B" });
   });
 
   it("keeps run B active when the aborted run A settles", async () => {

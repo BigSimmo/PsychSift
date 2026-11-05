@@ -1,5 +1,9 @@
 "use client";
 
+import { OnCallEntrySessionBoundary } from "@/components/on-call/on-call-entry-session-boundary";
+
+import { peekOnCallEntrySessionEpoch } from "@/lib/on-call/entry-cache-keys";
+
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { CalendarPlus, ChevronRight, Copy, ExternalLink, Search, TriangleAlert, WifiOff, X } from "lucide-react";
@@ -55,7 +59,7 @@ import {
   type StarterDateKind,
 } from "@/lib/admin/starter-pack";
 import { perthCalendarDate } from "@/lib/cme/cpd-year";
-import { cacheOnCallEntries, useOnCallEntries } from "@/lib/on-call/entry-store";
+import { updateCachedOnCallEntries, useOnCallEntries } from "@/lib/on-call/entry-store";
 import { checkPatientDetail } from "@/lib/work-text/patient-detail-check";
 
 type Undo = { id: number; label: string; run: () => Promise<void> };
@@ -280,7 +284,8 @@ function SuggestWord({ initial }: { initial: string }) {
  * word from home, the doctor's own visa and registration dates beside their
  * contract end, and who to ask. Never visa or registration advice.
  */
-export function StarterPackPage({ now: nowProp }: { now?: Date } = {}) {
+function StarterPackPageSession({ now: nowProp }: { now?: Date } = {}) {
+  const sessionEpoch = peekOnCallEntrySessionEpoch();
   const { isAuthenticated } = useAccountData();
   const searchParams = useSearchParams();
   const wordParam = searchParams?.get("word") ?? "";
@@ -327,8 +332,12 @@ export function StarterPackPage({ now: nowProp }: { now?: Date } = {}) {
     const body = buildStarterDateBody(input, slugSuffix());
     if (!body) return "Check the date.";
     try {
-      const saved = await createEntry(body);
-      cacheOnCallEntries([...state.entries, saved]);
+      const saved = await createEntry(body, sessionEpoch);
+      updateCachedOnCallEntries(
+        state.entries,
+        (current) => [...current.filter((entry) => entry.id !== saved.id), saved],
+        sessionEpoch,
+      );
       setSheetOpen(false);
       const title = input.kind === "other" ? input.name.trim() : starterKindInfo(input.kind).label;
       undoId.current += 1;
@@ -336,8 +345,12 @@ export function StarterPackPage({ now: nowProp }: { now?: Date } = {}) {
         id: undoId.current,
         label: starterSavedLine(title, input.date, input.leadTimeDays),
         run: async () => {
-          await deleteEntry(saved.id);
-          cacheOnCallEntries(entriesRef.current.filter((entry) => entry.id !== saved.id));
+          await deleteEntry(saved.id, sessionEpoch);
+          updateCachedOnCallEntries(
+            entriesRef.current,
+            (current) => current.filter((entry) => entry.id !== saved.id),
+            sessionEpoch,
+          );
         },
       });
       return null;
@@ -672,5 +685,13 @@ export function StarterPackPage({ now: nowProp }: { now?: Date } = {}) {
         />
       ) : null}
     </>
+  );
+}
+
+export function StarterPackPage(props: Parameters<typeof StarterPackPageSession>[0] = {}) {
+  return (
+    <OnCallEntrySessionBoundary>
+      <StarterPackPageSession {...props} />
+    </OnCallEntrySessionBoundary>
   );
 }

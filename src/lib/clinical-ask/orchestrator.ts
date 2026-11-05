@@ -86,7 +86,7 @@ function abortReason(signal: AbortSignal) {
   return signal.reason instanceof Error ? signal.reason : new DOMException("The operation was aborted.", "AbortError");
 }
 
-async function withAbort<T>(operation: Promise<T>, signal: AbortSignal): Promise<T> {
+async function withAbort<T>(operation: () => Promise<T>, signal: AbortSignal): Promise<T> {
   if (signal.aborted) throw abortReason(signal);
   let rejectAbort: ((reason?: unknown) => void) | undefined;
   const onAbort = () => rejectAbort?.(abortReason(signal));
@@ -95,7 +95,11 @@ async function withAbort<T>(operation: Promise<T>, signal: AbortSignal): Promise
     signal.addEventListener("abort", onAbort, { once: true });
   });
   try {
-    return await Promise.race([operation, aborted]);
+    const pending = Promise.resolve().then(() => {
+      if (signal.aborted) throw abortReason(signal);
+      return operation();
+    });
+    return await Promise.race([pending, aborted]);
   } finally {
     signal.removeEventListener("abort", onAbort);
   }
@@ -125,11 +129,11 @@ export async function runClinicalAsk(
   let retryAvailable = true;
   const retryOnce = async <T>(operation: () => Promise<T>) => {
     try {
-      return await withAbort(operation(), operationSignal);
+      return await withAbort(operation, operationSignal);
     } catch (error) {
       if (!retryAvailable || operationSignal.aborted) throw error;
       retryAvailable = false;
-      return await withAbort(operation(), operationSignal);
+      return await withAbort(operation, operationSignal);
     }
   };
 
@@ -167,12 +171,12 @@ export async function runClinicalAsk(
 
     emit("catalogue");
     evidence.push(
-      ...(await withAbort(dependencies.retrieveCatalogue(projectedRequest, operationSignal), operationSignal)),
+      ...(await withAbort(() => dependencies.retrieveCatalogue(projectedRequest, operationSignal), operationSignal)),
     );
     emit("indexed");
     evidence.push(
       ...(await withAbort(
-        dependencies.retrieveIndexed(projectedRequest, accessScope, operationSignal),
+        () => dependencies.retrieveIndexed(projectedRequest, accessScope, operationSignal),
         operationSignal,
       )),
     );
@@ -189,7 +193,7 @@ export async function runClinicalAsk(
       emit("external");
       try {
         const external = await withAbort(
-          dependencies.retrieveExternal(projectedRequest, profile.allowedAuthorityIds, operationSignal),
+          () => dependencies.retrieveExternal(projectedRequest, profile.allowedAuthorityIds, operationSignal),
           operationSignal,
         );
         evidence.push(...external);
@@ -222,7 +226,10 @@ export async function runClinicalAsk(
     if (governed.state === "evidence_gap" && retryAvailable) {
       retryAvailable = false;
       try {
-        draft = await withAbort(dependencies.synthesize(projectedRequest, evidence, operationSignal), operationSignal);
+        draft = await withAbort(
+          () => dependencies.synthesize(projectedRequest, evidence, operationSignal),
+          operationSignal,
+        );
         governed = governClinicalAskDraft(profile, draft, evidence);
       } catch (error) {
         if (operationSignal.aborted) throw error;

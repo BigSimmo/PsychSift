@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { cpdHomeFields } from "@/components/cme/cme-log-copy-fields";
+import { CmeLogCopySheet } from "@/components/cme/cme-log-copy-sheet";
 import { CmeLogPage } from "@/components/cme/cme-log-page";
 import { formatEntryForCpdHome } from "@/lib/cme/clipboard";
 import { DEMO_CME_YEAR } from "@/lib/cme/demo-year";
@@ -101,6 +102,46 @@ describe("cpdHomeFields", () => {
 });
 
 describe("copy to your CPD home, one at a time", () => {
+  it("keeps another year's activity clipboard-only until that year's closed state is known", async () => {
+    const user = userEvent.setup();
+    stubClipboard();
+    const older = { ...ENTRIES[0]!, date: "2025-09-16" };
+    const onMark = vi.fn();
+    render(
+      <CmeLogCopySheet
+        open
+        onClose={() => {}}
+        candidates={[older]}
+        lookup={() => older}
+        set={SET}
+        demoMode={false}
+        onMark={onMark}
+        onUndo={async () => {}}
+        lastMarkedId={null}
+      />,
+    );
+    const sheet = screen.getByTestId("cme-log-copy-sheet");
+    expect(sheet).toHaveTextContent("Open this activity's year to change its copied status.");
+    expect(within(sheet).queryByTestId("cme-log-copy-mark")).toBeNull();
+    await user.click(within(sheet).getByTestId("cme-log-copy-all"));
+    expect(writeText).toHaveBeenCalled();
+    expect(onMark).not.toHaveBeenCalled();
+  });
+
+  it("copies closed-year text without offering an unsupported copied-state update", async () => {
+    const fetchMock = okFetch();
+    const { user, sheet } = await openSheet({ set: { ...SET, closedAt: "2027-01-02T00:00:00Z" } });
+    expect(sheet).toHaveTextContent(
+      "This year is closed. Copying is available; its recorded copied status stays unchanged.",
+    );
+    expect(within(sheet).queryByTestId("cme-log-copy-mark")).toBeNull();
+    await user.click(within(sheet).getByTestId("cme-log-copy-all"));
+    expect(writeText).toHaveBeenCalledWith(formatEntryForCpdHome(ENTRIES[0]!, SET));
+    await user.click(within(sheet).getByRole("button", { name: "Next activity" }));
+    expect(within(sheet).getByText("2 of 2")).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("names the sheet, counts the queue and shows each field with its own Copy, never the cost", async () => {
     const { sheet } = await openSheet();
     expect(within(sheet).getByText("Copy to your CPD home")).toBeInTheDocument();

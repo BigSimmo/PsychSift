@@ -149,6 +149,36 @@ describe("Clinical Ask SSE contract", () => {
     inputTransport: "typed" as const,
   };
 
+  it("does not dispatch a request whose caller already cancelled", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const fetch = vi.fn().mockResolvedValue(new Response(null, { status: 401 }));
+    vi.stubGlobal("fetch", fetch);
+    const onEvent = vi.fn();
+    const result = await streamClinicalAsk(streamRequest, controller.signal, onEvent);
+    expect(fetch).not.toHaveBeenCalled();
+    expect(onEvent).not.toHaveBeenCalled();
+    expect(result.response).toMatchObject({ state: "failed", code: "aborted", retryable: false });
+  });
+
+  it("forwards cancellation after dispatch to the transport", async () => {
+    const controller = new AbortController();
+    let transportSignal: AbortSignal | undefined;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((_url: string, options: RequestInit) => {
+        transportSignal = options.signal as AbortSignal;
+        return new Promise<Response>((_resolve, reject) => {
+          transportSignal!.addEventListener("abort", () => reject(transportSignal!.reason), { once: true });
+        });
+      }),
+    );
+    const pending = streamClinicalAsk(streamRequest, controller.signal, vi.fn());
+    controller.abort();
+    expect(transportSignal?.aborted).toBe(true);
+    expect((await pending).response).toMatchObject({ state: "failed", code: "aborted" });
+  });
+
   it("surfaces a 429 as rate_limited with the server retry window instead of internal_error", async () => {
     vi.stubGlobal(
       "fetch",

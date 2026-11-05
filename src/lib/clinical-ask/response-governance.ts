@@ -7,7 +7,11 @@ import type {
   ClinicalAskResponse,
   ClinicalAskSection,
 } from "@/lib/clinical-ask/contracts";
-import { clinicalAskModeProfile, type ClinicalAskModeProfile } from "@/lib/clinical-ask/mode-profiles";
+import {
+  clinicalAskModeProfile,
+  clinicalAskSectionTitle,
+  type ClinicalAskModeProfile,
+} from "@/lib/clinical-ask/mode-profiles";
 import { sourceDirectlySupportsAnswerText } from "@/lib/rag/rag-claim-support";
 import type { SearchResult } from "@/lib/types";
 
@@ -123,6 +127,7 @@ export function governClinicalAskDraft(
   const lead = governedClaim(profile.id, draft.lead, evidenceById);
   const sections: ClinicalAskSection[] = draft.sections.map((section) => ({
     ...section,
+    title: clinicalAskSectionTitle(profile.id, section.id),
     claims: section.claims.flatMap((claim) => {
       const governed = governedClaim(profile.id, claim, evidenceById);
       return governed ? [governed] : [];

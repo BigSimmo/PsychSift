@@ -9,6 +9,7 @@ import {
   sameOriginNext,
 } from "@/lib/supabase/auth-return";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { readBoundedFormData } from "@/lib/validation/body";
 
 import { continuePage } from "./continue-page";
 
@@ -95,18 +96,31 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const origin = callerOrigin(request);
-  const form = await request.formData().catch(() => null);
+  // Reject before reading a body: the form is only posted by this site's
+  // Continue page, and no supplied destination is trusted before admission.
+  const reject = () =>
+    NextResponse.redirect(authFailureRedirect("/", origin, "verify_failed").headers.get("location")!, 303);
+  if (!isSameOriginPost(request, origin)) return reject();
+  if (
+    request.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase() !== "application/x-www-form-urlencoded"
+  ) {
+    return reject();
+  }
+  const form = await readBoundedFormData(request, 0, { envelopeBytes: 16 * 1024 }).catch(() => null);
+  if (!form) return reject();
+  const limits: Record<string, number> = { token_hash: 1024, type: 32, next: 4096 };
   const params = new URLSearchParams();
-  for (const name of ["token_hash", "type", "next"]) {
-    const value = form?.get(name);
-    if (typeof value === "string") params.set(name, value);
+  for (const [name, value] of form.entries()) {
+    const limit = limits[name];
+    if (!Object.hasOwn(limits, name) || typeof value !== "string" || value.length > limit || params.has(name))
+      return reject();
+    params.set(name, value);
   }
   const { tokenHash, type, next, failure } = readLink(params, origin);
   // 303 so the browser follows with a GET, never re-posting the form.
   const seeOther = (response: NextResponse) =>
     NextResponse.redirect(response.headers.get("location") ?? `${origin}/`, 303);
 
-  if (!isSameOriginPost(request, origin)) return seeOther(failure("verify_failed"));
   if (!tokenHash || !type) return seeOther(failure("missing_auth_code"));
 
   const { setAllCookies, withAuthMutations } = createAuthMutationCollector();

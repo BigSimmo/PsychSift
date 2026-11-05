@@ -281,7 +281,13 @@ describe("check these", () => {
 
   it("confirms an entry and writes the updated entry to the saved copy", async () => {
     const user = userEvent.setup();
-    const never = entry({ id: "switch", section: "contacts", title: "Switchboard", details: { role: "Switch" } });
+    const never = entry({
+      id: "11111111-1111-4111-8111-000000000001",
+      section: "contacts",
+      title: "Switchboard",
+      updatedAt: "2026-11-05T12:00:00.123456+00:00",
+      details: { role: "Switch" },
+    });
     state.entries = [never];
     const updated = { ...never, lastVerifiedAt: "2026-09-25T02:00:00Z" };
     const fetchMock = vi
@@ -289,8 +295,12 @@ describe("check these", () => {
       .mockResolvedValue(new Response(JSON.stringify({ entry: updated }), { status: 200 }));
     render(<OnCallCheckPage now={new Date("2026-09-25T02:00:00Z")} />);
     expect(screen.getByTestId("on-call-check-group-never")).toHaveTextContent("Switchboard");
-    await user.click(screen.getByTestId("on-call-check-confirm-switch"));
-    expect(fetchMock).toHaveBeenCalledWith("/api/on-call/entries/switch/verify", { method: "POST" });
+    await user.click(screen.getByTestId(`on-call-check-confirm-${never.id}`));
+    expect(fetchMock).toHaveBeenCalledWith(`/api/on-call/entries/${never.id}/verify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ expectedUpdatedAt: never.updatedAt }),
+    });
     expect(cacheOnCallEntries).toHaveBeenCalledWith([updated]);
   });
 

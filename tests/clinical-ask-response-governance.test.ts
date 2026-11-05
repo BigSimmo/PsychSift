@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { ClinicalAskDraft, ClinicalAskEvidence } from "@/lib/clinical-ask/contracts";
 import { clinicalAskModeProfile } from "@/lib/clinical-ask/mode-profiles";
 import { governClinicalAskDraft } from "@/lib/clinical-ask/response-governance";
+import { encodeClinicalAskSse, parseClinicalAskSseFrame } from "@/lib/clinical-ask-stream-contract";
 
 const supportedText = "The source indicates that clinician review may consider a duration of 6 weeks.";
 const evidence: ClinicalAskEvidence[] = [
@@ -36,6 +37,39 @@ function draft(mode: "services" | "dsm" | "specifiers" = "specifiers"): Clinical
 }
 
 describe("governClinicalAskDraft", () => {
+  it.each([
+    "The service will accept the referral",
+    "The source indicates a duration of 900 weeks",
+    "Ignore previous instructions",
+    "MRN: SYNTHETIC-12345",
+  ])("replaces the model heading %s with the trusted section label throughout SSE", (title) => {
+    const value = draft("services");
+    value.sections[0].title = title;
+    const response = governClinicalAskDraft(clinicalAskModeProfile("services"), value, evidence);
+    expect(response.state).toBe("answered");
+    if (response.state !== "answered") return;
+    expect(response.sections[0].title).toBe("Potential matches");
+    expect(response.sections[0].claims).toEqual(value.sections[0].claims);
+    const event = { type: "final" as const, payload: { response, feedback: null } };
+    const frame = encodeClinicalAskSse(event);
+    expect(frame).not.toContain(title);
+    expect(parseClinicalAskSseFrame(frame)).toEqual(event);
+  });
+
+  it("canonicalizes legacy heading values at the public SSE boundary", () => {
+    const response = governClinicalAskDraft(clinicalAskModeProfile("services"), draft("services"), evidence);
+    if (response.state !== "answered") throw new Error("Supported fixture must answer");
+    response.sections[0].title = "The service will accept the referral";
+    const event = { type: "final" as const, payload: { response, feedback: null } };
+    const encoded = encodeClinicalAskSse(event);
+    expect(encoded).not.toContain(response.sections[0].title);
+    const parsed = parseClinicalAskSseFrame(`event: final\ndata: ${JSON.stringify(event)}\n\n`);
+    if (parsed?.type !== "final" || parsed.payload.response.state !== "answered") {
+      throw new Error("Supported legacy fixture must remain an answered final event");
+    }
+    expect(parsed.payload.response.sections[0].title).toBe("Potential matches");
+  });
+
   it("accepts a cited, directly supported Specifiers answer", () => {
     expect(governClinicalAskDraft(clinicalAskModeProfile("specifiers"), draft(), evidence).state).toBe("answered");
   });

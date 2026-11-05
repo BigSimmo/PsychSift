@@ -103,6 +103,13 @@ restores the latest production backup into a **new** project, copies the Storage
 times both. See [`disaster-recovery-runbook.md`](disaster-recovery-runbook.md) for what a database
 restore does and does not bring back.
 
+Before a provider rehearsal, exercise the byte acceptance below on an isolated local root using
+wholly invented document, image and CME evidence files. Keep its three bucket directories separate
+from all real backups. The focused `tests/storage-restore-bytes.test.ts` covers complete copies,
+missing objects, same-size corruption, unreadable object shapes and symlinks without providers.
+This local check is tooling evidence; it does not rehearse database, Auth, application access,
+backup entitlement, production backups or an operational RPO/RTO.
+
 **2a. Start the database restore (timed).**
 
 **Prerequisite, before requesting any restore.** Supabase copies enabled `pg_cron` jobs into a
@@ -153,6 +160,9 @@ supabase storage cp -r ss:///clinical-images "$DR_DIR/clinical-images" --experim
 supabase storage cp -r ss:///cme-private-evidence "$DR_DIR/cme-private-evidence" --experimental --linked
 supabase unlink
 
+# Reconcile the source snapshot inventory first; retain this private baseline outside DR_DIR.
+node scripts/verify-storage-restore.mjs manifest --root "$DR_DIR" --output "$DR_DIR-source-manifest.json"
+
 supabase link --project-ref <restore-ref>
 cat supabase/.temp/project-ref                        # must print <restore-ref>
 supabase storage cp -r "$DR_DIR/clinical-documents" ss:///clinical-documents --experimental --linked
@@ -161,23 +171,23 @@ supabase storage cp -r "$DR_DIR/cme-private-evidence" ss:///cme-private-evidence
 supabase unlink
 ```
 
-**2c. Verify the restored copy.** In the restore project's SQL editor (never production's):
+**2c. Verify metadata and actual restored bytes.** In the restore project's SQL editor (never production's):
 
 ```sql
 SELECT (public.search_schema_health())->>'ok' AS schema_ok;
 SELECT count(*) AS documents FROM public.documents;
 SELECT count(*) AS chunks FROM public.document_chunks;
 SELECT bucket_id, count(*) FROM storage.objects GROUP BY bucket_id ORDER BY bucket_id;
--- Documents whose file did not arrive
-SELECT count(*) AS missing_files
+-- Metadata coverage only: this does not read an object's bytes.
+SELECT count(*) AS missing_file_metadata
 FROM public.documents d
 WHERE d.storage_path IS NOT NULL
   AND NOT EXISTS (
     SELECT 1 FROM storage.objects o
     WHERE o.bucket_id = 'clinical-documents' AND o.name = d.storage_path
   );
--- CME evidence records whose file did not arrive (removed evidence has no file by design)
-SELECT count(*) AS missing_cme_evidence_files
+-- Metadata coverage only (removed evidence has no file by design).
+SELECT count(*) AS missing_cme_evidence_metadata
 FROM public.cme_evidence e
 WHERE e.removed_at IS NULL
   AND NOT EXISTS (
@@ -189,6 +199,53 @@ WHERE e.removed_at IS NULL
 Run the same counts (not the two missing-file queries) read-only on production for comparison. Then follow the
 "Post-restore environment recovery controls" checklist in the disaster-recovery runbook, but **keep
 `invoke_indexing_v3_agent` inactive** on the restore project, so it never calls the production agent.
+
+Metadata counts and a successful copy command are insufficient for acceptance. The manifest step
+in 2b must run before uploading the source download, creating a private baseline of source bytes.
+
+`DR_DIR` must contain exactly `clinical-documents`, `clinical-images` and `cme-private-evidence`
+directories. Confirm the CLI's download layout before generating it. Reconcile the manifest's full
+bucket/path inventory against the approved source snapshot's Storage metadata and document/CME
+references; an incomplete source download cannot become a complete backup merely by hashing it.
+Record the source snapshot/backup time and manifest SHA-256. The file contains private paths and
+digests: retain it encrypted with the rehearsal evidence, outside the repository and shared logs.
+The verifier refuses to overwrite it. Never regenerate that baseline from the restored copy.
+
+After uploading, select the restore ref again, verify the linked target before **each** Storage
+command, and use actual Storage GET/downloads into a **new empty** private directory
+`DR_VERIFY_DIR`. With the confirmed CLI syntax from 2b:
+
+```bash
+test ! -e "$DR_VERIFY_DIR" && mkdir "$DR_VERIFY_DIR"  # stop if this fails
+supabase link --project-ref <restore-ref>
+cat supabase/.temp/project-ref  # must print <restore-ref>
+supabase storage cp -r ss:///clinical-documents "$DR_VERIFY_DIR/clinical-documents" --experimental --linked
+cat supabase/.temp/project-ref  # must print <restore-ref>
+supabase storage cp -r ss:///clinical-images "$DR_VERIFY_DIR/clinical-images" --experimental --linked
+cat supabase/.temp/project-ref  # must print <restore-ref>
+supabase storage cp -r ss:///cme-private-evidence "$DR_VERIFY_DIR/cme-private-evidence" --experimental --linked
+supabase unlink
+node scripts/verify-storage-restore.mjs verify --root "$DR_VERIFY_DIR" --manifest "$DR_DIR-source-manifest.json"
+```
+
+Do not copy from `DR_DIR`, reuse a populated directory, or count `storage.objects` rows as reads.
+
+Acceptance requires exit 0, `ok: true`, `verified` equal to `expected`, no failures and the exact
+recorded manifest SHA-256. Every object is opened, fully read and compared for size and SHA-256;
+missing/corrupt/unreadable bytes, extra objects and symlinks fail. Bounds are 100,000 objects,
+512 MiB per object and a 32 MiB manifest; exceeding them is a failed acceptance needing a separately
+reviewed plan, never permission to sample silently. Run the missing-object and same-size-corruption
+negative controls only on a disposable synthetic copy and retain their expected failures.
+
+Finally verify representative original-document, image and private CME downloads through the
+restored application, using the approved isolated target identity procedure. The intended owner
+must receive readable bytes matching the baseline; another owner and a signed-out caller must be
+denied private evidence. Record the synthetic identities, authorization outcome, content digest,
+application/worker/schema versions, Auth mapping, configuration/key recovery status and times.
+Keep production cron and external callbacks contained. A service-role download cannot replace
+these application access checks. No provider check or account creation runs without its existing
+approval. Finish RTO timing only when all approved operational acceptance steps have completed;
+otherwise record the remaining blocker and elapsed partial time.
 
 Optional, with separate approval: point a throwaway env file at the restore project and run
 `npm run check:indexing` and `npm run eval:retrieval:quality` (must pass 36/36). The retrieval eval
@@ -205,7 +262,7 @@ plan's egress allowance; record the total size. Deleting the project the same da
 estimate; or the restore has not finished after four hours (record that as the finding).
 
 **Evidence to record:** backup plan setting and newest backup time; restore start, healthy and
-finish times; Storage size and copy time; the count comparison; `missing_files` and `missing_cme_evidence_files` (both must be 0); anything that had to
+finish times; source backup/snapshot time and resulting RPO; Storage size and copy/download/byte-verification time; the count comparison; `missing_file_metadata` and `missing_cme_evidence_metadata` (both must be 0); private manifest identity and byte-verifier result; synthetic negative controls; restored application owner/other-owner/signed-out download outcomes; completed operational RTO or explicit blockers; anything that had to
 be re-entered by hand; and the eval result if run.
 
 ## 3. 30-user load test against staging

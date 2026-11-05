@@ -1,5 +1,9 @@
 "use client";
 
+import { OnCallEntrySessionBoundary } from "@/components/on-call/on-call-entry-session-boundary";
+
+import { peekOnCallEntrySessionEpoch } from "@/lib/on-call/entry-cache-keys";
+
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Bell, CalendarPlus, ChevronRight, FileClock, Layers, Mail, PenLine, Send, Trash2 } from "lucide-react";
@@ -197,7 +201,8 @@ function ReadOnlyLine({
  * planned before the end. One private compliance row through the existing
  * entries API, so Admin Today and Renewals see it too. No device storage.
  */
-export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
+function ContractEndPageSession({ now: nowProp }: { now?: Date } = {}) {
+  const sessionEpoch = peekOnCallEntrySessionEpoch();
   const { isAuthenticated } = useAccountData();
   const state = useOnCallEntries();
   const now = useJuniorNow(nowProp);
@@ -238,25 +243,32 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
   const leave = useJuniorRosterLeave(loadState === "ready" && Boolean(endsOn));
 
   function upsert(saved: OnCallEntry) {
+    if (sessionEpoch !== peekOnCallEntrySessionEpoch()) return;
     // The latest cache, not this render's list: two saves in flight would otherwise undo each other.
     const entries = readCachedOnCallEntries()?.entries ?? state.entries;
     cacheOnCallEntries(
       entries.some((existing) => existing.id === saved.id)
         ? entries.map((existing) => (existing.id === saved.id ? saved : existing))
         : [...entries, saved],
+      sessionEpoch,
     );
   }
   function remove(id: string) {
+    if (sessionEpoch !== peekOnCallEntrySessionEpoch()) return;
     const entries = readCachedOnCallEntries()?.entries ?? state.entries;
-    cacheOnCallEntries(entries.filter((existing) => existing.id !== id));
+    cacheOnCallEntries(
+      entries.filter((existing) => existing.id !== id),
+      sessionEpoch,
+    );
   }
   function offerUndo(label: string, run: () => Promise<void>) {
+    if (sessionEpoch !== peekOnCallEntrySessionEpoch()) return;
     undoId.current += 1;
     setUndo({ id: undoId.current, label, run });
   }
 
   async function restore(original: OnCallEntry) {
-    const saved = await patchEntry(original.id, buildRestoreEntryBody(original));
+    const saved = await patchEntry(original.id, buildRestoreEntryBody(original), sessionEpoch);
     upsert(saved);
   }
 
@@ -264,14 +276,14 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
     try {
       if (entry) {
         const original = entry;
-        const saved = await patchEntry(entry.id, buildContractEditBody(entry, input));
+        const saved = await patchEntry(entry.id, buildContractEditBody(entry, input), sessionEpoch);
         upsert(saved);
         offerUndo("Contract dates saved", () => restore(original));
       } else {
-        const saved = await createEntry(buildContractCreateBody(input, slugSuffix()));
+        const saved = await createEntry(buildContractCreateBody(input, slugSuffix()), sessionEpoch);
         upsert(saved);
         offerUndo("Contract end saved", async () => {
-          await deleteEntry(saved.id);
+          await deleteEntry(saved.id, sessionEpoch);
           remove(saved.id);
         });
       }
@@ -288,7 +300,7 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
     if (!result.ok) return "Check the new end date.";
     try {
       const original = entry;
-      const saved = await patchEntry(entry.id, result.body);
+      const saved = await patchEntry(entry.id, result.body, sessionEpoch);
       upsert(saved);
       setSheet(null);
       offerUndo("New end date saved. Reminders moved", () => restore(original));
@@ -302,7 +314,7 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
     if (!entry || ids.length === 0) return null;
     try {
       const original = entry;
-      const saved = await patchEntry(entry.id, buildContractAskedBody(entry, ids, asked));
+      const saved = await patchEntry(entry.id, buildContractAskedBody(entry, ids, asked), sessionEpoch);
       upsert(saved);
       const label = asked
         ? ids.length === 1
@@ -325,7 +337,7 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
     setFailure(null);
     try {
       const original = entry;
-      const saved = await patchEntry(entry.id, body);
+      const saved = await patchEntry(entry.id, body, sessionEpoch);
       upsert(saved);
       const name = key === "threeMonths" ? "3 month" : "6 week";
       offerUndo(`${name} reminder ${next[key] ? "on" : "off"}`, () => restore(original));
@@ -342,10 +354,10 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
     setFailure(null);
     try {
       const original = entry;
-      await deleteEntry(entry.id);
+      await deleteEntry(entry.id, sessionEpoch);
       remove(entry.id);
       offerUndo("Contract end removed", async () => {
-        const recreated = await createEntry({ ...buildRestoreEntryBody(original) });
+        const recreated = await createEntry({ ...buildRestoreEntryBody(original) }, sessionEpoch);
         upsert(recreated);
       });
     } catch (error) {
@@ -789,5 +801,13 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
         />
       ) : null}
     </>
+  );
+}
+
+export function ContractEndPage(props: Parameters<typeof ContractEndPageSession>[0] = {}) {
+  return (
+    <OnCallEntrySessionBoundary>
+      <ContractEndPageSession {...props} />
+    </OnCallEntrySessionBoundary>
   );
 }

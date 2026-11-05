@@ -1,13 +1,20 @@
 "use client";
 
 import { CircleCheck } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/components/ui-primitives";
 import { parseApiErrorResponse } from "@/lib/api-client-error";
 import { isComplianceEntry } from "@/lib/on-call/compliance";
-import { onCallEntrySchema, type OnCallEntry } from "@/lib/on-call/entry-model";
+import {
+  mergeOnCallEntryVerification,
+  onCallEntryVerificationContentMatches,
+  onCallEntrySchema,
+  type OnCallEntry,
+} from "@/lib/on-call/entry-model";
+import { readCachedOnCallEntries } from "@/lib/on-call/entry-store";
+import { peekOnCallEntrySessionEpoch } from "@/lib/on-call/entry-cache-keys";
 
 // Lives apart from the entry editor so the section lists can show the one-tap
 // verify action without pulling the whole 1,400-line editor into first load.
@@ -41,20 +48,43 @@ export interface OnCallVerifyButtonProps {
  * where it is not ambiguous.
  */
 export function OnCallVerifyButton({ entry, onVerified, className }: OnCallVerifyButtonProps) {
+  const sessionEpoch = peekOnCallEntrySessionEpoch();
+  const latestEntry = useRef(entry);
+  latestEntry.current = entry;
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleVerify() {
-    if (busy) return;
+    if (busy || sessionEpoch !== peekOnCallEntrySessionEpoch()) return;
     setBusy(true);
     setError(null);
     try {
-      const response = await fetch(`/api/on-call/entries/${entry.id}/verify`, { method: "POST" });
+      if (!entry.updatedAt) throw new Error("Reload this entry and review the latest content before confirming it.");
+      const response = await fetch(`/api/on-call/entries/${entry.id}/verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ expectedUpdatedAt: entry.updatedAt }),
+      });
       if (!response.ok) throw await parseApiErrorResponse(response);
       const body: unknown = await response.json();
       const parsed = onCallEntrySchema.safeParse((body as { entry?: unknown } | null)?.entry);
-      if (!parsed.success) throw new Error("Verify response was invalid.");
-      onVerified(parsed.data);
+      if (!parsed.success || parsed.data.id !== entry.id) throw new Error("Verify response was invalid. Try again.");
+      if (!mounted.current || sessionEpoch !== peekOnCallEntrySessionEpoch()) return;
+      if (!onCallEntryVerificationContentMatches(latestEntry.current, entry)) {
+        throw new Error("This entry changed while confirming. Review it and try again.");
+      }
+      const cached = readCachedOnCallEntries();
+      const current = cached ? cached.entries.find((candidate) => candidate.id === entry.id) : latestEntry.current;
+      const merged = mergeOnCallEntryVerification(current, entry, parsed.data);
+      if (!merged) throw new Error("This entry changed or was removed while confirming. Review it and try again.");
+      onVerified(merged);
     } catch (verifyError) {
       if (
         (typeof navigator !== "undefined" && !navigator.onLine) ||

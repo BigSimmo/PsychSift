@@ -1,5 +1,8 @@
 "use client";
 
+import { OnCallEntrySessionBoundary } from "@/components/on-call/on-call-entry-session-boundary";
+import { peekOnCallEntrySessionEpoch } from "@/lib/on-call/entry-cache-keys";
+
 import { Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 
@@ -733,7 +736,7 @@ export interface OnCallEntryEditorProps {
   createAsCompliance?: boolean;
 }
 
-export function OnCallEntryEditor({
+function OnCallEntryEditorSession({
   open,
   onClose,
   section,
@@ -743,6 +746,7 @@ export function OnCallEntryEditor({
   createAsRoleExplainer = false,
   createAsCompliance = false,
 }: OnCallEntryEditorProps) {
+  const sessionEpoch = peekOnCallEntrySessionEpoch();
   const [draft, setDraft] = useState<DraftState>(() =>
     buildInitialDraft(section, entry, createAsRoleExplainer, createAsCompliance),
   );
@@ -1103,6 +1107,7 @@ export function OnCallEntryEditor({
       lastVerifiedAt: entry?.lastVerifiedAt ?? null,
     };
 
+    if (sessionEpoch !== peekOnCallEntrySessionEpoch()) return;
     setBusy("saving");
     try {
       const response = await fetch(entry ? `/api/on-call/entries/${entry.id}` : "/api/on-call/entries", {
@@ -1113,7 +1118,9 @@ export function OnCallEntryEditor({
       if (!response.ok) throw await parseApiErrorResponse(response);
       const body: unknown = await response.json();
       const parsedEntry = onCallEntrySchema.safeParse((body as { entry?: unknown } | null)?.entry);
-      if (!parsedEntry.success) throw new Error("Save response was invalid.");
+      if (!parsedEntry.success || (entry && parsedEntry.data.id !== entry.id))
+        throw new Error("Save response was invalid.");
+      if (sessionEpoch !== peekOnCallEntrySessionEpoch()) return;
       onSaved(parsedEntry.data);
       onClose();
     } catch (error) {
@@ -1132,7 +1139,7 @@ export function OnCallEntryEditor({
   }
 
   async function handleDelete() {
-    if (!entry) return;
+    if (!entry || sessionEpoch !== peekOnCallEntrySessionEpoch()) return;
     // Belt and braces: an example row is never written to the account.
     if (isOnCallExampleEntry(entry)) return;
     setBusy("deleting");
@@ -1140,6 +1147,7 @@ export function OnCallEntryEditor({
     try {
       const response = await fetch(`/api/on-call/entries/${entry.id}`, { method: "DELETE" });
       if (!response.ok) throw await parseApiErrorResponse(response);
+      if (sessionEpoch !== peekOnCallEntrySessionEpoch()) return;
       setConfirmDeleteOpen(false);
       onDeleted?.(entry.id);
       onClose();
@@ -1392,3 +1400,11 @@ export function OnCallEntryEditor({
 // Re-exported so existing imports keep working; the button itself lives on its own
 // so the section lists do not pull this editor into first load.
 export { OnCallVerifyButton, type OnCallVerifyButtonProps };
+
+export function OnCallEntryEditor(props: Parameters<typeof OnCallEntryEditorSession>[0]) {
+  return (
+    <OnCallEntrySessionBoundary open={props.open}>
+      <OnCallEntryEditorSession {...props} />
+    </OnCallEntrySessionBoundary>
+  );
+}

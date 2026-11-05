@@ -55,8 +55,9 @@ export function useClinicalAskRunner({
         clinicalAskSession.receiveEvent(event);
       };
       void import("@/lib/clinical-ask/client-stream")
-        .then(({ streamClinicalAsk }) =>
-          streamClinicalAsk(
+        .then(({ streamClinicalAsk }) => {
+          if (controller.signal.aborted) return;
+          return streamClinicalAsk(
             {
               mode: clinicalAskMode,
               question: submittedQuery,
@@ -68,8 +69,8 @@ export function useClinicalAskRunner({
             },
             controller.signal,
             receiveCurrentEvent,
-          ),
-        )
+          );
+        })
         .then((payload) => {
           // HTTP, parse, and network failures can return a failed payload before
           // delivering a terminal event. Close the pending state exactly once.

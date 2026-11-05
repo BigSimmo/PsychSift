@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { clinicalAskModeIds, type ClinicalAskStreamEvent } from "@/lib/clinical-ask/contracts";
+import { clinicalAskSectionTitle } from "@/lib/clinical-ask/mode-profiles";
 
 const contextValue = z.union([z.string().max(500), z.array(z.string().max(500)).max(20)]);
 const contextSchema = z.record(z.string(), contextValue);
@@ -104,7 +105,18 @@ const responseSchema = z
         });
       }
     }
-  });
+  })
+  .transform((response) =>
+    response.state === "answered"
+      ? {
+          ...response,
+          sections: response.sections.map((section) => ({
+            ...section,
+            title: clinicalAskSectionTitle(response.mode, section.id),
+          })),
+        }
+      : response,
+  );
 const progressSchema = z
   .object({
     type: z.literal("progress"),

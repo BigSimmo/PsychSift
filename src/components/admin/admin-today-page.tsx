@@ -1,5 +1,9 @@
 "use client";
 
+import { OnCallEntrySessionBoundary } from "@/components/on-call/on-call-entry-session-boundary";
+
+import { peekOnCallEntrySessionEpoch } from "@/lib/on-call/entry-cache-keys";
+
 import { Phone, Plus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -96,7 +100,8 @@ function HelpRow() {
   );
 }
 
-export function AdminTodayPage({ now: nowProp }: { now?: Date } = {}) {
+function AdminTodayPageSession({ now: nowProp }: { now?: Date } = {}) {
+  const sessionEpoch = peekOnCallEntrySessionEpoch();
   const { zone } = useWorkTimeZone();
   const state = useOnCallEntries();
   const { isAuthenticated } = useAccountData();
@@ -136,8 +141,9 @@ export function AdminTodayPage({ now: nowProp }: { now?: Date } = {}) {
   const helpItems = useMemo(() => buildAdminHelpItems({ own, shared, statewide: [] }), [own, shared]);
 
   function upsert(entry: OnCallEntry) {
+    if (sessionEpoch !== peekOnCallEntrySessionEpoch()) return;
     const latest = readCachedOnCallEntries()?.entries ?? state.entries;
-    cacheOnCallEntries([...latest.filter((existing) => existing.id !== entry.id), entry]);
+    cacheOnCallEntries([...latest.filter((existing) => existing.id !== entry.id), entry], sessionEpoch);
   }
 
   const failedCopy =
@@ -210,5 +216,13 @@ export function AdminTodayPage({ now: nowProp }: { now?: Date } = {}) {
         onCreated={upsert}
       />
     </AdminPage>
+  );
+}
+
+export function AdminTodayPage(props: Parameters<typeof AdminTodayPageSession>[0] = {}) {
+  return (
+    <OnCallEntrySessionBoundary>
+      <AdminTodayPageSession {...props} />
+    </OnCallEntrySessionBoundary>
   );
 }

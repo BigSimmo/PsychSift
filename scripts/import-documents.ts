@@ -1,17 +1,13 @@
-import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { loadEnvConfig } from "@next/env";
 import {
-  buildImportStoragePath,
   chunkImportFiles,
-  createDocumentId,
   formatExactDuplicateSkip,
-  importMimeType,
   type ExistingImportDocument,
   parseImportCliArgs,
   scanImportFiles,
 } from "@/lib/bulk-import";
-import { planDocumentName } from "@/lib/document-naming";
+import { assertExistingImportDocument, queueExistingImportDocument } from "./lib/import-document-queue";
 import { assertSupabaseHealthy, probeSupabaseHealth } from "@/lib/supabase/health";
 import { findOwnerIdByEmail } from "./lib/find-owner-id-by-email";
 
@@ -154,15 +150,15 @@ async function main() {
       const duplicate = existing.get(file.contentHash);
       console.log(
         duplicate
-          ? formatExactDuplicateSkip(file, duplicate, { dryRun: true })
-          : `DRY RUN ${file.relativePath} ${file.contentHash.slice(0, 12)}`,
+          ? `DRY RUN EXISTING ${file.relativePath}: ${args.force ? "would request a generation-preserving replacement" : "would preserve indexed copies or repair missing queue work"}`
+          : `DRY RUN BLOCKED NEW INTAKE ${file.relativePath}: reviewed backend authority/admission is unavailable`,
       );
     }
     if (files.length > args.queueBatchSize)
       console.log(`DRY RUN omitted ${files.length - args.queueBatchSize} additional file(s).`);
     if (dryRunOwnerId || args.ownerEmail) {
       console.log(
-        `DRY RUN duplicate check: would_queue=${files.length - exactCopyCount}, exact_copies=${exactCopyCount}, total=${files.length}`,
+        `DRY RUN duplicate check: blocked_new_intake=${files.length - exactCopyCount}, existing_copies_to_reconcile=${exactCopyCount}, total=${files.length}`,
       );
     }
     return;
@@ -201,40 +197,6 @@ async function main() {
     Array.from(new Set(files.map((file) => file.contentHash))),
   );
 
-  console.log("Pre-loading existing documents for name planning...");
-  const { data: dbDocs, error: dbDocsErr } = await supabase
-    .from("documents")
-    .select("id,title,file_name,content_hash,metadata")
-    .eq("owner_id", ownerId)
-    .limit(5000);
-  if (dbDocsErr) throw new Error(dbDocsErr.message);
-  type ExistingDocForPlan = {
-    id: string;
-    title: string;
-    file_name: string | null;
-    content_hash: string | null;
-    metadata?: unknown;
-  };
-  const existingDocsForPlanning: ExistingDocForPlan[] = [];
-  for (const row of dbDocs ?? []) {
-    const rawId = (row as { id?: unknown }).id;
-    const rawTitle = (row as { title?: unknown }).title;
-    const rawFileName = (row as { file_name?: unknown }).file_name;
-    const rawContentHash = (row as { content_hash?: unknown }).content_hash;
-    const id = typeof rawId === "string" ? rawId : "";
-    const title = typeof rawTitle === "string" ? rawTitle : "";
-    if (!id || !title) continue;
-    const file_name = typeof rawFileName === "string" ? rawFileName : null;
-    const content_hash = typeof rawContentHash === "string" ? rawContentHash : null;
-    existingDocsForPlanning.push({
-      id,
-      title,
-      file_name,
-      content_hash,
-      metadata: (row as { metadata?: unknown }).metadata,
-    });
-  }
-
   let queued = 0;
   let skipped = 0;
   let failed = 0;
@@ -250,130 +212,26 @@ async function main() {
     for (const file of fileBatch) {
       try {
         const duplicate = existing.get(file.contentHash);
-        if (duplicate && !args.force) {
+        assertExistingImportDocument(duplicate);
+        const result = await queueExistingImportDocument({
+          rpc: (name, payload) => supabase.rpc(name, payload),
+          documentId: duplicate.id,
+          ownerId,
+          contentHash: file.contentHash,
+          batchId: batch.id,
+          force: args.force,
+          maxAttempts: env.WORKER_MAX_ATTEMPTS,
+        });
+        if (result.outcome === "skipped") {
           skipped += 1;
           console.log(formatExactDuplicateSkip(file, duplicate));
-          continue;
-        }
-
-        if (duplicate && args.force) {
-          const { error: resetError } = await supabase.rpc("reset_document_index", { p_document_id: duplicate.id });
-          if (resetError) throw new Error(resetError.message);
-          const { error: requeueError } = await supabase
-            .from("documents")
-            .update({
-              status: "queued",
-              error_message: null,
-              page_count: 0,
-              chunk_count: 0,
-              image_count: 0,
-              source_path: file.absolutePath,
-              import_batch_id: batch.id,
-            })
-            .eq("id", duplicate.id);
-          if (requeueError) throw new Error(requeueError.message);
-          const { error: jobError } = await supabase.from("ingestion_jobs").insert({
-            document_id: duplicate.id,
-            batch_id: batch.id,
-            status: "pending",
-            stage: "queued",
-            progress: 0,
-            max_attempts: env.WORKER_MAX_ATTEMPTS,
-          });
-          if (jobError) throw new Error(jobError.message);
+        } else if (result.outcome === "already_active") {
+          skipped += 1;
+          console.log(`ALREADY QUEUED ${file.relativePath}`);
+        } else {
           queued += 1;
-          console.log(`REQUEUE ${file.relativePath}`);
-          continue;
+          console.log(`${args.force ? "REQUEUE" : "REPAIR QUEUE"} ${file.relativePath}`);
         }
-
-        const documentId = createDocumentId();
-        const storagePath = buildImportStoragePath(ownerId, documentId, file.fileName);
-        const fileType = importMimeType(file.fileName);
-        const namePlan = await planDocumentName({
-          ownerId,
-          fileName: file.fileName,
-          requestedTitle: null,
-          contentHash: file.contentHash,
-          existingDocs: existingDocsForPlanning,
-        });
-        const upload = await supabase.storage
-          .from(env.SUPABASE_DOCUMENT_BUCKET)
-          .upload(storagePath, await readFile(file.absolutePath), {
-            contentType: fileType,
-            upsert: false,
-          });
-        if (upload.error) throw new Error(upload.error.message);
-
-        const { error: documentError } = await supabase.from("documents").insert({
-          id: documentId,
-          owner_id: ownerId,
-          title: namePlan.title,
-          description: null,
-          file_name: file.fileName,
-          file_type: fileType,
-          file_size: file.size,
-          storage_path: storagePath,
-          content_hash: file.contentHash,
-          source_path: file.absolutePath,
-          import_batch_id: batch.id,
-          status: "queued",
-          metadata: {
-            source_title: namePlan.title,
-            publisher: null,
-            jurisdiction: "Australia/WA",
-            version: null,
-            publication_date: null,
-            review_date: null,
-            uploaded_at: new Date().toISOString(),
-            indexed_at: null,
-            uploaded_by: ownerId,
-            original_file_name: namePlan.originalFileName,
-            original_title: namePlan.originalTitle,
-            smart_title_base: namePlan.baseTitle,
-            smart_title_group_key: namePlan.duplicateGroupKey,
-            smart_title_duplicate_index: namePlan.duplicateIndex,
-            smart_title_duplicate_reason: namePlan.duplicateReason,
-            document_status: "unknown",
-            clinical_validation_status: "unverified",
-            extraction_quality: "unknown",
-            confidentiality_scope: "guidelines-only",
-            source_path: file.absolutePath,
-            content_hash: file.contentHash,
-            import_batch_id: batch.id,
-            queue_batch_size: args.queueBatchSize,
-          },
-        });
-        if (documentError) throw new Error(documentError.message);
-
-        const { error: jobError } = await supabase.from("ingestion_jobs").insert({
-          document_id: documentId,
-          batch_id: batch.id,
-          status: "pending",
-          stage: "queued",
-          progress: 0,
-          max_attempts: env.WORKER_MAX_ATTEMPTS,
-        });
-        if (jobError) throw new Error(jobError.message);
-
-        existingDocsForPlanning.push({
-          id: documentId,
-          title: namePlan.title,
-          file_name: file.fileName,
-          content_hash: file.contentHash,
-          metadata: {
-            smart_title_group_key: namePlan.duplicateGroupKey,
-          },
-        });
-
-        existing.set(file.contentHash, {
-          id: documentId,
-          storage_path: storagePath,
-          title: namePlan.title,
-          source_path: file.absolutePath,
-          content_hash: file.contentHash,
-        });
-        queued += 1;
-        console.log(`QUEUE ${file.relativePath}`);
       } catch (error) {
         failed += 1;
         console.error(`FAIL ${file.relativePath}`, error instanceof Error ? error.message : String(error));

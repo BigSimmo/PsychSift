@@ -28,6 +28,7 @@ import { DEMO_CME_YEAR } from "@/lib/cme/demo-year";
 import { amendClosedCmeEntry, closeCmeYear, cmeRepositoryError, fetchOwnerCmeYearClose } from "@/lib/cme/repository";
 import { cmeEntryAmendSchema, cmeYearCloseSchema } from "@/lib/cme/schemas";
 import type { CmeEntry } from "@/lib/cme/types";
+import { cmeEntryVersion } from "@/lib/cme/entry-version";
 import {
   buildCmeCloseEvaluation,
   canCloseCmeYear,
@@ -94,6 +95,60 @@ describe("the evaluation recorded at closing", () => {
       expect.objectContaining({ requirementId: set.requirements[0]!.id, label: set.requirements[0]!.label }),
     );
   });
+  it("binds every evaluation input even when hours and entry count are unchanged", () => {
+    const set = { ...DEMO_CME_YEAR, year: 2025 };
+    const original = buildCmeCloseEvaluation(set, [entry]);
+    const changes = [
+      buildCmeCloseEvaluation(set, [{ ...entry, allocations: [{ category: "reviewing", hours: 2 }] }]),
+      buildCmeCloseEvaluation(set, [{ ...entry, formalPeerReviewHours: 1 }]),
+      buildCmeCloseEvaluation(set, [{ ...entry, buckets: ["Changed practice domain"] }]),
+      buildCmeCloseEvaluation({ ...set, totalHours: set.totalHours + 1 }, [entry]),
+      buildCmeCloseEvaluation(
+        {
+          ...set,
+          requirements: set.requirements.map((requirement, index) =>
+            index === 0 ? { ...requirement, completedOn: "2025-03-02" } : requirement,
+          ),
+        },
+        [entry],
+      ),
+      buildCmeCloseEvaluation(
+        {
+          ...set,
+          requirements: set.requirements.map((requirement, index) =>
+            index === 0 ? { ...requirement, spec: { shape: "task" as const } } : requirement,
+          ),
+        },
+        [entry],
+      ),
+    ];
+    expect(original).toHaveProperty("inputs");
+    for (const changed of changes) {
+      expect(changed.totalHours).toBe(original.totalHours);
+      expect(changed.entryCount).toBe(original.entryCount);
+      expect(changed.inputs).not.toEqual(original.inputs);
+    }
+  });
+
+  it("canonicalizes row ordering without treating archived entries as evaluation inputs", () => {
+    const set = { ...DEMO_CME_YEAR, year: 2025 };
+    const first = {
+      ...entry,
+      allocations: [
+        { category: "reviewing" as const, hours: 1 },
+        { category: "educational" as const, hours: 1 },
+      ],
+    };
+    const second = { ...entry, id: "44444444-4444-4444-8444-444444444444" };
+    expect(buildCmeCloseEvaluation(set, [first, second]).inputs).toEqual(
+      buildCmeCloseEvaluation({ ...set, requirements: [...set.requirements].reverse() }, [
+        second,
+        { ...first, allocations: [...first.allocations].reverse() },
+        { ...entry, id: "archived", archivedAt: "2025-04-01T00:00:00Z" },
+      ]).inputs,
+    );
+  });
+
   it("maps stored snapshot and amendment rows back into the record shown on the summary", () => {
     const close = rowsToCmeYearClose(
       {
@@ -166,9 +221,9 @@ describe("year-close request schemas", () => {
 describe("year-close repository calls", () => {
   it("closes through one owner-scoped transaction and maps a stale evaluation to 409", async () => {
     const client = { rpc: vi.fn().mockResolvedValue({ data: {}, error: null }) };
-    const evaluation = { totalHours: 2, entryCount: 1, requirements: [] };
+    const evaluation = buildCmeCloseEvaluation({ ...DEMO_CME_YEAR, year: 2025 }, [entry]);
     await closeCmeYear(client as never, OWNER, YEAR_ID, evaluation, "Leave");
-    expect(client.rpc).toHaveBeenCalledWith("cme_close_year", {
+    expect(client.rpc).toHaveBeenCalledWith("cme_close_year_v2", {
       p_owner_id: OWNER,
       p_year_id: YEAR_ID,
       p_evaluation: evaluation,
@@ -179,10 +234,26 @@ describe("year-close repository calls", () => {
       status: 409,
     });
   });
+  it("fails before writing when the complete-input RPC is unavailable, without a legacy fallback", async () => {
+    const rpc = vi
+      .fn()
+      .mockResolvedValue({ data: null, error: { code: "PGRST202", message: "cme_close_year_v2 was not found" } });
+    await expect(
+      closeCmeYear(
+        { rpc } as never,
+        OWNER,
+        YEAR_ID,
+        buildCmeCloseEvaluation({ ...DEMO_CME_YEAR, year: 2025 }, [entry]),
+        null,
+      ),
+    ).rejects.toMatchObject({ status: 503 });
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(rpc.mock.calls[0]?.[0]).toBe("cme_close_year_v2");
+  });
   it("refuses to close without an owner", async () => {
     const client = { rpc: vi.fn() };
     await expect(
-      closeCmeYear(client as never, "", YEAR_ID, { totalHours: 0, entryCount: 0, requirements: [] }, null),
+      closeCmeYear(client as never, "", YEAR_ID, buildCmeCloseEvaluation(DEMO_CME_YEAR, []), null),
     ).rejects.toThrow(/owner/i);
     expect(client.rpc).not.toHaveBeenCalled();
   });
@@ -201,11 +272,11 @@ describe("year-close repository calls", () => {
     const amended = await amendClosedCmeEntry(
       client as never,
       OWNER,
-      { ...entry, allocations: [{ category: "educational", hours: 4 }] },
+      { ...entry, version: cmeEntryVersion(entry), allocations: [{ category: "educational", hours: 4 }] },
       "Certificate shows 4 hours",
     );
     expect(client.rpc).toHaveBeenCalledWith(
-      "cme_amend_closed_entry",
+      "cme_amend_closed_entry_v2",
       expect.objectContaining({ p_owner_id: OWNER, p_entry_id: ENTRY_ID, p_reason: "Certificate shows 4 hours" }),
     );
     expect(amended.allocations).toEqual([{ category: "educational", hours: 4 }]);
@@ -353,7 +424,7 @@ describe("POST /api/cme/year/close", () => {
     const response = await closeYear(closeRequest({ year: 2025, shortfallNote: "  Leave  " }));
     expect(response.status).toBe(200);
     expect(mocks.rpc).toHaveBeenCalledWith(
-      "cme_close_year",
+      "cme_close_year_v2",
       expect.objectContaining({
         p_owner_id: OWNER,
         p_year_id: YEAR_ID,
@@ -407,13 +478,45 @@ describe("PATCH /api/cme/entries/[id] with an amendment", () => {
         ...entry,
         allocations: [{ category: "educational", hours: 4 }],
         amendmentReason: "Certificate shows 4 hours",
+        expectedVersion: cmeEntryVersion(entry),
       }),
       context,
     );
     expect(response.status).toBe(200);
     expect(mocks.rpc).toHaveBeenCalledTimes(1);
-    expect(mocks.rpc.mock.calls[0]![0]).toBe("cme_amend_closed_entry");
+    expect(mocks.rpc.mock.calls[0]![0]).toBe("cme_amend_closed_entry_v2");
+    expect(mocks.rpc.mock.calls[0]![1].p_entry.expectedVersion).toEqual(cmeEntryVersion(entry));
     expect(mocks.rpc.mock.calls[0]![1]).toMatchObject({ p_owner_id: OWNER, p_reason: "Certificate shows 4 hours" });
+  });
+
+  it("preserves the loaded version through the full-edit route and reports a concurrent writer conflict", async () => {
+    mocks.from
+      .mockReturnValueOnce(chain({ data: { transcribed_at: null, source_url: null }, error: null }))
+      .mockReturnValueOnce(chain({ data: yearRow(), error: null }))
+      .mockReturnValueOnce(chain({ data: [requirementRow], error: null }));
+    mocks.rpc.mockResolvedValue({ data: null, error: { message: "cme_entry_conflict" } });
+    const response = await patchEntry(
+      patch({ ...entry, expectedVersion: cmeEntryVersion(entry), title: "Correction" }),
+      context,
+    );
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ code: "cme_entry_conflict" });
+    expect(mocks.rpc).toHaveBeenCalledWith(
+      "cme_save_entry_v2",
+      expect.objectContaining({
+        p_owner_id: OWNER,
+        p_year_id: YEAR_ID,
+        p_entry_id: ENTRY_ID,
+        p_entry: expect.objectContaining({ expectedVersion: cmeEntryVersion(entry), title: "Correction" }),
+      }),
+    );
+  });
+
+  it("rejects an older amendment client without a loaded version before issuing a write", async () => {
+    const response = await patchEntry(patch({ ...entry, amendmentReason: "Synthetic correction" }), context);
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ code: "cme_entry_conflict" });
+    expect(mocks.rpc).not.toHaveBeenCalled();
   });
 });
 

@@ -1,3 +1,4 @@
+import { replaceMaintenanceArtifacts } from "@/lib/ingestion-maintenance";
 import { loadEnvConfig } from "@next/env";
 
 import type { DifferentialRecordRow } from "@/lib/differential-records";
@@ -33,6 +34,7 @@ export type RegistryGovernanceDocument = {
   id: string;
   owner_id: string | null;
   metadata: Json | null;
+  updated_at?: string;
 };
 
 export type RegistryGovernanceLabel = {
@@ -50,11 +52,19 @@ type RegistryGovernanceDocumentUpdate = {
   id: string;
   ownerId: string | null;
   metadata: Record<string, Json>;
+  expectedMetadata: Json | null;
+  expectedUpdatedAt?: string;
 };
 
 export type RegistryGovernancePlan = {
   ownerId: string;
   projections: RegistryGovernanceProjection[];
+  mutations: Array<{
+    document: RegistryGovernanceDocument;
+    metadataPatch: Record<string, Json>;
+    labelIdsToDelete: string[];
+    labelsToUpsert: TablesInsert<"document_labels">[];
+  }>;
   documentUpdates: RegistryGovernanceDocumentUpdate[];
   labelsToInsert: TablesInsert<"document_labels">[];
   labelsToUpdate: TablesInsert<"document_labels">[];
@@ -241,7 +251,13 @@ export function buildRegistryGovernancePlan(args: {
     const document = documentById.get(projection.documentId)!;
     const mergedMetadata = { ...metadataRecord(document.metadata), ...projection.requiredMetadata };
     if (stableJson(mergedMetadata) !== stableJson(metadataRecord(document.metadata))) {
-      documentUpdates.push({ id: document.id, ownerId: document.owner_id, metadata: mergedMetadata });
+      documentUpdates.push({
+        id: document.id,
+        ownerId: document.owner_id,
+        metadata: mergedMetadata,
+        expectedMetadata: document.metadata,
+        expectedUpdatedAt: document.updated_at,
+      });
     }
 
     const documentLabels = labelsByDocument.get(projection.documentId) ?? [];
@@ -272,9 +288,23 @@ export function buildRegistryGovernancePlan(args: {
     else if (!expectedLabelCurrent(expectedLabel, intentLabel)) labelsToUpdate.push(intentLabel);
   }
 
+  const metadataChanged = new Set(documentUpdates.map((update) => update.id));
+  const deletionIds = new Set(labelIdsToDelete);
+  const mutations = args.projections.flatMap((projection) => {
+    const document = documentById.get(projection.documentId)!;
+    const deletions = (labelsByDocument.get(document.id) ?? [])
+      .filter((label) => deletionIds.has(label.id))
+      .map((label) => label.id);
+    const upserts = [...labelsToInsert, ...labelsToUpdate].filter((label) => label.document_id === document.id);
+    return metadataChanged.has(document.id) || deletions.length || upserts.length
+      ? [{ document, metadataPatch: projection.requiredMetadata, labelIdsToDelete: deletions, labelsToUpsert: upserts }]
+      : [];
+  });
+
   return {
     ownerId,
     projections: args.projections,
+    mutations,
     documentUpdates,
     labelsToInsert,
     labelsToUpdate,
@@ -403,7 +433,7 @@ async function loadExistingGovernance(supabase: AdminClient, documentIds: string
   const labels: RegistryGovernanceLabel[] = [];
   for (const documentIdBatch of chunks(documentIds, READ_BATCH_SIZE)) {
     const [documentResult, labelResult] = await Promise.all([
-      supabase.from("documents").select("id,owner_id,metadata").in("id", documentIdBatch),
+      supabase.from("documents").select("id,owner_id,metadata,updated_at").in("id", documentIdBatch),
       supabase
         .from("document_labels")
         .select("id,document_id,owner_id,label,label_type,source,confidence,metadata")
@@ -428,26 +458,24 @@ async function runWithConcurrency<T>(items: T[], concurrency: number, worker: (i
   await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, () => runWorker()));
 }
 
-async function applyPlan(supabase: AdminClient, plan: RegistryGovernancePlan) {
-  await runWithConcurrency(plan.documentUpdates, WRITE_CONCURRENCY, async (update) => {
-    const updateQuery = supabase.from("documents").update({ metadata: update.metadata }).eq("id", update.id);
-    const scopedUpdate =
-      update.ownerId === null ? updateQuery.is("owner_id", null) : updateQuery.eq("owner_id", update.ownerId);
-    const { data, error } = await scopedUpdate.select("id");
-    if (error) throw new Error(`Registry metadata update failed for ${update.id}: ${error.message}`);
-    if (data?.length !== 1) throw new Error(`Registry metadata update did not match exactly one row for ${update.id}.`);
+export async function applyRegistryGovernancePlan(supabase: AdminClient, plan: RegistryGovernancePlan) {
+  await runWithConcurrency(plan.mutations, WRITE_CONCURRENCY, async (mutation) => {
+    await replaceMaintenanceArtifacts({
+      supabase,
+      document: { ...mutation.document, updated_at: mutation.document.updated_at ?? "" },
+      operation: "registry",
+      payload: {
+        metadata_patch: mutation.metadataPatch,
+        label_ids_to_delete: mutation.labelIdsToDelete,
+        labels_to_upsert: mutation.labelsToUpsert.map((label) => ({
+          label: label.label,
+          label_type: label.label_type,
+          confidence: label.confidence,
+          metadata: label.metadata,
+        })),
+      },
+    });
   });
-
-  for (const labelIdBatch of chunks(plan.labelIdsToDelete, READ_BATCH_SIZE)) {
-    const { error } = await supabase.from("document_labels").delete().in("id", labelIdBatch);
-    if (error) throw new Error(`Registry generated-label cleanup failed: ${error.message}`);
-  }
-  for (const labelBatch of chunks([...plan.labelsToInsert, ...plan.labelsToUpdate], READ_BATCH_SIZE)) {
-    const { error } = await supabase
-      .from("document_labels")
-      .upsert(labelBatch, { onConflict: "document_id,label_type,label,source" });
-    if (error) throw new Error(`Registry intent-label upsert failed: ${error.message}`);
-  }
 }
 
 function reportForPlan(plan: RegistryGovernancePlan, write: boolean) {
@@ -486,7 +514,7 @@ async function main() {
   const plan = buildRegistryGovernancePlan({ ...existing, projections, expectedOwnerId: ownerId });
   const report = reportForPlan(plan, args.write);
 
-  if (args.write) await applyPlan(supabase, plan);
+  if (args.write) await applyRegistryGovernancePlan(supabase, plan);
   if (args.json) console.log(JSON.stringify(report, null, 2));
   else {
     console.log("[registry:reconcile-governance]");

@@ -119,6 +119,12 @@ describe("On Call entry PATCH schema (updateOnCallEntrySchema)", () => {
     lastVerifiedAt: "2026-01-01T00:00:00.000Z",
   };
 
+  it("rejects the server-only timestamp in a PATCH body", () => {
+    expect(
+      updateOnCallEntrySchema.safeParse({ ...completeBody, updatedAt: "2026-11-05T12:00:00.123456+00:00" }).success,
+    ).toBe(false);
+  });
+
   it("accepts a complete PATCH body", () => {
     expect(updateOnCallEntrySchema.safeParse(completeBody).success).toBe(true);
   });

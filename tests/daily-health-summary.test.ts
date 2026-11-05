@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { runInNewContext } from "node:vm";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -17,7 +18,10 @@ import { TREND_TITLE } from "../scripts/lib/eval-canary-trend.mjs";
 
 const NOW = "2026-10-25T23:00:00Z"; // Monday 26 October 2026, 7 am in Perth
 const source = (key: string) => SUMMARY_SOURCES.find((item) => item.key === key)!;
-const run = (hoursAgo: number) => ({ updated_at: new Date(Date.parse(NOW) - hoursAgo * 3_600_000).toISOString() });
+const run = (hoursAgo: number) => ({
+  updated_at: new Date(Date.parse(NOW) - hoursAgo * 3_600_000).toISOString(),
+  conclusion: "success",
+});
 const issue = (fields: Record<string, unknown>) => ({
   number: 41,
   html_url: "https://github.com/BigSimmo/PsychSift/issues/41",
@@ -27,6 +31,44 @@ const issue = (fields: Record<string, unknown>) => ({
 });
 
 describe("daily health summary: judging each check", () => {
+  it.each(["failure", "cancelled", "timed_out", "action_required", "skipped", "neutral", null, undefined])(
+    "does not turn a fresh %s detector run with no issue green",
+    (conclusion) => {
+      const result = assessSource(source("errors"), {
+        latestRun: { ...run(0.2), conclusion },
+        issue: null,
+        now: NOW,
+      });
+      expect(result).toMatchObject({
+        status: "amber",
+        detail: "latest monitoring run did not succeed; health is unassessed",
+      });
+    },
+  );
+
+  it("retains a service problem during detector failure and clears only detector failure after recovery", () => {
+    const failed = assessSource(source("live-site"), {
+      latestRun: { ...run(1), conclusion: "failure" },
+      issue: issue({}),
+      now: NOW,
+    });
+    expect(failed).toMatchObject({
+      status: "red",
+      detail: "latest monitoring run did not succeed; last known: is failing its checks",
+    });
+    const recovered = assessSource(source("live-site"), { latestRun: run(0.1), issue: issue({}), now: NOW });
+    expect(recovered).toMatchObject({ status: "red", detail: "is failing its checks" });
+    expect(assessSource(source("errors"), { latestRun: run(0.1), issue: null, now: NOW }).status).toBe("green");
+  });
+
+  it("links an unavailable detector run when it could not publish an issue", () => {
+    const result = assessSource(source("errors"), {
+      latestRun: { ...run(0.2), conclusion: "failure", html_url: "https://github.com/o/r/actions/runs/42" },
+      now: NOW,
+    });
+    expect(result.link).toBe("[run](https://github.com/o/r/actions/runs/42)");
+  });
+
   it("calls a check green when its workflow ran on time and its issue is closed", () => {
     const result = assessSource(source("live-site"), {
       latestRun: run(2),
@@ -158,7 +200,10 @@ describe("daily health summary: judging each check", () => {
       botActivityAt: failedAt,
       now: NOW,
     });
-    expect(stillFailing).toMatchObject({ status: "red", detail: "the last weekly canary failed" });
+    expect(stillFailing).toMatchObject({
+      status: "red",
+      detail: "latest monitoring run did not succeed; last known: the last weekly canary failed",
+    });
   });
 
   it("says too few answers were seen rather than 'within limits' on a quiet day (EM-N2)", () => {
@@ -447,5 +492,23 @@ describe("daily health summary workflow", () => {
     expect(workflow).toContain("GITHUB_TOKEN: ${{ github.token }}");
     expect(workflow).toContain("PROD_HEALTH_URL: ${{ vars.PROD_HEALTH_URL }}");
     expect(workflow).toContain("HEALTH_DEEP_PROBE_SECRET: ${{ secrets.HEALTH_DEEP_PROBE_SECRET }}");
+  });
+
+  it("fails the Sentry detector before any API call when its token is missing", async () => {
+    const sentryWorkflow = readFileSync(".github/workflows/sentry-alerts.yml", "utf8");
+    const script = sentryWorkflow
+      .split("          script: |\n")[1]!
+      .split("\n")
+      .map((line) => line.replace(/^ {12}/, ""))
+      .join("\n");
+    const failures: string[] = [];
+    await runInNewContext(`(async () => {${script}\n})()`, {
+      process: { env: {} },
+      core: { warning: () => {}, setFailed: (message: string) => failures.push(message) },
+      fetch: () => {
+        throw new Error("missing configuration must not call a provider");
+      },
+    });
+    expect(failures).toEqual(["SENTRY_ALERTS_TOKEN is not set; Sentry monitoring is unavailable."]);
   });
 });

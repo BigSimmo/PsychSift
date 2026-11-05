@@ -237,3 +237,9 @@ A schema restore is not operationally complete until all five environment-owned 
   timed) is planned step by step in
   [`operator-rehearsal-plan.md`](operator-rehearsal-plan.md) (ledger `#QVVS6W`).
   It needs the owner's approval before it runs.
+  Its acceptance includes a source snapshot-bound bucket/path/size/SHA-256 manifest,
+  actual GETs of all restored object bytes into a fresh download, and restored
+  application owner/access checks. `storage.objects` counts alone cannot prove this.
+  The offline `scripts/verify-storage-restore.mjs` tool and synthetic negative controls
+  verify the byte-checking mechanism only; they do not establish a completed restore,
+  current backup entitlement, RPO/RTO, Auth/key recovery or provider configuration.

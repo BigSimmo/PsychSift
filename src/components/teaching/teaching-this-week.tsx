@@ -1,5 +1,7 @@
 "use client";
 
+import { OnCallEntrySessionBoundary } from "@/components/on-call/on-call-entry-session-boundary";
+
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { CalendarClock, CalendarDays, ChevronLeft, ChevronRight, Network } from "lucide-react";
@@ -150,7 +152,7 @@ const NO_CLASHES: ReadonlyMap<string, RosterClash> = new Map();
  * Remounts on sign-in, sign-out, account switch and demo change, like TeachingAccountPage, so the last
  * week kept for offline reading never shows one account's sessions to another.
  */
-export function TeachingThisWeek({
+function TeachingThisWeekSession({
   demoMode: serverDemoMode,
   week = null,
   view = null,
@@ -829,5 +831,13 @@ function DayStrip({ days, today }: { days: ReturnType<typeof stripDays>; today: 
         );
       })}
     </div>
+  );
+}
+
+export function TeachingThisWeek(props: Parameters<typeof TeachingThisWeekSession>[0]) {
+  return (
+    <OnCallEntrySessionBoundary>
+      <TeachingThisWeekSession {...props} />
+    </OnCallEntrySessionBoundary>
   );
 }

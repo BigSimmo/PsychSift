@@ -56,11 +56,32 @@ function updatePayload(entry: CmeEntry, draft: CmeEntryDraft, transcribed = entr
     sourceUrl: draft.sourceUrl ?? null,
     buckets: draft.buckets,
     formalPeerReviewHours: draft.formalPeerReviewHours ?? 0,
+    expectedVersion: entry.version,
     transcribed,
   };
 }
 
-export function CmeEntryRouteClient({ entry, set, edit, demoMode, goals = [] }: CmeEntryRouteClientProps) {
+export function CmeEntryRouteClient(props: CmeEntryRouteClientProps) {
+  return <CmeEntryRouteSession key={`${props.entry?.id ?? "missing"}:${props.edit ? "edit" : "view"}`} {...props} />;
+}
+
+function CmeEntryRouteSession({
+  entry: currentEntry,
+  set: currentSet,
+  edit,
+  demoMode,
+  goals = [],
+}: CmeEntryRouteClientProps) {
+  // The form owns its initial field state. Keep its original record and CAS version in
+  // that same identity/edit session so an RSC refresh cannot bless an older draft with
+  // a newer version. Rekey only for another activity or entering/leaving edit mode.
+  const [editorSeed] = useState(() => ({ entry: currentEntry, set: currentSet }));
+  const entry = edit ? editorSeed.entry : currentEntry;
+  const set = edit ? editorSeed.set : currentSet;
+  const editorChanged =
+    edit &&
+    (JSON.stringify(currentEntry?.version) !== JSON.stringify(entry?.version) ||
+      Boolean(currentSet.closedAt) !== Boolean(set.closedAt));
   const router = useRouter();
   const [archivePending, setArchivePending] = useState(false);
   const [archiveError, setArchiveError] = useState<string | null>(null);
@@ -117,6 +138,13 @@ export function CmeEntryRouteClient({ entry, set, edit, demoMode, goals = [] }: 
             ? `${set.year} is closed. Your change is recorded as a dated amendment with your reason, beside the original. The closing snapshot does not change.`
             : "Review the whole record before saving. Cancel, link navigation, closing and reloading all guard unsaved changes."}
         </p>
+        {editorChanged ? (
+          <div className="mt-4">
+            <InlineNotice tone="neutral">
+              This activity changed while you were editing. Your draft is still here. Reload the activity before saving.
+            </InlineNotice>
+          </div>
+        ) : null}
         {amendable ? (
           <div className="mt-4">
             <FormField

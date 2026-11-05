@@ -1,5 +1,6 @@
 import { cpdTextPatientProblem, cpdTitlePatientProblem } from "@/lib/cme/patient-detail-check";
 import { cmeEntryCreateSchema } from "@/lib/cme/schemas";
+import { cmeEntryVersion } from "@/lib/cme/entry-version";
 import { cmeYearConfigurationState } from "@/lib/cme/year-configuration";
 import { rowsToCmeYearClose, type CmeCloseEvaluation } from "@/lib/cme/year-close";
 import { randomUUID } from "node:crypto";
@@ -71,7 +72,7 @@ export function cmeEntryToRow(entry: CmeEntry, ownerId: string, yearId: string):
  * `src/lib/on-call/repository.ts` takes its joined shape apart before mapping it.
  */
 export function rowToCmeEntry(row: Record<string, unknown>, allocations: readonly CmeAllocation[]): CmeEntry {
-  return {
+  const entry: CmeEntry = {
     id: String(row.id),
     ...(Number(row.formal_peer_review_hours ?? 0) > 0
       ? { formalPeerReviewHours: Number(row.formal_peer_review_hours) }
@@ -88,6 +89,7 @@ export function rowToCmeEntry(row: Record<string, unknown>, allocations: readonl
     documentId: row.document_id == null ? null : String(row.document_id),
     buckets: Array.isArray(row.buckets) ? row.buckets.map(String) : [],
   };
+  return { ...entry, version: cmeEntryVersion(entry) };
 }
 
 /**
@@ -263,21 +265,28 @@ export async function saveCmeEntry(
   if (!ownerId) throw new Error("Missing CME owner.");
   const parsed = cmeEntryCreateSchema.safeParse(entry);
   if (!parsed.success) throw new PublicApiError("Invalid CPD entry details or allocations.", 400);
+  if (!create && !entry.version) throw cmeRepositoryError({ message: "cme_entry_conflict" });
   const payload = parsed.data;
-  const { data, error } = await supabase.rpc("cme_save_entry", {
+  const { data, error } = await supabase.rpc("cme_save_entry_v2", {
     p_owner_id: ownerId,
     p_year_id: yearId,
     p_entry_id: entry.id,
-    p_entry: { ...payload, formalPeerReviewHours: entry.formalPeerReviewHours ?? 0 } as Json,
+    p_entry: {
+      ...payload,
+      formalPeerReviewHours: entry.formalPeerReviewHours ?? 0,
+      ...(!create ? { expectedVersion: entry.version } : {}),
+    } as Json,
     p_create: create,
     p_request_id: requestId ?? null,
   });
+  if (error?.code === "PGRST202" || error?.code === "42883") throw cmeEntrySaveUnavailable();
   if (error) throw cmeRepositoryError(error);
   return joinedEntry(data as Record<string, unknown>);
 }
 
 export function cmeRepositoryError(error: { message: string }): Error {
   const safe: Record<string, [string, number]> = {
+    cme_entry_conflict: ["This activity changed in another tab. Reload it before saving your changes.", 409],
     cme_entry_archived: ["Restore this archived entry before editing or copying it.", 409],
     cme_year_closed: [
       "This CPD year is closed. Change one of its activities by recording an amendment from the activity's page.",
@@ -304,6 +313,12 @@ export function cmeRepositoryError(error: { message: string }): Error {
   return match
     ? new PublicApiError(match[0], match[1], { code: error.message })
     : new Error("CME storage operation failed.");
+}
+
+function cmeEntrySaveUnavailable() {
+  return new PublicApiError("CPD saving is unavailable. Reload before trying again.", 503, {
+    code: "cme_entry_save_unavailable",
+  });
 }
 
 function joinedEntry(row: Record<string, unknown>): CmeEntry {
@@ -635,8 +650,9 @@ export async function setCmeEntryArchived(
 
 /**
  * Close one CPD year: the database freezes a snapshot of the record under the owner lock and
- * sets `closed_at` in the same transaction. `evaluation` must agree with the rows on total
- * hours and activity count, or nothing is written (`cme_close_conflict`).
+ * sets `closed_at` in the same transaction. Every evaluation input must match the locked
+ * rows, or nothing is written (`cme_close_conflict`). The versioned RPC prevents older
+ * database instances from silently accepting a total/count-only check.
  */
 export async function closeCmeYear(
   supabase: AdminClient,
@@ -646,12 +662,17 @@ export async function closeCmeYear(
   shortfallNote: string | null,
 ): Promise<void> {
   if (!ownerId) throw new Error("Missing CME owner.");
-  const { error } = await supabase.rpc("cme_close_year", {
+  const { error } = await supabase.rpc("cme_close_year_v2", {
     p_owner_id: ownerId,
     p_year_id: yearId,
     p_evaluation: JSON.parse(JSON.stringify(evaluation)) as Json,
     p_shortfall_note: shortfallNote,
   });
+  if (error?.code === "PGRST202" || error?.code === "42883") {
+    throw new PublicApiError("Year closing is unavailable. Nothing has been closed. Try again later.", 503, {
+      code: "cme_year_close_unavailable",
+    });
+  }
   if (error) throw cmeRepositoryError(error);
 }
 
@@ -668,12 +689,18 @@ export async function amendClosedCmeEntry(
   if (!ownerId) throw new Error("Missing CME owner.");
   const parsed = cmeEntryCreateSchema.safeParse(entry);
   if (!parsed.success) throw new PublicApiError("Invalid CPD entry details or allocations.", 400);
-  const { data, error } = await supabase.rpc("cme_amend_closed_entry", {
+  if (!entry.version) throw cmeRepositoryError({ message: "cme_entry_conflict" });
+  const { data, error } = await supabase.rpc("cme_amend_closed_entry_v2", {
     p_owner_id: ownerId,
     p_entry_id: entry.id,
-    p_entry: { ...parsed.data, formalPeerReviewHours: entry.formalPeerReviewHours ?? 0 } as Json,
+    p_entry: {
+      ...parsed.data,
+      formalPeerReviewHours: entry.formalPeerReviewHours ?? 0,
+      expectedVersion: entry.version,
+    } as Json,
     p_reason: reason,
   });
+  if (error?.code === "PGRST202" || error?.code === "42883") throw cmeEntrySaveUnavailable();
   if (error) throw cmeRepositoryError(error);
   return joinedEntry(data as Record<string, unknown>);
 }

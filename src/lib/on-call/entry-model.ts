@@ -455,6 +455,8 @@ export const onCallEntrySchema = z
     includeOnCard: z.boolean().default(false),
     sortOrder: z.number().int().default(0),
     lastVerifiedAt: z.string().nullable().default(null),
+    /** Read-only raw PostgreSQL version; retain microseconds for conditional verification. */
+    updatedAt: z.string().datetime({ offset: true }).optional(),
     /**
      * Whether the signed-in reader owns this row, set by the server on read
      * and write responses — never stored, never accepted from a client (the
@@ -485,6 +487,41 @@ export function onCallEntryIsEditable(entry: Pick<OnCallEntry, "isOwn">): boolea
 }
 
 export type OnCallEntry = z.infer<typeof onCallEntrySchema>;
+
+/** Compare everything the person reviewed, independent of object-key order. */
+export function onCallEntryVerificationContentMatches(left: OnCallEntry, right: OnCallEntry): boolean {
+  const content = (entry: OnCallEntry) =>
+    JSON.stringify(
+      { ...onCallEntrySchema.parse(entry), lastVerifiedAt: null, updatedAt: null },
+      (_key, value: unknown) =>
+        value && typeof value === "object" && !Array.isArray(value)
+          ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)))
+          : value,
+    );
+  return content(left) === content(right);
+}
+
+/** Apply only a verification stamp for the exact content the person reviewed.
+ * Delayed responses must not restore edited/deleted content or move a newer
+ * verification backwards. */
+export function mergeOnCallEntryVerification(
+  current: OnCallEntry | undefined,
+  reviewed: OnCallEntry,
+  verified: OnCallEntry,
+): OnCallEntry | null {
+  if (
+    !current ||
+    !onCallEntryVerificationContentMatches(current, reviewed) ||
+    !onCallEntryVerificationContentMatches(verified, reviewed)
+  )
+    return null;
+  const stamp = verified.lastVerifiedAt === null ? NaN : Date.parse(verified.lastVerifiedAt);
+  if (!Number.isFinite(stamp)) return null;
+  const currentStamp = current.lastVerifiedAt === null ? NaN : Date.parse(current.lastVerifiedAt);
+  return Number.isFinite(currentStamp) && currentStamp >= stamp
+    ? current
+    : { ...current, lastVerifiedAt: verified.lastVerifiedAt, updatedAt: verified.updatedAt };
+}
 
 /**
  * The one fact an On Call surface may state about a document it links to: its

@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   assertExpectedRegistryProjectRef,
+  applyRegistryGovernancePlan,
   buildRegistryGovernancePlan,
   type RegistryGovernanceDocument,
   type RegistryGovernanceLabel,
@@ -148,6 +149,34 @@ describe("registry governance reconciliation", () => {
     expect(second.labelsToInsert).toEqual([]);
     expect(second.labelsToUpdate).toEqual([]);
     expect(second.labelIdsToDelete).toEqual([]);
+  });
+
+  it("preserves existing generated labels when registry replacement fails", async () => {
+    const projections = (["service", "form", "medication", "differential"] as RegistryCorpusKind[]).map(projection);
+    const documents = projections.map((value) => ({
+      ...documentFor(value),
+      metadata: value.requiredMetadata,
+      updated_at: "snapshot-A",
+    }));
+    let rows = projections.map((value) =>
+      label(value, value.kind === "service" ? { id: "old-service-intent", label: "old intent" } : {}),
+    );
+    const before = structuredClone(rows);
+    const plan = buildRegistryGovernancePlan({ projections, documents, labels: rows, expectedCounts });
+    const supabase = {
+      rpc: async () => ({ data: null, error: { message: "synthetic atomic replacement failure" } }),
+      from: () => ({
+        delete: () => ({
+          in: async (_column: string, ids: string[]) => {
+            rows = rows.filter((row) => !ids.includes(row.id));
+            return { error: null };
+          },
+        }),
+        upsert: async () => ({ error: { message: "synthetic replacement failure" } }),
+      }),
+    };
+    await expect(applyRegistryGovernancePlan(supabase as never, plan)).rejects.toThrow();
+    expect(rows).toEqual(before);
   });
 
   it("aborts before writing on missing, duplicate, or owner-mismatched projections", () => {

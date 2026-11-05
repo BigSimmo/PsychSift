@@ -42,7 +42,26 @@ export type CmeRequirement = {
 
 export type CmeAllocation = { readonly category: CmeCategory; readonly hours: number };
 
+/** Complete stored content a full-record editor must still be replacing. */
+export type CmeEntryVersion = {
+  readonly id: string;
+  readonly date: string;
+  readonly title: string;
+  readonly reflection: string;
+  readonly costCents: number | null;
+  readonly routineId: string | null;
+  readonly documentId: string | null;
+  readonly sourceUrl: string | null;
+  readonly buckets: readonly string[];
+  readonly formalPeerReviewHours: number;
+  readonly transcribed: boolean;
+  readonly archived: boolean;
+  readonly allocations: readonly CmeAllocation[];
+};
+
 export type CmeEntry = {
+  /** Present on stored entries; required when submitting a full edit or amendment. */
+  readonly version?: CmeEntryVersion;
   readonly archivedAt?: string | null;
   readonly evidenceCount?: number;
   /** Active certificates only; `undefined` when not counted (falls back to `evidenceCount`). */

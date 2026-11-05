@@ -133,7 +133,7 @@ describe("the CME API", () => {
     expect(repository).toMatch(/owner_id: ownerId/);
     expect(repository).toMatch(/\.from\("cme_allocations"\)[\s\S]*?\.insert\(/);
     expect(detail).toMatch(/saveCmeEntry\(/);
-    expect(repository).toMatch(/rpc\("cme_save_entry",\s*\{\s*p_owner_id: ownerId/);
+    expect(repository).toMatch(/rpc\("cme_save_entry_v2",\s*\{\s*p_owner_id: ownerId/);
     expect(repository).toMatch(/rpc\("cme_confirm_year",\s*\{\s*p_owner_id:\s*ownerId/);
   });
 });
@@ -166,7 +166,7 @@ describe("CME entry [id] route", () => {
     expect(detail).toMatch(/clearCmeEntryTranscribed\(/);
     expect(detail).toMatch(/Object\.keys\(rawBody as object\)\.length === 1/);
     expect(detail).toMatch(/saveCmeEntry\(/);
-    expect(repository).toMatch(/rpc\("cme_save_entry"/);
+    expect(repository).toMatch(/rpc\("cme_save_entry_v2"/);
   });
 });
 

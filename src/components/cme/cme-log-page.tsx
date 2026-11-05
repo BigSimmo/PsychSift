@@ -245,6 +245,9 @@ export function CmeLogPage({
   const categoryLabel = CATEGORY_OPTIONS.find((option) => option.value === categoryFilter)?.label ?? "All categories";
 
   async function patchCopied(id: string, transcribed: boolean) {
+    if (set.closedAt || !entriesById.get(id)?.date.startsWith(`${set.year}-`)) {
+      throw new Error("Open an unclosed year to change its copied status.");
+    }
     const response = await fetch(`/api/cme/entries/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -475,7 +478,11 @@ export function CmeLogPage({
                 {` not marked copied`}
                 <span className="sr-only">{` to ${cpdHome.name}`}</span>
               </span>
-              <span className="work-row__sub">{`Copy one, paste it into ${cpdHome.name}`}</span>
+              <span className="work-row__sub">
+                {set.closedAt
+                  ? `Copy into ${cpdHome.name}. This closed year's copied status stays unchanged.`
+                  : `Copy one, paste it into ${cpdHome.name}`}
+              </span>
             </span>
             <button
               type="button"

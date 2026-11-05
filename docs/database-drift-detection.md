@@ -13,12 +13,12 @@ application-owned object against `supabase/schema.sql`.
 
 Three committed artifacts:
 
-| Artifact                                                                             | Role                                                                                                                                                                                                                                                                                                  |
-| ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `supabase/migrations/20261021180000_schema_drift_snapshot_literal_safe_comments.sql` | `public.schema_drift_snapshot()` v2, latest definer — service-role-only RPC returning the normalized live inventory plus the migration-history probe (supersedes `20260818090000` and `20260706200000`; also declared in `supabase/schema.sql`; a test enforces byte parity with the latest definer). |
-| `supabase/drift-manifest.json`                                                       | The expected state: the same snapshot captured from a **from-scratch replay of `supabase/schema.sql`** into a disposable `supabase/postgres` Docker container (`npm run drift:manifest`). Embeds the sha256 of the schema.sql it came from.                                                           |
-| `supabase/drift-allowlist.json`                                                      | Known, documented divergence (each entry has a `reason`; `migration_history` entries also need a `guard`). Reported as warnings; anything not listed fails the check.                                                                                                                                 |
-| `supabase/search-health-unmonitored-indexes.json`                                    | The runtime index-monitoring ratchet: every repo-defined index on a retrieval-critical table that `search_schema_health()` does not monitor, with a reason and disposition (see below).                                                                                                               |
+| Artifact                                                                            | Role                                                                                                                                                                                                                                                                                                                    |
+| ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `supabase/migrations/20261105144240_audit_private_evidence_lifecycle_and_drift.sql` | `public.schema_drift_snapshot()` v2, latest definer — service-role-only RPC returning the normalized live inventory plus the migration-history probe (supersedes `20261021180000`, `20260818090000` and `20260706200000`; also declared in `supabase/schema.sql`; a test enforces byte parity with the latest definer). |
+| `supabase/drift-manifest.json`                                                      | The expected state: the same snapshot captured from a **from-scratch replay of `supabase/schema.sql`** into a disposable `supabase/postgres` Docker container (`npm run drift:manifest`). Embeds the sha256 of the schema.sql it came from.                                                                             |
+| `supabase/drift-allowlist.json`                                                     | Known, documented divergence (each entry has a `reason`; `migration_history` entries also need a `guard`). Reported as warnings; anything not listed fails the check.                                                                                                                                                   |
+| `supabase/search-health-unmonitored-indexes.json`                                   | The runtime index-monitoring ratchet: every repo-defined index on a retrieval-critical table that `search_schema_health()` does not monitor, with a reason and disposition (see below).                                                                                                                                 |
 
 `npm run check:drift` (needs live service-role env) verifies the project ref,
 fails fast if the manifest is stale, calls the RPC, diffs, applies the
@@ -33,9 +33,20 @@ md5 + sorted ACLs), indexes (normalized `pg_get_indexdef`), RLS policies
 RLS flags, reloptions, ACLs), constraints, triggers, views, extensions, and
 storage bucket rows + storage.objects policies.
 
+The additive `private_objects` category covers the explicitly named application schema
+`ingestion_generation_evidence`. Each entry has a schema-qualified `identity` and a
+`state`: schema/relation/function ownership and effective ACLs, column ACLs, scoped
+default privileges and postgres global defaults, columns/defaults, RLS/FORCE RLS,
+constraints and validation, index validity/readiness, trigger enabled state, policies,
+views/sequences, and private function definitions/configuration. Extension-owned objects
+and other schemas remain excluded. Private function hashes preserve the complete
+definition (only CRLF line endings are normalized), so quoted content is never stripped.
+An expected private object missing from an older live snapshot fails the comparison;
+regenerate the manifest through the normal replay route when adopting this inventory.
+
 ### Noise sources handled by design
 
-- **Whitespace/comments in function bodies** — `prosrc` is stored verbatim, so
+- **Whitespace/comments in public function bodies** — `prosrc` is stored verbatim, so
   migration text vs schema.sql text differ trivially; both are stripped before
   hashing (the same trick `20260701140631` used to validate byte-equivalence).
   Since `20261021180000` a `--` starts a line comment only where no `'...'` or `"..."`
@@ -65,7 +76,7 @@ What the check does **not** see — established offline on 2026-08-12 while
 answering `/issues` `#248` (the 20260705180000 search-health indexes that were
 missing on live despite an applied history):
 
-- **Invalid indexes read as healthy.** `schema_drift_snapshot()`
+- **Invalid public indexes read as healthy.** `schema_drift_snapshot()`
   (`20260706200000`) builds its index rows from `pg_index` via
   `pg_get_indexdef` + an md5 `def_hash`, and never reads `indisvalid` /
   `indisready`. An index left behind by a failed `CREATE INDEX CONCURRENTLY`

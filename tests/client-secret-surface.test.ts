@@ -179,4 +179,37 @@ describe("client environment isolation", () => {
       rmSync(fixtureRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     }
   });
+
+  it("scans the selected isolated build and fails closed on missing or invalid output", () => {
+    const scannerPath = join(ROOT, "scripts", "check-client-bundle-secrets.mjs");
+    const fixtureRoot = mkdtempSync(join(tmpdir(), "clinical-kb-isolated-bundle-"));
+    const distDir = ".next-playwright/delivery-test/dist";
+    const scan = (selected = distDir) =>
+      spawnSync(process.execPath, [scannerPath], {
+        cwd: fixtureRoot,
+        encoding: "utf8",
+        env: { ...process.env, NEXT_DIST_DIR: selected },
+      });
+    try {
+      // A clean default output must never hide a missing or unsafe selected output.
+      mkdirSync(join(fixtureRoot, ".next", "static"), { recursive: true });
+      expect(scan().status).toBe(1);
+      const staticRoot = join(fixtureRoot, distDir, "static");
+      mkdirSync(staticRoot, { recursive: true });
+      writeFileSync(join(staticRoot, "safe.js"), "console.log('safe');");
+      expect(scan().status).toBe(0);
+      writeFileSync(join(staticRoot, "unsafe.js"), "OPENAI_API_KEY");
+      const unsafe = scan();
+      expect(unsafe.status).toBe(1);
+      expect(unsafe.stderr).toContain(`${distDir}/static/unsafe.js`);
+      expect(scan("../elsewhere").status).toBe(1);
+      expect(scan(".next-playwright/test/../dist").status).toBe(1);
+      mkdirSync(join(fixtureRoot, "public"));
+      rmSync(join(staticRoot, "unsafe.js"));
+      writeFileSync(join(fixtureRoot, "public", "unsafe.txt"), "SUPABASE_SERVICE_ROLE_KEY");
+      expect(scan().status).toBe(1);
+    } finally {
+      rmSync(fixtureRoot, { recursive: true, force: true, maxRetries: 3, retryDelay: 50 });
+    }
+  });
 });

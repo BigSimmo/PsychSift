@@ -68,8 +68,18 @@ not listed either: the owner chose a backport without a suppression, so the
 scan keeps reporting it until Debian publishes a fixed version. Suppressed and
 remaining per-CVE diagnostics go to stderr in the CI log, the retained report
 stays unfiltered, and stdout keeps the strict aggregate scan records (with a
-`SUPPRESSED=` count). Pillow 12.3.0 in the Docling venv is also listed until
-Docling allows Pillow 13; that entry is an accepted risk, not a remediation.
+`SUPPRESSED=` count). Pillow 12.3.0 in the current Docling venv is also listed;
+the pinned Docling 2.139.0 dependency contract requires Pillow <13. Those entries
+are accepted risk, not remediation. A public registry metadata review on
+2026-11-05 confirmed that [Docling-slim 2.142.0](https://pypi.org/pypi/docling-slim/2.142.0/json)
+supports Pillow 13, while the inspected 2.140.0 and 2.141.0 releases still cap it
+below 13. This is an available upgrade candidate, not an installed fix: it also
+requires newer Docling core/parse packages, Python 3.11 lock regeneration, model
+artifact identity verification and real synthetic Docling/Tesseract acceptance.
+Do not override the current package contract, hand-edit hashes or renew an
+acceptance date to manufacture a clean report. The shadow child now receives an
+explicit environment and private temporary/home paths, but that is exposure
+reduction, not an OS sandbox or a fix for the underlying Pillow advisories.
 
 ## Pinned Debian sources
 

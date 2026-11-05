@@ -1,5 +1,7 @@
 "use client";
 
+import { OnCallEntrySessionBoundary } from "@/components/on-call/on-call-entry-session-boundary";
+
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -65,7 +67,7 @@ export type WeekSidePanel = (panel: {
   close: () => void;
 }) => ReactNode;
 
-export function TeachingWeekScreen({
+function TeachingWeekScreenSession({
   demoMode: serverDemoMode,
   sidePanel,
 }: {
@@ -356,5 +358,13 @@ function WeekBody({
         </>
       ) : null}
     </>
+  );
+}
+
+export function TeachingWeekScreen(props: Parameters<typeof TeachingWeekScreenSession>[0]) {
+  return (
+    <OnCallEntrySessionBoundary>
+      <TeachingWeekScreenSession {...props} />
+    </OnCallEntrySessionBoundary>
   );
 }

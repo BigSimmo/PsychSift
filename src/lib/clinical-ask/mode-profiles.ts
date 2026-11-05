@@ -133,3 +133,10 @@ export const clinicalAskModeProfiles = {
 export function clinicalAskModeProfile(mode: ClinicalAskModeId): ClinicalAskModeProfile {
   return clinicalAskModeProfiles[mode];
 }
+
+/** Public headings come from the trusted section vocabulary, never model prose. */
+export function clinicalAskSectionTitle(mode: ClinicalAskModeId, sectionId: string): string {
+  if (!clinicalAskModeProfile(mode).sectionOrder.includes(sectionId)) return "Evidence";
+  const label = sectionId.replaceAll("_", " ");
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}

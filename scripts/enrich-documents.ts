@@ -1,6 +1,12 @@
+import {
+  patchMaintenanceDocument,
+  replaceMaintenanceArtifacts,
+  assertLegacyMaintenanceSnapshot,
+  maintenanceMetadata,
+  type MaintenanceDocument,
+} from "@/lib/ingestion-maintenance";
 import { loadEnvConfig } from "@next/env";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Json } from "@/lib/supabase/database.types";
 import { createHash } from "node:crypto";
 import { type EnrichArgs, parseEnrichArgs } from "./lib/enrich-documents-args";
 import { findOwnerIdByEmail } from "./lib/find-owner-id-by-email";
@@ -18,7 +24,7 @@ async function loadAdminClient() {
 async function loadDocuments(supabase: SupabaseAdmin, args: EnrichArgs, ownerId?: string) {
   let query = supabase
     .from("documents")
-    .select("id,owner_id,title,file_name,source_path,status,metadata")
+    .select("id,owner_id,title,file_name,source_path,status,metadata,updated_at")
     .eq("status", "indexed")
     .order("created_at", { ascending: true })
     .limit(args.documentId ? 1 : Math.max(args.limit * 10, 1000));
@@ -115,7 +121,9 @@ async function loadDeepMemoryCoverage(supabase: SupabaseAdmin, documentIds: stri
   return coverage;
 }
 
-async function loadEvidence(supabase: SupabaseAdmin, documentId: string) {
+async function loadEvidence(supabase: SupabaseAdmin, document: MaintenanceDocument) {
+  const documentId = document.id;
+  const generation = maintenanceMetadata(document.metadata).index_generation_id;
   const chunks: Array<{
     id: string;
     document_id: string;
@@ -140,25 +148,33 @@ async function loadEvidence(supabase: SupabaseAdmin, documentId: string) {
   }> = [];
 
   for (let start = 0; ; start += 1000) {
-    const { data, error } = await supabase
+    let query = supabase
       .from("document_chunks")
       .select(
         "id,document_id,page_number,chunk_index,section_heading,section_path,anchor_id,content,image_ids,metadata",
       )
-      .eq("document_id", documentId)
-      .order("chunk_index", { ascending: true })
-      .range(start, start + 999);
+      .eq("document_id", documentId);
+    query =
+      typeof generation === "string"
+        ? query.eq("index_generation_id", generation)
+        : query.is("index_generation_id", null);
+    const { data, error } = await query.order("chunk_index", { ascending: true }).range(start, start + 999);
     if (error) throw new Error(error.message);
     chunks.push(...(data ?? []));
     if (!data || data.length < 1000) break;
   }
 
   for (let start = 0; ; start += 1000) {
-    const { data, error } = await supabase
+    let query = supabase
       .from("document_images")
       .select("id,page_number,caption,image_type,labels,source_kind,clinical_relevance_score,metadata")
       .eq("document_id", documentId)
-      .eq("searchable", true)
+      .eq("searchable", true);
+    query =
+      typeof generation === "string"
+        ? query.eq("index_generation_id", generation)
+        : query.is("index_generation_id", null);
+    const { data, error } = await query
       .order("clinical_relevance_score", { ascending: false })
       .range(start, start + 999);
     if (error) throw new Error(error.message);
@@ -222,7 +238,10 @@ function needsEnrichmentBackfill(args: {
   );
 }
 
-async function classifyExistingImages(supabase: SupabaseAdmin, documentId: string) {
+async function classifyExistingImages(supabase: SupabaseAdmin, document: MaintenanceDocument) {
+  const documentId = document.id;
+  const generation = maintenanceMetadata(document.metadata).index_generation_id;
+  const imagePatches: Array<Record<string, unknown>> = [];
   const [
     { env },
     {
@@ -236,13 +255,17 @@ async function classifyExistingImages(supabase: SupabaseAdmin, documentId: strin
     },
     { classifyAndCaptionImageFromBase64 },
   ] = await Promise.all([import("@/lib/env"), import("@/lib/image-filtering"), import("@/lib/openai")]);
-  const { data: images, error } = await supabase
+  let imageQuery = supabase
     .from("document_images")
     .select(
       "id,page_number,storage_path,mime_type,caption,bbox,width,height,source_kind,image_hash,image_type,searchable,clinical_relevance_score,skip_reason,labels,metadata",
     )
-    .eq("document_id", documentId)
-    .order("page_number", { ascending: true });
+    .eq("document_id", documentId);
+  imageQuery =
+    typeof generation === "string"
+      ? imageQuery.eq("index_generation_id", generation)
+      : imageQuery.is("index_generation_id", null);
+  const { data: images, error } = await imageQuery.order("page_number", { ascending: true });
 
   if (error) throw new Error(error.message);
 
@@ -260,11 +283,11 @@ async function classifyExistingImages(supabase: SupabaseAdmin, documentId: strin
 
     const download = await supabase.storage.from(env.SUPABASE_IMAGE_BUCKET).download(image.storage_path);
     if (download.error || !download.data) {
-      const { error: skipError } = await supabase
-        .from("document_images")
-        .update({ searchable: false, skip_reason: download.error?.message ?? "image unavailable in storage" })
-        .eq("id", image.id);
-      if (skipError) throw new Error(skipError.message);
+      imagePatches.push({
+        id: image.id,
+        searchable: false,
+        skip_reason: download.error?.message ?? "image unavailable in storage",
+      });
       skipped += 1;
       continue;
     }
@@ -288,17 +311,14 @@ async function classifyExistingImages(supabase: SupabaseAdmin, documentId: strin
     });
 
     if (cheapSkip) {
-      const { error: cheapSkipError } = await supabase
-        .from("document_images")
-        .update({
-          searchable: false,
-          skip_reason: cheapSkip,
-          image_hash: imageHash,
-          perceptual_hash: perceptualHash,
-          clinical_relevance_score: 0,
-        })
-        .eq("id", image.id);
-      if (cheapSkipError) throw new Error(cheapSkipError.message);
+      imagePatches.push({
+        id: image.id,
+        searchable: false,
+        skip_reason: cheapSkip,
+        image_hash: imageHash,
+        perceptual_hash: perceptualHash,
+        clinical_relevance_score: 0,
+      });
       skipped += 1;
       continue;
     }
@@ -374,41 +394,51 @@ async function classifyExistingImages(supabase: SupabaseAdmin, documentId: strin
       classification.image_type !== "logo_decorative";
     const nextSearchable = finalAssessment.searchable;
 
-    const { error: imageUpdateError } = await supabase
-      .from("document_images")
-      .update({
-        caption: classification.caption || image.caption,
-        image_type: classification.image_type,
-        searchable: nextSearchable,
-        clinical_relevance_score: nextSearchable ? finalAssessment.clinical_relevance_score : 0,
-        skip_reason: nextSearchable ? null : classifiedSkip,
-        image_hash: imageHash,
-        perceptual_hash: perceptualHash,
-        labels: classification.labels,
-        metadata: {
-          ...metadataRecord(image.metadata),
-          clinical_use_class: finalAssessment.clinical_use_class,
-          clinical_use_reason: finalAssessment.clinical_use_reason,
-          clinical_signal_score: finalAssessment.clinical_signal_score,
-          admin_signal_score: finalAssessment.admin_signal_score,
-          image_policy_version: clinicalImagePolicyVersion,
-          retained_for_audit: retainAsAuditTable || undefined,
-          retained_for_document_view: retainAsAuditTable || undefined,
-        },
-      })
-      .eq("id", image.id);
-    if (imageUpdateError) throw new Error(imageUpdateError.message);
+    imagePatches.push({
+      id: image.id,
+      caption: classification.caption || image.caption,
+      image_type: classification.image_type,
+      searchable: nextSearchable,
+      clinical_relevance_score: nextSearchable ? finalAssessment.clinical_relevance_score : 0,
+      skip_reason: nextSearchable ? null : classifiedSkip,
+      image_hash: imageHash,
+      perceptual_hash: perceptualHash,
+      labels: classification.labels,
+      metadata: {
+        clinical_use_class: finalAssessment.clinical_use_class,
+        clinical_use_reason: finalAssessment.clinical_use_reason,
+        clinical_signal_score: finalAssessment.clinical_signal_score,
+        admin_signal_score: finalAssessment.admin_signal_score,
+        image_policy_version: clinicalImagePolicyVersion,
+        retained_for_audit: retainAsAuditTable || undefined,
+        retained_for_document_view: retainAsAuditTable || undefined,
+      },
+    });
 
     if (!nextSearchable) skipped += 1;
     else searchable += 1;
   }
 
+  await replaceMaintenanceArtifacts({
+    supabase,
+    document,
+    operation: "images",
+    payload: {
+      image_patches: imagePatches,
+      image_count: searchable,
+      metadata_patch: {
+        searchable_image_count: searchable,
+        skipped_image_count: skipped,
+        image_enriched_at: new Date().toISOString(),
+      },
+    },
+  });
   return { searchable, skipped, total: images?.length ?? 0 };
 }
 
 async function stampExistingEnrichmentVersion(args: {
   supabase: SupabaseAdmin;
-  document: { id: string; metadata?: unknown };
+  document: MaintenanceDocument;
   coverage: { summary?: MetadataRow; labels: MetadataRow[] };
   ragEnrichmentVersion: string;
 }) {
@@ -419,28 +449,12 @@ async function stampExistingEnrichmentVersion(args: {
     version_stamped_at: stampedAt,
   };
 
-  const { error: documentError } = await args.supabase
-    .from("documents")
-    .update({ metadata: { ...metadataRecord(args.document.metadata), ...marker } })
-    .eq("id", args.document.id);
-  if (documentError) throw new Error(documentError.message);
-
-  if (args.coverage.summary) {
-    const { error: summaryError } = await args.supabase
-      .from("document_summaries")
-      .update({ metadata: { ...metadataRecord(args.coverage.summary.metadata), ...marker } })
-      .eq("document_id", args.document.id);
-    if (summaryError) throw new Error(summaryError.message);
-  }
-
-  for (const label of args.coverage.labels.filter((item) => item.source === "generated")) {
-    if (!label.id) continue;
-    const { error: labelError } = await args.supabase
-      .from("document_labels")
-      .update({ metadata: { ...metadataRecord(label.metadata), ...marker } })
-      .eq("id", label.id);
-    if (labelError) throw new Error(labelError.message);
-  }
+  await replaceMaintenanceArtifacts({
+    supabase: args.supabase,
+    document: args.document,
+    operation: "stamp",
+    payload: { metadata_patch: marker },
+  });
 }
 
 async function main() {
@@ -527,6 +541,7 @@ async function main() {
 
       while (attempts < maxAttempts && !success) {
         try {
+          assertLegacyMaintenanceSnapshot(document);
           if (args.mode === "metadata-stamp") {
             if (!documentCoverage?.summary || documentCoverage.labels.every((label) => label.source !== "generated")) {
               console.log(`SKIP cannot metadata-stamp missing enrichment: ${document.file_name}`);
@@ -543,27 +558,12 @@ async function main() {
             return;
           }
 
-          let imageMetadata = metadataRecord(document.metadata);
           let imageStats = { searchable: 0, skipped: 0, total: 0 };
           if (args.mode === "summaries-labels-images") {
-            imageStats = await classifyExistingImages(supabase, document.id);
-            imageMetadata = {
-              ...imageMetadata,
-              searchable_image_count: imageStats.searchable,
-              skipped_image_count: imageStats.skipped,
-              image_enriched_at: new Date().toISOString(),
-            };
-            const { error: imageCountError } = await supabase
-              .from("documents")
-              .update({
-                image_count: imageStats.searchable,
-                metadata: imageMetadata as Json,
-              })
-              .eq("id", document.id);
-            if (imageCountError) throw new Error(imageCountError.message);
+            imageStats = await classifyExistingImages(supabase, document);
           }
 
-          const evidence = await loadEvidence(supabase, document.id);
+          const evidence = await loadEvidence(supabase, document);
           if (evidence.chunks.length === 0) {
             console.log(`SKIP no chunks: ${document.file_name}`);
             return;
@@ -573,7 +573,7 @@ async function main() {
           if (args.mode === "summaries-labels-images") {
             const enrichment = await upsertDocumentEnrichment({
               supabase,
-              document: { ...document, metadata: imageMetadata },
+              document,
               chunks: evidence.chunks,
               images: evidence.images,
             });
@@ -590,31 +590,16 @@ async function main() {
           }
           const deepMemory = await upsertDocumentDeepMemory({
             supabase,
-            document: { ...document, metadata: imageMetadata },
+            document,
             chunks: evidence.chunks as unknown as Parameters<typeof upsertDocumentDeepMemory>[0]["chunks"],
             images: evidence.images as unknown as Parameters<typeof upsertDocumentDeepMemory>[0]["images"],
             summary: enrichmentSummary,
           });
-          // A failed read would leave latestMetadata empty, and the write below would then replace
-          // the document's whole metadata with only the status fields.
-          const { data: latestDoc, error: latestDocError } = await supabase
-            .from("documents")
-            .select("metadata")
-            .eq("id", document.id)
-            .single();
-          if (latestDocError) throw new Error(latestDocError.message);
-          const latestMetadata = metadataRecord(latestDoc?.metadata);
-          const { error: statusError } = await supabase
-            .from("documents")
-            .update({
-              metadata: {
-                ...latestMetadata,
-                enrichment_status: "completed",
-                enrichment_error: null,
-              },
-            })
-            .eq("id", document.id);
-          if (statusError) throw new Error(statusError.message);
+          await patchMaintenanceDocument({
+            supabase,
+            document,
+            patch: { enrichment_status: "completed", enrichment_error: null },
+          });
 
           completed += 1;
           console.log(

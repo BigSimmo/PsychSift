@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { CmeAnnualSummary } from "@/components/cme/cme-annual-summary";
 import { CmeEntryRouteClient } from "@/components/cme/cme-entry-route-client";
+import { cmeEntryVersion } from "@/lib/cme/entry-version";
 import { CmeYearEndActions } from "@/components/cme/cme-year-close-panel";
 import { createAustralianRanzcpPreset } from "@/lib/cme/presets";
 import type { CmeEntry, CmeYearClose } from "@/lib/cme/types";
@@ -208,7 +209,8 @@ describe("amending an activity in a closed year", () => {
   it("requires a reason and sends it with the complete record", async () => {
     const user = userEvent.setup();
     const fetcher = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ entry })));
-    render(<CmeEntryRouteClient entry={entry} set={closedSet} edit demoMode={false} />);
+    const loadedEntry = { ...entry, version: cmeEntryVersion(entry) };
+    render(<CmeEntryRouteClient entry={loadedEntry} set={closedSet} edit demoMode={false} />);
     expect(screen.getByRole("heading", { name: "Amend activity" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Record amendment" }));
     expect(fetcher).not.toHaveBeenCalled();
@@ -219,6 +221,7 @@ describe("amending an activity in a closed year", () => {
     expect(fetcher).toHaveBeenCalledTimes(1);
     const body = JSON.parse(String(fetcher.mock.calls[0]![1]?.body));
     expect(body).toMatchObject({ amendmentReason: "Certificate shows 4 hours", title: entry.title, date: entry.date });
+    expect(body.expectedVersion).toEqual(loadedEntry.version);
     expect(fetcher.mock.calls[0]![1]).toMatchObject({ method: "PATCH" });
   });
 

@@ -506,6 +506,20 @@ duration of the docling run (up to 120 s) before the final metadata merge and
 `complete_ingestion_job`. So the effect is on queue drain rate and on `jobs_processing` /
 `jobs_pending`, which is why §3.6 watches those and not answer latency.
 
+**Child-process environment (source contract, 2026-11-05).** The shadow parser inherits an
+explicit runtime allowlist, rather than the worker's full environment. Credentials, proxy
+configuration and interpreter-injection variables are excluded. Each run gets private home,
+temporary and default cache directories; its existing cleanup removes that generated run root
+after success, failure or timeout. Model/cache paths remain shared only when they are inside
+the explicitly configured `DOCLING_ARTIFACTS_PATH`; those artifact paths are never deleted by
+cleanup. HF/Transformers/dataset offline flags are forced even if the worker's ambient flags
+are `0`. This reduces credential exposure and incidental downloads; it is **not an OS network
+or filesystem sandbox**, and does not remediate the accepted Pillow advisories. Local tests use
+real stand-in child processes to verify environment/cleanup wiring; they do not substitute for
+the image's real model-backed Docling/Tesseract control or the preconditions below. A custom
+model cache outside the artifact tree needs a reviewed artifact layout before relying on it;
+the runner will use its private cache instead and will not delete that external cache.
+
 ### 3.2 Preconditions before enabling
 
 1. **The running image must be built from `main` at or after PR #2170 (`5437c309f`).** That

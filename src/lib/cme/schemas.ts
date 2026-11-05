@@ -46,6 +46,22 @@ const entryFields = z.object({
 const validCredit = (entry: { formalPeerReviewHours: number; allocations: { category: string; hours: number }[] }) =>
   entry.formalPeerReviewHours <=
   entry.allocations.filter((a) => a.category === "reviewing").reduce((sum, a) => sum + a.hours, 0);
+// A stored-content token must preserve exact strings rather than normalising edited input.
+export const cmeEntryVersionSchema = z.object({
+  id: z.string().uuid(),
+  date: cmeDateSchema,
+  title: z.string().max(200),
+  reflection: z.string().max(2000),
+  costCents: z.number().int().nonnegative().max(2147483647).nullable(),
+  routineId: z.string().uuid().nullable(),
+  documentId: z.string().uuid().nullable(),
+  sourceUrl: z.string().max(2000).nullable(),
+  buckets: z.array(z.string().max(80)).max(8),
+  formalPeerReviewHours: z.number().nonnegative().max(24),
+  transcribed: z.boolean(),
+  archived: z.boolean(),
+  allocations: z.array(cmeAllocationSchema).max(3),
+});
 export const cmeEntryCreateSchema = entryFields
   .extend({
     requestId: z.string().uuid().optional(),
@@ -58,7 +74,12 @@ export const cmeEntryCreateSchema = entryFields
 // A complete replace prevents omitted fields from silently erasing prior records.
 export const cmeEntryUpdateSchema = entryFields
   .required()
-  .extend({ formalPeerReviewHours: z.number().nonnegative().max(24), sourceUrl: entryFields.shape.sourceUrl })
+  .extend({
+    formalPeerReviewHours: z.number().nonnegative().max(24),
+    sourceUrl: entryFields.shape.sourceUrl,
+    // Missing versions receive the repository's reload conflict, including older clients.
+    expectedVersion: cmeEntryVersionSchema.optional(),
+  })
   .refine(validCredit, "Formal peer review credit cannot exceed reviewing hours.");
 export const cmeListQuerySchema = z.object({ year: z.coerce.number().int().min(2000).max(2100).optional() });
 const hours = z.number().positive().max(500);
@@ -145,5 +166,6 @@ export const cmeEntryAmendSchema = entryFields
     // Required (null when there is none): an amendment states the whole record.
     sourceUrl: entryFields.shape.sourceUrl.unwrap(),
     amendmentReason: z.string().trim().min(3).max(1000),
+    expectedVersion: cmeEntryVersionSchema.optional(),
   })
   .refine(validCredit, "Formal peer review credit cannot exceed reviewing hours.");

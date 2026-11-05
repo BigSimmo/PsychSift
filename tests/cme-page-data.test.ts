@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   server: vi.fn(),
   admin: vi.fn(),
   year: vi.fn(),
+  years: vi.fn(),
   entries: vi.fn(),
   entry: vi.fn(),
   routines: vi.fn(),
@@ -29,6 +30,7 @@ vi.mock("@/lib/cme/plan-goals-repository", () => ({
 }));
 vi.mock("@/lib/cme/repository", () => ({
   fetchOwnerCmeYear: mocks.year,
+  fetchOwnerCmeYears: mocks.years,
   fetchOwnerCmeEntries: mocks.entries,
   fetchOwnerCmeEntry: mocks.entry,
   fetchOwnerCmeRoutines: mocks.routines,
@@ -44,6 +46,7 @@ beforeEach(() => {
     auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: "owner" } }, error: null }) },
   });
   mocks.year.mockResolvedValue(null);
+  mocks.years.mockResolvedValue([]);
   mocks.entries.mockResolvedValue([]);
   mocks.routines.mockResolvedValue([]);
   mocks.entry.mockResolvedValue(null);
@@ -259,5 +262,61 @@ describe("local demo carry preview", () => {
     expect(cmeDemoCarryPreview("resume")).toBe("resume");
     expect(cmeDemoCarryPreview("approve")).toBeNull();
     expect(cmeDemoCarryPreview(["confirm"])).toBeNull();
+  });
+});
+
+describe("cross-year CPD record reads", () => {
+  it("bounds concurrent years while preserving every entry across the supported calendar", async () => {
+    const years = Array.from({ length: 101 }, (_, index) => ({ id: `year-${2000 + index}`, year: 2000 + index }));
+    mocks.years.mockResolvedValue(years);
+    mocks.year.mockResolvedValue({ id: "year-2026", ...createAustralianRanzcpPreset(2026, "2026-01-02") });
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let active = 0;
+    let maximum = 0;
+    mocks.entries.mockImplementation(async (_admin, _owner, id) => {
+      if (id !== "year-2026") {
+        active += 1;
+        maximum = Math.max(maximum, active);
+        try {
+          await gate;
+        } finally {
+          active -= 1;
+        }
+      }
+      return [
+        { id: `entry-${id}`, date: `${id.slice(5)}-03-01`, title: "Synthetic activity", allocations: [], buckets: [] },
+      ];
+    });
+    const loading = loadCmePageData(2026, { allYears: true });
+    try {
+      await vi.waitFor(() => expect(mocks.entries.mock.calls.length).toBeGreaterThanOrEqual(5));
+      expect(maximum).toBeLessThanOrEqual(4);
+    } finally {
+      release();
+      const data = await loading;
+      expect(data.allYearsFailed).toBe(false);
+      expect(data.allEntries).toHaveLength(101);
+      expect(new Set(data.allEntries?.map((entry) => entry.id)).size).toBe(101);
+      expect(mocks.entries).toHaveBeenCalledTimes(101);
+      expect(mocks.entries.mock.calls.every((call) => call[1] === "owner")).toBe(true);
+    }
+  });
+
+  it("does not return a partial cross-year record when one year fails", async () => {
+    mocks.year.mockResolvedValue({ id: "year-2026", ...createAustralianRanzcpPreset(2026, "2026-01-02") });
+    mocks.years.mockResolvedValue([
+      { id: "year-2026", year: 2026 },
+      { id: "year-2025", year: 2025 },
+    ]);
+    mocks.entries.mockImplementation(async (_admin, _owner, id) => {
+      if (id === "year-2025") throw new Error("synthetic missing year");
+      return [];
+    });
+    const data = await loadCmePageData(2026, { allYears: true });
+    expect(data.allYearsFailed).toBe(true);
+    expect(data.allEntries).toBeUndefined();
   });
 });

@@ -1,5 +1,8 @@
 "use client";
 
+import { OnCallEntrySessionBoundary } from "@/components/on-call/on-call-entry-session-boundary";
+import { peekOnCallEntrySessionEpoch } from "@/lib/on-call/entry-cache-keys";
+
 import { currentCover } from "@/lib/on-call/service-availability";
 import { useHospitalClock } from "@/components/on-call/use-hospital-clock";
 import { ListChecks, Phone, Plus, Shield } from "lucide-react";
@@ -46,7 +49,7 @@ import { RosterWhosOnEntryLink } from "@/components/on-call/roster-whos-on/roste
 import { NewWorkModeOnly, useNewWorkMode } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { onCallDetailsSchemaFor, type OnCallEntry } from "@/lib/on-call/entry-model";
 import { searchOnCallEntries } from "@/lib/on-call/entry-search";
-import { cacheOnCallEntries, useOnCallEntries } from "@/lib/on-call/entry-store";
+import { updateCachedOnCallEntries, useOnCallEntries } from "@/lib/on-call/entry-store";
 import { pinnedEmergencyEntries, type HandbookItem } from "@/lib/on-call/handbook-items";
 import { searchHandbookItems } from "@/lib/on-call/handbook-search";
 import { msUntilOnCallPeriodChange, resolveOnCallNumber, type HandbookDial } from "@/lib/on-call/number-resolver";
@@ -275,12 +278,13 @@ function MineCallRow({
  * hospital's numbers are not on screen. The call log and handover builder
  * live in Now's "Log a call" sheet; the old link to them is sent on there.
  */
-export function OnCallCallPage() {
+function OnCallCallPageSession() {
   const { zone } = useWorkTimeZone();
   const router = useRouter();
   const account = useOptionalAccountData();
   const handbook = useHospitalHandbook();
   const hospitalNow = useHospitalClock();
+  const sessionEpoch = peekOnCallEntrySessionEpoch();
   const entries = useOnCallEntries();
   const hospitalPhone = useOnCallHospitalPhone();
   const [query, setQuery] = useState("");
@@ -661,14 +665,25 @@ export function OnCallCallPage() {
           section="contacts"
           entry={null}
           onSaved={(saved) =>
-            cacheOnCallEntries(
-              entries.entries.some((existing) => existing.id === saved.id)
-                ? entries.entries.map((existing) => (existing.id === saved.id ? saved : existing))
-                : [...entries.entries, saved],
+            updateCachedOnCallEntries(
+              entries.entries,
+              (current) =>
+                current.some((existing) => existing.id === saved.id)
+                  ? current.map((existing) => (existing.id === saved.id ? saved : existing))
+                  : [...current, saved],
+              sessionEpoch,
             )
           }
         />
       ) : null}
     </OnCallHubPageFrame>
+  );
+}
+
+export function OnCallCallPage() {
+  return (
+    <OnCallEntrySessionBoundary>
+      <OnCallCallPageSession />
+    </OnCallEntrySessionBoundary>
   );
 }

@@ -7,7 +7,7 @@ import { announce } from "@/components/ui/live-announcer";
 import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
 import type { AnswerFeedbackType } from "@/lib/answer-feedback";
 import type { ClinicalAskFeedbackMetadata, ClinicalAskResponse } from "@/lib/clinical-ask/contracts";
-import { clinicalAskModeProfile } from "@/lib/clinical-ask/mode-profiles";
+import { clinicalAskModeProfile, clinicalAskSectionTitle } from "@/lib/clinical-ask/mode-profiles";
 
 const verificationReminder = "Clinician Confirmation is required for clinically material suggestions.";
 const clinicalAskFeedbackChoices: ReadonlyArray<{ value: AnswerFeedbackType; label: string }> = [
@@ -34,7 +34,11 @@ export function clinicalAskExportText(
     question ? `Question: ${question}` : null,
     "",
     response.lead.text,
-    ...response.sections.flatMap((section) => ["", section.title, ...section.claims.map((claim) => claim.text)]),
+    ...response.sections.flatMap((section) => [
+      "",
+      clinicalAskSectionTitle(response.mode, section.id),
+      ...section.claims.map((claim) => claim.text),
+    ]),
     "",
     "Caveats and missing information",
     ...(response.missingInformation.length ? response.missingInformation : ["None stated."]),
@@ -210,7 +214,7 @@ export function ClinicalAskAnswerSurface({
       </header>
       {response.sections.map((section) => (
         <section key={section.id}>
-          <h3>{section.title}</h3>
+          <h3>{clinicalAskSectionTitle(response.mode, section.id)}</h3>
           {section.claims.map((claim) => (
             <p key={claim.id}>{claim.text}</p>
           ))}
