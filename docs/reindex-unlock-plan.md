@@ -6,6 +6,30 @@ The same isolated task and branch continue from local checkpoint
 `839c1e3c2ac8c1b3c978135679e357996fa59651`. The original imported head and bundle
 verification below remain valid. Existing main-checkout changes are preserved.
 
+**Saved local state and remaining packaging gate.** The implementation is committed as
+`77600e01ee952882b7ac810d50e4cd91e4198b42`; normal merge
+`f84f7be04f91f57c94235738249b70dc7bed5a27` preserves main through
+`a64d237eaed20c046d49a75cae000355c8a5dd8e`, including its document-handoff and
+dependency-policy changes. The sole conflict was the generated repository-awareness date;
+regeneration resolved it. The final full typecheck, scoped test lint, owned-path formatting,
+documentation pipeline and enabled commit hooks pass. The pipeline reports existing decision
+warnings; it does not supply owner approvals.
+
+The normal offline Next build was attempted with the repository's provider-scrubbed
+environment and all default build guards. It reached webpack, then an external task-owned
+monitor stopped its process tree after free committed memory fell below 1.25 GiB (observed
+1,279,396 KiB). No compiler failure was reported before termination. This app build is
+**incomplete**, not passing; the worker bundle is separately passing. No pagefile, shared
+process, runtime guard or CI setting was changed. Hosted app packaging remains required.
+
+At 03:15 UTC on 5 November, exact-service Railway metadata still shows `c92e78113a` as
+the latest successful app and worker deployment. More recent `a64d237eae` attempts were
+`SKIPPED`; those do not prove deployment. The worker's `WORKER_PAUSED=true` was freshly
+confirmed read-only. PR #3890 remains the unchanged draft transfer, not this implementation.
+No implementation push, hosted CI result, production migration, deployment or model activation
+is claimed. Preparing an implementation PR must account for automatic Supabase preview
+compute and any GitHub Actions charges separately from the approved OpenAI comparison.
+
 **Implemented and checked locally.** Source-anchored summaries now have an immutable
 candidate request, exact guarded SDK-body authorization, observed provider identity,
 generation-specific retained projection, and atomic pointer/summary/generated-label/job
