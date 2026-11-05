@@ -840,7 +840,50 @@ function verbatimTokens(value: string) {
 // lithium clearance and therefore increase lithium levels and the risk of toxicity"). The match must
 // start and end at a source sentence or list-item boundary, so a claim that drops a leading "do not",
 // a leading condition or a trailing qualifier never matches.
+// A completed correction sentence can govern the next recommendation even though
+// punctuation makes it look like an independent verbatim match. Remove only that
+// bounded passage from proof; unrelated discussion of withdrawal remains usable.
+function withoutWithdrawnRecommendation(text: string) {
+  const parts = text.split(/((?<=[.!?])\s+|\n\s*\n)/);
+  let withdrawNext = false;
+  const governsNext = (text: string) =>
+    !/\b(?:not|never)\s+(?:been\s+)?(?:withdrawn|retracted|superseded)\b/i.test(text) &&
+    /\b(?:following|next)\s+(?:recommendation|instruction|advice|statement)\b[^.!?]*\b(?:withdrawn|retracted|superseded)\b/i.test(
+      text,
+    );
+  return parts
+    .map((part, index) => {
+      if (index % 2 !== 0) return part;
+      if (governsNext(part)) {
+        withdrawNext = true;
+        return "";
+      }
+      if (!withdrawNext) return part;
+      // A pure list marker does not consume the withdrawn recommendation.
+      if (!/^\s*(?:\d+[.)]|[a-z][.)]|[•*-])?\s*$/i.test(part)) withdrawNext = false;
+      return "";
+    })
+    .join("");
+}
+
+export function claimProofWithoutGeneratedNarrative(source: SearchResult): SearchResult {
+  return {
+    ...source,
+    content: withoutWithdrawnRecommendation(source.content ?? ""),
+    adjacent_context:
+      source.adjacent_context == null
+        ? source.adjacent_context
+        : withoutWithdrawnRecommendation(source.adjacent_context),
+    retrieval_synopsis: undefined,
+    index_unit: undefined,
+    memory_cards: [],
+  };
+}
 export function claimRestatesSourceVerbatim(claim: string, source: SearchResult) {
+  return claimRestatesFilteredProof(claim, claimProofWithoutGeneratedNarrative(source));
+}
+
+function claimRestatesFilteredProof(claim: string, source: SearchResult) {
   const wanted = verbatimTokens(claim).filter((token) => token !== "|");
   if (wanted.length < 6) return false;
   const blocks = reflowBoundedSourceLines(source.content ?? "", { requireContinuationStart: true });
@@ -864,7 +907,8 @@ export function claimRestatesSourceVerbatim(claim: string, source: SearchResult)
 }
 
 function sourceSupportsClaim(claim: string, source: SearchResult, allowValueOnly = false) {
-  if (claimRestatesSourceVerbatim(claim, source)) return true;
+  source = claimProofWithoutGeneratedNarrative(source);
+  if (claimRestatesFilteredProof(claim, source)) return true;
   return sourceEvidenceClaimSegmentGroups(source, claim).some((group) =>
     group.some(({ evidence, passage, antecedent }, index) => {
       // S1c R3: lend only the immediately adjacent segments' topic tokens, and only

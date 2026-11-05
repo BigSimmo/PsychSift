@@ -70,6 +70,45 @@ local OCR runtime, the two affected rich/native terminal suites plus migration-i
 suite pass 21 tests; all 20 renderer Python tests pass after the portability correction.
 The first CI run has settled failed; the corrected candidate still needs fresh hosted results.
 
+The second hosted run at `62590651aa` passes app/browser builds, migration replay,
+ingestion SAST, safety/config checks, Lighthouse and container build/runtime verification.
+Its remaining failures are the tenancy guard and that guard's unit assertions: the
+intermediate query builder hid the predicate from the required per-chain analysis. Local
+commit `378f6fc4e3` puts both branches' predicates on their own query chains. Both tenancy
+phases, the two tenancy suites (68 tests), and privacy/readmission suites (191 tests) pass.
+There is no tenancy exemption or guard change.
+
+**Bounded source-trust follow-through.** A parallel audit supplied two saved synthetic helper
+cases; all six saved source/dependency hashes match this worktree. Reusing those probes,
+actual offline legacy-finalizer regressions reproduced a withdrawn following recommendation
+and a generated-index-only assertion/exact quote as grounded, high-confidence output at
+`378f6fc4e3`. The local repair excludes generated index/synopsis/memory narratives from direct
+claim proof and exact-quote matching, and suppresses the explicitly withdrawn following
+recommendation in both verbatim and semantic paths. A numbered-list bypass was separately
+reproduced and corrected; original separators, negated withdrawal and later independent
+recommendations are preserved. Independent review also reproduced a withdrawn exact-quote
+card beside a safe grounded lead, and the same bypass through duplicated adjacent context.
+Quote matching now reuses the bounded filtered proof for both raw text fields. The final
+composed regressions plus existing claim-support and extractive-formatting suites pass
+470 tests, including actual unsafe answer/section/quote removal and short original quotes.
+Independent technical re-review reran both decisive quote variants and found no residual
+high-confidence P1/P2 in this bounded repair. No provider call or new broad audit was used.
+
+The hazard-control gate correctly detected this changed control. After technical re-review,
+the static evidence seal was refreshed: only the claim-support content digest changed; all
+review dates, states, residual risks, roles and approvals were verified unchanged. The
+development hazard-control check passes with `release-ready=false`. This records engineering
+evidence, not clinical sign-off. A parent typecheck whose inputs changed during the added
+regressions was stopped; the final committed candidate still requires its fresh guarded
+typecheck rather than reusing that interrupted run.
+
+This is a bounded repair, not universal original-passage certification: existing structured
+table/image evidence remains eligible under its current architecture. Other withdrawal
+phrasings, adaptive delivery, browser presentation and live answer behavior remain unverified.
+Provider-backed behavioral evaluation/canary, applicable clinical review, specific production
+approval and owner manual merge remain separate gates. The completed synthetic model
+comparison is component evidence; it is not end-to-end acceptance for this newer finalizer.
+
 **Implemented and checked locally.** Source-anchored summaries now have an immutable
 candidate request, exact guarded SDK-body authorization, observed provider identity,
 generation-specific retained projection, and atomic pointer/summary/generated-label/job
