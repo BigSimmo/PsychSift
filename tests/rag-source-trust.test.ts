@@ -158,6 +158,74 @@ it("withholds nested items of a withdrawn list recommendation until the next sib
   expect(content).not.toContain(nested);
   expect(content).toContain("2) " + sibling);
 });
+it.each([
+  { name: "punctuated parent and two punctuated children", parent: "1) Treat synthetic state.", secondPrefix: "   - " },
+  { name: "colon parent and two punctuated children", parent: "1) Treat synthetic state:", secondPrefix: "   - " },
+  { name: "indented prose continuing a punctuated child", parent: "1) Treat synthetic state:", secondPrefix: "     " },
+])("withholds $name through support, quotes and finalization", ({ parent, secondPrefix }) => {
+  const first = "The synthetic blue marker always requires a second review before completion.";
+  const sibling = "The independent synthetic action B should continue during the scheduled review.";
+  const s = source(
+    "punctuated-nested-list",
+    "The following recommendation is withdrawn.\n" +
+      parent +
+      "\n   - " +
+      first +
+      "\n" +
+      secondPrefix +
+      claim +
+      "\n2) " +
+      sibling,
+  );
+  const withdrawnCards = sanitizeQuoteCards([{ chunk_id: s.id, quote: claim }], [s]);
+  const siblingCards = sanitizeQuoteCards([{ chunk_id: s.id, quote: sibling }], [s]);
+  const withdrawnFinal = finalizeRagAnswerQuality(
+    { ...answer(claim, [s]), quoteCards: withdrawnCards },
+    "What review does synthetic procedure Z require?",
+    "broad_summary",
+  );
+  const siblingFinal = finalizeRagAnswerQuality(
+    { ...answer(sibling, [s]), quoteCards: siblingCards },
+    "What independent synthetic action should continue?",
+    "broad_summary",
+  );
+  expect({
+    firstDirect: sourceDirectlySupportsAnswerText(first, s),
+    withdrawnDirect: sourceDirectlySupportsAnswerText(claim, s),
+    withdrawnQuotes: withdrawnCards.map((card) => card.quote),
+    withdrawnFinalGrounded: withdrawnFinal.grounded,
+    withdrawnFinalQuotes: (withdrawnFinal.quoteCards ?? []).map((card) => card.quote),
+    siblingDirect: sourceDirectlySupportsAnswerText(sibling, s),
+    siblingFinalGrounded: siblingFinal.grounded,
+    siblingFinalQuotes: (siblingFinal.quoteCards ?? []).map((card) => card.quote),
+  }).toEqual({
+    firstDirect: false,
+    withdrawnDirect: false,
+    withdrawnQuotes: [],
+    withdrawnFinalGrounded: false,
+    withdrawnFinalQuotes: [],
+    siblingDirect: true,
+    siblingFinalGrounded: true,
+    siblingFinalQuotes: [sibling],
+  });
+});
+it("ends a withdrawn nested recommendation at a blank line before independent prose", () => {
+  const independent = "The independent synthetic action B should continue during the scheduled review.";
+  const s = source(
+    "nested-blank-boundary",
+    "The following recommendation is withdrawn.\n1) Treat synthetic state:\n   - " + claim + "\n\n" + independent,
+  );
+  expect(sanitizeQuoteCards([{ chunk_id: s.id, quote: claim }], [s])).toEqual([]);
+  expect(sourceDirectlySupportsAnswerText(claim, s)).toBe(false);
+  expect(sourceDirectlySupportsAnswerText(independent, s)).toBe(true);
+  expect(
+    finalizeRagAnswerQuality(
+      answer(independent, [s]),
+      "What independent synthetic action should continue?",
+      "broad_summary",
+    ).grounded,
+  ).toBe(true);
+});
 it("retains a complete independent numbered recommendation through support and finalization", () => {
   // The terse `2) Continue ...` fixture above is not independently recognized by
   // the existing directive matcher. Use a complete normative sentence here.

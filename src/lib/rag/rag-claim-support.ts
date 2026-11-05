@@ -869,10 +869,15 @@ function withoutWithdrawnRecommendation(text: string) {
         withdrawnIndent = null;
         return "";
       }
-      const item = part.match(listItem);
+      const separator = parts[index - 1] ?? "";
+      // A sentence separator can consume the next source line's indentation.
+      // Reconstruct it for scope checks without changing the retained source text.
+      const lineBreak = separator.lastIndexOf("\n");
+      const sourceLinePart = (lineBreak < 0 ? "" : separator.slice(lineBreak + 1)) + part;
+      const item = sourceLinePart.match(listItem);
       if (!withdrawNext && withdrawnIndent !== null) {
-        const separator = parts[index - 1] ?? "";
-        const nested = item ? item[1].length > withdrawnIndent : !/\n/.test(separator);
+        const indent = sourceLinePart.match(/^[ \t]*/)?.[0].length ?? 0;
+        const nested = item ? item[1].length > withdrawnIndent : !/\n/.test(separator) || indent > withdrawnIndent;
         if (nested && !/\n\s*\n/.test(separator)) return "";
         withdrawnIndent = null;
       }

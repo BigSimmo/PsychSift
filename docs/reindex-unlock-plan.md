@@ -1,5 +1,51 @@
 # Ingestion unlock and controlled rollout
 
+## 6 November 2026 local continuation — approved source validation and cloud reconciliation
+
+The latest transfer PR #3890 at `745bb467ca39a05598cf3636fedf6ca40649784f` was read.
+Its handoff adds no new RAG bundle beyond the already verified additive import. The
+implementation worktree fast-forwarded to cloud follow-up
+`2626b4a4db1a4ce426b703411eb8de09f7e0cf19`, preserving both reconciled histories and
+the original checkout's unpublished changes. The follow-up confines fresh-inspection
+cleanup to producer-owned paths under the artifact root and preserves the default
+indexing model when its environment value is blank.
+
+The owner's direct approval now covers the prepared exact two-page figure review
+record, including its local reviewer-reference and confirmation-time convention,
+for offline structural validation. The actual private PDF passed the real fresh
+inspector and strict review validator: two pages, two tables and no diagrams, with
+exact source and canonical-review bindings. Fresh inspection files were cleaned;
+the original PDF and review pack remain private. This is structural evidence, not
+reviewer authentication, clinical acceptance or a live source-policy grant. The
+two sources with irregular merged-table relationships remain held.
+
+Independent follow-up found a remaining withdrawn-list defect: sentence splitting
+consumed a following line's indentation, allowing later nested content to support
+an answer. Three composed regressions failed before the correction. Scope checks
+now reconstruct that source indentation without changing retained text; nested
+bullets and prose stay withheld while independent siblings and blank-line boundaries
+remain usable. Independent technical review found no blocking issue. Only this
+helper's static evidence digest is refreshed; human review dates, risk states and
+assurance decisions remain unchanged. Fresh verification passes seven affected
+suites / 585 tests, source typecheck, scoped lint, strict hazard controls, both
+owner-scope phases, documentation maintenance, formatting and diff checks. The
+unchanged authoritative SQL replay and prior renderer/runtime evidence are reused.
+
+Cloud run `42061052713` at `2626b4a4db1a4ce426b703411eb8de09f7e0cf19` passed
+Lighthouse, both application builds, container verification, migration replay and
+unit partition 1. Static checks and six unit assertions failed because that cloud
+helper change lacked its updated evidence digest. Browser jobs were consequently
+skipped. The earlier Lighthouse failure remains historical; no baseline or budget
+was changed and no duplicate local performance build was run. The corrected final
+head still requires its own hosted checks.
+
+The completed paid comparison remains `accepted: false`; no new paid generation,
+model activation, production migration or deployment is implied. Production merge
+requires the owner's own specific SQL approval and manual Merge after applicable
+gates. Worker resume, readmission (which queues work), re-indexing and ingestion
+remain held. The existing US$5 hosted-verification ceiling and exact-new-preview
+cleanup obligation continue to apply.
+
 ## 5 November 2026 local follow-up import — verified additive bundle
 
 Latest transfer PR #3890 at `4522d9206326f22f76daca38cad9d42031cc8a54` was read locally.
