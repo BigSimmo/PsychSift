@@ -1,5 +1,34 @@
 # Ingestion unlock and controlled rollout
 
+## 5 November 2026 local reintegration — compatible cloud repair preserved
+
+The local push stopped safely when the remote feature branch advanced to
+`f7459705d562f32a9f90ba35543b79d133292aef`; it did not overwrite that repair. Normal merge
+`b5cc8bdfa5a47da24f8362478979180e3f5f8480` preserves both that cloud commit and the local
+source-trust repair through `fbdc4bb592a3f20474ec30ec5c5cd17fa81b421f`. The single route
+conflict keeps the sanctioned owner/shared query scope and the additional owner-only
+conjunct for ordinary requests. No other writer's commits or original dirty work were removed.
+
+Fresh local integration verification passes eleven suites / 351 tests, including actual SDK
+serialization for source-bound memory-card embeddings, both terminals, route/privacy/tenancy
+and comparison diagnostics. Both tenancy-scan phases pass. The locked local Python runtime
+was used for real PDF fixtures. The 470 source-trust tests remain reusable on unchanged source
+and dependencies; their valid query-class correction is retained. The comparison harness now
+records content-free raw-versus-parsed flags, so a later paid rerun requires a newly frozen
+identity and explicit bounded approval. The previous comparison stays historical and unaccepted.
+
+The existing US$5 hosted-verification approval and exact-new-preview cleanup obligation still
+apply. Neither the cloud continuation nor this merge supplies production, model-activation,
+clinical or ingestion approval. A guarded push and fresh combined-head hosted checks remain
+pending; source-fidelity observations and the later production decision are still required.
+
+The published cloud candidate `f7459705d5` now has a successful hosted CI run
+`41987788641`, plus successful secret scan, SAST and cloud source/platform contracts.
+This is baseline evidence, not acceptance of the newer combined local tree. Local structural
+readiness CI mode passes but explicitly reports absent server/OpenAI bindings in this isolated
+shell and outstanding release artifacts; no credential was copied and no release readiness
+or new inference capability is inferred. Continue the combined-head guarded push and CI.
+
 ## 5 November 2026 cloud repair — PR #3900 continuation
 
 The owner directly approved continuing the recommendations in this chat: "Yes I approve.
