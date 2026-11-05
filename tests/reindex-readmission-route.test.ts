@@ -283,6 +283,48 @@ describe("administrator PDF reindex current readmission", () => {
     expect(await response.json()).toMatchObject({ code: "readmission_assurance_required" });
     expect(f.serviceRpc).not.toHaveBeenCalled();
   });
+  it.each([
+    "readmission_invalid_identity",
+    "readmission_document_scope_required",
+    "readmission_source_identity_mismatch",
+    "readmission_governed_source_requires_its_existing_control_plane",
+    "readmission_invalid_authority",
+    "readmission_invalid_features",
+    "readmission_invalid_date",
+    "readmission_source_not_current",
+    "readmission_invalid_supersession",
+    "readmission_replay_conflict",
+  ])("does not advise retrying a permanent readmission refusal: %s", async (message) => {
+    const f = setup();
+    f.publicationRpc.mockResolvedValueOnce({ data: null, error: { message } });
+    const response = await f.invoke();
+    expect(response.status).toBe(422);
+    const body = await response.json();
+    expect(body).toMatchObject({ code: "readmission_refused" });
+    expect(body.message).not.toMatch(/retry/i);
+    expect(f.serviceRpc).not.toHaveBeenCalled();
+  });
+  it("identifies an active attempt as a retryable readmission conflict", async () => {
+    const f = setup();
+    f.publicationRpc.mockResolvedValueOnce({ data: null, error: { message: "readmission_active_attempt" } });
+    const response = await f.invoke();
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({
+      code: "readmission_conflict",
+      message: expect.stringMatching(/same correlation ID/),
+    });
+    expect(f.serviceRpc).not.toHaveBeenCalled();
+  });
+  it("sanitizes an unknown readmission RPC failure without claiming a permanent refusal", async () => {
+    const f = setup();
+    f.publicationRpc.mockResolvedValueOnce({ data: null, error: { message: "synthetic_upstream_failure" } });
+    const response = await f.invoke();
+    expect(response.status).toBe(502);
+    const body = await response.json();
+    expect(body).toMatchObject({ code: "readmission_unavailable" });
+    expect(JSON.stringify(body)).not.toContain("synthetic_upstream_failure");
+    expect(f.serviceRpc).not.toHaveBeenCalled();
+  });
   it("refuses missing current request authentication before storage or mutation", async () => {
     const f = setup();
     f.requireAuthenticatedUserContext.mockRejectedValueOnce(new f.AuthenticationError());

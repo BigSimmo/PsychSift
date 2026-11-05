@@ -458,7 +458,9 @@ def inspect_rendered_source(pdf_path, output_dir, budget=None):
                                                  height=pixels.height / extractor.MAX_OCR_RENDER_SCALE)
                     normalized.insert_image(normalized.rect, stream=image_bytes)
                 raster_path = stage / "rendered-pages.pdf"
-                raster_bytes = raster.tobytes(garbage=4, deflate=True)
+                # A generated PDF /ID would change the strict review-bound hash
+                # on every fresh inspection of identical source pixels.
+                raster_bytes = raster.tobytes(garbage=4, deflate=True, no_new_id=True)
                 render_budget.add_artifact(len(raster_bytes))
                 raster_path.write_bytes(raster_bytes)
         deadline()

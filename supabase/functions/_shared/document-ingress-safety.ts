@@ -381,7 +381,7 @@ export function evaluateDocumentIngressSafety(input: unknown): DocumentIngressSa
     ...(legalReviewDeferred ? ["legal_review:owner_deferred:internal_build"] : []),
     `purpose:${purpose}:permitted`,
     ...(exception
-      ? [`scanner:unscanned:${ADMIN_UNSCANNED_EXCEPTION_POLICY}:${exception.grantDigest}`]
+      ? [`scanner:unscanned:${scannerVersion}:${exception.grantDigest}`]
       : [`scanner:clean:${scannerVersion}`]),
     "active_content:absent",
     "identifiers:absent",

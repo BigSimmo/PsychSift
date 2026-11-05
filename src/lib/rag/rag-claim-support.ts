@@ -844,13 +844,19 @@ function verbatimTokens(value: string) {
 // punctuation makes it look like an independent verbatim match. Remove only that
 // bounded passage from proof; unrelated discussion of withdrawal remains usable.
 function withoutWithdrawnRecommendation(text: string) {
-  const parts = text.split(/((?<=[.!?])\s+|\n\s*\n)/);
+  // A new list item is a boundary even without sentence punctuation. Keep other
+  // single line breaks inside the passage so wrapped instructions stay governed.
+  const parts = text.split(/((?<=[.!?])\s+|\n\s*\n|\n(?=[ \t]*(?:\d+[.)]|[a-z][.)]|[•*-])(?:[ \t]|\r?\n|$)))/i);
   let withdrawNext = false;
   const governsNext = (text: string) =>
-    !/\b(?:not|never)\s+(?:been\s+)?(?:withdrawn|retracted|superseded)\b/i.test(text) &&
-    /\b(?:following|next)\s+(?:recommendation|instruction|advice|statement)\b[^.!?]*\b(?:withdrawn|retracted|superseded)\b/i.test(
-      text,
-    );
+    text.split(";").some((clause) => {
+      // Stop at this subject's first withdrawal status; a later subject's
+      // negated status must not cancel it (or vice versa).
+      const directive = clause.match(
+        /\b(?:following|next)\s+(?:recommendation|instruction|advice|statement)\b[^.!?;]*?\b(?:withdrawn|retracted|superseded)\b/i,
+      )?.[0];
+      return !!directive && !/\b(?:not|never)\s+(?:been\s+)?(?:withdrawn|retracted|superseded)\b/i.test(directive);
+    });
   return parts
     .map((part, index) => {
       if (index % 2 !== 0) return part;

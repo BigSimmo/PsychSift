@@ -1,5 +1,66 @@
 # Ingestion unlock and controlled rollout
 
+## 5 November 2026 local follow-up import — verified additive bundle
+
+Latest transfer PR #3890 at `4522d9206326f22f76daca38cad9d42031cc8a54` was read locally.
+Its additive bundle SHA-256 is
+`8c74c5829094448a895a7394896de4fbc3c361e9ffc35b0e3acc666aaf1ca62d`;
+Git verified prerequisite `f7459705d562f32a9f90ba35543b79d133292aef` and advertised
+head `9052aee8a954f3ed816ba05dabf0d51b3bcf5bff`. A normal merge reconciles that
+follow-up with published local head `7e749c129c86e86de005573570979c39a26b3ed8`.
+Only this checkpoint conflicted; both histories and the local source-trust repair remain.
+The original checkout's unpublished changes remain outside this isolated worktree.
+
+The owner directly approved one replacement preview within the existing US$5 total
+hosted-verification cap, with cleanup before handback. The original preview's absence
+was independently verified; production and the unrelated older preview were preserved.
+The private Windows eight-page review pack already exists and is not rebuilt by this import.
+No new paid model run, review approval, production mutation or queueing action is authorized
+by this merge. The original comparison remains unaccepted; worker resume/readmission,
+re-indexing and ingestion remain held. Fresh affected checks and final-head CI follow.
+
+Independent local follow-up review reproduced a genuine operator failure missed by the
+mocked CLI wiring: fresh raster-container serialization generated a new PDF `/ID`, so an
+unchanged source/pixel/OCR review failed strict artifact binding. A new real two-inspection
+Python regression failed before the correction. Serialization now uses `no_new_id=True`;
+the strict validator, source/runtime checks, approval boundary and all holds remain intact.
+The regression then passed, as did all 21 renderer Python tests and a synthetic real
+producer-to-review-to-fresh-CLI validation test. No real review approval was manufactured.
+Because the renderer script hash changed, only the existing three-source/eight-page held
+inspection pack was refreshed privately; source hashes, rendered text byte counts and all
+review holds remain unchanged. The original PDFs and earlier artifacts were preserved.
+
+The subsequent bounded review corrections now pass 690 tests across 17 focused suites.
+They preserve independent unpunctuated list recommendations and bind withdrawal negation
+to the following recommendation's own first status, including reversed mixed clauses.
+Both reported safety cases failed before correction. Independent technical review cleared
+the correction; only its static evidence digest changed, with human assurance metadata intact.
+Permanent readmission refusals now return 422 rather than advising ineffective retries;
+active work retains 409, assurance failures 403 and unknown upstream failures sanitized 502.
+An immutable correlation-ID request mismatch is permanent for that request. Rich unscanned
+audit labels now name the matched policy, and image-denial tests exercise the real 401 mapping.
+
+Native-rich inspection now leaves missing optional coverage renders for the existing
+consumer's complete feature-coverage check. It preserves every inventory box and refuses
+unrepresented original features. Exactly exhausted optional slots skip capture; attempted
+byte overruns and already exceeded counts still fail. Fifteen native inspector Python tests
+pass, alongside covered/uncovered real extractor-to-consumer regressions; no coverage guard
+or budget was weakened. The packet parent-array performance suggestion remains unmeasured
+and deferred; sealed SQL and authoritative replay evidence are preserved. Explicit deployed
+indexing-model consistency remains a release check, without changing model defaults.
+
+The owner subsequently confirmed the private eight-page source-fidelity pack in this local
+conversation: "yes I have seen this and confirm". A private receipt binds that confirmation
+to the exact pack, sources and runtime. This supplies source-fidelity evidence, not a complete
+machine-readable table/diagram review record, an approved canonical review digest, clinical
+sign-off or processing authority. Private structural review preparation continues separately.
+
+Hosted run `41999282035` at `7e749c129c86e86de005573570979c39a26b3ed8` passed builds,
+containers/security/evidence, replay, coverage and browser journeys, but failed Lighthouse's
+unchanged TBT budgets after built-in confirmations on desktop open-shifts (+31.2%), mobile
+my-day (+30.2%) and mobile on-call (+39.4%). No baseline, threshold or required check changed.
+This historical failure is not a final-head verdict; the reconciled head still needs hosted CI.
+
 ## 5 November 2026 local reintegration — compatible cloud repair preserved
 
 The local push stopped safely when the remote feature branch advanced to
@@ -28,6 +89,42 @@ This is baseline evidence, not acceptance of the newer combined local tree. Loca
 readiness CI mode passes but explicitly reports absent server/OpenAI bindings in this isolated
 shell and outstanding release artifacts; no credential was copied and no release readiness
 or new inference capability is inferred. Continue the combined-head guarded push and CI.
+
+## 5 November swarm follow-up — operator validation and paid diagnostics
+
+The owner requested a bounded agent swarm, stopping before re-indexing/ingestion.
+Three native agents checked release, model acceptance and source-review readiness.
+Ponytail was not exposed in the callable tools or discovered skills. No fallback
+paid agent API, provider credential transfer or source/clinical approval was used.
+
+Full hosted CI at `f7459705d562f32a9f90ba35543b79d133292aef` is now **success**,
+including container security/evidence, all browser shards and combined coverage:
+https://github.com/BigSimmo/PsychSift/actions/runs/41987788641 . The PR's temporary
+preview was removed and its absence verified; actual preview cost remains unavailable.
+
+Two independently reviewed follow-ups close operator/tooling gaps. The feasible paid
+smoke runner now retains the same bounded raw/parsed diagnostic flags as the component
+runner; offline output previously masked this omission. No score, model, price/cap,
+blinded-review rule or prior outcome changes. The validation-only rendered-review CLI
+now consumes an externally approved canonical digest and exact private local artifacts,
+then calls the existing inspector/validator. It emits structural metadata only; it
+creates no approval, authenticates no reviewer and invokes no ingestion/provider service.
+See the existing reindex runbook for exact arguments. Four focused suites pass 75 tests;
+scoped lint passes and independent correction review reports no P1/P2 findings.
+Typecheck passes. Final publication and hosted checks on the new follow-up remain pending at this checkpoint.
+
+Remaining external evidence: actual owner observations/record for the existing three-PDF,
+eight-page private pack (Windows location unavailable here); verified current pricing,
+local provider access and a fresh source-bound capped approval for any further Sol run.
+The feasible smoke is 24 count requests plus 24 generations, zero retries/warmups; exact
+counts must fit before generation. The 52-call full comparison remains correctly refused
+by its output reservation cap. Standard workflow canary cannot select this branch/Sol;
+component smoke alone is not full live acceptance. The prior Sol result stays unaccepted.
+Production merge remains owner-manual after applicable acceptance; verify exact-merge live
+drift/history, live RPC signatures/ACLs and actual app/worker revision while processing
+stays paused. Never invoke readmission as a probe because it queues work. Wider-batch
+shadow-driver work belongs after an approved successful pilot; legal review remains
+explicitly deferred for the internal build.
 
 ## 5 November 2026 cloud repair — PR #3900 continuation
 

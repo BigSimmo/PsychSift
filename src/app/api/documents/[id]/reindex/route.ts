@@ -188,13 +188,39 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         const assurance = ["administrator_assurance_required", "administrator_recent_authentication_required"].includes(
           result.error.message,
         );
-        return publicErrorResponse(
-          assurance
-            ? "Recent administrator multi-factor authentication is required."
-            : "Current readmission could not be queued safely. Retry with the same correlation ID.",
-          assurance ? 403 : 409,
-          { code: assurance ? "readmission_assurance_required" : "readmission_conflict" },
-        );
+        if (assurance)
+          return publicErrorResponse("Recent administrator multi-factor authentication is required.", 403, {
+            code: "readmission_assurance_required",
+          });
+        if (result.error.message === "readmission_active_attempt")
+          return publicErrorResponse(
+            "Current readmission is blocked by active indexing work. Retry with the same correlation ID after it finishes.",
+            409,
+            { code: "readmission_conflict" },
+          );
+        const refused = [
+          "readmission_invalid_identity",
+          "readmission_document_scope_required",
+          "readmission_source_identity_mismatch",
+          "readmission_governed_source_requires_its_existing_control_plane",
+          "readmission_invalid_authority",
+          "readmission_invalid_features",
+          "readmission_invalid_date",
+          "readmission_source_not_current",
+          "readmission_invalid_supersession",
+          "readmission_replay_conflict",
+        ].includes(result.error.message);
+        return refused
+          ? publicErrorResponse(
+              "Current readmission was refused. Review source eligibility, authority, and request identity before submitting again.",
+              422,
+              { code: "readmission_refused" },
+            )
+          : publicErrorResponse(
+              "The readmission service could not verify the request. Retry with the same correlation ID once it is available.",
+              502,
+              { code: "readmission_unavailable" },
+            );
       }
       const decoded = readmissionResultSchema.safeParse(result.data);
       if (

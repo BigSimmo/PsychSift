@@ -1,6 +1,7 @@
 import { expect, it } from "vitest";
 import {
   assessAndEnforceClaimSupport,
+  claimProofWithoutGeneratedNarrative,
   claimRestatesSourceVerbatim,
   sourceDirectlySupportsAnswerText,
 } from "@/lib/rag/rag-claim-support";
@@ -123,6 +124,121 @@ it("withdraws the substantive numbered recommendation and preserves negated with
     "The following recommendation is withdrawn. 1. The obsolete procedure requires review. 2. " + claim,
   );
   expect(sourceDirectlySupportsAnswerText(claim, later)).toBe(true);
+});
+it("withdraws only the first unpunctuated numbered item while retaining the independent quote", () => {
+  const withdrawn = "Stop synthetic action A";
+  const valid = "Continue independent synthetic action B";
+  const s = source(
+    "unpunctuated-list",
+    "The following recommendation is withdrawn.\n1) Stop synthetic action A\n2) Continue independent synthetic action B",
+  );
+  const withdrawnCards = sanitizeQuoteCards([{ chunk_id: s.id, quote: withdrawn }], [s]);
+  const validCards = sanitizeQuoteCards([{ chunk_id: s.id, quote: valid }], [s]);
+  expect({
+    withdrawnDirect: sourceDirectlySupportsAnswerText(withdrawn, s),
+    withdrawnQuotes: withdrawnCards.map((card) => card.quote),
+    validQuotes: validCards.map((card) => card.quote),
+  }).toEqual({
+    withdrawnDirect: false,
+    withdrawnQuotes: [],
+    validQuotes: [valid],
+  });
+  expect(claimProofWithoutGeneratedNarrative(s).content).toContain("2) " + valid);
+});
+it("retains a complete independent numbered recommendation through support and finalization", () => {
+  // The terse `2) Continue ...` fixture above is not independently recognized by
+  // the existing directive matcher. Use a complete normative sentence here.
+  const valid = "The independent synthetic action B should continue during the scheduled review.";
+  const s = source(
+    "unpunctuated-list-composed",
+    "The following recommendation is withdrawn.\n1) Stop synthetic action A\n2) " + valid,
+  );
+  const cards = sanitizeQuoteCards([{ chunk_id: s.id, quote: valid }], [s]);
+  const final = finalizeRagAnswerQuality(
+    { ...answer(valid, [s]), quoteCards: cards },
+    "What independent synthetic action should continue?",
+    "broad_summary",
+  );
+  expect({
+    direct: sourceDirectlySupportsAnswerText(valid, s),
+    finalGrounded: final.grounded,
+    finalQuotes: (final.quoteCards ?? []).map((card) => card.quote),
+  }).toEqual({
+    direct: true,
+    finalGrounded: true,
+    finalQuotes: [valid],
+  });
+});
+it("scopes withdrawal negation to its own clause through support, quotes and finalization", () => {
+  const s = source(
+    "independent-negation",
+    "The previous recommendation was not withdrawn; the following recommendation is withdrawn. " + claim,
+  );
+  const cards = sanitizeQuoteCards([{ chunk_id: s.id, quote: claim }], [s]);
+  const final = finalizeRagAnswerQuality(
+    { ...answer(claim, [s]), quoteCards: cards },
+    "What review does synthetic procedure Z require?",
+    "broad_summary",
+  );
+  expect({
+    verbatim: claimRestatesSourceVerbatim(claim, s),
+    direct: sourceDirectlySupportsAnswerText(claim, s),
+    quotes: cards.map((card) => card.quote),
+    finalGrounded: final.grounded,
+    finalQuotes: (final.quoteCards ?? []).map((card) => card.quote),
+  }).toEqual({ verbatim: false, direct: false, quotes: [], finalGrounded: false, finalQuotes: [] });
+});
+it.each([
+  "1) Stop synthetic action A\n   until the synthetic review is complete\n2) Continue independent synthetic action B",
+  "1.\nStop synthetic action A\n   until the synthetic review is complete\n2) Continue independent synthetic action B",
+  "1)\nStop synthetic action A\n   until the synthetic review is complete\n2)\nContinue independent synthetic action B",
+  "- Stop synthetic action A\n   until the synthetic review is complete\n- Continue independent synthetic action B",
+])("keeps wrapped withdrawn text and pure markers inside the first list item: %s", (list) => {
+  const s = source("wrapped-list", "The following recommendation is withdrawn.\n" + list);
+  const proof = claimProofWithoutGeneratedNarrative(s);
+  expect(proof.content).not.toContain("Stop synthetic action A");
+  expect(proof.content).not.toContain("until the synthetic review is complete");
+  expect(proof.content).toContain("Continue independent synthetic action B");
+  expect(sanitizeQuoteCards([{ chunk_id: s.id, quote: "until the synthetic review is complete" }], [s])).toEqual([]);
+});
+it("preserves a negated following withdrawal after an unrelated positive withdrawal clause", () => {
+  const s = source(
+    "independent-negated-following",
+    "The previous recommendation was withdrawn; the following recommendation is not withdrawn. " + claim,
+  );
+  expect(sourceDirectlySupportsAnswerText(claim, s)).toBe(true);
+  expect(sanitizeQuoteCards([{ chunk_id: s.id, quote: claim }], [s])[0]?.quote).toBe(claim);
+});
+it.each([
+  {
+    correction: "The following recommendation is withdrawn, whereas the previous recommendation was not withdrawn.",
+    retained: false,
+  },
+  {
+    correction: "The following recommendation is not withdrawn, whereas the previous recommendation was withdrawn.",
+    retained: true,
+  },
+])("binds following withdrawal to its own subject through delivery: $correction", ({ correction, retained }) => {
+  const s = source("following-subject-withdrawal", correction + " " + claim);
+  const cards = sanitizeQuoteCards([{ chunk_id: s.id, quote: claim }], [s]);
+  const final = finalizeRagAnswerQuality(
+    { ...answer(claim, [s]), quoteCards: cards },
+    "What review does synthetic procedure Z require?",
+    "broad_summary",
+  );
+  expect({
+    verbatim: claimRestatesSourceVerbatim(claim, s),
+    direct: sourceDirectlySupportsAnswerText(claim, s),
+    quotes: cards.map((card) => card.quote),
+    finalGrounded: final.grounded,
+    finalQuotes: (final.quoteCards ?? []).map((card) => card.quote),
+  }).toEqual({
+    verbatim: retained,
+    direct: retained,
+    quotes: retained ? [claim] : [],
+    finalGrounded: retained,
+    finalQuotes: retained ? [claim] : [],
+  });
 });
 it("does not display a withdrawn quote alongside a supported safe lead", () => {
   const safe = "Synthetic procedure Z requires recording the completion date.";

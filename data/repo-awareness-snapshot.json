@@ -4422,7 +4422,7 @@
       {
         "path": "docs/reindex-unlock-plan.md",
         "section": "root",
-        "catalogued": false
+        "catalogued": true
       },
       {
         "path": "docs/specifier-definition-worklist-2026-09-18.md",

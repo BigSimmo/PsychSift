@@ -237,14 +237,19 @@ def inspect_source(source_path, supplied_limits=None, profile="text", render_dir
                     "sourceFeatures": {"nativeText": bool(text.strip()), "rasterImages": len(raster), "vectorDrawings": len(vectors), "nativeTables": len(tables)},
                     "rasterBboxes": raster, "vectorBboxes": vectors, "tableBboxes": [list(table.bbox) for table in tables],
                 }
-                if render_budget is not None and (raster or vectors or tables):
-                    page_record["coverageImage"] = original_producer.save_page_crop(
+                # Fallback renders are optional: the consumer still requires
+                # every original feature to be covered by extraction or a render.
+                # No remaining slot skips only this optional capture; an already
+                # exceeded count or an attempted byte overrun must still fail.
+                if (render_budget is not None and (raster or vectors or tables)
+                        and render_budget.artifact_count != render_budget.limits["maxArtifacts"]):
+                    coverage_image = original_producer.save_page_crop(
                         page, page.rect, str(render_dir), f"source-page-{index + 1}.png", "page_region",
                         {"pageNumber": index + 1, "candidate_type": "independent_original_feature_coverage", "source_sha256": original_hash},
                         render_budget, [],
                     )
-                    if page_record["coverageImage"] is None:
-                        refuse("source_visual_capture_unavailable")
+                    if coverage_image is not None:
+                        page_record["coverageImage"] = coverage_image
                 pages.append(page_record)
             else:
                 pages.append({"pageNumber": index + 1, "text": text, "textSha256": digest(encoded)})

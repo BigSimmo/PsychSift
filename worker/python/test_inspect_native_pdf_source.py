@@ -50,6 +50,65 @@ class NativePdfInspectionTests(unittest.TestCase):
         observed = inspector.inspect_source(self.path)
         self.assertEqual([page["text"] for page in actual["pages"]], [page["text"] for page in observed["pages"]])
 
+    def rich_visual_fixture(self, page_count=1):
+        with fitz.open() as document:
+            for _ in range(page_count):
+                page = document.new_page()
+                page.insert_text((72, 72), "Synthetic visible source with a retained original image.")
+                pixels = fitz.Pixmap(fitz.csRGB, fitz.IRect(0, 0, 100, 100), False)
+                pixels.clear_with(100)
+                page.insert_image(fitz.Rect(72, 200, 200, 328), pixmap=pixels)
+            document.save(self.path)
+
+    def assert_actual_extraction_covers_inventory(self, inventory):
+        import extract_pdf_assets
+        actual = extract_pdf_assets.extract(str(self.path), str(Path(self.temporary.name) / "extracted"))
+        for page in inventory["pages"]:
+            boxes = page["rasterBboxes"] + page["vectorBboxes"] + page["tableBboxes"]
+            self.assertTrue(boxes)
+            images = [image for image in actual["images"]
+                      if image["pageNumber"] == page["pageNumber"] and image["sourceKind"] != "cover_page"]
+            for box in boxes:
+                self.assertTrue(any(fitz.Rect(image["bbox"]).contains(fitz.Rect(box)) for image in images))
+
+    def test_missing_optional_render_preserves_inventory_already_covered_by_actual_extraction(self):
+        import extract_pdf_assets
+        self.rich_visual_fixture()
+        with patch.object(extract_pdf_assets, "save_page_crop", return_value=None):
+            inventory = inspector.inspect_source(self.path, profile="rich", render_dir=Path(self.temporary.name) / "coverage")
+        self.assertEqual(inventory["status"], "inspected")
+        self.assertIsNone(inventory["pages"][0].get("coverageImage"))
+        self.assert_actual_extraction_covers_inventory(inventory)
+
+    def test_exhausted_optional_render_slots_preserve_complete_inventory(self):
+        import extract_pdf_assets
+        self.rich_visual_fixture(page_count=2)
+        budget = extract_pdf_assets.ExtractionBudget({"maxArtifacts": 1})
+        with patch.object(extract_pdf_assets, "ExtractionBudget", return_value=budget):
+            inventory = inspector.inspect_source(self.path, profile="rich", render_dir=Path(self.temporary.name) / "coverage")
+        self.assertEqual(inventory["pageCount"], 2)
+        self.assertIsNotNone(inventory["pages"][0].get("coverageImage"))
+        self.assertIsNone(inventory["pages"][1].get("coverageImage"))
+        self.assertEqual(budget.artifact_count, 1)
+        self.assert_actual_extraction_covers_inventory(inventory)
+
+    def test_attempted_render_over_byte_budget_is_not_suppressed(self):
+        import extract_pdf_assets
+        self.rich_visual_fixture()
+        budget = extract_pdf_assets.ExtractionBudget({"maxArtifactBytes": 1})
+        with patch.object(extract_pdf_assets, "ExtractionBudget", return_value=budget):
+            with self.assertRaisesRegex(extract_pdf_assets.ExtractionBudgetExceeded, "artifact bytes"):
+                inspector.inspect_source(self.path, profile="rich", render_dir=Path(self.temporary.name) / "coverage")
+
+    def test_already_exceeded_render_count_is_not_suppressed(self):
+        import extract_pdf_assets
+        self.rich_visual_fixture()
+        budget = extract_pdf_assets.ExtractionBudget({"maxArtifacts": 1})
+        budget.artifact_count = 2
+        with patch.object(extract_pdf_assets, "ExtractionBudget", return_value=budget):
+            with self.assertRaisesRegex(extract_pdf_assets.ExtractionBudgetExceeded, "artifact count"):
+                inspector.inspect_source(self.path, profile="rich", render_dir=Path(self.temporary.name) / "coverage")
+
     def test_encryption_refused(self):
         self.fixture(encrypted=True)
         with self.assertRaisesRegex(inspector.InspectionRefusal, "encrypted"):

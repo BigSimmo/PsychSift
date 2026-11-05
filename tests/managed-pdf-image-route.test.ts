@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { AuthenticationError } from "@/lib/supabase/auth";
 const state = vi.hoisted(() => ({ parent: true, clinical: true, stale: false, rpc: vi.fn(), from: vi.fn() }));
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({ from: state.from, rpc: state.rpc }) }));
 vi.mock("@/lib/api-rate-limit", () => ({
@@ -14,7 +15,7 @@ vi.mock("@/lib/public-api-access", () => ({
 }));
 vi.mock("@/lib/clinical-access", () => ({
   requireSignedInClinicalAccess: () => {
-    if (!state.clinical) throw new Error("clinical_access_required");
+    if (!state.clinical) throw new AuthenticationError("clinical_access_required");
   },
 }));
 vi.mock("@/lib/supabase/auth", () => ({
@@ -98,7 +99,7 @@ describe("managed PDF image content route", () => {
   });
   it("does not query image or bytes before clinical access", async () => {
     state.clinical = false;
-    expect((await get()).status).toBe(500);
+    expect((await get()).status).toBe(401);
     expect(state.from).not.toHaveBeenCalled();
     expect(state.rpc).not.toHaveBeenCalled();
   });

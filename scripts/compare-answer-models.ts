@@ -414,7 +414,7 @@ export function deterministicChecks(testCase: ComparisonCase, raw: string, answe
   };
 }
 
-function comparisonAnswerDiagnostics(raw: string, answer: RagAnswer) {
+export function comparisonAnswerDiagnostics(raw: string, answer: RagAnswer) {
   let payload: unknown;
   try {
     payload = JSON.parse(raw);

@@ -301,6 +301,24 @@ class RenderedPdfSourceTests(unittest.TestCase):
                     with Image.open(artifact["path"]) as bitmap:
                         self.assertNotIn("FORBIDDEN", pytesseract.image_to_string(bitmap, timeout=20))
 
+    def test_fresh_inspection_preserves_review_bound_artifact_identities(self):
+        with tempfile.TemporaryDirectory() as folder:
+            source = Path(folder) / "source.pdf"
+            self.make_source(source)
+            first = inspector.inspect_rendered_source(source, Path(folder) / "first")
+            second = inspector.inspect_rendered_source(source, Path(folder) / "second")
+            self.assertEqual(first["sourceSha256"], second["sourceSha256"])
+            self.assertEqual(first["runtime"], second["runtime"])
+            self.assertEqual(first["renderPages"][0]["artifact"]["sha256"],
+                             second["renderPages"][0]["artifact"]["sha256"])
+            self.assertEqual(first["extraction"]["pages"][0]["text"],
+                             second["extraction"]["pages"][0]["text"])
+            self.assertEqual(Path(first["rasterContainer"]["path"]).read_bytes(),
+                             Path(second["rasterContainer"]["path"]).read_bytes())
+            self.assertEqual(first["rasterContainer"]["sha256"], second["rasterContainer"]["sha256"])
+            self.assertEqual(first["status"], "held_for_review")
+            self.assertEqual(first["limitations"], second["limitations"])
+
     def test_all_pages_and_original_geometry_are_retained_without_native_provenance(self):
         with tempfile.TemporaryDirectory() as folder:
             source = Path(folder) / "source.pdf"
