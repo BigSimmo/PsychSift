@@ -1,5 +1,41 @@
 # Ingestion unlock and controlled rollout
 
+## 5 November swarm follow-up — operator validation and paid diagnostics
+
+The owner requested a bounded agent swarm, stopping before re-indexing/ingestion.
+Three native agents checked release, model acceptance and source-review readiness.
+Ponytail was not exposed in the callable tools or discovered skills. No fallback
+paid agent API, provider credential transfer or source/clinical approval was used.
+
+Full hosted CI at `f7459705d562f32a9f90ba35543b79d133292aef` is now **success**,
+including container security/evidence, all browser shards and combined coverage:
+https://github.com/BigSimmo/PsychSift/actions/runs/41987788641 . The PR's temporary
+preview was removed and its absence verified; actual preview cost remains unavailable.
+
+Two independently reviewed follow-ups close operator/tooling gaps. The feasible paid
+smoke runner now retains the same bounded raw/parsed diagnostic flags as the component
+runner; offline output previously masked this omission. No score, model, price/cap,
+blinded-review rule or prior outcome changes. The validation-only rendered-review CLI
+now consumes an externally approved canonical digest and exact private local artifacts,
+then calls the existing inspector/validator. It emits structural metadata only; it
+creates no approval, authenticates no reviewer and invokes no ingestion/provider service.
+See the existing reindex runbook for exact arguments. Four focused suites pass 75 tests;
+scoped lint passes and independent correction review reports no P1/P2 findings.
+Typecheck passes. Final publication and hosted checks on the new follow-up remain pending at this checkpoint.
+
+Remaining external evidence: actual owner observations/record for the existing three-PDF,
+eight-page private pack (Windows location unavailable here); verified current pricing,
+local provider access and a fresh source-bound capped approval for any further Sol run.
+The feasible smoke is 24 count requests plus 24 generations, zero retries/warmups; exact
+counts must fit before generation. The 52-call full comparison remains correctly refused
+by its output reservation cap. Standard workflow canary cannot select this branch/Sol;
+component smoke alone is not full live acceptance. The prior Sol result stays unaccepted.
+Production merge remains owner-manual after applicable acceptance; verify exact-merge live
+drift/history, live RPC signatures/ACLs and actual app/worker revision while processing
+stays paused. Never invoke readmission as a probe because it queues work. Wider-batch
+shadow-driver work belongs after an approved successful pilot; legal review remains
+explicitly deferred for the internal build.
+
 ## 5 November 2026 cloud repair — PR #3900 continuation
 
 The owner directly approved continuing the recommendations in this chat: "Yes I approve.

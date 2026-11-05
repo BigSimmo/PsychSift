@@ -1,7 +1,10 @@
 import { createHash, randomBytes } from "node:crypto";
 import { mkdir, open, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import type { OpenAITextResult } from "../src/lib/openai";
+import type { RagAnswer } from "../src/lib/types";
 import {
+  comparisonAnswerDiagnostics,
   comparisonConfig,
   comparisonIdentity,
   comparisonOutputPath,
@@ -42,6 +45,41 @@ export type SmokeRequest = {
   route: "fast" | "strong";
   tokenBody: Record<string, unknown>;
 };
+
+/** Paid-path outcome assembly also retains bounded pre-parser flags for diagnosis. */
+export function buildSmokeOutcome(
+  request: SmokeRequest,
+  testCase: ComparisonCase,
+  result: OpenAITextResult,
+  answer: RagAnswer,
+  latencyMs: number,
+): ComparisonOutcome {
+  const providerMatches =
+    !!result.providerModel &&
+    (result.providerModel === request.model || result.providerModel.startsWith(`${request.model}-`));
+  return {
+    arm: request.arm,
+    caseId: request.caseId,
+    model: request.model,
+    route: request.route,
+    pass: 1,
+    warmup: false,
+    status: result.truncated || !providerMatches ? "failed" : "completed",
+    latencyMs,
+    providerModel: result.providerModel ?? null,
+    requestId: result.requestId ?? null,
+    usage: result.usage,
+    checks: deterministicChecks(testCase, result.text, answer),
+    diagnostics: comparisonAnswerDiagnostics(result.text, answer),
+    answer: answer.answer,
+    review: {
+      answerSections: answer.answerSections,
+      citations: answer.citations,
+      conflictsOrGaps: answer.conflictsOrGaps,
+    },
+  };
+}
+
 export type SmokeCaps = {
   maxUsd: number;
   remainingMonthlyUsd: number;
@@ -523,29 +561,7 @@ export async function main(argv = process.argv.slice(2), cwd = process.cwd()) {
           promptCacheKey: "synthetic-answer-model-smoke-v1",
         });
         const answer = parseAnswerJson(result.text, sources, c.question);
-        const providerMatches =
-          !!result.providerModel &&
-          (result.providerModel === p.model || result.providerModel.startsWith(`${p.model}-`));
-        outcomes.push({
-          arm: p.arm,
-          caseId: p.caseId,
-          model: p.model,
-          route: p.route,
-          pass: 1,
-          warmup: false,
-          status: result.truncated || !providerMatches ? "failed" : "completed",
-          latencyMs: performance.now() - started,
-          providerModel: result.providerModel ?? null,
-          requestId: result.requestId ?? null,
-          usage: result.usage,
-          checks: deterministicChecks(c, result.text, answer),
-          answer: answer.answer,
-          review: {
-            answerSections: answer.answerSections,
-            citations: answer.citations,
-            conflictsOrGaps: answer.conflictsOrGaps,
-          },
-        });
+        outcomes.push(buildSmokeOutcome(p, c, result, answer, performance.now() - started));
         if (outcomes.at(-1)!.status === "failed") break;
         console.log(JSON.stringify({ phase: "generation", completed: outcomes.length, planned: 24 }));
       }

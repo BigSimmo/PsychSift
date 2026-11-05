@@ -1,8 +1,9 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { parseComparisonFixtures } from "../scripts/compare-answer-models";
+import { frozenSources, parseComparisonFixtures } from "../scripts/compare-answer-models";
 import {
+  buildSmokeOutcome,
   buildSmokePlan,
   createSmokeTransport,
   runOfflineSmoke,
@@ -114,6 +115,62 @@ async function countAll(f: ReturnType<typeof setup>) {
 }
 
 describe("bounded exact-count model smoke transport", () => {
+  it.each([
+    { grounded: true, confidence: "high", rawGrounded: true, rawConfidence: "high" },
+    {
+      grounded: "synthetic-invalid-grounded-value",
+      confidence: { unexpected: "synthetic-invalid-confidence-value" },
+      rawGrounded: "invalid",
+      rawConfidence: "invalid",
+    },
+  ])("retains diagnostics in serialized paid smoke outcomes: %j", async (flags) => {
+    const fetch = vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("network forbidden"));
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const cases = parseComparisonFixtures(
+      await readFile(new URL("../scripts/fixtures/rag-model-comparison.json", import.meta.url), "utf8"),
+    );
+    const testCase = cases.find((item) => item.unsupported)!;
+    const request = (await buildSmokePlan(cases)).find(
+      (item) => item.caseId === testCase.id && item.arm === "candidate",
+    )!;
+    const result = {
+      model: request.model,
+      providerModel: request.model,
+      requestId: "synthetic-request-id",
+      operation: "answer" as const,
+      latencyMs: 1,
+      status: "completed" as const,
+      truncated: false,
+      text: JSON.stringify({
+        answer: "The synthetic sources do not specify the requested information.",
+        grounded: flags.grounded,
+        confidence: flags.confidence,
+        citations: [],
+        answerSections: [],
+        conflictsOrGaps: [],
+        quoteCards: [],
+      }),
+    };
+    const { parseAnswerJson } = await import("../src/lib/rag/rag");
+    const answer = parseAnswerJson(result.text, frozenSources(testCase), testCase.question);
+    // Exercise the paid loop's constructor directly; the offline executor cannot cover it.
+    const outcome = JSON.parse(JSON.stringify(buildSmokeOutcome(request, testCase, result, answer, 1)));
+    expect(outcome).toMatchObject({ status: "completed", checks: { passed: false } });
+    expect(outcome.diagnostics).toEqual({
+      raw: { jsonObject: true, grounded: flags.rawGrounded, confidence: flags.rawConfidence },
+      parsed: {
+        grounded: false,
+        confidence: "unsupported",
+        routingFlags: [flags.rawGrounded === "invalid" ? "structured_parse_fallback" : "ungrounded_no_model_citation"],
+        otherRoutingReason: false,
+        unverifiedNumericCount: 0,
+        faithfulnessWarning: false,
+      },
+    });
+    expect(JSON.stringify(outcome.diagnostics)).not.toContain("synthetic-invalid");
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it("accepts the exact official counting fee article, refusing lookalikes", () => {
     const prices = card();
     prices.counting.source = "https://help.openai.com/en/articles/4936856-understanding-and-counting-tokens";
