@@ -371,7 +371,7 @@ function OnCallSectionPageSession({ view }: { view: OnCallPageView }) {
         const payload: unknown = await response.json().catch(() => null);
         const parsed = onCallEntrySchema.safeParse((payload as { entry?: unknown } | null)?.entry);
         if (!parsed.success || parsed.data.id !== entry.id) {
-          throw new Error(`The confirmation response for ${entry.title} was invalid. Try again.`);
+          throw new Error(`The confirmation response was invalid for ${entry.title}. Try again.`);
         }
         if (sessionEpoch !== peekOnCallEntrySessionEpoch()) return;
         updates.set(parsed.data.id, { reviewed: entry, verified: parsed.data });
