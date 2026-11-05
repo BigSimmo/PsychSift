@@ -172,7 +172,16 @@ const SCOPED_ALLOWLIST = mergeScopedAllowlist([
   // fix batch; its routes were already retired on 2026-10-21). A dated design sweep and the audit
   // that proposed the retirement name it; their paths are historical.
   ["docs/design-system/sweep-fix-missing-values-round-2.md", new Set(["src/components/calculator-mockups/"])],
-  ["docs/mockup-audit-and-issues-report.md", new Set(["src/components/calculator-mockups/calculator-pathways.ts"])],
+  ["docs/mockup-audit-and-issues-report.md", new Set(["src/components/calculator-mockups/calculator-pathways.ts"])],  // ── The local RAG continuation handoff names files that exist only inside its git bundles
+  // (the unmerged implementation/follow-up branches), not on main.
+  [
+    "docs/agents/handoffs/2026-11-03-rag-preindex/LOCAL-HANDOFF.md",
+    new Set([
+      "scripts/validate-rendered-pdf-review.ts",
+      "scripts/smoke-answer-models.ts",
+      "docs/reindex-unlock-plan.md",
+    ]),
+  ],
 ]);
 
 /** Build the scoped allowlist, merging the sets of a document listed more than once. */
