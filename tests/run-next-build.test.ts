@@ -43,7 +43,9 @@ describe("cross-platform next build step (#NM9S1V)", () => {
 });
 
 /** Evaluate only the runner's real environment initializer: importing its module would start a build. */
-function playwrightBuildEnvironment(environment: Record<string, string>) {
+function playwrightBuildEnvironment(
+  environment: Record<string, string>,
+): Record<string, string> & { NODE_ENV: "production" } {
   const source = readFileSync(new URL("../scripts/run-playwright.mjs", import.meta.url), "utf8");
   const parsed = ts.createSourceFile("run-playwright.mjs", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
   let initializer: string | undefined;
@@ -60,7 +62,7 @@ function playwrightBuildEnvironment(environment: Record<string, string>) {
   }
   visit(parsed);
   if (!initializer) throw new Error("Playwright build environment initializer was not found.");
-  return runInNewContext(
+  const result = runInNewContext(
     initializer,
     {
       offlineTestEnvironment,
@@ -74,6 +76,8 @@ function playwrightBuildEnvironment(environment: Record<string, string>) {
     },
     { timeout: 1000 },
   ) as Record<string, string>;
+  if (result.NODE_ENV !== "production") throw new Error("Expected the runner's production environment.");
+  return { ...result, NODE_ENV: result.NODE_ENV };
 }
 
 describe("Playwright build child-process heap", () => {
