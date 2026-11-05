@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "ef7c5dcf-1145-4611-81a6-f10784c2f6e6",
+  "createdOn": "2026-11-05",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "rec",
+    "summary": "Record remaining specialised security-workflow acceptance when supported capability is available",
+    "detail": "2026-11-05 backend audit (V15), local source33f6478: Required referenced Codex Security core/preflight capability was unavailable; no branded scan was registered or completed. Native threat/source/runtime review is separate valid evidence. Next: Assess whether a supported specialised workflow adds material assurance; if selected, verify prerequisites/target and bounded runtime/spend before one canonical scan. Otherwise retain explicit native-review scope and unavailable-branded evidence. Acceptance: No fabricated canonical artifacts/equivalence or duplicate uncertain scans; any chargeable run has separately approved total/cap. This is an assurance recommendation, not a confirmed software vulnerability. Suggested owner: Security owner. No merge, deployment, live migration, provider spending or specialist approval is granted by logging this task.",
+    "source": "docs/backend-audit-remediation-2026-11-05.md; backend-audit-2026-11-05:SECURITY_WORKFLOW; source33f6478c63aedf9c2d79effd9890951035f552b2",
+    "issueUlid": "01M6PNKH6Q6PT2171AVBMM3S3W"
+  }
+}

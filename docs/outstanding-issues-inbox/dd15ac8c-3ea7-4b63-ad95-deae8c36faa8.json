@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "dd15ac8c-3ea7-4b63-ad95-deae8c36faa8",
+  "createdOn": "2026-11-05",
+  "action": "add",
+  "payload": {
+    "pri": "P1",
+    "type": "task",
+    "summary": "Review and safely roll out the audited app/worker fixes and seven draft migrations",
+    "detail": "2026-11-05 backend audit (ACCESS-01, ING-RAG-01, ACCESS-02, ACCESS-03, DATA-01, DATA-02, DEL-01, DP-01, DP-02, DP-03, DP-04, EXT-ROLES-JOBS-01, EXT-ROLES-JOBS-02, EXT-STREAM-01, EXT-STREAM-02, ING-RAG-03, EXT-STREAM-03, F03, F04, F05, F06, F07, F09, F11, R05, R07, V01, V07, L02), local source33f6478: Local corrections are committed and checked; target deployment, supported CLI/journal replay and old/new fleet acceptance are unverified. Opening a PR does not authorize merge, live SQL or deployment. Next: Review candidate PR and seven immutable forward drafts, verify exact target/project/default-ACL prerequisites, rehearse supported replay and mixed versions, quiesce old maintenance/unconditional verification handlers; obtain separate rollout authority. Acceptance: Correct owner/role validation, actual hosted RPC contracts, private drift coverage, malformed historical booking timestamp preflight, stale/concurrent mutation refusal, calendar rollover and versioned-client failure behavior; no old unsafe writer persists. No protected clinical content/flags/history edits. Suggested owner: Delivery + Database + owner. No merge, deployment, live migration, provider spending or specialist approval is granted by logging this task.",
+    "source": "docs/backend-audit-remediation-2026-11-05.md; backend-audit-2026-11-05:ROLLOUT; source33f6478c63aedf9c2d79effd9890951035f552b2",
+    "issueUlid": "01M6PNKG4N36XZRQH264DS035C"
+  }
+}

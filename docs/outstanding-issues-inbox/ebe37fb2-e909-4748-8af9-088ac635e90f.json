@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "ebe37fb2-e909-4748-8af9-088ac635e90f",
+  "createdOn": "2026-11-05",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "task",
+    "summary": "Verify deployed failure and recurring-error visibility under the daily health-summary policy",
+    "detail": "2026-11-05 backend audit (DEL-01, R06), local source33f6478: False-green monitor summary is repaired locally; current deployed notification delivery, recurring Sentry-group coverage and release-correlated diagnosis remain unverified. New-group webhook semantics alone do not prove recurrence detection. Next: Verify exact current app/worker/release selectors and alert configuration, then use approved harmless synthetic failures to prove failed/delayed/partial/recurrent operations reach the existing daily digest and operator. Acceptance: A known failed/unavailable run never renders healthy; recurrence is visible under the agreed7amPerth digest policy; diagnosis links request/job/release without sensitive payloads. Do not enable parked sourcemap uploads or send real notifications without separate authority. Suggested owner: Delivery + operations owner. No merge, deployment, live migration, provider spending or specialist approval is granted by logging this task.",
+    "source": "docs/backend-audit-remediation-2026-11-05.md; backend-audit-2026-11-05:OPS_MONITOR; source33f6478c63aedf9c2d79effd9890951035f552b2",
+    "issueUlid": "01M6PNKGWB5EQXXF62EB11A1AS"
+  }
+}

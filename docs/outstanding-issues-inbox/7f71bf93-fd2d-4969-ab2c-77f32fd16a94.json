@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "7f71bf93-fd2d-4969-ab2c-77f32fd16a94",
+  "createdOn": "2026-11-05",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "task",
+    "summary": "Define authenticated provenance admission before restoring new backend document intake",
+    "detail": "2026-11-05 backend audit (ING-RAG-02), local source33f6478: admit_backend_document is absent; existing admitted resume/force is repaired, new intake now refuses before bytes/writes. Roles/source classes/provenance/review contract is not settled. Next: Owner defines admission authority per source class and mandatory review/provenance; implement atomic idempotent backend admission and entry-point negative/retry tests before enabling new intake. Acceptance: No persisted bytes/job orphan on refusal or partial failure; authenticated owner/resource authority and provenance enforced at durable writer; retries reconcile one intent. Preserve upload-local/rights/scanner/reindex holds. Suggested owner: Source intake + Security + owner. No merge, deployment, live migration, provider spending or specialist approval is granted by logging this task.",
+    "source": "docs/backend-audit-remediation-2026-11-05.md; backend-audit-2026-11-05:ADMISSION; source33f6478c63aedf9c2d79effd9890951035f552b2",
+    "issueUlid": "01M6PNKG6YQQ29E94Q02M6GJ89"
+  }
+}

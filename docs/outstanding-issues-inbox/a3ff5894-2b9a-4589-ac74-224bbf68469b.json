@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "id": "a3ff5894-2b9a-4589-ac74-224bbf68469b",
+  "createdOn": "2026-11-05",
+  "action": "update",
+  "payload": {
+    "id": "#QVVS6W",
+    "detail": "UPDATE 2026-10-18: a step-by-step, timed, owner-approved drill (restore to a new project, Storage copy, count comparison, cost and stop conditions) is drafted in docs/operator-rehearsal-plan.md step 2; it has not run. PRIOR DETAIL: Run one real restore-to-a-new-project drill and record the wall-clock time and what was lost. Why: docs/disaster-recovery-runbook.md states plainly that only the schema layer was rehearsed (2026-07-07, ~19s local container replay) and that the platform restore plus golden retrieval eval has never been executed — so 'we have backups' is currently an untested claim on the live clinical corpus. Distinct from #1K6T35, which is the accepted ~24h recovery-point decision, not whether a restore works at all. Owner: user + operator (provider-backed). Confidence: high — the runbook says so itself. Depends on: #1K6T35 context. 2026-11-05 backend audit (DEL-02, V06, V08), local source33f6478: New6.28MB synthetic restore matches17private fingerprints/Vault/CPD and18local object bytes, but hosted Auth/StorageHTTP, production backup, lost-key and production RPO/RTO remain unverified. Next: Update #QVVS6W title/detail with exact narrow new proof, preserving original plan; schedule separately approved isolated full-service restore, roll forward final migrations and reapply deletion policy. Acceptance: Verified target; restored sign-in/session/storage bytes/download and core workflows usable with owner/other-owner controls; measured time/data loss and cleanup recorded. Preserve accepted ~24hour RPO decision rather than re-opening paid PITR. Suggested owner: Operations + Database + owner. No merge, deployment, live migration, provider spending or specialist approval is granted by logging this task.",
+    "source": "session 2026-09-20 /ledger sweep — nine-agent repo maturity review; docs/backend-audit-remediation-2026-11-05.md; backend-audit-2026-11-05:RECOVERY; source33f6478c63aedf9c2d79effd9890951035f552b2",
+    "baseRowFingerprint": "e4c50da22cfb0285829deb10c9f78236b5f311db99778a0aebee0b0832c11fc1",
+    "targetUlid": "01M2ZHJ750QVVS6WX5AYF21BNA"
+  }
+}

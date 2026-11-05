@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "539e7e69-ea40-4964-957c-d5930fffb77f",
+  "createdOn": "2026-11-05",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "task",
+    "summary": "Verify worker parser isolation and crash/retry/ambiguous-ack recovery on an isolated stack",
+    "detail": "2026-11-05 backend audit (ING-RAG-01, EXT-ROLES-JOBS-02, EXT-STREAM-01, EXT-STREAM-02, EXT-STREAM-03, F05, F09, R02, V04, V05, V09), local source33f6478: Actual SQL claims/fencing/rollback pass, but full process crash around external effects and acknowledgement, retries, revocation/deletion replay, parser OS/network isolation and cancellation are not established. Next: Prepare owned isolated real-stack fixtures with fault injection and bounded provider test contracts; inspect target/side effects/cost before any provider-backed run. Acceptance: Crash at durable write/external acceptance/ack boundaries; duplicates/out-of-order/revoked owner/stale lease/delete-replay produce intended effects only, bounded retries/cost and diagnosable state. Env stripping/offline flags are not an OS sandbox. Suggested owner: Workers + Database + integrations + Delivery. No merge, deployment, live migration, provider spending or specialist approval is granted by logging this task.",
+    "source": "docs/backend-audit-remediation-2026-11-05.md; backend-audit-2026-11-05:WORKER_RECOVERY; source33f6478c63aedf9c2d79effd9890951035f552b2",
+    "issueUlid": "01M6PNKGHTQD32S0PD3AWKFPD9"
+  }
+}

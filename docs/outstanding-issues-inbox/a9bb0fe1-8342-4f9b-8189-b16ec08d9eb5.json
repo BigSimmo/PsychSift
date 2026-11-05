@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "a9bb0fe1-8342-4f9b-8189-b16ec08d9eb5",
+  "createdOn": "2026-11-05",
+  "action": "update",
+  "payload": {
+    "id": "#055",
+    "detail": "REVIEW 2026-09-25 (offline audit of current main; no provider access): Still pending. Dependency: #9Z197J (2 Firefox and several WebKit release-matrix failures still open), so the Firefox/WebKit leg cannot pass today. PRIOR DETAIL: Before the next full-confidence release/handoff, record the candidate/PR SHA and run the local/provider release gates, Firefox/WebKit, required hosted CI, and actionable GitHub review-thread closure once. Stop at the first actionable failure and rerun only the repaired smallest gate. 2026-11-05 backend audit (ING-RAG-03, V13, L01, L03, L04, L05), local source33f6478: Existing #055 release gate is open. Deployed mode/flag/transcription/feedback-schema state, named clinical authority, seven-mode evaluation and protected staging canary are not established by deterministic offline checks. Next: Append L01-L05 acceptance to #055, preserve existing cross-browser/CI/review requirements and #TXVBAZ accepted diagnosis/treatment constraints. Obtain only the missing specific approvals/bounded evaluation authority. Acceptance: Exact SHA/mode/config/provider-target evidence, real feedback migration presence, dated clinical authority, seven-mode usefulness/safety evaluation and approved canary meet unchanged gates. No flags/content/ranking/protected fixture changes or forged approvals. Suggested owner: Owner + clinical authority + release operator. No merge, deployment, live migration, provider spending or specialist approval is granted by logging this task.",
+    "source": "`docs/launch-operator-runbook.md`; `docs/codex-review-protocol.md`; docs/backend-audit-remediation-2026-11-05.md; backend-audit-2026-11-05:CLINICAL_RELEASE; source33f6478c63aedf9c2d79effd9890951035f552b2",
+    "baseRowFingerprint": "73916c970b936e1301b658eb863dfa47c0c6edd91b6f11e7ad64c2b2ded3b7a7"
+  }
+}

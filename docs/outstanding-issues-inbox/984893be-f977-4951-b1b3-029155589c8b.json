@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "984893be-f977-4951-b1b3-029155589c8b",
+  "createdOn": "2026-11-05",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "rec",
+    "summary": "Complete remaining Windows document-copy and dependency-consumer acceptance",
+    "detail": "2026-11-05 backend audit (RD-01, RD-02, R08), local source33f6478: POSIX0700/0600copies and Linux32consumer cases pass. Windows ACL/path behavior, aggregate preparation peak memory and retained-history disk are outside that proof; scoped overrides and CodSpeed bundle qualification need maintenance. Next: On actual supported Windows/Node24, verify copied-document ACL audience and the bounded native consumer matrix. Measure aggregate resource/history behavior before choosing optional additional limits; review/remove overrides as upstream adopts fixed compatibility. Acceptance: No private ACL broadening or unsafe existing-workspace repair; patterns/ignore/skip and owned deletion keep correct Windows paths; source preserved. Avoid claiming a proven Windows bug or arbitrary-pattern safety. CodSpeed bundle remains a qualification unless actual vulnerable reach is established. Suggested owner: Developer tooling + Windows test owner. No merge, deployment, live migration, provider spending or specialist approval is granted by logging this task.",
+    "source": "docs/backend-audit-remediation-2026-11-05.md; backend-audit-2026-11-05:WINDOWS_MAINTENANCE; source33f6478c63aedf9c2d79effd9890951035f552b2",
+    "issueUlid": "01M6PNKH8ES1N8RHHGFQ9MWE9W"
+  }
+}
