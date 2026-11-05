@@ -1,7 +1,7 @@
 "use client";
 
 import { CircleCheck } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/components/ui-primitives";
@@ -50,9 +50,13 @@ export interface OnCallVerifyButtonProps {
 export function OnCallVerifyButton({ entry, onVerified, className }: OnCallVerifyButtonProps) {
   const sessionEpoch = peekOnCallEntrySessionEpoch();
   const latestEntry = useRef(entry);
-  latestEntry.current = entry;
-  const mounted = useRef(true);
-  useEffect(() => {
+  // Only committed props may invalidate a completion: a concurrent render can
+  // suspend and be abandoned while the previously reviewed row stays visible.
+  useLayoutEffect(() => {
+    latestEntry.current = entry;
+  }, [entry]);
+  const mounted = useRef(false);
+  useLayoutEffect(() => {
     mounted.current = true;
     return () => {
       mounted.current = false;
