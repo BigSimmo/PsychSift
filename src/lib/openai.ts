@@ -599,6 +599,7 @@ async function createTextResult(
   options: ResolvedTextGenerationOptions,
   format?: Record<string, unknown>,
   parseResponse = false,
+  preparedBody?: ReturnType<typeof responseBody>,
 ): Promise<OpenAITextResult & { parsed?: unknown }> {
   const operation = options.operation ?? "text_generation";
   const startedAt = Date.now();
@@ -607,7 +608,7 @@ async function createTextResult(
   // Buffered (non-streaming) request — the baseline behaviour. The `responses.create` overloads are
   // incompatible with our generic call-site; the double-cast works around the SDK type mismatch.
   async function requestBuffered(client: ReturnType<typeof createOpenAIClient>): Promise<unknown> {
-    const body = responseBody(input, options, format) as never;
+    const body = (preparedBody ?? responseBody(input, options, format)) as never;
     const request = parseResponse
       ? client.responses.parse(body, requestOptions(options))
       : client.responses.create(body, requestOptions(options));
@@ -969,17 +970,28 @@ export async function generateStructuredTextResponse(
   return result.text;
 }
 
+/** Build the same SDK body used by parsed generation, without creating a client or dispatching. */
+export function prepareParsedTextRequestBody<T>(
+  input: OpenAIResponseInput,
+  schema: ZodType<T>,
+  options: string | TextGenerationOptions = env.OPENAI_ANSWER_MODEL,
+) {
+  const resolved = resolveTextGenerationOptions(options, env.OPENAI_ANSWER_MODEL);
+  const format = zodTextFormat(schema, resolved.schemaName ?? "structured_output") as unknown as Record<
+    string,
+    unknown
+  >;
+  return responseBody(input, resolved, format);
+}
+
 export async function generateParsedTextResult<T>(
   input: OpenAIResponseInput,
   schema: ZodType<T>,
   options: string | TextGenerationOptions = env.OPENAI_ANSWER_MODEL,
 ): Promise<OpenAIParsedTextResult<T>> {
   const resolved = resolveTextGenerationOptions(options, env.OPENAI_ANSWER_MODEL);
-  const format = zodTextFormat(schema, resolved.schemaName ?? "structured_output") as unknown as Record<
-    string,
-    unknown
-  >;
-  const result = await createTextResult(input, resolved, format, true);
+  const body = prepareParsedTextRequestBody(input, schema, options);
+  const result = await createTextResult(input, resolved, undefined, true, body);
   const parsed = schema.safeParse(result.parsed);
   if (!parsed.success) {
     throw new PublicApiError("OpenAI returned invalid structured output.", 502, {

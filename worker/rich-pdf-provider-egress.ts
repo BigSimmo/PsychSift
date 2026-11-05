@@ -59,7 +59,7 @@ export type RichPdfInspectionOptions = {
   expectedPayloadForPurpose?(
     purpose: Exclude<ProviderEgressPurpose, "embedding">,
     source: RichPdfInspectionCurrent,
-  ): Promise<string | Uint8Array | undefined>;
+  ): Promise<string | Uint8Array | { payload: string; identifierTexts: readonly string[] } | undefined>;
 };
 function refuse(reason: string): never {
   throw new Error(`rich_pdf_provider_egress_${reason}`);
@@ -180,11 +180,26 @@ export function createRichPdfInspectionLoader(options: RichPdfInspectionOptions)
       for (const input of body.input) inspectIdentifiers(input, bibliographicIdentifierAssessment(input));
     } else {
       const expected = await options.expectedPayloadForPurpose?.(request.purpose, source);
-      if (expected === undefined || !Buffer.from(expected).equals(payloadBytes))
+      const sourceFields =
+        expected !== undefined && typeof expected === "object" && !(expected instanceof Uint8Array)
+          ? expected
+          : undefined;
+      if (
+        sourceFields &&
+        (request.purpose !== "summary" ||
+          !Array.isArray(sourceFields.identifierTexts) ||
+          sourceFields.identifierTexts.some((text) => typeof text !== "string"))
+      )
+        refuse("purpose_source_body_unavailable");
+      const expectedBytes = sourceFields ? sourceFields.payload : (expected as string | Uint8Array | undefined);
+      if (expectedBytes === undefined || !Buffer.from(expectedBytes).equals(payloadBytes))
         refuse("purpose_source_body_unavailable");
       // Expected bodies are purpose-specific trusted derivations. No body, purpose
       // or dynamic provider result is automatically admitted merely by its hash.
-      if (request.purpose !== "caption") inspectIdentifiers(payloadBytes.toString("utf8"));
+      if (sourceFields)
+        for (const text of sourceFields.identifierTexts)
+          inspectIdentifiers(text, bibliographicIdentifierAssessment(text));
+      else if (request.purpose !== "caption") inspectIdentifiers(payloadBytes.toString("utf8"));
     }
     const scope: RichAdminUnscannedScope = {
       binding,

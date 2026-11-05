@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
-import { rm } from "node:fs/promises";
+import { lstat, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { isAdministratorUser } from "../src/lib/authorization";
@@ -11,9 +13,26 @@ import { buildInternalRichPdfExpectation } from "./managed-full-pdf-terminal";
 import { administratorReindexAuthorityFactsSchema } from "./reindex-provider-authority";
 import { inspectRichPdfSource, type RichPdfInspectionResult } from "./rich-pdf-inspection";
 import { workerProviderSourceBinding } from "./provider-egress";
+import { inspectRenderedPdfOriginal, type RenderedPdfInspection } from "./rendered-pdf-inspection-producer";
+import { validateRenderedPdfReview } from "./rendered-pdf-review";
+import {
+  buildInternalRenderedPdfExpectation,
+  captureManagedRenderedPdfArtifacts,
+} from "./managed-rendered-pdf-terminal";
 import type { JobRow } from "./types";
 
 const sha = z.string().regex(/^sha256:[0-9a-f]{64}$/);
+export const renderedReviewPolicySchema = z
+  .object({
+    enabled: z.literal(true),
+    reviewFilePath: z.string().refine((value) => path.isAbsolute(value)),
+    approvedReviewSha256: z
+      .array(sha)
+      .min(1)
+      .max(100)
+      .refine((values) => new Set(values).size === values.length),
+  })
+  .strict();
 const policySchema = z
   .object({
     bucket: z.string().regex(/^[a-z0-9][a-z0-9_-]{0,99}$/),
@@ -25,6 +44,8 @@ const policySchema = z
     approvalReferenceSha256: sha,
     issuedAt: z.iso.datetime(),
     expiresAt: z.iso.datetime(),
+    enableSourceAnchoredSummary: z.boolean().optional(),
+    renderedReview: renderedReviewPolicySchema.optional(),
   })
   .strict();
 const eventSchema = z.object({
@@ -74,6 +95,13 @@ export function createInternalRichPdfBuildSuppliers(
       refuse("policy_not_current");
   };
   current();
+  // A reviewed profile cannot run without its independently enabled summary gate.
+  if (policy.renderedReview && policy.enableSourceAnchoredSummary !== true) refuse("rendered_summary_required");
+  const approvedReviews = new Set(policy.renderedReview?.approvedReviewSha256 ?? []);
+  const renderedCache = new WeakMap<
+    JobRow,
+    { key: string; inspection: Promise<RenderedPdfInspection>; reviewSha256?: string }
+  >();
   const cache = new WeakMap<JobRow, { key: string; result: Promise<RichPdfInspectionResult> }>();
   async function original(job: JobRow) {
     current();
@@ -90,7 +118,7 @@ export function createInternalRichPdfBuildSuppliers(
       refuse("attempt_binding");
     const loaded = await client
       .from("documents")
-      .select("id,owner_id,title,file_name,file_type,storage_path,content_hash,file_size,metadata")
+      .select("id,owner_id,title,file_name,file_type,source_path,storage_path,content_hash,file_size,metadata")
       .eq("id", job.document_id)
       .single();
     current();
@@ -101,6 +129,8 @@ export function createInternalRichPdfBuildSuppliers(
       d.file_type !== "application/pdf" ||
       d.owner_id !== job.documents.owner_id ||
       d.file_name !== job.documents.file_name ||
+      (policy.renderedReview &&
+        (d.title !== job.documents.title || (d.source_path ?? null) !== (job.documents.source_path ?? null))) ||
       d.storage_path !== job.documents.storage_path ||
       d.file_size !== job.documents.file_size ||
       !same(d.metadata, job.documents.metadata) ||
@@ -218,6 +248,99 @@ export function createInternalRichPdfBuildSuppliers(
       const source = await original(job);
       signal?.throwIfAborted();
       const key = generationEvidenceDigest(source.binding);
+      if (policy.renderedReview) {
+        // The approval digest comes only from parsed server policy, never document
+        // metadata, an HTTP body, or a self-asserted field in the mounted record.
+        const readReview = async () => {
+          const info = await lstat(policy.renderedReview!.reviewFilePath);
+          if (!info.isFile() || info.isSymbolicLink() || info.size > 8 * 1024 * 1024) refuse("rendered_review_file");
+          return readFile(policy.renderedReview!.reviewFilePath);
+        };
+        const reviewBytes = await readReview();
+        let held = renderedCache.get(job);
+        const newlyOwned = !held;
+        if (held && held.key !== key) refuse("rendered_source_changed");
+        if (!held) {
+          held = {
+            key,
+            inspection: (async () => {
+              const bootstrap = await mkdtemp(path.join(tmpdir(), "psychsift-rendered-source-"));
+              try {
+                const originalPath = path.join(bootstrap, "source.pdf");
+                await writeFile(originalPath, source.bytes, { mode: 0o600, flag: "wx" });
+                return await inspectRenderedPdfOriginal(originalPath, tmpdir(), source.binding.contentSha256, {
+                  signal,
+                });
+              } finally {
+                await rm(bootstrap, { recursive: true, force: true });
+              }
+            })(),
+          };
+          renderedCache.set(job, held);
+        }
+        let inspection: RenderedPdfInspection | undefined;
+        try {
+          inspection = await held.inspection;
+          const acceptedReview = await validateRenderedPdfReview({
+            review: JSON.parse(reviewBytes.toString("utf8")),
+            inspection,
+            sourcePath: path.join(inspection.temporaryPaths[0]!, "source.pdf"),
+            originalBytes: source.bytes,
+            approvedReviewSha256: approvedReviews,
+          });
+          if (held.reviewSha256 && held.reviewSha256 !== acceptedReview.reviewSha256) refuse("rendered_review_changed");
+          held.reviewSha256 = acceptedReview.reviewSha256;
+          if (!(await readReview()).equals(reviewBytes)) refuse("rendered_review_changed");
+          signal?.throwIfAborted();
+          current();
+          const artifacts = await captureManagedRenderedPdfArtifacts(acceptedReview);
+          const renderedRasterBytes = await readFile(inspection.rasterContainer.path);
+          if (
+            renderedRasterBytes.length !== inspection.rasterContainer.byteLength ||
+            bytesDigest(renderedRasterBytes) !== inspection.rasterContainer.sha256
+          )
+            refuse("rendered_raster_changed");
+          signal?.throwIfAborted();
+          return {
+            ownerId: source.document.owner_id,
+            stewardId: source.event.administrator_id,
+            documentId: source.document.id,
+            storagePath: source.document.storage_path,
+            sourceSha256: source.binding.contentSha256,
+            sourceByteLength: source.bytes.length,
+            sourceBytes: source.bytes,
+            authority: source.event.authority,
+            catalogueKey: source.catalogueKey,
+            sourceFamily: "reviewed_rendered_pdf",
+            renderedPdf: { acceptedReview, ...artifacts, renderedRasterBytes },
+            summaryEnabled: true,
+            ...buildInternalRenderedPdfExpectation(acceptedReview),
+            policyObservations: {
+              binding: source.binding,
+              policyVersion: "administrator-internal-reviewed-rendered-pdf-build-v1",
+              purpose: "embedding",
+              admission: "current",
+              ownerScope: "permitted",
+              rights: "review_deferred",
+              indexLicence: "review_deferred",
+              legalReviewDeferral: INTERNAL_BUILD_LEGAL_REVIEW_DEFERRAL,
+              purposeClearance: "permitted",
+              source: "eligible",
+              sourcePolicy: "matched",
+              processingScope:
+                source.document.owner_id === null ? "existing_shared_library_reindex" : "owner_internal_build",
+            },
+          };
+        } catch (error) {
+          if (newlyOwned) {
+            renderedCache.delete(job);
+            await Promise.all(
+              (inspection?.temporaryPaths ?? []).map((directory) => rm(directory, { recursive: true, force: true })),
+            );
+          }
+          throw error;
+        }
+      }
       let cached = cache.get(job);
       const newlyOwned = !cached || cached.key !== key;
       if (newlyOwned) {
@@ -250,6 +373,7 @@ export function createInternalRichPdfBuildSuppliers(
         catalogueKey: source.catalogueKey,
         sourceFamily: "rich_pdf",
         richPdf: result,
+        summaryEnabled: policy.enableSourceAnchoredSummary === true,
         ...buildInternalRichPdfExpectation(source.bytes, result.review),
         policyObservations: {
           binding: source.binding,
@@ -293,7 +417,7 @@ export function createInternalRichPdfBuildSuppliers(
             status: "active",
             issuedAt: policy.issuedAt,
             expiresAt: policy.expiresAt,
-            allowedPurposes: ["embedding"],
+            allowedPurposes: policy.enableSourceAnchoredSummary === true ? ["embedding", "summary"] : ["embedding"],
           },
           provenance: {
             documentOwnerId: source.document.owner_id,

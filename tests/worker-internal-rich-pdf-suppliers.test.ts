@@ -167,6 +167,27 @@ function fixture() {
   return { client, options, job, document, event, user, inspectRichPdf, from, download, getBucket, getUserById };
 }
 describe("finite internal rich PDF source supplier", () => {
+  it("enables summary grants only through explicit server policy", async () => {
+    for (const enabled of [false, true]) {
+      const f = fixture();
+      const suppliers = createInternalRichPdfBuildSuppliers(f.client, {
+        ...f.options,
+        enableSourceAnchoredSummary: enabled,
+      });
+      const source = await suppliers.loadApprovedSource(f.job, "embedding");
+      expect(source?.summaryEnabled).toBe(enabled);
+      const payload = "synthetic";
+      const contentSha256 = bytesDigest(Buffer.from(payload)) as `sha256:${string}`;
+      const configuration = await suppliers.loadRichScannerConfiguration!({
+        job: f.job,
+        binding: workerProviderSourceBinding(f.job, f.job.documents),
+        request: { purpose: "summary", payload, payloadSha256: contentSha256 },
+        phase: "payload",
+        contentSha256,
+      });
+      expect(configuration.evidence.grant.allowedPurposes).toEqual(enabled ? ["embedding", "summary"] : ["embedding"]);
+    }
+  });
   it("preserves shared null ownership and reloads permissions while caching structural work", async () => {
     const f = fixture(),
       s = createInternalRichPdfBuildSuppliers(f.client, f.options);

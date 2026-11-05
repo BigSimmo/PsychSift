@@ -114,6 +114,27 @@ async function countAll(f: ReturnType<typeof setup>) {
 }
 
 describe("bounded exact-count model smoke transport", () => {
+  it("accepts the exact official counting fee article, refusing lookalikes", () => {
+    const prices = card();
+    prices.counting.source = "https://help.openai.com/en/articles/4936856-understanding-and-counting-tokens";
+    prices.counting.usdPerRequest = 0;
+    const options = {
+      plan: plan(),
+      card: prices,
+      caps: caps(),
+      persist: async () => {},
+      dispatch: async () => new Response(),
+    };
+    expect(() => createSmokeTransport(options)).not.toThrow();
+    for (const source of [
+      prices.counting.source + ".example.test",
+      "https://help.openai.com.example.test/en/articles/4936856-understanding-and-counting-tokens",
+      "https://help.openai.com/en/articles/other",
+    ])
+      expect(() =>
+        createSmokeTransport({ ...options, card: { ...prices, counting: { ...prices.counting, source } } }),
+      ).toThrow("count_pricing_unverified");
+  });
   it("runs every frozen synthetic case for both models without a provider client or network", async () => {
     const cases = parseComparisonFixtures(
       await readFile(new URL("../scripts/fixtures/rag-model-comparison.json", import.meta.url), "utf8"),

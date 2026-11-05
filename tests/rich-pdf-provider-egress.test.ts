@@ -171,9 +171,45 @@ function fixture() {
     loadCurrent,
     loadScannerConfiguration,
   });
-  return { source, evidence, binding, request, loader, loadCurrent, loadScannerConfiguration };
+  return { source, evidence, binding, request, loader, loadCurrent, loadScannerConfiguration, attempt };
 }
 describe("rich source egress with accountable stewardship", () => {
+  it.each([false, true])(
+    "scans summary source fields while excluding server anchor IDs (identifier=%s)",
+    async (identifier) => {
+      const f = fixture();
+      f.evidence.grant.allowedPurposes = ["embedding", "summary"];
+      const text = identifier ? "Contact synthetic@example.test" : f.source.review.pages[0].text;
+      const payload = JSON.stringify({
+        input: `chunk_id: 78000000-0000-4000-8000-000000000003\n${text}`,
+        model: "synthetic",
+      });
+      const loader = createRichPdfInspectionLoader({
+        attempt: f.attempt,
+        binding: f.binding,
+        loadCurrent: f.loadCurrent,
+        loadScannerConfiguration: f.loadScannerConfiguration,
+        expectedPayloadForPurpose: async () => ({ payload, identifierTexts: [text] }),
+      });
+      const request = {
+        purpose: "summary" as const,
+        payload,
+        payloadSha256: bytesDigest(Buffer.from(payload)) as ContentSha256,
+      };
+      if (identifier) await expect(loader(request, f.binding)).rejects.toThrow("identifier_shape_detected");
+      else expect(evaluateDocumentIngressSafety((await loader(request, f.binding)).observations).verdict).toBe("pass");
+      await expect(
+        loader(
+          {
+            ...request,
+            payload: payload + " ",
+            payloadSha256: bytesDigest(Buffer.from(payload + " ")) as ContentSha256,
+          },
+          f.binding,
+        ),
+      ).rejects.toThrow("purpose_source_body_unavailable");
+    },
+  );
   it("authorizes the exact embedding while retaining null document ownership", async () => {
     const f = fixture(),
       result = await f.loader(f.request, f.binding);

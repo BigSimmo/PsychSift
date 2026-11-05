@@ -100,6 +100,7 @@ export async function initializeManagedAdminGeneration(
       mutation: (name, payload) => mutation(attempt, name, payload),
       async prepare(source, bytes) {
         const original =
+          source.renderedPdf?.extracted ??
           source.richPdf?.extracted ??
           (await extractDocument({
             buffer: bytes,
@@ -107,7 +108,12 @@ export async function initializeManagedAdminGeneration(
             mimeType: job.documents.file_type,
           }));
         locallyOwned.add(original);
-        if ((source.sourceFamily === "native_pdf" || source.sourceFamily === "rich_pdf") && adoptNativeExtraction) {
+        if (
+          (source.sourceFamily === "native_pdf" ||
+            source.sourceFamily === "rich_pdf" ||
+            source.sourceFamily === "reviewed_rendered_pdf") &&
+          adoptNativeExtraction
+        ) {
           // Ownership transfers only after the callback returns successfully.
           adoptNativeExtraction(original);
           locallyOwned.delete(original);
@@ -118,6 +124,7 @@ export async function initializeManagedAdminGeneration(
           sanitizeJsonbRecord,
         });
         const originalCapturedImages =
+          source.renderedPdf?.capturedImages ??
           source.richPdf?.capturedImages ??
           (source.sourceFamily === "native_pdf"
             ? await captureGenerationImages({
@@ -141,9 +148,15 @@ export async function initializeManagedAdminGeneration(
           sourceExpectationWitnessBytes: source.sourceExpectationWitnessBytes,
           documentMetadata: job.documents.metadata,
           capturedImages: originalCapturedImages,
+          renderedReview: source.renderedPdf?.acceptedReview,
+          renderedRasterBytes: source.renderedPdf?.renderedRasterBytes,
           deferOptionalProducerDeclarations: true,
         });
-        if (source.sourceFamily !== "native_pdf" && source.sourceFamily !== "rich_pdf")
+        if (
+          source.sourceFamily !== "native_pdf" &&
+          source.sourceFamily !== "rich_pdf" &&
+          source.sourceFamily !== "reviewed_rendered_pdf"
+        )
           buildManagedAdminTextChunks({
             documentId: job.document_id,
             packet,
@@ -152,7 +165,11 @@ export async function initializeManagedAdminGeneration(
             extracted: original,
             sourceSectionLayout: source.sourceSectionLayout,
           });
-        if (source.sourceFamily === "native_pdf" || source.sourceFamily === "rich_pdf")
+        if (
+          source.sourceFamily === "native_pdf" ||
+          source.sourceFamily === "rich_pdf" ||
+          source.sourceFamily === "reviewed_rendered_pdf"
+        )
           prepared.pdf = {
             sourceSha256: source.sourceSha256,
             extracted: original,

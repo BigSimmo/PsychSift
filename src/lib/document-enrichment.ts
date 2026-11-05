@@ -40,7 +40,7 @@ import {
   compactPromptChunk,
   selectCoverageAwarePromptChunks,
 } from "@/lib/indexing-coverage";
-import { generateParsedTextResult } from "@/lib/openai";
+import { generateParsedTextResult, prepareParsedTextRequestBody, type OpenAITextResult } from "@/lib/openai";
 import { ragDeepMemoryVersion } from "@/lib/deep-memory";
 import { normalizeDocumentLabelForStorage } from "@/lib/document-tags";
 import { safeErrorLogDetails } from "@/lib/privacy";
@@ -154,6 +154,7 @@ const summarySchema = z
 type ParsedGeneratedSummary = z.infer<typeof summarySchema>;
 
 type EnrichmentChunk = {
+  document_id?: string;
   index_generation_id?: string | null;
   id: string;
   page_number: number | null;
@@ -163,6 +164,7 @@ type EnrichmentChunk = {
 };
 
 type EnrichmentImage = {
+  document_id?: string;
   index_generation_id?: string | null;
   id: string;
   page_number: number | null;
@@ -735,6 +737,17 @@ export function assertSourceAnchoredSummaryPreflight(args: {
   if (metadata.index_generation_id !== indexGenerationId) {
     throw new Error("source_anchored_summary_requires_active_generation");
   }
+  return assertSourceAnchoredSummarySources(args);
+}
+
+function assertSourceAnchoredSummarySources(args: {
+  documentMetadata: unknown;
+  indexGenerationId: unknown;
+  chunks: readonly EnrichmentChunk[];
+  images: readonly EnrichmentImage[];
+}) {
+  const indexGenerationId = requireSourceAnchoredSummaryGeneration(args.indexGenerationId);
+  const metadata = metadataRecord(args.documentMetadata);
   if (args.chunks.length > SOURCE_ANCHORED_MAX_CHUNKS || args.images.length > SOURCE_ANCHORED_MAX_IMAGES) {
     throw new Error("source_anchored_summary_source_limit_exceeded");
   }
@@ -797,36 +810,186 @@ function modelProfile(raw: Record<string, unknown>, authority: SourceAnchoredSum
   return profile as unknown as SourceAnchoredClinicalProfile;
 }
 
-async function generateSourceAnchoredSummary(args: {
+function sourceAnchoredSummaryRequest(args: {
+  document: Pick<ClinicalDocument, "title" | "file_name" | "source_path">;
+  authority: SourceAnchoredSummaryAuthority;
+  chunks: EnrichmentChunk[];
+  images: EnrichmentImage[];
+}) {
+  const selectedImageIds = new Set(args.authority.selectedImages.map((image) => image.id));
+  const promptImages = args.images.filter((image) => selectedImageIds.has(image.id));
+  return {
+    prompt: `${buildEnrichmentPrompt({ ...args, images: promptImages })}\nFor every support=not_found item, begin its text exactly with "Not established by selected source evidence:" and use no source anchors.`,
+    options: {
+      model: args.authority.expectedStructuredModel,
+      maxOutputTokens: 2400,
+      operation: "summary" as const,
+      ingestionPurpose: "summary" as const,
+      schemaName: "clinical_document_enrichment",
+      promptCacheKey: "clinical-document-enrichment-v1",
+      reasoningEffort: "medium" as const,
+      textVerbosity: "medium" as const,
+    },
+  };
+}
+
+type CandidateSummaryInput = {
+  document: Pick<ClinicalDocument, "id" | "title" | "file_name" | "source_path"> & {
+    metadata?: ClinicalDocument["metadata"];
+  };
+  indexGenerationId: string;
+  chunks: EnrichmentChunk[];
+  images?: EnrichmentImage[];
+};
+
+export type CandidateSourceAnchoredSummaryPlan = Readonly<{
+  version: "candidate-source-anchored-summary-v1";
+  documentId: string;
+  indexGenerationId: string;
+  authority: SourceAnchoredSummaryAuthority;
+  /** Exact JSON serialization expected at the guarded SDK transport boundary. */
+  requestBody: string;
+}>;
+
+function freezeSummarySnapshot<T>(value: T): T {
+  if (value !== null && typeof value === "object") {
+    for (const child of Object.values(value)) freezeSummarySnapshot(child);
+    Object.freeze(value);
+  }
+  return value;
+}
+
+const candidateSummaryPlans = new WeakMap<
+  CandidateSourceAnchoredSummaryPlan,
+  {
+    document: CandidateSummaryInput["document"];
+    chunks: EnrichmentChunk[];
+    images: EnrichmentImage[];
+    request: ReturnType<typeof sourceAnchoredSummaryRequest>;
+  }
+>();
+
+/** Prepare candidate evidence without promoting it or writing an active-generation projection.
+ * This plan is not egress authority: the trusted loader must independently derive its expected body.
+ */
+export function prepareCandidateSourceAnchoredSummary(args: CandidateSummaryInput): CandidateSourceAnchoredSummaryPlan {
+  const snapshot = freezeSummarySnapshot(structuredClone({ ...args, images: args.images ?? [] }));
+  const indexGenerationId = assertSourceAnchoredSummarySources({
+    documentMetadata: snapshot.document.metadata,
+    indexGenerationId: snapshot.indexGenerationId,
+    chunks: snapshot.chunks,
+    images: snapshot.images,
+  });
+  for (const row of [...snapshot.chunks, ...snapshot.images]) {
+    if (row.document_id !== undefined && row.document_id !== snapshot.document.id) {
+      throw new Error("source_anchored_summary_source_document_mismatch");
+    }
+  }
+  // Captions, labels and metadata also enter this request; checking chunks alone
+  // would leave a second route for protected public-source content.
+  const policyViolation = publicSourcePolicyViolation(
+    metadataRecord(snapshot.document.metadata),
+    containsForbiddenPublicSourceChunkContent([
+      ...snapshot.chunks,
+      ...snapshot.images.map((image) => ({
+        content: `${image.caption ?? ""}\n${(image.labels ?? []).join("\n")}\n${image.image_type ?? ""}`,
+      })),
+      { content: `${snapshot.document.title}\n${snapshot.document.file_name}\n${snapshot.document.source_path ?? ""}` },
+    ]),
+  );
+  if (policyViolation) throw new Error(policyViolation);
+  const authority = freezeSummarySnapshot(
+    sourceAuthority({
+      documentId: snapshot.document.id,
+      indexGenerationId,
+      chunks: snapshot.chunks,
+      images: snapshot.images,
+    }),
+  );
+  const request = freezeSummarySnapshot(sourceAnchoredSummaryRequest({ ...snapshot, authority }));
+  const plan = freezeSummarySnapshot({
+    version: "candidate-source-anchored-summary-v1" as const,
+    documentId: snapshot.document.id,
+    indexGenerationId,
+    authority,
+    requestBody: JSON.stringify(prepareParsedTextRequestBody(request.prompt, summarySchema, request.options)),
+  });
+  candidateSummaryPlans.set(plan, { ...snapshot, request });
+  return plan;
+}
+
+export async function generateCandidateSourceAnchoredSummary(
+  plan: CandidateSourceAnchoredSummaryPlan,
+  options: { ingestionEgress: IngestionProviderEgressContext; signal?: AbortSignal },
+): Promise<SourceAnchoredSummaryPayload> {
+  return (await generateCandidateSourceAnchoredSummaryResult(plan, options)).payload;
+}
+
+export type SourceAnchoredSummaryGenerationResult = Readonly<{
+  payload: SourceAnchoredSummaryPayload;
+  providerEvidence: Readonly<{
+    requestedModel: string;
+    providerModel?: string;
+    requestId?: string | null;
+    usage?: OpenAITextResult["usage"];
+  }>;
+}>;
+
+export async function generateCandidateSourceAnchoredSummaryResult(
+  plan: CandidateSourceAnchoredSummaryPlan,
+  options: { ingestionEgress: IngestionProviderEgressContext; signal?: AbortSignal },
+): Promise<SourceAnchoredSummaryGenerationResult> {
+  options.signal?.throwIfAborted();
+  const snapshot = candidateSummaryPlans.get(plan);
+  if (!snapshot) throw new Error("source_anchored_summary_plan_invalid");
+  const requestBody = JSON.stringify(
+    prepareParsedTextRequestBody(snapshot.request.prompt, summarySchema, snapshot.request.options),
+  );
+  if (requestBody !== plan.requestBody) throw new Error("source_anchored_summary_request_changed");
+  return generateSourceAnchoredSummaryResult({
+    ...snapshot,
+    authority: plan.authority,
+    ingestionEgress: options.ingestionEgress,
+    signal: options.signal,
+  });
+}
+
+type SourceAnchoredSummaryGenerationArgs = {
   ingestionEgress: IngestionProviderEgressContext;
   document: Pick<ClinicalDocument, "id" | "title" | "file_name" | "source_path">;
   authority: SourceAnchoredSummaryAuthority;
   chunks: EnrichmentChunk[];
   images: EnrichmentImage[];
   signal?: AbortSignal;
-}) {
+  request?: ReturnType<typeof sourceAnchoredSummaryRequest>;
+};
+
+async function generateSourceAnchoredSummary(args: SourceAnchoredSummaryGenerationArgs) {
+  return (await generateSourceAnchoredSummaryResult(args)).payload;
+}
+
+async function generateSourceAnchoredSummaryResult(
+  args: SourceAnchoredSummaryGenerationArgs,
+): Promise<SourceAnchoredSummaryGenerationResult> {
   try {
     args.signal?.throwIfAborted();
-    const selectedImageIds = new Set(args.authority.selectedImages.map((image) => image.id));
-    const promptImages = args.images.filter((image) => selectedImageIds.has(image.id));
-    const prompt = `${buildEnrichmentPrompt({ ...args, images: promptImages })}\nFor every support=not_found item, begin its text exactly with "Not established by selected source evidence:" and use no source anchors.`;
-    const result = await generateParsedTextResult(prompt, summarySchema, {
+    const request = args.request ?? sourceAnchoredSummaryRequest(args);
+    const result = await generateParsedTextResult(request.prompt, summarySchema, {
+      ...request.options,
       signal: args.signal,
-      model: env.OPENAI_INDEXING_MODEL,
-      maxOutputTokens: 2400,
-      operation: "summary",
       ingestionEgress: args.ingestionEgress,
-      ingestionPurpose: "summary",
-      schemaName: "clinical_document_enrichment",
-      promptCacheKey: "clinical-document-enrichment-v1",
-      reasoningEffort: "medium",
-      textVerbosity: "medium",
     });
     args.signal?.throwIfAborted();
     if (result.truncated) throw new Error("truncated structured enrichment");
+    const providerEvidence = {
+      requestedModel: result.model,
+      ...(result.providerModel !== undefined ? { providerModel: result.providerModel } : {}),
+      ...(result.requestId !== undefined ? { requestId: result.requestId } : {}),
+      ...(result.usage !== undefined ? { usage: result.usage } : {}),
+    };
     const raw = result.parsed as unknown as Record<string, unknown>;
     if (raw.summary_version === SOURCE_ANCHORED_SUMMARY_VERSION) {
-      return normalizeSourceAnchoredSummary(raw, args.authority);
+      return { payload: normalizeSourceAnchoredSummary(raw, args.authority), providerEvidence };
     }
     const profile = modelProfile(raw, args.authority);
     const labels = (Array.isArray(raw.labels) ? raw.labels : [])
@@ -840,14 +1003,14 @@ async function generateSourceAnchoredSummary(args: {
       })
       .sort((a, b) => String(a.label_type).localeCompare(String(b.label_type)) || a.label.localeCompare(b.label));
     const projected = projectSourceAnchoredSummary(profile);
-    return normalizeSourceAnchoredSummary(
+    const payload = normalizeSourceAnchoredSummary(
       {
         summary_kind: "structured",
         summary_version: SOURCE_ANCHORED_SUMMARY_VERSION,
         document_id: args.document.id,
         index_generation_id: args.authority.indexGenerationId,
-        model: env.OPENAI_INDEXING_MODEL,
-        model_version: ragEnrichmentVersion,
+        model: args.authority.expectedStructuredModel,
+        model_version: args.authority.expectedStructuredModelVersion,
         generated_at: new Date().toISOString(),
         source_chunk_ids: args.authority.selectedChunks.map((row) => row.id),
         source_image_ids: args.authority.selectedImages.map((row) => row.id),
@@ -866,6 +1029,7 @@ async function generateSourceAnchoredSummary(args: {
       },
       args.authority,
     );
+    return { payload, providerEvidence };
   } catch (error) {
     args.signal?.throwIfAborted();
     if (error instanceof ProviderEgressDeniedError || (error instanceof Error && error.name === "AbortError"))

@@ -62,7 +62,9 @@ export type SmokeTransportOptions = {
 const object = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
 const positive = (v: number) => Number.isSafeInteger(v) && v > 0;
 const official = (url: unknown) =>
-  typeof url === "string" && /^https:\/\/(?:developers|platform)\.openai\.com\//.test(url);
+  typeof url === "string" &&
+  (/^https:\/\/(?:developers|platform)\.openai\.com\//.test(url) ||
+    url === "https://help.openai.com/en/articles/4936856-understanding-and-counting-tokens");
 const tokenKeys = ["model", "input", "instructions", "reasoning", "text"];
 function canonical(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;

@@ -113,9 +113,20 @@ $publish$;
 -- 5. A clean same-grade swap more than 7 days away approves itself, and can be undone for 10 minutes.
 do $swap$
 declare give uuid; take uuid; r jsonb; sid uuid;
+ give_before public.roster_assignments; take_before public.roster_assignments; future_offset interval;
 begin
   select id into give from public.roster_assignments where user_id = pg_temp.id('lee') and shift_code = 'C';
   select id into take from public.roster_assignments where user_id = pg_temp.id('mei') and shift_code = 'C';
+  select * into strict give_before from public.roster_assignments where id=give;
+  select * into strict take_before from public.roster_assignments where id=take;
+  -- Exercise the documented >7-day branch regardless of the wall-clock date.
+  -- Restore the original fixed publication fixtures after this isolated probe.
+  future_offset:=date_trunc('day',clock_timestamp())+interval '30 days'
+    -date_trunc('day',least(give_before.starts_at,take_before.starts_at));
+  update public.roster_assignments set starts_at=starts_at+future_offset,ends_at=ends_at+future_offset
+    where id in(give,take);
+  if exists(select 1 from public.roster_assignments where id in(give,take)
+    and starts_at<=clock_timestamp()+interval '7 days') then raise exception 'swap: future fixture outside approval branch';end if;
   r := pg_temp.cmd('lee', 'swap.create', jsonb_build_object('giveAssignmentId', give, 'takeAssignmentId', take, 'counterpartyId', pg_temp.id('mei')));
   sid := (r ->> 'swapId')::uuid;
   perform pg_temp.expect_error(format($f$select pg_temp.cmd('lee', 'swap.create', %L)$f$,
@@ -126,6 +137,8 @@ begin
   if (select user_id from public.roster_assignments where id = take) <> pg_temp.id('lee') then raise exception 'swap: take not moved'; end if;
   r := pg_temp.cmd('lee', 'swap.undo', jsonb_build_object('swapId', sid));
   if (select user_id from public.roster_assignments where id = give) <> pg_temp.id('lee') then raise exception 'undo failed'; end if;
+  update public.roster_assignments set starts_at=give_before.starts_at,ends_at=give_before.ends_at where id=give;
+  update public.roster_assignments set starts_at=take_before.starts_at,ends_at=take_before.ends_at where id=take;
 end
 $swap$;
 

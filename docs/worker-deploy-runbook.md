@@ -456,11 +456,38 @@ extraction and Tesseract supply actual text/OCR, table cells and captured images
 provenance, native/OCR page partitions, derived rows and vectors are checked before atomic
 publication. Measured quality gates reject a degraded replacement. Retained image bytes use an
 authenticated active-generation endpoint; the `managed-pdf/…` locator is not a Storage object.
-Local sections, memory cards and index units are produced together. Model-generated summaries,
-vision interpretation and clinical semantic sign-off are explicitly deferred in this profile.
-Only embedding provider calls are enabled; other purposes require separate trusted source-bound
-bodies and purpose grants. This is an internal build with deferred legal review, not public
+Local sections, memory cards and index units are produced together. Source-anchored summaries
+can be enabled explicitly with `enableSourceAnchoredSummary: true`; their exact request bodies
+and separate purpose grants are checked, and their generation-bound projections commit atomically
+with the pointer. The default enables embedding only. Vision interpretation and clinical
+semantic sign-off remain separate. This is an internal build with deferred legal review, not public
 clearance. Keep the worker paused until actual schema, deployment and finite policy are verified.
+
+**Reviewed rendered evidence (5 November).** The rich-build policy can explicitly select
+`renderedReview: { enabled: true, reviewFilePath: <absolute private JSON file>,
+approvedReviewSha256: [<exact approved review digest>] }`, together with
+`enableSourceAnchoredSummary: true`. The mounted file is a single strict
+`administrator-rendered-pdf-inspection-v1` review record. The digest allowlist belongs to server
+configuration; document metadata and the record itself cannot approve it. The document claim
+allowlist, current administrator admission and original-byte checks still apply. Selecting this
+profile never follows automatically from a native-inspector refusal.
+
+The local producer first emits `rendered-pdf-source-v1` evidence held for review. An independent
+review must cover every exact page render, OCR region, table row/cell association and diagram
+connection, or explicitly establish absence. This contract supports rectangular reviewed tables;
+merged or irregular structures remain held. Approved review records bind source bytes, runtime
+scripts, pixels, OCR, geometry and relationships. They grant no ingestion, provider, publication
+or clinical approval. The runtime revalidates those identities and current authority at dispatch,
+pins review/profile selection for the attempt and refuses rotation during a running job.
+
+Only final page pixels and reviewed derivatives become searchable. Original native text, native
+table strings and original embedded images stay excluded. Their unresolved native-layer conflict
+is preserved; the rendered representation uses `hiddenText: not_applicable`, never a claim that
+the original layer is consistent. Private retention includes the exact review, raster container,
+original geometry and raw rendered OCR. The terminal emits a distinct rendered seal and keeps
+the existing generation, ownership, rollback, manual-label and atomic-summary protections.
+These source changes and their new migrations require their own release and owner merge gates.
+They do not create a real review record, configure a live policy or resume claims.
 
 The owner selected an explicit source-scoped administrator-only unscanned exception for local
 implementation on 1 November. Its evidence, expiry, revocation and commissioning requirements

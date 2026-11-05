@@ -20,7 +20,13 @@ import { inspectRichPdfBytes } from "../../worker/rich-pdf-inspection-producer";
 import type { RichPdfInspectionResult } from "../../worker/rich-pdf-inspection";
 import type { JobRow } from "../../worker/types";
 import { prepareAdministratorDocumentReadmission } from "../../src/lib/admin-document-readmission";
-const ids = Array.from({ length: 6 }, (_, i) => `73000000-0000-4000-8000-00000000000${i + 1}`);
+import { prepareManagedPdfSummaryContext, prepareManagedPdfSummaryProjection } from "../../worker/managed-pdf-summary";
+import { normalizeSourceAnchoredSummary } from "../../supabase/functions/_shared/source-anchored-summary";
+// Repeatable scratch runs must not reuse an immutable readmission correlation.
+const prefixIndex = process.argv.indexOf("--id-prefix");
+const idPrefix = prefixIndex < 0 ? "73000000" : process.argv[prefixIndex + 1];
+if (!idPrefix || !/^[a-f0-9]{8}$/.test(idPrefix)) throw new Error("fixture_id_prefix_invalid");
+const ids = Array.from({ length: 6 }, (_, i) => `${idPrefix}-0000-4000-8000-00000000000${i + 1}`);
 const sqlJson = (value: unknown) => "'" + JSON.stringify(value).replaceAll("'", "''") + "'::jsonb";
 function arg(name: string) {
   const i = process.argv.indexOf(name);
@@ -194,11 +200,91 @@ async function stage(path: string, claimPath: string) {
     capturedImages,
     stewardId: ids[5],
   });
-  const packet = JSON.parse(generationEvidenceBytes(plan.packet).toString("utf8")) as typeof plan.packet;
+  const packet = JSON.parse(generationEvidenceBytes(plan.packet).toString("utf8")) as Omit<
+    typeof plan.packet,
+    "version"
+  > & { version: string; summaryProjection?: ReturnType<typeof prepareManagedPdfSummaryProjection> };
   for (const u of plan.embeddingUnits) {
     const r = packet.rows[u.family].find((r) => r.id === u.id);
     if (!r) throw new Error("fixture_row_missing");
     r.embedding = Array.from({ length: 1536 }, (_, i) => (i === 0 ? 1 : 0));
+  }
+  const withSummary = process.argv.includes("--summary");
+  if (withSummary) {
+    const context = prepareManagedPdfSummaryContext({
+      document: {
+        id: job.document_id,
+        title: job.documents.title ?? "Synthetic reference",
+        file_name: job.documents.file_name,
+        source_path: null,
+      },
+      packet,
+    });
+    const { authority: summaryAuthority } = context.plan;
+    const chunk = summaryAuthority.selectedChunks[0];
+    if (!chunk) throw new Error("fixture_summary_source_required");
+    const claimText = "Synthetic reference action.";
+    const item = {
+      text: claimText,
+      source_chunk_ids: [chunk.id],
+      source_image_ids: [],
+      pages: chunk.page_number ? [chunk.page_number] : [],
+      evidence_type: "text",
+      support: "direct",
+    };
+    const summary = `- ${claimText}`;
+    const payload = normalizeSourceAnchoredSummary(
+      {
+        summary_kind: "structured",
+        summary_version: "source-anchored-summary-v1",
+        document_id: job.document_id,
+        index_generation_id: issued.generationId,
+        model: summaryAuthority.expectedStructuredModel,
+        model_version: summaryAuthority.expectedStructuredModelVersion,
+        generated_at: new Date().toISOString(),
+        source_chunk_ids: summaryAuthority.selectedChunks.map((row) => row.id),
+        source_image_ids: summaryAuthority.selectedImages.map((row) => row.id),
+        summary,
+        clinical_specifics: {
+          profile: {
+            overview: summary,
+            applies_to: [],
+            key_clinical_actions: [item],
+            medication_dose_monitoring: [],
+            thresholds_timing: [],
+            escalation_risk_warnings: [],
+            required_forms_documentation: [],
+            not_covered: [],
+            important_tables_images: [],
+            best_questions: [],
+            source_quality_notes: [],
+          },
+          actions: [claimText],
+          thresholds_timing: [],
+          medication_monitoring: [],
+          risk_escalation: [],
+          documentation_forms: [],
+          exceptions_gaps: [],
+        },
+        labels: [{ label: "synthetic", label_type: "topic", confidence: 0.9 }],
+        heuristic_fallback: false,
+      },
+      summaryAuthority,
+    );
+    packet.summaryProjection = prepareManagedPdfSummaryProjection(
+      context,
+      {
+        payload,
+        providerEvidence: {
+          requestedModel: payload.model,
+          providerModel: "synthetic-offline-model",
+          requestId: "synthetic-offline-request",
+        },
+      },
+      null,
+    );
+    packet.version = "managed-full-pdf-packet-v2";
+    packet.deferredOptionalFamilies = packet.deferredOptionalFamilies.filter((family) => family !== "model_summary");
   }
   const fence = {
     job_kind: "node",
@@ -209,10 +295,15 @@ async function stage(path: string, claimPath: string) {
     expected_generation_id: job.lease_expected_generation_id,
     authority_digest: job.lease_authority_digest,
   };
-  const statements = [
-    "begin;",
-    `create temp table prior_shared_state on commit drop as select to_jsonb(d) as document,(select coalesce(jsonb_agg(to_jsonb(c)order by id),'[]')from public.document_chunks c where document_id=d.id and index_generation_id is not distinct from d.index_generation_id) as chunks from public.documents d where d.id='${job.document_id}';`,
-  ];
+  const statements = ["begin;"];
+  if (withSummary)
+    statements.push(
+      `insert into public.document_summaries(document_id,owner_id,summary,metadata) values('${job.document_id}',null,'Synthetic predecessor summary',${sqlJson(issued.predecessorGenerationId ? { index_generation_id: issued.predecessorGenerationId } : {})}) on conflict(document_id) do nothing;`,
+      `insert into public.document_labels(document_id,owner_id,label,label_type,source,metadata) values('${job.document_id}',null,'synthetic predecessor','topic','generated',${sqlJson(issued.predecessorGenerationId ? { index_generation_id: issued.predecessorGenerationId } : {})}),('${job.document_id}',null,'synthetic manual','custom','manual','{}') on conflict(document_id,label_type,label,source) do nothing;`,
+    );
+  statements.push(
+    `create temp table prior_shared_state on commit drop as select to_jsonb(d) as document,(select coalesce(jsonb_agg(to_jsonb(c)order by id),'[]')from public.document_chunks c where document_id=d.id and index_generation_id is not distinct from d.index_generation_id) as chunks,(select to_jsonb(s) from public.document_summaries s where document_id=d.id) as summary,(select coalesce(jsonb_agg(to_jsonb(l)order by id),'[]')from public.document_labels l where document_id=d.id) as labels from public.documents d where d.id='${job.document_id}';`,
+  );
   const call = (name: string, params: Record<string, unknown>) => {
     const arguments_: Record<string, unknown> = { p_fence: fence, ...params };
     statements.push(
@@ -246,17 +337,104 @@ async function stage(path: string, claimPath: string) {
   statements.push(
     `do $$ begin begin perform public.stage_managed_full_pdf(${sqlJson(fence)},'${issued.generationId}',${sqlJson(partial)});raise exception 'TEST_EXPECTED_PARTIAL_REFUSAL';exception when raise_exception then if sqlerrm not like 'managed_full_pdf_%' then raise;end if;end;${priorCheck}end $$;`,
   );
+  if (withSummary) {
+    const invalid = (name: string, mutate: (value: Record<string, unknown>) => void) => {
+      const changed = JSON.parse(JSON.stringify(packet)) as Record<string, unknown>;
+      mutate(changed);
+      statements.push(
+        `do $$ begin begin perform public.stage_managed_full_pdf(${sqlJson(fence)},'${issued.generationId}',${sqlJson(changed)});raise exception 'TEST_EXPECTED_${name}_REFUSAL';exception when raise_exception then if sqlerrm not like 'managed_full_pdf_summary_%' then raise;end if;end;${priorCheck}end $$;`,
+      );
+    };
+    // JSON path mutations keep each negative case independent and synthetic.
+    const set = (value: Record<string, unknown>, path: string[], replacement: unknown) => {
+      let cursor = value;
+      for (const key of path.slice(0, -1)) cursor = cursor[key] as Record<string, unknown>;
+      cursor[path[path.length - 1]] = replacement;
+    };
+    invalid("CROSS_DOCUMENT", (value) => set(value, ["summaryProjection", "summary", "document_id"], ids[5]));
+    invalid("WRONG_OWNER", (value) => set(value, ["summaryProjection", "summary", "owner_id"], ids[5]));
+    invalid("WRONG_GENERATION", (value) =>
+      set(value, ["summaryProjection", "summary", "metadata", "index_generation_id"], ids[5]),
+    );
+    invalid("INCOMPLETE", (value) =>
+      set(value, ["summaryProjection", "summary", "metadata", "source_anchored_summary_projection_complete_v1"], false),
+    );
+    invalid("NESTED_ANCHOR", (value) => {
+      set(
+        value,
+        [
+          "summaryProjection",
+          "summary",
+          "metadata",
+          "source_anchored_summary_v1",
+          "clinical_specifics",
+          "profile",
+          "key_clinical_actions",
+          "0",
+          "source_chunk_ids",
+        ],
+        [ids[5]],
+      );
+      set(
+        value,
+        [
+          "summaryProjection",
+          "summary",
+          "clinical_specifics",
+          "profile",
+          "key_clinical_actions",
+          "0",
+          "source_chunk_ids",
+        ],
+        [ids[5]],
+      );
+    });
+    invalid("PROVIDER", (value) =>
+      set(value, ["summaryProjection", "summary", "metadata", "managed_summary_provider_evidence", "requestId"], null),
+    );
+    invalid("REQUEST_HASH", (value) =>
+      set(value, ["summaryProjection", "summary", "metadata", "managed_summary_request_sha256"], "sha256:invalid"),
+    );
+    invalid("LABEL_ANCHOR", (value) =>
+      set(value, ["summaryProjection", "labels", "0", "metadata", "source_chunk_ids"], [ids[5]]),
+    );
+  }
   call("stage_managed_full_pdf", { p_generation: issued.generationId, p_packet: packet });
   const digest = `(select packet_digest from ingestion_generation_evidence.full_pdf_stages where document_id='${job.document_id}' and generation_id='${issued.generationId}')`;
   statements.push(
     `do $$ begin begin perform public.complete_managed_full_pdf(${sqlJson({ ...fence, lease_token: ids[5] })},'${issued.generationId}',${digest},false);raise exception 'TEST_EXPECTED_STALE_REFUSAL';exception when raise_exception then if sqlerrm not like 'managed_full_pdf_%' then raise;end if;end;${priorCheck}end $$;`,
   );
+  if (withSummary) {
+    const changed = JSON.parse(JSON.stringify(packet)) as typeof packet;
+    if (!changed.summaryProjection) throw new Error("fixture_summary_required");
+    // Alter a valid metadata field: validation passes, immutable staging refuses.
+    (changed.summaryProjection.summary.metadata as Record<string, unknown>).managed_summary_request_sha256 =
+      `sha256:${"a".repeat(64)}`;
+    statements.push(
+      `do $$ begin begin perform public.stage_managed_full_pdf(${sqlJson(fence)},'${issued.generationId}',${sqlJson(changed)});raise exception 'TEST_STAGE_TAMPER_ALLOWED';exception when raise_exception then if sqlerrm<>'managed_full_pdf_immutable_stage' then raise;end if;end;end $$;`,
+      `create function pg_temp.reject_summary_job_completion() returns trigger language plpgsql as $$ begin if new.id='${job.id}'::uuid and new.status='completed' then raise exception 'TEST_INJECTED_JOB_COMPLETION_FAILURE' using errcode='23514';end if;return new;end $$;`,
+      `create trigger synthetic_reject_summary_completion before update on public.ingestion_jobs for each row execute function pg_temp.reject_summary_job_completion();`,
+      `do $$ begin begin perform public.complete_managed_full_pdf(${sqlJson(fence)},'${issued.generationId}',${digest},false);raise exception 'TEST_EXPECTED_COMPLETION_FAILURE';exception when check_violation then if sqlerrm<>'TEST_INJECTED_JOB_COMPLETION_FAILURE' then raise;end if;end;if (select to_jsonb(d)from public.documents d where id='${job.document_id}')is distinct from(select document from prior_shared_state) or (select to_jsonb(s)from public.document_summaries s where document_id='${job.document_id}')is distinct from(select summary from prior_shared_state) or (select coalesce(jsonb_agg(to_jsonb(l)order by id),'[]')from public.document_labels l where document_id='${job.document_id}')is distinct from(select labels from prior_shared_state) or exists(select 1 from public.document_chunks where document_id='${job.document_id}' and index_generation_id='${issued.generationId}') or exists(select 1 from ingestion_generation_evidence.retained_artifacts where document_id='${job.document_id}' and generation_id='${issued.generationId}' and unit_key='preseal_checkpoint')then raise exception 'TEST_SUMMARY_COMPLETION_NOT_ATOMIC';end if;end $$;`,
+      "drop trigger synthetic_reject_summary_completion on public.ingestion_jobs;",
+    );
+  }
   statements.push(
     `select public.complete_managed_full_pdf(${sqlJson(fence)},'${issued.generationId}',${digest},false);`,
   );
   statements.push(
     `select public.complete_managed_full_pdf(${sqlJson(fence)},'${issued.generationId}',${digest},true);`,
   );
+  if (withSummary) {
+    statements.push(
+      `do $$ declare p jsonb;begin select packet into strict p from ingestion_generation_evidence.full_pdf_stages where document_id='${job.document_id}' and generation_id='${issued.generationId}';if not ingestion_generation_evidence.full_pdf_rows_match('${job.document_id}','${issued.generationId}',p) or not exists(select 1 from public.document_labels where document_id='${job.document_id}' and source='manual' and label='synthetic manual')then raise exception 'TEST_ACTIVE_SUMMARY_OR_MANUAL_LABEL_LOST';end if;end $$;`,
+      `do $$ begin begin update public.document_summaries set summary='Synthetic tamper' where document_id='${job.document_id}';begin perform public.complete_managed_full_pdf(${sqlJson(fence)},'${issued.generationId}',${digest},true);raise exception 'TEST_SUMMARY_TAMPER_ALLOWED';exception when raise_exception then if sqlerrm<>'managed_full_pdf_completed_read_mismatch' then raise;end if;end;raise exception 'TEST_RESTORE_SUMMARY';exception when raise_exception then if sqlerrm<>'TEST_RESTORE_SUMMARY' then raise;end if;end;end $$;`,
+      `do $$ begin begin update public.document_labels set metadata='{}' where document_id='${job.document_id}' and source='generated';begin perform public.complete_managed_full_pdf(${sqlJson(fence)},'${issued.generationId}',${digest},true);raise exception 'TEST_LABEL_TAMPER_ALLOWED';exception when raise_exception then if sqlerrm<>'managed_full_pdf_completed_read_mismatch' then raise;end if;end;raise exception 'TEST_RESTORE_LABEL';exception when raise_exception then if sqlerrm<>'TEST_RESTORE_LABEL' then raise;end if;end;end $$;`,
+    );
+    if (issued.predecessorGenerationId)
+      statements.push(
+        `do $$ declare expected jsonb;actual jsonb;expected_labels jsonb;actual_labels jsonb;begin select summary-array['id','document_id','owner_id','created_at','updated_at'] into expected from prior_shared_state;select coalesce(jsonb_agg(value-array['id','document_id','owner_id','created_at','updated_at'] order by value->>'label_type',value->>'label'),'[]') into expected_labels from prior_shared_state,jsonb_array_elements(labels) where value->>'source'='generated';select summary,labels into actual,actual_labels from public.document_index_generation_snapshots where document_id='${job.document_id}' and index_generation_id='${issued.predecessorGenerationId}';if actual is distinct from expected or actual_labels is distinct from expected_labels then raise exception 'TEST_PREDECESSOR_SUMMARY_OR_LABEL_SNAPSHOT_LOST';end if;end $$;`,
+      );
+  }
   const firstImage = packet.rows.images[0];
   if (firstImage)
     statements.push(

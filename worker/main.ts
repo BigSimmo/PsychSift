@@ -12,7 +12,8 @@ import {
 import { createWorkerProviderEgressContext } from "./provider-egress";
 import { captureWorkerException, flushWorkerErrorTracking } from "./observability";
 import { env } from "../src/lib/env";
-import { ragEnrichmentVersion } from "../src/lib/document-enrichment";
+import { ragEnrichmentVersion, generateCandidateSourceAnchoredSummaryResult } from "../src/lib/document-enrichment";
+import type { ManagedPdfSummaryContext } from "./managed-pdf-summary";
 import { ragDeepMemoryVersion } from "../src/lib/deep-memory";
 import { extractDocument } from "../src/lib/extractors/document";
 import { shouldPersistJobProgress } from "../src/lib/ingestion";
@@ -119,6 +120,7 @@ export type WorkerRuntimeOptions = {
     job: JobRow,
     attempt: IngestionAttempt,
     batchContext?: ManagedProviderEmbeddingRequestContext,
+    summaryContext?: ManagedPdfSummaryContext,
   ) => Parameters<typeof createWorkerProviderEgressContext>[2];
   /** Optional server-owned original layout; never supplied by document metadata or HTTP input. */
   loadManagedAdminTextSectionLayout?: (
@@ -135,7 +137,22 @@ export type WorkerRuntimeOptions = {
     job: JobRow,
     sourceSha256: string,
     attempt: IngestionAttempt,
-  ) => Promise<(import("./rich-pdf-inspection").RichPdfInspectionResult & { stewardId: string }) | undefined>;
+  ) => Promise<
+    | (import("./rich-pdf-inspection").RichPdfInspectionResult & { stewardId: string; summaryEnabled?: boolean })
+    | undefined
+  >;
+  /** Server policy selected, opaque validated render review; never request metadata. */
+  loadManagedRenderedPdfInspection?: (
+    job: JobRow,
+    sourceSha256: string,
+    attempt: IngestionAttempt,
+  ) => Promise<
+    | (NonNullable<import("./admin-source-runtime").ApprovedAdminSource["renderedPdf"]> & {
+        stewardId: string;
+        summaryEnabled: true;
+      })
+    | undefined
+  >;
   /** Server-owned PDF roles must reference actual retained bytes and candidate IDs. */
   loadManagedNativePdfSourceRoles?: (
     input: ManagedPreparedSupplierInput,
@@ -228,6 +245,7 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
     updateJob,
     updateJobProgress,
     workerEmbedTexts,
+    workerGenerateSourceSummary,
     writeBaseArtifacts,
   });
   async function updateJob(jobId: string, patch: { stage?: string; progress?: number }) {
@@ -465,6 +483,33 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
     );
   }
 
+  async function workerGenerateSourceSummary(job: JobRow, summaryContext: ManagedPdfSummaryContext) {
+    const attempt = attemptForJob(job.id);
+    const guarded = createJobProviderEgressContext(
+      stageContext,
+      {
+        loadObservationsForJob: (currentJob, currentAttempt, batch) =>
+          options.loadObservationsForJob?.(currentJob, currentAttempt, batch, summaryContext),
+      },
+      managedEmbeddingScope,
+      job,
+      attempt,
+    );
+    try {
+      return await runIngestionPreparedWork(
+        attempt,
+        () => mutation(attempt, "heartbeat_ingestion_job"),
+        () =>
+          generateCandidateSourceAnchoredSummaryResult(summaryContext.plan, {
+            ingestionEgress: guarded,
+            signal: attempt.signal,
+          }),
+      );
+    } finally {
+      revokeIngestionProviderEgressContext(guarded);
+    }
+  }
+
   async function writeBaseArtifacts(
     job: JobRow,
     generation: string,
@@ -531,8 +576,18 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
       const buffer = await downloadDocument(job.documents.storage_path);
       await updateJobProgress(job.id, { stage: "extracting text/images", progress: 20 });
       const legacyExtractionStartedAt = Date.now();
+      const renderedPdf =
+        evidenceInventory.managed === true && options.loadManagedRenderedPdfInspection
+          ? await options.loadManagedRenderedPdfInspection(
+              job,
+              `sha256:${createHash("sha256").update(buffer).digest("hex")}`,
+              attempt,
+            )
+          : undefined;
+      if (renderedPdf) extracted = renderedPdf.extracted;
+      attempt.check();
       const richPdf =
-        evidenceInventory.managed === true && options.loadManagedRichPdfInspection
+        !renderedPdf && evidenceInventory.managed === true && options.loadManagedRichPdfInspection
           ? await options.loadManagedRichPdfInspection(
               job,
               `sha256:${createHash("sha256").update(buffer).digest("hex")}`,
@@ -548,6 +603,7 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
       )
         throw new Error("managed_native_pdf_source_changed_after_registration");
       extracted =
+        renderedPdf?.extracted ??
         richPdf?.extracted ??
         managedPreparation.pdf?.extracted ??
         (await extractDocument({
@@ -559,7 +615,8 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
       const legacyExtractionWallMs = Date.now() - legacyExtractionStartedAt;
       const capturedImages =
         evidenceInventory.managed === true
-          ? (richPdf?.capturedImages ??
+          ? (renderedPdf?.capturedImages ??
+            richPdf?.capturedImages ??
             managedPreparation.pdf?.capturedImages ??
             (await captureGenerationImages({
               extracted,
@@ -585,6 +642,7 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
           evidenceInventory,
           issuedControlSnapshot,
           richPdf,
+          renderedPdf,
         });
         recordClaimProcessed(); // A managed terminal is a successful claim for the health check too
         return;

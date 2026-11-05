@@ -1,5 +1,100 @@
 # Ingestion unlock and controlled rollout
 
+## 5 November 2026 continuation — local source/summary paths verified; corpus held
+
+The same isolated task and branch continue from local checkpoint
+`839c1e3c2ac8c1b3c978135679e357996fa59651`. The original imported head and bundle
+verification below remain valid. Existing main-checkout changes are preserved.
+
+**Implemented and checked locally.** Source-anchored summaries now have an immutable
+candidate request, exact guarded SDK-body authorization, observed provider identity,
+generation-specific retained projection, and atomic pointer/summary/generated-label/job
+completion. An explicit server policy enables the additional purpose; existing settings
+remain off. The standalone active-summary writer still refuses managed candidates.
+Review caught and corrected dropped source-policy metadata and false identifier refusals
+for server-generated UUID anchors; source text retains full identifier checks.
+
+The new draft `20261104000000_managed_full_pdf_summary_projection.sql` preserves native
+packet-v1 behavior and adds summary packet-v2. Actual local replay exposed a parser error
+and an ambiguous label reference; both were corrected before successful verification.
+Two independent native schema-mirror replays on the pinned Postgres image match. A fresh
+complete 354-file migration-chain replay using CLI 2.108.0 passes, followed by all nineteen
+SQL files and strict chain/mirror parity. The sole divergence remains the existing emulator
+`pg_net` exception. The roster fixture now moves only its swap scenario beyond seven days
+and restores the original dates; the previously failing behavior test passes.
+
+A synthetic summary lifecycle verifies first completion, replacement, predecessor summary
+and generated-label snapshots, manual-label preservation, immutable-stage and active-alias
+tamper refusals, and rollback after an injected final job-completion failure. No production
+RPC was used. Migration-role and 153 public SECURITY DEFINER grant checks pass. No applied
+migration, sealed history, drift allowlist, credentials or production setting was changed.
+
+**Rendered evidence remains held.** The new explicit renderer-only producer composites
+whole pages into a raster-only intermediate and excludes original native text, native table
+strings and original image streams. Its bounded wrapper checks source/runtime/pixel/OCR
+identities and artifact ownership. The false active-content refusal for indirect standard
+`StructElem` list attributes was reproduced and corrected narrowly; action dictionaries
+remain refused. The final three original samples complete rendered inspection over eight
+pages, retaining the OCR, table, diagram and whole-source semantic holds. Originals, renders
+and extracted material remain in the private task directory outside Git.
+
+Windows cleanup now requires observed producer exit, bounds the taskkill helper, and
+preserves artifacts when termination is unverified. Native tests prove producer termination
+kills its child and grandchild. Windows process and aggregate Job memory limits are set to
+2 GiB before source opening; lower-cap allocation probes refuse excessive commitments.
+An unexplained historical Windows peak counter exceeded the lower test cap after a refused
+allocation, so these checks do not certify a historical peak-memory ceiling.
+
+A distinct source-bound render-review record and opaque validated result are implemented;
+they grant no ingestion, provider, publication or clinical authority. Complete reviewed page,
+OCR-region, table-cell and diagram relationships are required. The rendered adapter, trusted
+runtime selection/egress, private evidence retention and distinct terminal SQL are implemented.
+The final 355-migration clean replay, all twenty SQL files and strict chain/mirror parity pass.
+Two independent native mirror generations match. A real local one-page synthetic render/review
+fixture verifies first completion and replacement with summaries, predecessor snapshots,
+manual-label preservation, stale/altered input refusals, active-alias tamper detection and
+injected completion rollback. Full TypeScript and the worker bundle pass. Fourteen focused
+suites cover 157 cases; after the planned manifest refresh, the 57 drift cases passed again,
+reusing the other 100 passing cases on unchanged relevant inputs. An early stale-manifest
+failure was corrected by actual regeneration, never by changing the guard.
+
+Independent review's initialization label, native-summary executor, image metadata, process
+termination and memory-limit findings were corrected and verified with focused regressions.
+Final bounded correction review found no unresolved P1/P2 in those deltas; this is not a new
+whole-repository audit. No real owner render-review record has been created or inferred. The
+private eight-page side-by-side pixel/OCR review pack is prepared and owner review is pending.
+
+**Approved spending, separate remaining gates.** The owner directly approved the prepared
+12-case synthetic comparison on 5 November: 24 free token counts plus 24 generations across
+GPT-5.6 Terra/Sol and GPT-6.1 Sol, no retries, fourteen minutes, at most US$15. The owner
+confirmed the remaining November balance. The private approval evidence
+records those exact bounds; it authorizes no production change or ingestion. Current model
+metadata access was verified and the official price/count-fee sources were read. The frozen
+request bodies are at most 17,875 serialized bytes; the conservative aggregate token-rate
+ceiling was US$12.68 before the exact counts. The approved run completed 24 counts and 24
+generations with zero retries. All requested/provider model identities match and all 24
+request IDs and usage records are present. Exact counts total 81,012 input tokens; provider
+usage reports 4,543 output tokens. The usage-based price estimate is US$0.3151065, with
+zero count fees, compared with US$5.245906 reserved. This is an estimate from usage/rates,
+not a provider invoice or a refreshed account balance.
+
+Original deterministic results are control 8/12 and Sol 9/12. Three table failures are literal
+`isolate` term checks despite `isolation`/`isolating` wording. Both models explicitly describe
+missing information on the two unsupported questions, but fail the strict grounded/confidence
+contract. The report retained answers/check outcomes, not raw response confidence fields, so
+the exact raw-versus-parser flag cause cannot be reconstructed. Do not weaken or retroactively
+change those scores. Sol's observed median/p90 latency is 3.615/8.805 seconds, versus control
+2.842/3.876 seconds. The single synthetic component run is complete and remains `accepted:false`;
+owner quality/cost review and separate model activation are pending. No paid rerun was made.
+
+The account cost API returns 403 and local browser use is disabled, so the monthly balance
+is owner-reported rather than provider-observed. Production merge/application, deployment,
+model activation, the later shadow driver and actual source-wide
+acceptance remain separate uncompleted gates. Continue implementation and verification;
+never invoke live readmission as a test, because it queues work. A fresh read-only check of
+the exact PsychSift production worker service on 5 November confirms `WORKER_PAUSED=true`;
+no variable was changed.
+
 ## 4 November 2026 local continuation — authoritative replay verified; corpus held
 
 Source intake owns this continuation of `fix/rag-preindex-readiness`. The isolated local

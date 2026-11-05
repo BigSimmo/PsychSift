@@ -30,6 +30,7 @@ import type { ExtractedDocument } from "../src/lib/types";
 import { MAX_UPLOAD_MB_CEILING } from "../src/lib/upload-limits";
 import { DOCX_EXTRACTION_BUDGET } from "../src/lib/extractors/docx-extraction-budget";
 import { PDF_EXTRACTION_BUDGET } from "../src/lib/extractors/pdf-extraction-budget";
+import { assertValidatedRenderedPdfReview, type RenderedPdfReviewResult } from "./rendered-pdf-review";
 
 export type CapturedGenerationImage = Readonly<{
   ordinal: number;
@@ -254,6 +255,9 @@ export function buildGenerationRetentionPacket(args: {
   sourceExpectationWitnessBytes?: Buffer;
   documentMetadata?: unknown;
   capturedImages?: readonly CapturedGenerationImage[];
+  /** Separate renderer review retention; never inferred from document metadata. */
+  renderedReview?: RenderedPdfReviewResult;
+  renderedRasterBytes?: Buffer;
   /** Leave optional producer populations undeclared until their actual inputs/outcomes exist. */
   deferOptionalProducerDeclarations?: boolean;
 }) {
@@ -350,6 +354,74 @@ export function buildGenerationRetentionPacket(args: {
       args.sourceExpectationWitnessBytes,
       "independent_original_expectation_witness",
     );
+  if (args.renderedReview) {
+    const result = args.renderedReview;
+    assertValidatedRenderedPdfReview(result);
+    const raster = args.renderedRasterBytes;
+    if (
+      result.review.sourceSha256 !== sourceSha256 ||
+      result.review.sourceByteLength !== args.originalBytes.length ||
+      !raster ||
+      raster.length !== result.review.rasterContainer.byteLength ||
+      bytesDigest(raster) !== result.review.rasterContainer.sha256 ||
+      result.retention.pages.length !== args.extracted.pages.length
+    )
+      throw new Error("rendered_retention_source_mismatch");
+    artifact(
+      "private_objects",
+      "rendered-review-record",
+      "private_objects",
+      "provenance_json",
+      generationEvidenceBytes(result.review),
+      "reviewed_render_record",
+      [{ family: "private_objects", key: "original-source" }],
+    );
+    artifact(
+      "private_objects",
+      "rendered-raster-container",
+      "private_objects",
+      "provenance_json",
+      generationEvidenceBytes({
+        version: "rendered-raster-container-retention-v1",
+        mimeType: "application/pdf",
+        sha256: bytesDigest(raster),
+        byteLength: raster.length,
+        bytesHex: raster.toString("hex"),
+      }),
+      "reviewed_render_raster_container",
+      [{ family: "private_objects", key: "original-source" }],
+    );
+    for (const [index, page] of result.retention.pages.entries()) {
+      if (
+        page.pageNumber !== index + 1 ||
+        bytesDigest(Buffer.from(page.ocrText)) !== result.review.pages[index]!.ocrTextSha256 ||
+        generationEvidenceDigest(page.originalGeometry) !== result.review.pages[index]!.originalGeometrySha256
+      )
+        throw new Error("rendered_retention_page_mismatch");
+      const dependencies = [
+        { family: "private_objects" as const, key: "rendered-review-record" },
+        { family: "private_objects" as const, key: "rendered-raster-container" },
+      ];
+      artifact(
+        "private_objects",
+        `page:${page.pageNumber}:rendered-original-geometry`,
+        "private_objects",
+        "provenance_json",
+        generationEvidenceBytes(page.originalGeometry),
+        `reviewed_render_page:${page.pageNumber}:original_geometry`,
+        dependencies,
+      );
+      artifact(
+        "private_objects",
+        `page:${page.pageNumber}:rendered-ocr`,
+        "private_objects",
+        "extracted_utf8",
+        Buffer.from(page.ocrText),
+        `reviewed_render_page:${page.pageNumber}:ocr`,
+        dependencies,
+      );
+    }
+  } else if (args.renderedRasterBytes) throw new Error("rendered_retention_review_required");
   const seen = new Set<number>();
   if (args.extracted.pages.length !== args.persistedPages.length) throw new Error("retained_page_population_mismatch");
   for (const page of args.extracted.pages) {
