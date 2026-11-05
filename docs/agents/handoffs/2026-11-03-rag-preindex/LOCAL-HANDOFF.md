@@ -1,110 +1,293 @@
-# Latest continuation — 5 November swarm follow-up
+# PsychSift RAG — current local-chat handover
 
-Use implementation PR #3900 at `f7459705d562f32a9f90ba35543b79d133292aef` as the base.
-Its complete CI run 41987788641 passed, including container and browser acceptance.
-Do not restart from the older 7fd bundle below if that implementation is already present.
+Updated 5 November 2026. This replaces the earlier startup instructions in this file.
+The old versions remain in Git history; both original and follow-up bundles are preserved.
 
-The additive `psychsift-followup-9052aee8a.bundle` carries one reviewed offline correction,
-`9052aee8a954f3ed816ba05dabf0d51b3bcf5bff`, on that exact prerequisite. SHA-256:
-`8c74c5829094448a895a7394896de4fbc3c361e9ffc35b0e3acc666aaf1ca62d`.
+## Paste this into the local chat
 
-It fixes lost diagnostics in the feasible paid model-smoke path and adds a provider-free,
-validation-only PDF-review CLI with explicit external canonical approval digest. Four
-focused suites pass 75 tests; full typecheck, scoped lint and independent correction review
-pass. Source review and model acceptance remain pending. There has been no new paid model
-run, production merge, deployment, re-index or ingestion. Ponytail was unavailable; three
-native agents performed the bounded swarm. No reviewer/clinical approval was created.
+> Continue the existing PsychSift RAG/ingestion task. Read the latest LOCAL-HANDOFF.md in
+> transfer PR #3890 before acting. Implementation PR #3900 at f7459705d has full hosted CI
+> success. The additive bundle in #3890 contains reviewed follow-up commit 9052aee8a on that
+> exact base: paid-smoke diagnostics and an offline PDF-review validator. Import and reconcile
+> it with existing local work; do not restart the original 7fd bundle or repeat completed
+> audits/replay/model comparison. Preserve unpublished edits and verify drift first. Complete
+> independently actionable work and report the exact remaining evidence. Stop before any
+> re-indexing, ingestion, readmission, worker resume or corpus processing. Source/clinical
+> approval must come from the owner. New billable runs need current pricing and the required
+> fresh bounded approval; do not reuse the completed comparison's approval. Production
+> migrations require owner-specific permission and manual merge. Never claim Sol acceptance,
+> production deployment or source fidelity from offline tests alone.
 
-Fetch #3900 first and preserve unpublished local edits. Verify this bundle, then fetch its
-`refs/heads/fix/rag-preindex-followup` into a fresh local follow-up branch. Merge or reconcile
-that one commit with the existing local task; do not reset or overwrite dirty work. The
-new source CLI and exact arguments are documented in `docs/reindex-runbook.md` in the bundle.
-The local private three-PDF/eight-page pack's location is unavailable in cloud. Use the
-actual owner-reviewed record, never fabricate it or infer approval from structural success.
+## Objective and stopping point
 
-The follow-up is carried here so the active implementation PR is not advanced while its
-paid automatic preview cost remains unresolved. Its old temporary preview was removed;
-updating #3900 may create another charged preview. Obtain a fresh defensible pricing/cap
-record before such a billable verification run. Use the existing local provider access
-and fresh source-bound pricing/approval for any model comparison. Keep processing paused.
-After acceptance, production migration PR merge remains owner-manual, with exact-merge
-live-drift/history and app/worker revision verification. Never probe readmission: it queues work.
+Finish the RAG build, supported PDF/table/image/OCR paths, authoritative database verification,
+model evaluation/activation readiness and production verification efficiently. Target model:
+`gpt-6.1-sol`; requested routing is distinct from observed provider execution. Stop before
+re-indexing or ingestion. Do not queue work as a test.
 
-The previous handoff below is retained as dated import history only.
+Legal/counsel review was explicitly deferred as an internal-build blocker. Do not reinstate it.
+Actual source fidelity, privacy, clinical acceptance and applicable production safeguards remain
+separate. The present state is **not yet all done awaiting re-indexing**.
 
-# PsychSift local completion handoff
+## Exact state and ownership
 
-Continue locally from [draft transfer PR #3890](https://github.com/BigSimmo/PsychSift/pull/3890). Its branch is `handoff/rag-preindex-local-7fd0e1db2`, based on `main`. It contains only this prompt and the accompanying Git bundle. The implementation is inside that bundle; it is not applied to the transfer PR's checkout and has not been merged or deployed.
+| Item                           | Verified identity and state                                                                                                              |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Repository                     | `https://github.com/BigSimmo/PsychSift.git`                                                                                              |
+| Implementation PR              | [#3900](https://github.com/BigSimmo/PsychSift/pull/3900), open, not draft, unmerged; auto-merge off                                      |
+| Implementation branch/head     | `local/rag-preindex-7fd0e1db2` / `f7459705d562f32a9f90ba35543b79d133292aef`                                                              |
+| Hosted implementation evidence | [CI run 41987788641](https://github.com/BigSimmo/PsychSift/actions/runs/41987788641), completed **success** at that exact head           |
+| Additive follow-up             | `9052aee8a954f3ed816ba05dabf0d51b3bcf5bff`, on f7459705d; in the transfer bundle, **not integrated into #3900**                          |
+| Transfer PR                    | [#3890](https://github.com/BigSimmo/PsychSift/pull/3890), branch `handoff/rag-preindex-local-7fd0e1db2`; draft, unmerged, auto-merge off |
+| Cloud follow-up checkout       | `/workspace/PsychSift-rag-followup`, branch `fix/rag-preindex-followup`, clean at 9052aee8a when handed over                             |
+| Cloud transfer checkout        | `/workspace/PsychSift-transfer-pr`; contains this document and the two bundles, not the applied implementation                           |
+| Original cloud implementation  | `7fd0e1db22d45b0efc31865652f8806ac5afb4ad`; historical starting point only                                                               |
 
-**Use the latest PR head for these instructions, then import the bundle before inspecting or editing the implementation.** Working directly in the transfer PR's checkout would inspect the old application code. The PR does not need to be merged to retrieve its files. Leave it draft with auto-merge off.
+The cloud cannot see unpublished desktop changes, private Windows review artifacts or local
+credentials. No direct delivery/acknowledgement from the running local chat is available.
+Publishing this document supplies a retrievable handover, not proof that another chat loaded it.
+Check the current PR heads and relevant local changes before integrating anything.
 
-## Local retrieval and import
+## What is already implemented and verified
 
-First identify the actual local checkout and verify its origin is `https://github.com/BigSimmo/PsychSift.git`. Preserve dirty work and inspect existing branches/worktrees. Replace each placeholder below with a verified literal path; choose unused branch names and worktree directories, or reuse an already-correct import. Do not reset, force-update, stash or overwrite another task's work.
+The implementation combines earlier cloud fixes and newer local work; do not redo the latter.
 
-Fetch the latest transfer PR and obtain both files in an isolated worktree:
+- Current-administrator, source-bound readmission for legacy shared PDFs; ordinary requests
+  remain owner scoped. WA admission jurisdiction is retained. Bulk PDF requests remain held.
+- General native PDF and full rich-PDF generation paths, provenance/retention packets,
+  pages, table facts, images, embedding fields, index units and memory cards.
+- Source-anchored summaries and generated labels, retained and completed atomically with
+  generation pointers and final job state. Additional policies remain off by default.
+- A separate reviewed-rendered path excludes original native-layer text/metadata and holds
+  results until complete bound review. It does not erase the original hidden-text conflict.
+- Answer-proof repairs prevent generated synopsis/index/memory narrative from acting as
+  direct claim evidence or exact quotations; withdrawn recommendations are withheld while
+  supported short quotations and independent later recommendations remain available.
+- The old Docker/image/replay blocker was solved locally. Two independent schema-manifest
+  generations match; clean 355-migration replay, all 20 SQL test files and strict mirror/chain
+  parity were recorded. New draft migration seals were appended; previous seals and applied
+  SQL were preserved. Hosted migration replay also passes at f7459705d.
+- CI OCR prerequisites and portable test runtime selection were corrected. Hosted app,
+  Playwright and container builds now pass; the earlier interrupted local app build is no
+  longer an unresolved packaging blocker.
+
+### Cloud correction published in #3900: f7459705d
+
+Both native-rich and reviewed-rendered egress validators rejected the existing `memory_cards`
+embedding family. Both now admit it with unchanged exact-payload/source-plan checks, UUID
+keys, identifier scanning, byte budgets and current authority/source revalidation. New tests
+first reproduced `embedding_source_plan` rejection. Existing terminal lifecycle tests now
+exercise real executor units through real SDK serialization and real source validators,
+using synthetic transport, vectors and RPCs. Every emitted ID, including memory cards, is covered.
+
+The reindex route exposes its sanctioned owner scope directly to the mechanical tenancy
+scanner and retains the additional owner-only filter for ordinary requests. Runtime tests
+refuse foreign/shared ordinary requests before mutations or child-job reads. Both scanner
+phases pass; no exemptions were added.
+
+The component model harness gained bounded raw-versus-parsed grounding/confidence flags.
+The PR's OCR approval citation was corrected to an immutable HTTPS source accepted by the
+unchanged PR policy. These fixes passed 189 focused tests across 11 suites, typecheck, scoped
+lint, owner-scope checks and independent correction review. Offline readiness CI mode passed
+with environment/release warnings; that is not production acceptance.
+
+The complete hosted CI run then passed builds, static checks, both unit partitions and
+combined coverage, migration replay, safety/config, ingestion SAST, critical browser journeys,
+all three broader browser shards, Lighthouse and container verification/security/evidence.
+Release-only/advisory checks skipped by their conditions are not claimed as passing.
+
+### Swarm follow-up in the additive bundle: 9052aee8a
+
+Three native agents examined model, source and release readiness. Ponytail was not exposed
+in callable tools or discovered skills; do not claim it ran. Verification-before-completion
+was used alongside the repository's narrower verification rules.
+
+1. **Paid-smoke diagnostic gap fixed.** The feasible paid smoke runner assembled its own
+   outcomes and dropped the new diagnostics, although offline/component execution retained
+   them. It now reuses the same bounded diagnostics helper through the actual paid-path
+   outcome constructor. Serialized-outcome tests distinguish raw and parsed flags and
+   exclude arbitrary malformed field text. Scores, latency thresholds, model defaults,
+   blinded-review output, spend controls and previous results are unchanged.
+2. **Offline source-review validator added.**
+   `scripts/validate-rendered-pdf-review.ts` consumes a complete private review and an
+   externally approved canonical digest, creates a fresh local inspection and calls the
+   existing validator. It emits hashes/counts and structural scope only. It issues no
+   approval, authenticates no reviewer, and calls no provider, policy writer or queue.
+   Strict arguments, bounded regular-file/UTF-8 reads, digest/source refusals, exact validator
+   forwarding and sanitized failures are tested. Instructions live in `docs/reindex-runbook.md`.
+3. The existing programme checkpoint and source-intake ownership map are updated.
+
+Fresh follow-up evidence: **75 tests across four focused suites**, full typecheck, scoped lint,
+formatting, documentation links and independent correction review pass. Organisation mapping
+covers the new files. No new paid/live model run occurred. This commit has **no hosted CI or
+production acceptance claim** until integrated and checked at its resulting head.
+
+## Retrieve and integrate without repeating work
+
+Replace placeholders with verified literal paths. Confirm origin and local ownership first;
+use unused ref/worktree names. Preserve dirty work. Never force-push, reset, overwrite or
+silently drop a private local correction. These commands fetch/import only, not publish.
 
 ```text
-git -C "<local-checkout>" fetch origin refs/pull/3890/head:refs/heads/handoff/pr-3890-transfer
-git -C "<local-checkout>" worktree add "<transfer-worktree>" handoff/pr-3890-transfer
+git -C "<verified-local-checkout>" fetch origin refs/pull/3890/head:refs/heads/handoff/pr-3890-transfer
+git -C "<verified-local-checkout>" worktree add "<unused-transfer-worktree>" handoff/pr-3890-transfer
+git -C "<verified-local-checkout>" fetch origin refs/pull/3900/head:refs/heads/handoff/pr-3900-reviewed
 ```
 
-The bundle is then at:
+If those refs already exist, inspect their heads and update safely rather than reusing the
+examples blindly. The reviewed base f7459705d must exist locally before verifying the bundle.
+If #3900 has advanced, inspect the new commits and compare/cherry-equivalence before merging.
+
+Follow-up bundle:
+`<transfer-worktree>/docs/agents/handoffs/2026-11-03-rag-preindex/psychsift-followup-9052aee8a.bundle`
+
+- SHA-256: `8c74c5829094448a895a7394896de4fbc3c361e9ffc35b0e3acc666aaf1ca62d`
+- Required commit: `f7459705d562f32a9f90ba35543b79d133292aef`
+- Advertised ref: `refs/heads/fix/rag-preindex-followup`
+- Advertised head: `9052aee8a954f3ed816ba05dabf0d51b3bcf5bff`
+
+Use `Get-FileHash -Algorithm SHA256` or `sha256sum`; keep bundle bytes binary.
 
 ```text
-<transfer-worktree>/docs/agents/handoffs/2026-11-03-rag-preindex/psychsift-preindex.bundle
+git -C "<verified-local-checkout>" bundle verify "<absolute-followup-bundle-path>"
+git -C "<verified-local-checkout>" fetch "<absolute-followup-bundle-path>" refs/heads/fix/rag-preindex-followup:refs/heads/handoff/rag-swarm-9052
+git -C "<verified-local-checkout>" worktree add "<unused-implementation-worktree>" handoff/rag-swarm-9052
 ```
 
-Check its SHA-256 against the value below using `Get-FileHash -Algorithm SHA256` on PowerShell or `sha256sum` on Linux. Keep the bundle as binary bytes rather than extracting it through text redirection. Verify its prerequisite, then import into a separate implementation branch/worktree:
+Review/reconcile the one additive commit with the current local task. Do not mistake the
+transfer checkout for the implemented application or merge #3890 into main to install it.
+Do not duplicate a local fix that already has equivalent behaviour. Run only affected checks
+and mandatory project gates after reconciliation; reuse unchanged valid evidence.
+
+The original `psychsift-preindex.bundle` remains available for historical recovery only:
+SHA-256 `d0b20e68560536f00ad6f107f1ae7f88c1957fe8273d56c35b414d174d286313`.
+Its advertised historical implementation ends at 7fd0e1db2; prefer the current #3900 base.
+
+## Actual source review still required
+
+Three real PDFs/eight pages were inspected locally with original byte/hash matching. All
+remain held: native inspection reported hidden-text conflict; the separate rendered path
+produced private review artifacts. An owner-approved complete review record and observations
+are still absent from accessible evidence. The private Windows pack location is unknown here.
+Do not download/rebuild it again unless its source/inspector inputs or artifacts changed.
+
+Owner observations must cover every full page, text completeness/reading order, OCR regions,
+table rows/cells and relationships, and diagram nodes/edges/directions/labels. Unresolved
+issues retain holds. Native text stays excluded in the reviewed-rendered profile.
+
+After the owner supplies the actual complete source-bound record, use the new local command:
 
 ```text
-git -C "<local-checkout>" bundle verify "<bundle-path>"
-git -C "<local-checkout>" fetch "<bundle-path>" refs/heads/fix/rag-preindex-readiness:refs/heads/local/rag-preindex-7fd0e1db2
-git -C "<local-checkout>" worktree add "<implementation-worktree>" local/rag-preindex-7fd0e1db2
-git -C "<implementation-worktree>" rev-parse HEAD
+node --import tsx --import ./scripts/enable-server-only-stub.mjs scripts/validate-rendered-pdf-review.ts --source <absolute-original.pdf> --artifact-root <absolute-private-directory> --source-sha256 sha256:<64hex> --review <absolute-complete-review.json> --approved-review-sha256 sha256:<64hex>
 ```
 
-If the prerequisite is missing, fetch the required history from the verified origin and repeat bundle verification. Do not use a newer `main` checkout as a substitute for importing the prepared commits. The final `rev-parse` must return the exact implementation head below. Perform subsequent implementation work in **that** worktree, and read its own AGENTS.md and checkpoint before proceeding. Reconcile newer main-line changes only after establishing this exact starting revision.
+Use `renderedPdfReviewDigest` for the canonical review digest; the JSON file's byte SHA is
+not equivalent. The supplied approved digest must originate from the actual approval process,
+not be self-authorized by the CLI/operator agent. Schema-valid reviewer IDs/reference hashes
+are not authenticated owner approval. Structural success is not clinical sign-off.
 
-Bundle: `psychsift-preindex.bundle` (10 commits).
+## Sol status and the next bounded experiment
 
-- SHA-256: `d0b20e68560536f00ad6f107f1ae7f88c1957fe8273d56c35b414d174d286313`
-- Prerequisite commit: `c92e78113abd936c53f88e7e069b2c7331c735a2`
-- Bundle branch: `fix/rag-preindex-readiness`
-- Required imported head: `7fd0e1db22d45b0efc31865652f8806ac5afb4ad`
-- Verified repository origin: `https://github.com/BigSimmo/PsychSift.git`
+The earlier approved component experiment completed 24 counts and 24 generations, zero
+retries. Control passed 8/12 strict checks; Sol passed 9/12; **accepted:false**. Candidate p90
+was 8.805 s versus 3.876 s for control. Raw confidence flags were not retained in that old
+run, so the unsupported-case provider/parser split cannot be reconstructed. Some failed
+term checks involved morphology; do not retroactively relax the recorded scores.
 
-## Paste into the local chat
+Measured reported usage: 81,012 input and 4,543 output tokens. Calculated cost was about
+US$0.3151065, not a provider invoice. The account cost API returned 403, so remaining allowance
+was owner-reported. No later paid generation or Sol activation occurred in cloud.
 
-Continue the existing PsychSift RAG/ingestion completion task from https://github.com/BigSimmo/PsychSift/pull/3890. Fetch the latest PR head, read `docs/agents/handoffs/2026-11-03-rag-preindex/LOCAL-HANDOFF.md`, and follow its retrieval/import steps. Finish the remaining prerequisites efficiently, and stop before live re-indexing or re-ingestion. Resume the existing implementation; do not rebuild it or repeat its completed audit.
+The feasible next tool is `scripts/smoke-answer-models.ts`:
 
-**First establish the actual local state.** Read the local checkout's AGENTS.md and required continuation, relevant host/raw-environment safeguards and `docs/agents/shared-context-and-memory.md`. Verify repository origin, branch, dirty files and available tools without exposing credentials. Preserve concurrent work. PR #3890 publishes the transfer files, not the implementation as an ordinary code branch. Verify the accompanying bundle's SHA-256 and prerequisite, import it as described above, then read the imported worktree's instructions. Confirm its head is exactly `7fd0e1db22d45b0efc31865652f8806ac5afb4ad` before reconciling newer main-line changes. Use literal verified checkout paths in Git commands. The transfer PR is access to source, not approval to deploy or spend.
+```text
+node scripts/run-tsx.mjs scripts/smoke-answer-models.ts --dry-run
+node scripts/run-tsx.mjs scripts/smoke-answer-models.ts --paid --price-card <private-price-card.json> --approval <private-approval.json> --output output/answer-model-comparison/<new-unused-run>
+```
 
-**Read the current checkpoint and source:**
+The second command is a future conditional command, **not current execution authority**.
+First obtain verified current prices/limits for all exact models, count-endpoint fees,
+remaining monthly allowance/evidence, configured local provider access and a fresh approved
+bounded run. Never copy credentials into chat or Git. Source/config/price/output identities
+must match the approval; this changed harness cannot reuse the consumed old approval.
 
-- `docs/reindex-unlock-plan.md`, especially its 3 November full-library continuation.
-- `docs/reindex-runbook.md`, `docs/worker-deploy-runbook.md`.
-- `docs/database-drift-detection.md`, `docs/openai-rag-operations.md`.
-- `docs/decisions/2026-11-03-defer-legal-review-for-internal-build.md`.
+The smoke scope is 24 counts plus 24 generations, no retries/warmups; maximum 384,000 output
+tokens, 1,000,000 input tokens, 840,000 ms and an approved USD cap no higher than $15. These
+are ceilings, not a quote or new approval. Price actual scope and include downstream charges.
+Exact counts must establish that the full generation plan fits before generation starts.
+Dry-run reports identities/request hashes but does not price/validate approval files.
 
-Legal review was explicitly deferred as an internal-build prerequisite; do not reinstate counsel clearance as a coding blocker. Preserve explicit prohibitions, source fidelity, privacy, administrator identity and production controls. Do not invent historical rights, clinical approval or publication permission.
+Do not bypass the full 52-execution harness's valid refusal: its 832,000-token reservation
+exceeds its 400,000-token cap. Use existing blinded review before buying more generations.
+The standard workflow canary checks out default-branch code and exposes no Sol selector;
+it is not a candidate/control live acceptance pair for this branch. Component smoke does
+not establish end-to-end route/retrieval/cache/recovery or live clinical acceptance. Keep
+control defaults until quality, latency, cost and applicable behavioural acceptance pass.
 
-**Reuse completed work and evidence.** The imported implementation contains WA admission support, separate native-text and rich-PDF profiles, original feature inspection, actual OCR, source-bound table/image retention, current administrator readmission, local derived index/memory artifacts, atomic completion and authenticated active-generation image delivery. Recorded cloud evidence at `7fd0e1db2` was 46 suites / 1,037 passing tests, 14 Python tests, typecheck, focused lint and worker bundle compilation. Synthetic PostgreSQL 17 tests passed completion, strict replay, image retrieval, stale/incomplete/old-admission refusals, existing-generation preservation and stage deletion lifecycle. That scratch database used scaffolding and does not prove authoritative Supabase replay or real-corpus accuracy. The transfer PR's publication added no new local or hosted verification; do not treat those checks as observed or passing. Reuse unchanged code evidence; rerun only checks affected by local environment, drift or fixes.
+## Publication, preview cost and production
 
-**Complete the remaining work in this order:**
+The active implementation PR was not advanced with 9052aee8a because a new push may recreate
+a charged Supabase preview after the previous one was deleted. The additive code is retrievable
+through the existing docs/bundle-only transfer PR. This is not hosted acceptance for that code.
+Verify current integration behaviour and defensible pricing/cap before triggering a billable
+run; do not carry an old approval to a new run or silently change integration/billing settings.
 
-1. **Establish local execution prerequisites.** Check Node 24, lockfile parity, Docker/Linux containers, disk space and the existing authenticated Supabase/Railway/OpenAI configuration through supported setup. Do not read/export stored credentials, request keys in chat, or assume cloud secrets/sessions transfer. The cloud had denied image/documentation access and no runtime secret bindings. Identify actual local failures rather than carrying those assumptions over. Docker's cloud VFS layer duplication exhausted storage; do not change shared daemon settings as a workaround.
+The exact former #3900 preview was deleted after its check passed and its absence verified:
+branch `40edd8b2-4119-43ed-b7f9-4d8678635a3c`, project `wnrowzxmjvagapdcqrco`.
+Production was preserved; unrelated #3866 preview was inactive and untouched. The earlier
+hosted-verification approval was US$5; actual preview cost is unavailable. Do not report a
+measured total or guaranteed no-overage cap without evidence.
 
-2. **Complete authoritative database verification.** Follow the repository's CI replay/bootstrap procedure. Prove the migration chain with `supabase migration up --local` on a disposable local instance, and verify its result against the schema mirror. Separately pull the exact digest-pinned image in the workflow and run `npm run drift:manifest` to regenerate the stale `supabase/drift-manifest.json` from `supabase/schema.sql`. The supported rootless alternative is documented for a compatible Linux host. Do not substitute the lightweight pgvector/shim replay, hand-edit the manifest, modify applied migrations, reseal history or widen allowlists. Validate the regenerated manifest against a second authoritative generation using the freshness command's explicit `--committed` and `--generated` paths; comparing the known-stale old manifest initially is expected to fail. Keep the four new migrations and schema definitions aligned.
+Six draft migrations remain in #3900:
 
-3. **Validate the actual corpus and close required functionality gaps.** Recheck production metadata read-only: the previous inventory was 2,066 PDFs, including 2,065 ownerless existing shared-library PDFs, with substantial table/image/OCR content. Using authorized original-file access, inspect bounded representative native-table, figure/image and scanned/OCR references locally. Verify source hashes, table relationships/qualifiers, visual coverage and OCR output; keep originals/private content out of Git and external logs. Offline test bindings are not real admission/lease authority. Diagnose unsupported cases without weakening fidelity gates. The rich profile currently defers model-generated summaries and vision interpretation; non-embedding provider purposes are disabled without trusted source-bound bodies and purpose grants. Bulk PDF re-indexing currently returns a 409 hold; an explicit per-document readmission queues one document. Compare those gaps with the original programme and finish any required operator/batch or enrichment functionality before claiming full readiness. Do not silently call a deferred feature complete.
+- `20261103000000_preserve_wa_admission_jurisdiction.sql`
+- `20261103000100_managed_general_native_pdf_text_terminal.sql`
+- `20261103000200_administrator_legacy_reindex_readmission.sql`
+- `20261103000300_managed_full_pdf_generation.sql`
+- `20261104000000_managed_full_pdf_summary_projection.sql`
+- `20261105000000_managed_reviewed_rendered_pdf.sql`
 
-4. **Verify GPT-6.1 Sol through a bounded live comparison.** Verify the exact API model identifier/account access and current official pricing, cache/context conditions, counting-endpoint fees and remaining monthly budget. Do not assume historical prices or a free counting endpoint. Reuse `scripts/smoke-answer-models.ts`: 24 exact token-count requests, then 24 generation requests, zero retries/warmups, at most 384,000 output tokens and 1,000,000 input tokens, 14-minute bound. Its current design ceiling is US$15 per run within the existing US$30 monthly budget; neither ceiling is spending approval or proof of remaining allowance. Present the defensible total estimate, price basis, full scope and enforceable maximum, then obtain my explicit bounded-run approval before spending. Do not raise caps or use the infeasible 52-generation comparison. Retain actual provider model/request IDs, usage, failures, quality/citation/numeric checks and latency. Review blinded outputs before unblinding. A passing smoke result alone is not clinical acceptance or automatic activation.
+After all applicable premerge acceptance gates, the owner must specifically authorize and
+manually merge the migration PR. Merge to main applies database changes automatically;
+there is no separate harmless merge window. Do not merge, arm auto-merge or deploy from
+this handover alone. Before merge, verify exact-head required checks, review dispositions
+and relevant drift rather than assuming the old green head certifies newly integrated code.
 
-5. **Prepare and verify production rollout under the repository's approval rules.** Targets: Supabase `sjrfecxgysukkwxsowpy`; Railway PsychSift project `5deaad0b-675a-4c13-978e-5ca2b5b877f9`, production environment `6aa16f7b-d3e8-4aa2-9854-ee9ead9fcbd4`. Verify current identities/state rather than assuming the old deployment is unchanged. The four draft migrations are `20261103000000_preserve_wa_admission_jurisdiction.sql`, `20261103000100_managed_general_native_pdf_text_terminal.sql`, `20261103000200_administrator_legacy_reindex_readmission.sql` and `20261103000300_managed_full_pdf_generation.sql`. Prepare the concrete reviewed change, then obtain the required specific owner approval before applying/merging production database changes. Respect owner-only manual merge and any CI/preview spending gate. Verify actual application with the prescribed post-merge `check:drift` and `check:migration-history`, not recorded migration history alone. Deploy and verify the intended app/worker revision with ingestion held; confirm `WORKER_PAUSED=true` without exposing other variables. After accepted model evidence and explicit activation authority, set the three answer model selectors to the verified Sol 6.1 identifier, retaining low/medium reasoning efforts and independent non-answer/embedding settings. Record rollback settings.
+Last cloud production observation (dated, not a fresh deployment check): app and worker
+last successful deployment used `c92e78113abd936c53f88e7e069b2c7331c735a2` on 2 November;
+the six migration rows and new completion/readmission RPCs were absent. Local checkpoint
+recorded `WORKER_PAUSED=true`. Recheck read-only before planning release.
 
-**Stop boundary:** Do not run a library re-index, re-ingest sources, resume claims, run `worker:once`/the reindex pipeline or invoke the production readmission RPC as a test: readmission itself queues work. Prepare the finite source/claim policy and usable later execution procedure without starting them. Do not label the system ready until the required real-corpus, schema, deployment and model evidence exists. Report exact remaining external blockers when execution cannot proceed.
+Exact known targets:
 
-Work autonomously on all independent authorized steps. Batch reads, serialize coupled writes/checks, avoid unrelated cleanup and repeated broad tests. Ask only for genuinely missing access or required bounded spending/production approvals after preparing reviewable work. Keep one checkpoint with source revision, evidence, approvals, remaining blockers and next command. Final status must distinguish implemented, locally verified, deployed, model-activated and awaiting re-indexing.
+- Supabase production: `sjrfecxgysukkwxsowpy`.
+- Railway project: `5deaad0b-675a-4c13-978e-5ca2b5b877f9`.
+- Railway production environment: `6aa16f7b-d3e8-4aa2-9854-ee9ead9fcbd4`.
+- App service: `6db32f39-2ecd-493c-a688-feb2d6670ff4`.
+- Worker service: `29510fca-4920-470d-941c-b1290e06d3d5`.
 
-**First useful checkpoint:** report the verified imported head, the actual local Docker/authentication capabilities, and the first authoritative replay result or precise blocker. Do not spend the first session repeating the completed cloud audit. New extracted/indexed artifacts require re-indexing; an accepted answer-model switch affects new queries after activation and does not require re-embedding the corpus.
+After an authorized owner merge/deployment, prove exact-merge `live-drift` success with both
+`check:migration-history` and `check:drift`, expected RPC signatures/ACLs, actual app/worker
+SHA/image identities and prerequisites/readiness. Include the general/full PDF, image read,
+administrator readmission and authority RPCs in the read-only catalog check; never execute
+readmission as a probe. Railway Success or migration-history rows alone are insufficient.
+Keep the worker paused. Production observation is not permission to start processing.
+
+## Remaining work, in execution order
+
+1. Fetch the current PRs and import/reconcile the verified additive bundle without losing local work.
+2. Resolve the new hosted-verification pricing/cap boundary before advancing #3900; verify the resulting exact head.
+3. Obtain and validate the actual owner source-review record using private local artifacts.
+4. Diagnose Sol with existing results/blinded review; price and approve the smallest necessary new run, then establish genuine acceptance before activation.
+5. Complete the separately authorized owner-manual production rollout and read-only live verification.
+6. Stop, reporting what is proven and what remains. Do not re-index, ingest, readmit, resume workers or change processing settings.
+
+The wider-batch shadow driver remains later scope after an approved successful pilot, not a
+reason to repeat current engineering work. Runtime answer/safety improvements can benefit
+users after deployment; rebuilt extraction/chunks/embeddings require subsequent ingestion.
+Do not state that every benefit waits for a complete library rebuild.
+
+Canonical programme checkpoint: `docs/reindex-unlock-plan.md` in the implementation/follow-up.
+Canonical operational detail: `docs/reindex-runbook.md`, `docs/worker-deploy-runbook.md`,
+`docs/openai-rag-operations.md` and the current project instructions. Keep originals, rendered
+pages, extracted clinical content, credentials and private approval records outside Git/logs.
