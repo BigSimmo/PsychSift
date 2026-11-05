@@ -235,6 +235,71 @@ class DocumentDraftTests(unittest.TestCase):
         self.assertIn('both', self.reconcile().get('review_reason') or '')
         self.assertFalse(self.reconcile(['note.md'])['conflict'])
 
+
+    def _assert_review_reason_survives_one_input_change(self, changed_input):
+        base = b''.join(f'line {i}\n'.encode() for i in range(1, 25))
+        self.document.write_bytes(base)
+        self.workspace = self.root / f'reason-{changed_input}'
+        self.manifest = d.prepare(self.source, self.workspace, 'reason', ['note.md'])
+        initial = self.reconcile()
+        candidate = self.workspace / initial['candidate']
+        candidate.write_bytes(base.replace(b'line 12\n', b'reviewed twelve\n'))
+        self.reconcile(['note.md'])
+
+        source = base.replace(b'line 21\n', b'peer twenty-one\n')
+        draft = base.replace(b'line 1\n', b'drafted one\n')
+        self.document.write_bytes(source)
+        self.draft(draft)
+        blocked = self.reconcile()
+        self.assertTrue(blocked['conflict'])
+        reason = blocked['review_reason']
+        self.assertIn('both source and draft changed', reason)
+        retained = {
+            key: (self.workspace / blocked[key]).read_bytes()
+            for key in ('candidate', 'source_snapshot', 'draft_snapshot')
+        }
+
+        if changed_input == 'source':
+            source = source.replace(b'line 23\n', b'later source twenty-three\n')
+            expected_later = b'later source twenty-three\n'
+            self.document.write_bytes(source)
+        else:
+            draft = draft.replace(b'line 3\n', b'later draft three\n')
+            expected_later = b'later draft three\n'
+            self.draft(draft)
+
+        result = self.reconcile()
+        self.assertNotIn('error', result)
+        self.assertTrue(result['conflict'])
+        self.assertEqual(reason, result['review_reason'])
+        proposed = (self.workspace / result['candidate']).read_bytes()
+        for expected in (
+            b'reviewed twelve\n', b'peer twenty-one\n',
+            b'drafted one\n', expected_later,
+        ):
+            self.assertIn(expected, proposed)
+        self.assertNotIn(b'<<<<<<< ', proposed)
+        for key, contents in retained.items():
+            self.assertEqual(contents, (self.workspace / blocked[key]).read_bytes())
+        with self.assertRaisesRegex(ValueError, 'unresolved conflicts'):
+            d.export(self.workspace, self.manifest)
+        self.assertEqual(reason, self.reconcile()['review_reason'])
+
+        resolved = self.reconcile(['note.md'])
+        self.assertFalse(resolved['conflict'])
+        self.assertIsNone(resolved['review_reason'])
+        exported = d.export(self.workspace, self.manifest)
+        self.assertEqual(1, len(exported))
+        self.assertEqual(proposed, base64.b64decode(exported[0]['after_base64']))
+        self.assertEqual(d.digest(source), exported[0]['before_sha256'])
+        self.assertEqual(source, self.document.read_bytes())
+
+    def test_review_reason_survives_later_source_only_change(self):
+        self._assert_review_reason_survives_one_input_change('source')
+
+    def test_review_reason_survives_later_draft_only_change(self):
+        self._assert_review_reason_survives_one_input_change('draft')
+
     def test_legacy_reconciliation_without_input_snapshots_fails_closed(self):
         self.reconcile()
         record_path = self.workspace / 'reconciliation.json'

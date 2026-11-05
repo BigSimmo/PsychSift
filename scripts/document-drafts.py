@@ -235,6 +235,8 @@ def reconcile(workspace, manifest, resolved):
                     conflict = old['conflict'] or edited or source_conflict or draft_conflict or (source_changed and draft_changed)
                     if source_changed and draft_changed:
                         review_reason = 'both source and draft changed; inspect retained inputs and candidate before --resolved'
+                    elif conflict:
+                        review_reason = old.get('review_reason')
             elif name in resolved:
                 raise ValueError('resolution inputs changed; inspect new merge')
             else:
