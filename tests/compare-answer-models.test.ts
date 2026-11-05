@@ -349,6 +349,59 @@ describe("offline-first answer model comparison", () => {
   });
 
   it.each([
+    { grounded: true, confidence: "high", expectedGrounded: true, expectedConfidence: "high" },
+    {
+      grounded: "synthetic-invalid-grounded-value",
+      confidence: { unexpected: "synthetic-invalid-confidence-value" },
+      expectedGrounded: "invalid",
+      expectedConfidence: "invalid",
+    },
+  ])("retains bounded raw and parsed flags through outcome serialization: %j", async (flags) => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("network forbidden"));
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const cases = await fixture(),
+      c = cases.find((item) => item.unsupported)!,
+      execution = planExecutions(cases).find((item) => item.caseId === c.id && !item.warmup)!;
+    const providerStub = vi.fn(async () => ({
+      model: execution.model,
+      operation: "answer" as const,
+      latencyMs: 0,
+      status: "completed" as const,
+      truncated: false,
+      text: JSON.stringify({
+        answer: "The synthetic sources do not specify the requested information.",
+        grounded: flags.grounded,
+        confidence: flags.confidence,
+        citations: [],
+        answerSections: [],
+        conflictsOrGaps: [],
+        quoteCards: [],
+      }),
+    }));
+    const provider = await import("../src/lib/rag/rag-provider");
+    vi.spyOn(provider, "createObservedAnswerGenerator").mockReturnValue(providerStub);
+    const execute = await offlineComparisonExecutor();
+    const outcome = JSON.parse(JSON.stringify({ ...execution, ...(await execute(execution, c)) }));
+    expect(outcome.checks.passed).toBe(false);
+    expect(outcome.diagnostics).toEqual({
+      raw: { jsonObject: true, grounded: flags.expectedGrounded, confidence: flags.expectedConfidence },
+      parsed: {
+        grounded: false,
+        confidence: "unsupported",
+        routingFlags: [
+          flags.expectedGrounded === "invalid" ? "structured_parse_fallback" : "ungrounded_no_model_citation",
+        ],
+        otherRoutingReason: false,
+        unverifiedNumericCount: 0,
+        faithfulnessWarning: false,
+      },
+    });
+    expect(JSON.stringify(outcome.diagnostics)).not.toContain("synthetic-invalid");
+    expect(providerStub).toHaveBeenCalledTimes(1);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it.each([
     {},
     { answer: 42 },
     {

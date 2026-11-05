@@ -102,15 +102,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     if (rateLimit.limited)
       return rateLimitJsonResponse("Too many document reindex requests. Retry shortly.", rateLimit);
 
-    const documentById = supabase
-      .from("documents")
-      .select(
-        "id,owner_id,title,file_name,file_type,file_size,storage_path,content_hash,source_path,import_batch_id,status,error_message,page_count,chunk_count,image_count,metadata",
-      )
-      .eq("id", id);
-    const documentQuery = readmission
-      ? withOwnerReadScope(documentById, user.id)
-      : documentById.eq("owner_id", user.id);
+    const documentById = withOwnerReadScope(
+      supabase
+        .from("documents")
+        .select(
+          "id,owner_id,title,file_name,file_type,file_size,storage_path,content_hash,source_path,import_batch_id,status,error_message,page_count,chunk_count,image_count,metadata",
+        )
+        .eq("id", id),
+      user.id,
+    );
+    // Shared-library stewardship is available only through explicit readmission.
+    const documentQuery = readmission ? documentById : documentById.eq("owner_id", user.id);
     const { data: document, error: documentError } = await documentQuery.maybeSingle();
 
     if (documentError) throw new Error(documentError.message);

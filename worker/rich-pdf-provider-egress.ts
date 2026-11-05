@@ -166,7 +166,7 @@ export function createRichPdfInspectionLoader(options: RichPdfInspectionOptions)
             !input.sourceUnitIds.length ||
             input.sourceUnitIds.some(
               (unit) =>
-                !["chunks", "embedding_fields", "index_units"].includes(unit.family) ||
+                !["chunks", "embedding_fields", "index_units", "memory_cards"].includes(unit.family) ||
                 !z.uuid().safeParse(unit.key).success,
             ),
         )
