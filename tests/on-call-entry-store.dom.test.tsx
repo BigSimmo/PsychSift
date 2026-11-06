@@ -113,20 +113,38 @@ describe("useOnCallEntries", () => {
     "keeps a successful %s when an older list response completes",
     async (operation) => {
       cacheOnCallEntries([contact]);
-      let release!: (response: Response) => void;
-      vi.spyOn(globalThis, "fetch").mockReturnValue(
-        new Promise<Response>((resolve) => {
-          release = resolve;
-        }),
-      );
+      let releaseOlder!: (response: Response) => void;
+      let releaseRefetch!: (response: Response) => void;
+      const request = vi
+        .spyOn(globalThis, "fetch")
+        .mockReturnValueOnce(
+          new Promise<Response>((resolve) => {
+            releaseOlder = resolve;
+          }),
+        )
+        .mockReturnValueOnce(
+          new Promise<Response>((resolve) => {
+            releaseRefetch = resolve;
+          }),
+        );
       const { result } = renderHook(() => useOnCallEntries());
       const updated = { ...contact, title: "Synthetic updated contact", lastVerifiedAt: "2026-11-05T00:00:00.000Z" };
       const expected = operation === "delete" ? [] : [updated];
       act(() => {
         updateCachedOnCallEntries([contact], () => expected, peekOnCallEntrySessionEpoch());
       });
+      // The older list (read before the save) lands. It must not overwrite the
+      // save; the hook reads the list again and stays loading meanwhile.
       await act(async () => {
-        release(jsonResponse({ entries: [contact], signedOut: false }));
+        releaseOlder(jsonResponse({ entries: [contact], signedOut: false }));
+      });
+      await waitFor(() => expect(request).toHaveBeenCalledTimes(2));
+      expect(result.current.loading).toBe(true);
+      expect(readCachedOnCallEntries()?.entries).toEqual(expected);
+      expect(result.current.entries).toEqual(expected);
+      // The fresh read reflects the server after the save.
+      await act(async () => {
+        releaseRefetch(jsonResponse({ entries: expected, signedOut: false }));
       });
       await waitFor(() => expect(result.current.loading).toBe(false));
       expect(readCachedOnCallEntries()?.entries).toEqual(expected);
