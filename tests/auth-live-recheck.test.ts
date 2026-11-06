@@ -117,6 +117,21 @@ describe("live account recheck on saves (PP-04)", () => {
     expect(client.auth.getUser).toHaveBeenCalledWith("synthetic-token");
   });
 
+  it("rechecks a save on the current encoded session, never a leftover legacy token", async () => {
+    const client = authClient({ data: { user: { id: "synthetic-user", app_metadata: {} } }, error: null });
+    const encodedSession = `base64-${Buffer.from(JSON.stringify({ access_token: "synthetic-current" })).toString("base64")}`;
+    const request = new Request("http://localhost/api/account/favourites", {
+      method: "POST",
+      headers: {
+        [PROXY_AUTH_USER_HEADER]: proxyHeader(),
+        cookie: `sb-testprojectref123-auth-token=${encodedSession}; sb-access-token=synthetic-expired-legacy`,
+      },
+    });
+    await resolveOptionalAuthentication(request, client as never);
+    await requireAuthenticatedUser(request, client as never).catch(() => undefined);
+    expect(client.auth.getUser).not.toHaveBeenCalledWith("synthetic-expired-legacy");
+  });
+
   it("keeps valid optional saves and absent anonymous requests working", async () => {
     const client = authClient({ data: { user: { id: "synthetic-user", app_metadata: {} } }, error: null });
     await expect(resolveOptionalAuthentication(requestWithProxyClaims("POST"), client as never)).resolves.toMatchObject(

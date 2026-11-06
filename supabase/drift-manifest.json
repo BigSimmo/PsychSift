@@ -2,7 +2,7 @@
   "generated_at": "2026-11-06T18:52:27.699Z",
   "generator": "scripts/generate-drift-manifest.ts",
   "postgres_image": "supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83",
-  "schema_sha256": "d2f5e18ef530f0a428e176b66313a62ee3fff9fa29d1c95457456f5e1d5180b9",
+  "schema_sha256": "016902c4be69a61871f37f5a8eb4cd6660cc1f2a9e0f48adeedaa1eb6d1f490b",
   "replay_seconds": 16,
   "snapshot": {
     "views": [
@@ -21600,7 +21600,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "3e487ca919bc6c80dbec9a6022045b77",
+        "def_hash": "25cee7ef0a740501e534f65cba49b6f5",
         "signature": "public.teaching_find_supervisor_overlap_v1(uuid,timestamp with time zone,timestamp with time zone,uuid,timestamp with time zone,uuid)"
       },
       {

@@ -75,12 +75,19 @@ const workforce: WorkRoleContext = {
   grants: [{ role: "workforce", hospitalId: H1, serviceIds: [TEAM, OTHER_TEAM] }],
 };
 
-async function refusal(promise: Promise<unknown>): Promise<{ status: number; code?: string; message: string }> {
+async function refusal(
+  promise: Promise<unknown>,
+): Promise<{ status: number; code?: string; causeName?: string | null; message: string }> {
   try {
     await promise;
   } catch (error) {
     if (error instanceof PublicApiError)
-      return { status: error.status, code: error.details?.code, message: error.message };
+      return {
+        status: error.status,
+        code: error.details?.code,
+        causeName: error.details?.causeName,
+        message: error.message,
+      };
     throw error;
   }
   throw new Error("expected a refusal");
@@ -320,7 +327,11 @@ describe("link a hospital team from stale People selection", () => {
         serviceId: TEAM,
       }),
     );
-    expect(answer).toMatchObject({ status: 503, code: "work_people_refresh_failed" });
+    expect(answer).toMatchObject({
+      status: 503,
+      code: "work_people_refresh_failed",
+      causeName: "work_people_unavailable",
+    });
     expect(answer.message).toMatch(/change was saved/i);
     expect(db.tables.work_hospital_teams).toContainEqual(
       expect.objectContaining({ service_id: TEAM, hospital_id: H2 }),

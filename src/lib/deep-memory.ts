@@ -1,6 +1,7 @@
 import {
   assertLegacyMaintenanceSnapshot,
   commitMaintenanceDeepMemory,
+  maintenanceGenerationId,
   type MaintenanceDocument,
 } from "@/lib/ingestion-maintenance";
 import {
@@ -218,6 +219,11 @@ async function upsertLegacyDocumentDeepMemory(args: {
   const maintenanceDocument = args.document as MemoryDocument & MaintenanceDocument;
   assertLegacyMaintenanceSnapshot(maintenanceDocument);
   if (args.chunks.length === 0) throw new Error("Cannot build deep memory for a document with no chunks.");
+  // The deep-memory commit requires a committed generation. Refuse before any provider call or
+  // staged write, rather than failing at commit and leaving staged rows behind.
+  if (maintenanceGenerationId(maintenanceDocument) === null) {
+    throw new Error(`Document ${args.document.id} has no committed index generation.`);
+  }
 
   await assertLocalDeepMemoryOwnership(args.supabase, args.document.id, true);
 

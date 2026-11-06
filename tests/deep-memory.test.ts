@@ -628,6 +628,23 @@ describe("deep RAG memory indexing", () => {
     expect(generateModelIndexProfileMock).not.toHaveBeenCalled();
   });
 
+  it.each([{}, { index_generation_id: "" }, { index_generation_id: "not-a-uuid" }])(
+    "refuses a snapshot with no committed generation (%j) before provider work or staging",
+    async (metadata) => {
+      generateModelIndexProfileMock.mockClear();
+      const supabase = { from: vi.fn(() => ({ select: () => ({ eq: async () => ({ data: [], error: null }) }) })) };
+      await expect(
+        upsertDocumentDeepMemory({
+          supabase: supabase as never,
+          document: { ...document, metadata },
+          chunks: [chunk({})],
+        }),
+      ).rejects.toThrow("has no committed index generation");
+      expect(generateModelIndexProfileMock).not.toHaveBeenCalled();
+      expect(supabase.from).not.toHaveBeenCalled();
+    },
+  );
+
   it("rejects mixed local and agent artifacts before model generation, embeddings, or deletion", async () => {
     generateModelIndexProfileMock.mockClear();
     const deleteSpy = vi.fn();

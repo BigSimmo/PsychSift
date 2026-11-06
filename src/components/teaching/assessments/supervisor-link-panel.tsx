@@ -7,6 +7,7 @@ import { WorkButton, WorkTag } from "@/components/mode-kit/work";
 import { AssessNote, AssessTextField } from "@/components/teaching/assessments/assess-kit";
 import { ApiClientError } from "@/lib/api-client-error";
 import { useExampleData } from "@/lib/example-data/store";
+import { forgetSharedGets } from "@/lib/shared-get";
 import { teachingErrorMessage, teachingGet, teachingPost } from "@/lib/teaching/client";
 import type { EpaNumber } from "@/lib/teaching/assessments/content";
 import { checkEpaClinicianName, EPA_MAGIC_LINK_DEMO_TOKEN } from "@/lib/teaching/assessments/magic-link";
@@ -164,6 +165,9 @@ export function SupervisorLinkPanel({
     } catch {
       setStatus("That link could not be cancelled.");
     }
+    // The DELETE bypasses teachingPost, so drop any in-flight list read here: the refresh
+    // below must not join a GET that started before this cancellation.
+    forgetSharedGets(API);
     refresh();
   }
 

@@ -19,6 +19,16 @@ export function maintenanceMetadata(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
 }
 
+// Mirrors documents.index_generation_id (20260714110000): only a well-formed UUID string is a
+// committed generation; anything else in the metadata maps to null, exactly as the generated column does.
+const committedGenerationPattern = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+
+/** The document's committed generation as the database column sees it, or null. */
+export function maintenanceGenerationId(document: Pick<MaintenanceDocument, "metadata">): string | null {
+  const generation = maintenanceMetadata(document.metadata).index_generation_id;
+  return typeof generation === "string" && committedGenerationPattern.test(generation) ? generation : null;
+}
+
 /** The original snapshot is authority for derived work, including failure/status writes.
  * Never refresh its version after a conflict: doing so would stamp stale work onto a new generation.
  */
@@ -40,11 +50,8 @@ export async function patchMaintenanceDocument(args: {
     .eq("id", document.id)
     .eq("updated_at", document.updated_at);
   query = document.owner_id === null ? query.is("owner_id", null) : query.eq("owner_id", document.owner_id);
-  const generation = maintenanceMetadata(document.metadata).index_generation_id;
-  query =
-    typeof generation === "string"
-      ? query.eq("index_generation_id", generation)
-      : query.is("index_generation_id", null);
+  const generation = maintenanceGenerationId(document);
+  query = generation === null ? query.is("index_generation_id", null) : query.eq("index_generation_id", generation);
   const { data, error } = await query.select("updated_at,metadata").maybeSingle();
   if (error) throw new Error(error.message);
   if (!data?.updated_at) throw new IngestionMaintenanceConflict();
@@ -81,12 +88,11 @@ export async function replaceMaintenanceArtifacts(args: {
   payload: Record<string, unknown>;
 }) {
   assertLegacyMaintenanceSnapshot(args.document);
-  const generation = maintenanceMetadata(args.document.metadata).index_generation_id;
   const { data, error } = await args.supabase.rpc("replace_document_maintenance_artifacts", {
     p_document_id: args.document.id,
     p_owner_id: args.document.owner_id,
     p_expected_updated_at: args.document.updated_at,
-    p_expected_generation_id: typeof generation === "string" ? generation : null,
+    p_expected_generation_id: maintenanceGenerationId(args.document),
     p_operation: args.operation,
     p_payload: args.payload,
   });
@@ -104,13 +110,12 @@ export async function commitMaintenanceDeepMemory(args: {
   payload: Record<string, unknown>;
 }) {
   assertLegacyMaintenanceSnapshot(args.document);
-  const generation = maintenanceMetadata(args.document.metadata).index_generation_id;
   const { data, error } = await args.supabase.rpc("commit_document_maintenance_deep_memory", {
     ...args.payload,
     p_document_id: args.document.id,
     p_owner_id: args.document.owner_id,
     p_expected_updated_at: args.document.updated_at,
-    p_expected_generation_id: typeof generation === "string" ? generation : null,
+    p_expected_generation_id: maintenanceGenerationId(args.document),
   });
   if (error) throw new Error(error.message);
   if (!data || typeof data !== "object" || typeof data.updated_at !== "string")

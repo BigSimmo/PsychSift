@@ -120,7 +120,11 @@ export function governClinicalAskDraft(
   evidence: readonly ClinicalAskEvidence[],
 ): ClinicalAskResponse {
   const evidenceById = new Map(evidence.map((item) => [item.id, item]));
-  if (draft.mode !== profile.id || draft.sections.map(({ id }) => id).join("|") !== profile.sectionOrder.join("|")) {
+  // Compare each section id on its own: a joined string would accept an id such as "a|b".
+  const sectionOrderMatches =
+    draft.sections.length === profile.sectionOrder.length &&
+    draft.sections.every(({ id }, index) => id === profile.sectionOrder[index]);
+  if (draft.mode !== profile.id || !sectionOrderMatches) {
     return evidenceGap(profile, evidence, [...draft.missingInformation, "The answer structure was invalid."]);
   }
 

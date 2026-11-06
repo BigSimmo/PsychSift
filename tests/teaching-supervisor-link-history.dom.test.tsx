@@ -3,7 +3,8 @@ import { cleanup, render, screen, waitFor, within } from "@testing-library/react
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn() }));
+const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), forget: vi.fn() }));
+vi.mock("@/lib/shared-get", () => ({ forgetSharedGets: mocks.forget }));
 vi.mock("@/lib/teaching/client", () => ({
   teachingGet: mocks.get,
   teachingPost: mocks.post,
@@ -85,5 +86,17 @@ describe("owner supervisor-link history", () => {
       expect.stringContaining("/older-waiting"),
       expect.objectContaining({ method: "DELETE" }),
     );
+  });
+
+  it("forgets in-flight link reads after a cancellation, before the refresh read starts", async () => {
+    mocks.get.mockResolvedValueOnce(initial).mockResolvedValueOnce({ links: [recent], nextCursor: null });
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("{}", { status: 200 }));
+    const user = userEvent.setup();
+    mount();
+    await screen.findByText("EPA 1 · Dr Waiting Example");
+    await user.click(screen.getByRole("button", { name: "Cancel link" }));
+    await waitFor(() => expect(mocks.get).toHaveBeenCalledTimes(2));
+    expect(mocks.forget).toHaveBeenCalledWith("/api/teaching/assessments/magic-links");
+    expect(mocks.forget.mock.invocationCallOrder[0]).toBeLessThan(mocks.get.mock.invocationCallOrder[1]);
   });
 });

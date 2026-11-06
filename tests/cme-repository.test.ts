@@ -14,7 +14,7 @@ import {
   rowToCmeEntry,
 } from "@/lib/cme/repository";
 import type { CmeEntry } from "@/lib/cme/types";
-import { cmeEntryVersion } from "@/lib/cme/entry-version";
+import { cmeEntryVersion, withoutCmeEntryVersions } from "@/lib/cme/entry-version";
 
 describe("row mapping", () => {
   it("round-trips an entry with several allocations", () => {
@@ -42,6 +42,13 @@ describe("row mapping", () => {
         entry.allocations.map((a) => ({ category: a.category, hours: a.hours })),
       ),
     ).toEqual({ ...entry, version: cmeEntryVersion(entry) });
+  });
+
+  it("drops edit versions from display-only lists and keeps every other field", () => {
+    const entry = { ...baseEntry(), evidenceCount: 2 };
+    const versioned = { ...entry, version: cmeEntryVersion(entry) };
+    expect(withoutCmeEntryVersions([versioned, entry])).toEqual([entry, entry]);
+    expect(withoutCmeEntryVersions(undefined)).toBeUndefined();
   });
 
   it("carries a cost through as whole cents, never a float", () => {

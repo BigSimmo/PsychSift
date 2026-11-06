@@ -53,6 +53,7 @@ function logSafeError(error: unknown, status: number) {
     ...safeErrorLogDetails(error),
     ...(details?.code ? { code: details.code } : {}),
     ...(details?.requestId ? { requestId: details.requestId } : {}),
+    ...(details?.causeName ? { causeName: details.causeName } : {}),
     ...(details?.sqlState ? { sqlState: details.sqlState } : {}),
   });
 }

@@ -56,6 +56,16 @@ describe("governClinicalAskDraft", () => {
     expect(parseClinicalAskSseFrame(frame)).toEqual(event);
   });
 
+  it("rejects section ids that only match the required order when joined", () => {
+    const profile = clinicalAskModeProfile("specifiers");
+    expect(profile.sectionOrder.length).toBeGreaterThan(1);
+    const value = draft("specifiers");
+    const [first, second, ...rest] = value.sections;
+    value.sections = [{ ...first, id: `${first.id}|${second.id}` }, ...rest];
+    const response = governClinicalAskDraft(profile, value, evidence);
+    expect(response.state).toBe("evidence_gap");
+  });
+
   it("canonicalizes legacy heading values at the public SSE boundary", () => {
     const response = governClinicalAskDraft(clinicalAskModeProfile("services"), draft("services"), evidence);
     if (response.state !== "answered") throw new Error("Supported fixture must answer");

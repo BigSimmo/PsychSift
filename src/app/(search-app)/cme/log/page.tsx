@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { CmeLogPage, type CmeLogAttention } from "@/components/cme/cme-log-page";
 import { CmeStateNotice } from "@/components/cme/cme-state-notice";
 import { cpdYearOf, perthCalendarDate } from "@/lib/cme/cpd-year";
+import { withoutCmeEntryVersions } from "@/lib/cme/entry-version";
 import { loadCmePageData } from "@/lib/cme/load-cme-page-data";
 import { cmeCategories, type CmeCategory, type CmeRequirementSet } from "@/lib/cme/types";
 
@@ -51,8 +52,9 @@ export default async function CmeLogRoute({
   return (
     <CmeLogPage
       key={`${data.year}:${initialCategory ?? "all"}:${initialAttention ?? "all"}`}
-      entries={data.entries}
-      allYearsEntries={data.allEntries}
+      // Display only: edits open /cme/log/[id], which reads the entry with its version.
+      entries={withoutCmeEntryVersions(data.entries)}
+      allYearsEntries={withoutCmeEntryVersions(data.allEntries)}
       allYearsFailed={data.allYearsFailed}
       routines={data.routines}
       set={data.set ?? placeholderSet(data.year)}

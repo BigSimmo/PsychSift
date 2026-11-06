@@ -406,6 +406,7 @@ export function useStoredOnCallEntries(): OnCallEntriesState {
     const epochAtStart = peekOnCallEntrySessionEpoch();
     const revisionAtStart = cacheRevision;
     let cancelled = false;
+    let refetching = false;
     const controller = new AbortController();
 
     (async () => {
@@ -429,7 +430,15 @@ export function useStoredOnCallEntries(): OnCallEntriesState {
             (!entry.isPersonal && !mayContainOnCallCompliance(entry.section, entry.details)),
         );
 
-        if (cancelled || peekOnCallEntrySessionEpoch() !== epochAtStart || cacheRevision !== revisionAtStart) return;
+        if (cancelled || peekOnCallEntrySessionEpoch() !== epochAtStart) return;
+        if (cacheRevision !== revisionAtStart) {
+          // A save landed while this list was loading. Never write this older list
+          // over it; read the list again instead, so earlier entries are not left
+          // missing from a cache that holds only the new one. Loading stays true.
+          refetching = true;
+          setAttempt((current) => current + 1);
+          return;
+        }
         setIsOffline(false);
         setLoadError(null);
         setSignedOut(parsedResponse.data.signedOut);
@@ -451,7 +460,7 @@ export function useStoredOnCallEntries(): OnCallEntriesState {
         setIsOffline(true);
         setLoadError(typeof navigator !== "undefined" && navigator.onLine === false ? "offline" : "failed");
       } finally {
-        if (!cancelled && peekOnCallEntrySessionEpoch() === epochAtStart) setLoading(false);
+        if (!cancelled && !refetching && peekOnCallEntrySessionEpoch() === epochAtStart) setLoading(false);
       }
     })();
 

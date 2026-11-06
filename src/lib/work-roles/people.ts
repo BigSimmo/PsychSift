@@ -580,12 +580,20 @@ async function archiveHospital(
 async function readPeopleAfterSavedChange(client: Client, context: WorkRoleContext, hospitalId: string | null) {
   try {
     return await readPeople(client, context, hospitalId);
-  } catch {
+  } catch (error) {
+    // Keep a safe category for the API log (denied, not ready, unavailable...), never the message.
+    const causeName =
+      error instanceof PublicApiError && error.details?.code
+        ? error.details.code
+        : error instanceof Error
+          ? error.name
+          : "unknown";
     throw new PublicApiError(
       "The change was saved, but People and roles could not be refreshed. Reload to see its current state.",
       503,
       {
         code: "work_people_refresh_failed",
+        causeName,
       },
     );
   }

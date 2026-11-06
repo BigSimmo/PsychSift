@@ -310,8 +310,14 @@ function usedProxyClaims(request: Request): boolean {
 }
 
 async function getFreshRequestUser(request: Request, supabase: AdminClient): Promise<AuthenticatedUser | null> {
-  const token = extractSessionAccessToken(request);
-  return token ? getUserFromAccessToken(supabase, token) : getUserFromRequestCookies(request);
+  // Same precedence as `resolveOptionalAuthentication`: a current session (plain or
+  // encoded) wins over a leftover legacy `sb-access-token`, and an invalid current
+  // session never falls back to the legacy token.
+  const token = extractBearerAccessToken(request) ?? extractCurrentCookieSessionAccessToken(request);
+  if (token) return getUserFromAccessToken(supabase, token);
+  if (hasCurrentSessionCookie(request)) return getUserFromRequestCookies(request);
+  const legacyToken = extractLegacyCookieSessionAccessToken(request);
+  return legacyToken ? getUserFromAccessToken(supabase, legacyToken) : getUserFromRequestCookies(request);
 }
 
 export async function requireAuthenticatedUser(
