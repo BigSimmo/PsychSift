@@ -31,8 +31,23 @@ end $$;
 create function pg_temp.cmd(p_actor text, p_action text, p_payload jsonb) returns jsonb language sql as $$
   select public.roster_command(pg_temp.id(p_actor), pg_temp.id('svc'), p_action, p_payload)
 $$;
+-- The team fixture below is written for the fortnight of Monday 2 to Sunday 15 November 2026.
+-- shift() moves every such date by whole weeks to the Monday 14 to 20 days after today (Perth),
+-- so the fixture keeps its weekdays and its gaps to now(): the 7-day manager-approval window,
+-- open-shift start checks and retention never meet a date the calendar has already passed.
+create function pg_temp.shift(p text) returns text language plpgsql as $$
+declare
+  v_base date := date_trunc('week', (now() at time zone 'Australia/Perth')::date + 20)::date;
+  v_out text := regexp_replace(p, '2026-11-([0-9]{2})', '@@\1@@', 'g');
+  v_day text;
+begin
+  for v_day in select distinct m[1] from regexp_matches(p, '2026-11-([0-9]{2})', 'g') as m loop
+    v_out := replace(v_out, '@@' || v_day || '@@', to_char(v_base + (v_day::int - 2), 'YYYY-MM-DD'));
+  end loop;
+  return v_out;
+end $$;
 -- The Supabase image revokes execute from public by default, so grant the helpers explicitly.
-grant execute on function pg_temp.id(text), pg_temp.expect_error(text, text), pg_temp.cmd(text, text, jsonb)
+grant execute on function pg_temp.id(text), pg_temp.expect_error(text, text), pg_temp.cmd(text, text, jsonb), pg_temp.shift(text)
   to service_role;
 -- Everything below runs as the app does: as service_role, through the functions.
 set local role service_role;
@@ -80,31 +95,31 @@ do $$ begin
 end $$;
 
 -- 4. Publish: members cannot, managers can; all or nothing.
-select pg_temp.expect_error($$select pg_temp.cmd('lee', 'publish', '{"periodStart":"2026-11-02","periodEnd":"2026-11-15","assignments":[]}')$$, 'roster_role_denied');
-select pg_temp.expect_error($$select pg_temp.cmd('mgr', 'publish', jsonb_build_object('periodStart','2026-11-02','periodEnd','2026-11-15',
-  'assignments', jsonb_build_array(jsonb_build_object('userId', pg_temp.id('out'), 'startsAt','2026-11-03T00:00:00Z','endsAt','2026-11-03T08:30:00Z','shiftCode','D','kind','day'))))$$,
+select pg_temp.expect_error($$select pg_temp.cmd('lee', 'publish', pg_temp.shift('{"periodStart":"2026-11-02","periodEnd":"2026-11-15","assignments":[]}')::jsonb)$$, 'roster_role_denied');
+select pg_temp.expect_error($$select pg_temp.cmd('mgr', 'publish', jsonb_build_object('periodStart',pg_temp.shift('2026-11-02'),'periodEnd',pg_temp.shift('2026-11-15'),
+  'assignments', jsonb_build_array(jsonb_build_object('userId', pg_temp.id('out'), 'startsAt',pg_temp.shift('2026-11-03T00:00:00Z'),'endsAt',pg_temp.shift('2026-11-03T08:30:00Z'),'shiftCode','D','kind','day'))))$$,
   'roster_invalid_request');
 
 create temp table plan_rows on commit drop as
 select * from (values
-  ('lee',  '2026-11-07T00:00:00Z', '2026-11-08T00:00:00Z', 'C', 'on_call'),
-  ('mei',  '2026-11-14T00:00:00Z', '2026-11-15T00:00:00Z', 'C', 'on_call'),
-  ('lee',  '2026-11-10T13:30:00Z', '2026-11-11T00:00:00Z', 'N', 'night'),
-  ('alex', '2026-11-10T00:00:00Z', '2026-11-10T08:30:00Z', 'D', 'day'),
-  ('ivy',  '2026-11-12T00:00:00Z', '2026-11-12T08:30:00Z', 'D', 'day')
+  ('lee',  pg_temp.shift('2026-11-07T00:00:00Z'), pg_temp.shift('2026-11-08T00:00:00Z'), 'C', 'on_call'),
+  ('mei',  pg_temp.shift('2026-11-14T00:00:00Z'), pg_temp.shift('2026-11-15T00:00:00Z'), 'C', 'on_call'),
+  ('lee',  pg_temp.shift('2026-11-10T13:30:00Z'), pg_temp.shift('2026-11-11T00:00:00Z'), 'N', 'night'),
+  ('alex', pg_temp.shift('2026-11-10T00:00:00Z'), pg_temp.shift('2026-11-10T08:30:00Z'), 'D', 'day'),
+  ('ivy',  pg_temp.shift('2026-11-12T00:00:00Z'), pg_temp.shift('2026-11-12T08:30:00Z'), 'D', 'day')
 ) as t (who, starts_at, ends_at, code, kind);
 grant all on plan_rows to service_role;
 
 do $publish$
 declare r jsonb;
 begin
-  r := pg_temp.cmd('mgr', 'publish', jsonb_build_object('periodStart', '2026-11-02', 'periodEnd', '2026-11-15', 'sourceName', 'Nov.xlsx',
+  r := pg_temp.cmd('mgr', 'publish', jsonb_build_object('periodStart', pg_temp.shift('2026-11-02'), 'periodEnd', pg_temp.shift('2026-11-15'), 'sourceName', 'Nov.xlsx',
     'assignments', (select jsonb_agg(jsonb_build_object('userId', pg_temp.id(who), 'startsAt', starts_at, 'endsAt', ends_at,
                     'shiftCode', code, 'kind', kind, 'siteId', pg_temp.id('site'))) from plan_rows)
-    || jsonb_build_array(jsonb_build_object('rosterName', 'Locum 1', 'startsAt', '2026-11-11T00:00:00Z', 'endsAt', '2026-11-11T08:30:00Z', 'shiftCode', 'D', 'kind', 'day'))));
+    || jsonb_build_array(jsonb_build_object('rosterName', 'Locum 1', 'startsAt', pg_temp.shift('2026-11-11T00:00:00Z'), 'endsAt', pg_temp.shift('2026-11-11T08:30:00Z'), 'shiftCode', 'D', 'kind', 'day'))));
   if (r ->> 'version')::int <> 1 then raise exception 'publish: expected version 1, got %', r; end if;
   if jsonb_array_length(public.roster_read(pg_temp.id('lee'), pg_temp.id('svc'), 'assignments',
-       '{"from":"2026-11-02","to":"2026-11-15"}') -> 'assignments') <> 6 then
+       pg_temp.shift('{"from":"2026-11-02","to":"2026-11-15"}')::jsonb) -> 'assignments') <> 6 then
     raise exception 'publish: expected 6 live rows';
   end if;
 end
@@ -159,7 +174,7 @@ declare night uuid; r jsonb;
 begin
   select id into night from public.roster_assignments where user_id = pg_temp.id('lee') and shift_code = 'N';
   insert into public.roster_assignments (service_id, publication_id, user_id, starts_at, ends_at, shift_code, kind)
-  select pg_temp.id('svc'), publication_id, pg_temp.id('alex'), '2026-11-10T14:00:00Z', '2026-11-10T20:00:00Z', 'E', 'evening'
+  select pg_temp.id('svc'), publication_id, pg_temp.id('alex'), pg_temp.shift('2026-11-10T14:00:00Z')::timestamptz, pg_temp.shift('2026-11-10T20:00:00Z')::timestamptz, 'E', 'evening'
   from public.roster_assignments where id = night;
   perform pg_temp.expect_error(format($f$select pg_temp.cmd('lee', 'swap.create', %L)$f$,
     jsonb_build_object('giveAssignmentId', night, 'counterpartyId', pg_temp.id('alex'))), 'roster_swap_not_eligible');
@@ -224,11 +239,11 @@ $seen$;
 
 -- G1/G3: approved changes are visible only to managers; manager identities and swap names
 -- are available to members without exposing the manager-only people list.
-select pg_temp.expect_error($$select public.roster_read(pg_temp.id('lee'), pg_temp.id('svc'), 'changes', '{"from":"2026-11-02","to":"2026-11-15"}')$$, 'roster_role_denied');
+select pg_temp.expect_error($$select public.roster_read(pg_temp.id('lee'), pg_temp.id('svc'), 'changes', pg_temp.shift('{"from":"2026-11-02","to":"2026-11-15"}')::jsonb)$$, 'roster_role_denied');
 do $g1_g3$
 declare r jsonb;
 begin
-  r := public.roster_read(pg_temp.id('mgr'), pg_temp.id('svc'), 'changes', '{"from":"2026-11-02","to":"2026-11-15"}');
+  r := public.roster_read(pg_temp.id('mgr'), pg_temp.id('svc'), 'changes', pg_temp.shift('{"from":"2026-11-02","to":"2026-11-15"}')::jsonb);
   if jsonb_array_length(r -> 'openShifts') < 1 then raise exception 'G1: approved open shift missing'; end if;
   r := public.roster_read(pg_temp.id('lee'), pg_temp.id('svc'), 'overview', '{}');
   if not (r -> 'managers') @> jsonb_build_array(jsonb_build_object('userId', pg_temp.id('mgr'))) then raise exception 'G3: manager missing'; end if;
@@ -241,9 +256,9 @@ declare give uuid; r jsonb;
 begin
   select id into give from public.roster_assignments where user_id = pg_temp.id('alex') and shift_code = 'D' and superseded_at is null;
   perform pg_temp.cmd('alex', 'swap.create', jsonb_build_object('giveAssignmentId', give, 'counterpartyId', pg_temp.id('mgr')));
-  r := pg_temp.cmd('mgr', 'publish', jsonb_build_object('periodStart', '2026-11-02', 'periodEnd', '2026-11-15',
-    'assignments', jsonb_build_array(jsonb_build_object('userId', pg_temp.id('lee'), 'startsAt', '2026-11-03T00:00:00Z',
-      'endsAt', '2026-11-03T08:30:00Z', 'shiftCode', 'D', 'kind', 'day'))));
+  r := pg_temp.cmd('mgr', 'publish', jsonb_build_object('periodStart', pg_temp.shift('2026-11-02'), 'periodEnd', pg_temp.shift('2026-11-15'),
+    'assignments', jsonb_build_array(jsonb_build_object('userId', pg_temp.id('lee'), 'startsAt', pg_temp.shift('2026-11-03T00:00:00Z'),
+      'endsAt', pg_temp.shift('2026-11-03T08:30:00Z'), 'shiftCode', 'D', 'kind', 'day'))));
   if jsonb_array_length(r -> 'swapsCancelled') <> 1 then raise exception 'republish: expected one cancelled swap, got %', r; end if;
   if (select count(*) from public.roster_assignments where service_id = pg_temp.id('svc') and superseded_at is null) <> 1 then
     raise exception 'republish: old rows still live';
@@ -280,14 +295,14 @@ $revoke$;
 do $maker$
 declare d uuid; r jsonb; c bigint; row_id uuid;
 begin
-  r := pg_temp.cmd('mgr', 'draft.open', '{"periodStart":"2026-11-02","periodEnd":"2026-11-15"}');
+  r := pg_temp.cmd('mgr', 'draft.open', pg_temp.shift('{"periodStart":"2026-11-02","periodEnd":"2026-11-15"}')::jsonb);
   d := (r ->> 'draftId')::uuid;
   if (select count(*) from public.roster_draft_assignments where draft_id = d) <> 1 then raise exception 'draft: not copied'; end if;
   select id into row_id from public.roster_draft_assignments where draft_id = d;
   r := pg_temp.cmd('mgr', 'draft.change', jsonb_build_object('draftId', d, 'source', 'typed', 'ops', jsonb_build_array(
     jsonb_build_object('op', 'update', 'id', row_id, 'row', jsonb_build_object('shiftCode', 'E', 'kind', 'evening')),
-    jsonb_build_object('op', 'add', 'row', jsonb_build_object('rosterName', 'Locum 2', 'startsAt', '2026-11-04T00:00:00Z',
-      'endsAt', '2026-11-04T08:30:00Z', 'shiftCode', 'D', 'kind', 'day')))));
+    jsonb_build_object('op', 'add', 'row', jsonb_build_object('rosterName', 'Locum 2', 'startsAt', pg_temp.shift('2026-11-04T00:00:00Z'),
+      'endsAt', pg_temp.shift('2026-11-04T08:30:00Z'), 'shiftCode', 'D', 'kind', 'day')))));
   c := (r ->> 'lastChangeId')::bigint;
   perform pg_temp.cmd('mgr', 'draft.undo', jsonb_build_object('changeId', c));
   perform pg_temp.cmd('mgr', 'draft.undo', jsonb_build_object('changeId', c - 1));
@@ -305,7 +320,7 @@ select pg_temp.expect_error($$select pg_temp.cmd('ivy', 'seen.mark', '{}')$$, 'r
 select pg_temp.expect_error($$select pg_temp.cmd('mgr', 'member.remove', jsonb_build_object('userId', pg_temp.id('adm')))$$, 'roster_not_found');
 
 -- G2/G4/G5: history stays actor-only; named leave is active-team manager-only; cutoff is bounded.
-select pg_temp.expect_error($$select public.roster_read(pg_temp.id('lee'), pg_temp.id('svc'), 'team_leave', '{"from":"2026-11-02","to":"2026-11-15"}')$$, 'roster_role_denied');
+select pg_temp.expect_error($$select public.roster_read(pg_temp.id('lee'), pg_temp.id('svc'), 'team_leave', pg_temp.shift('{"from":"2026-11-02","to":"2026-11-15"}')::jsonb)$$, 'roster_role_denied');
 select pg_temp.expect_error($$select public.roster_set_cutoff(pg_temp.id('lee'), pg_temp.id('svc'), current_date)$$, 'roster_role_denied');
 select pg_temp.expect_error($$select public.roster_set_cutoff(pg_temp.id('mgr'), pg_temp.id('svc'), (now() at time zone 'Australia/Perth')::date + 181)$$, 'roster_invalid_request');
 select pg_temp.expect_error($$select public.roster_read(pg_temp.id('mgr'), pg_temp.id('svc'), 'team_leave', '{"from":"2026-01-01","to":"2026-12-31"}')$$, 'roster_invalid_request');
@@ -316,9 +331,9 @@ begin
   if jsonb_array_length(r -> 'before') = 0 or jsonb_array_length(r -> 'after') = 0 then raise exception 'G2: history missing'; end if;
   if exists (select 1 from jsonb_array_elements((r -> 'before') || (r -> 'after')) x where (x ->> 'userId')::uuid <> pg_temp.id('lee')) then raise exception 'G2: another doctor leaked'; end if;
   insert into public.roster_leave(owner_id, service_id, kind, starts_on, ends_on, status)
-    values (pg_temp.id('lee'), pg_temp.id('svc'), 'annual', '2026-11-04', '2026-11-06', 'approved'),
-           (pg_temp.id('ivy'), pg_temp.id('svc'), 'pd_leave', '2026-11-04', '2026-11-06', 'planned');
-  r := public.roster_read(pg_temp.id('mgr'), pg_temp.id('svc'), 'team_leave', '{"from":"2026-11-02","to":"2026-11-15"}');
+    values (pg_temp.id('lee'), pg_temp.id('svc'), 'annual', pg_temp.shift('2026-11-04')::date, pg_temp.shift('2026-11-06')::date, 'approved'),
+           (pg_temp.id('ivy'), pg_temp.id('svc'), 'pd_leave', pg_temp.shift('2026-11-04')::date, pg_temp.shift('2026-11-06')::date, 'planned');
+  r := public.roster_read(pg_temp.id('mgr'), pg_temp.id('svc'), 'team_leave', pg_temp.shift('{"from":"2026-11-02","to":"2026-11-15"}')::jsonb);
   if jsonb_array_length(r -> 'leave') <> 1 or r #>> '{leave,0,userId}' <> pg_temp.id('lee')::text then raise exception 'G4: wrong active leave scope'; end if;
   perform public.roster_set_cutoff(pg_temp.id('mgr'), pg_temp.id('svc'), (now() at time zone 'Australia/Perth')::date + 180);
   r := public.roster_read(pg_temp.id('lee'), pg_temp.id('svc'), 'overview', '{}');
