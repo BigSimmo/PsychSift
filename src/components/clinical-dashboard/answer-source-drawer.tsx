@@ -193,7 +193,8 @@ export function AnswerSourceDrawer({
     ? [
         `${cleanDisplayTitle(source.title)} · p. ${source.pageNumber ?? "n/a"}`,
         source.href,
-        sourceStatusShortLabel(source.metadata),
+        // A stale source's warning line below already leads with this label.
+        stale ? null : sourceStatusShortLabel(source.metadata),
         supportSentence ?? (source.cited === false ? sourceSupportSentence(source, 0) : null),
         stale
           ? `${sourceStatusShortLabel(source.metadata)} — this document is past its review date. Confirm the passage against a current source before acting on it.`
