@@ -220,6 +220,7 @@
     "tests/managed-source-summary-request.test.ts",
     "tests/model-*",
     "tests/pdf-*",
+    "tests/pending-reindex-authority.test.ts",
     "tests/probe-corpus-image-encodings.test.ts",
     "tests/property-chunking.test.ts",
     "tests/public-source-*",

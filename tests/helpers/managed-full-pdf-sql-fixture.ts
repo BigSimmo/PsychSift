@@ -28,6 +28,7 @@ const idPrefix = prefixIndex < 0 ? "73000000" : process.argv[prefixIndex + 1];
 if (!idPrefix || !/^[a-f0-9]{8}$/.test(idPrefix)) throw new Error("fixture_id_prefix_invalid");
 const ids = Array.from({ length: 6 }, (_, i) => `${idPrefix}-0000-4000-8000-00000000000${i + 1}`);
 const sqlJson = (value: unknown) => "'" + JSON.stringify(value).replaceAll("'", "''") + "'::jsonb";
+const sqlText = (value: string) => "'" + value.replaceAll("'", "''") + "'";
 function arg(name: string) {
   const i = process.argv.indexOf(name);
   if (i < 0 || !process.argv[i + 1] || process.argv[i + 1].startsWith("--"))
@@ -418,11 +419,18 @@ async function stage(path: string, claimPath: string) {
       "drop trigger synthetic_reject_summary_completion on public.ingestion_jobs;",
     );
   }
+  // Readmission leaves live ranking fields untouched until the terminal applies them.
+  statements.push(
+    `do $$ begin if (select not ingestion_generation_evidence.pending_reindex_authority_valid(metadata) or metadata#>>'{pending_reindex_authority,values,publisher}' is distinct from ${sqlText(authority.publisher)} or exists(select 1 from jsonb_each(metadata->'pending_reindex_authority'->'prior') prior where coalesce(metadata->prior.key,'null'::jsonb) is distinct from prior.value) from public.documents where id='${job.document_id}') then raise exception 'TEST_READMISSION_WROTE_LIVE_RANKING_FIELDS';end if;end $$;`,
+  );
   statements.push(
     `select public.complete_managed_full_pdf(${sqlJson(fence)},'${issued.generationId}',${digest},false);`,
   );
   statements.push(
     `select public.complete_managed_full_pdf(${sqlJson(fence)},'${issued.generationId}',${digest},true);`,
+  );
+  statements.push(
+    `do $$ begin if (select metadata ? 'pending_reindex_authority' or metadata->>'publisher' is distinct from ${sqlText(authority.publisher)} or metadata->>'source_role' is distinct from ${sqlText(authority.sourceRole)} or metadata->>'licence_policy' is distinct from ${sqlText(authority.licencePolicy)} or metadata->>'document_status' is distinct from ${sqlText(authority.currentness)} or metadata->>'jurisdiction' is distinct from ${sqlText(authority.jurisdiction)} from public.documents where id='${job.document_id}') then raise exception 'TEST_PENDING_RANKING_FIELDS_NOT_APPLIED';end if;end $$;`,
   );
   if (withSummary) {
     statements.push(

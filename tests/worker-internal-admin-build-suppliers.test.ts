@@ -7,6 +7,7 @@ import { GENERAL_PDF_INSPECTION_VERSION, type GeneralPdfInspectionReview } from 
 import { createInternalAdminBuildSuppliers } from "../worker/internal-admin-build-suppliers";
 import { workerProviderSourceBinding } from "../worker/provider-egress";
 import type { JobRow } from "../worker/types";
+import { PENDING_REINDEX_AUTHORITY_KEYS } from "../worker/pending-reindex-authority";
 
 const uuid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const sourceHash = (bytes: Uint8Array): `sha256:${string}` =>
@@ -404,6 +405,34 @@ describe("explicit owner-internal native PDF source supplier", () => {
       expect(f.inspectNativePdf).not.toHaveBeenCalled();
     },
   );
+
+  it("accepts a readmitted draft whose declared ranking fields are still pending, and refuses a foreign block", async () => {
+    const f = fixture();
+    const live = f.job.documents.metadata as Record<string, unknown>;
+    const values = Object.fromEntries(PENDING_REINDEX_AUTHORITY_KEYS.map((key) => [key, live[key] ?? null]));
+    const prior = {
+      ...Object.fromEntries(PENDING_REINDEX_AUTHORITY_KEYS.map((key) => [key, null])),
+      publisher: "Superseded publisher",
+      source_role: "clinical_reference",
+      licence_policy: "public_index_permitted",
+      document_status: "outdated",
+    };
+    for (const key of PENDING_REINDEX_AUTHORITY_KEYS) delete live[key];
+    Object.assign(live, prior, {
+      pending_reindex_authority: {
+        version: "pending-reindex-authority-v1",
+        admissionEventId: live.admission_event_id,
+        values,
+        prior,
+      },
+    });
+    f.document.metadata = structuredClone(live);
+    const suppliers = createInternalAdminBuildSuppliers(f.client, f.options);
+    await expect(suppliers.loadApprovedSource(f.job, "embedding")).resolves.toMatchObject({ documentId: uuid(1) });
+    for (const metadata of [live, f.document.metadata as Record<string, unknown>])
+      (metadata.pending_reindex_authority as Record<string, unknown>).admissionEventId = uuid(51);
+    await expect(suppliers.loadApprovedSource(f.job, "embedding")).rejects.toThrow("admission_binding_mismatch");
+  });
 
   it("rejects foreign jobs and mutated allowlists and mismatched inspector evidence", async () => {
     const f = fixture();

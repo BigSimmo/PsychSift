@@ -20,6 +20,7 @@ import { scanWindowsDefenderBytes, type WindowsMalwareInspectionConfiguration } 
 import { scanClamAvBytes, type ClamAvInspectionConfiguration } from "../worker/clamav-inspection";
 import { createWorkerProviderEgressContext, workerProviderSourceBinding } from "../worker/provider-egress";
 import type { JobRow } from "../worker/types";
+import { PENDING_REINDEX_AUTHORITY_KEYS } from "../worker/pending-reindex-authority";
 import { GENERAL_PDF_INSPECTION_VERSION, type GeneralPdfInspectionReview } from "../worker/general-pdf-inspection";
 import {
   ADMIN_UNSCANNED_EXCEPTION_POLICY,
@@ -369,6 +370,31 @@ function admittedDraft(f: ReturnType<typeof setup>) {
   Object.assign(f.current, { sourceMetadata: metadata });
 }
 
+function pendingReadmission(f: ReturnType<typeof setup>, overrides: Record<string, unknown> = {}) {
+  // Readmission leaves the live flat ranking fields as they were and holds the
+  // declared values in pending_reindex_authority until a terminal applies them.
+  const metadata = f.current.sourceMetadata as Record<string, unknown>;
+  const values = Object.fromEntries(PENDING_REINDEX_AUTHORITY_KEYS.map((key) => [key, metadata[key] ?? null]));
+  const prior = {
+    ...Object.fromEntries(PENDING_REINDEX_AUTHORITY_KEYS.map((key) => [key, null])),
+    publisher: "Superseded publisher",
+    source_role: "clinical_reference",
+    licence_policy: "review_required",
+    document_status: "outdated",
+    rights_evidence_ref: null,
+  };
+  for (const key of PENDING_REINDEX_AUTHORITY_KEYS) delete metadata[key];
+  Object.assign(metadata, prior, {
+    pending_reindex_authority: {
+      version: "pending-reindex-authority-v1",
+      admissionEventId: metadata.admission_event_id,
+      values,
+      prior,
+      ...overrides,
+    },
+  });
+}
+
 describe("current administrator plain-text inspection adapter", () => {
   function generalPdfFixture() {
     const f = setup(Buffer.from("%PDF-1.7\nSynthetic source bytes\n%%EOF"));
@@ -527,6 +553,36 @@ describe("current administrator plain-text inspection adapter", () => {
       authority: Object.fromEntries(Object.entries(f.current.facts.declaredAuthority).reverse()),
     });
     await expect(f.loader(f.request, f.binding)).resolves.toBeDefined();
+  });
+
+  it("checks a readmitted draft against its pending ranking fields, not the stale live ones", async () => {
+    const f = setup();
+    admittedDraft(f);
+    pendingReadmission(f);
+    expect(f.current.sourceMetadata.publisher).toBe("Superseded publisher");
+    await expect(f.loader(f.request, f.binding)).resolves.toBeDefined();
+  });
+
+  it.each([
+    ["another admission", { admissionEventId: uuid(41) }],
+    ["an unknown version", { version: "pending-reindex-authority-v0" }],
+    ["a missing prior snapshot", { prior: undefined }],
+  ])("refuses a readmitted draft whose pending block has %s", async (_label, overrides) => {
+    const f = setup();
+    admittedDraft(f);
+    pendingReadmission(f, overrides);
+    await expect(f.loader(f.request, f.binding)).rejects.toThrow("catalogue_authority_mismatch");
+    expect(scan).not.toHaveBeenCalled();
+  });
+
+  it("refuses a readmitted draft whose pending ranking fields contradict the declared authority", async () => {
+    const f = setup();
+    admittedDraft(f);
+    pendingReadmission(f);
+    const pending = f.current.sourceMetadata.pending_reindex_authority as { values: Record<string, unknown> };
+    pending.values.licence_policy = "review_required";
+    await expect(f.loader(f.request, f.binding)).rejects.toThrow("catalogue_authority_mismatch");
+    expect(scan).not.toHaveBeenCalled();
   });
 
   it("refuses contradictory nested draft authority despite permissive flattened fields", async () => {

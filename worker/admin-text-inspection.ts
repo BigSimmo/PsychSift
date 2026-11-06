@@ -21,6 +21,7 @@ import { forbiddenPublicSourceIdentity } from "../supabase/functions/_shared/pub
 import { scanWindowsDefenderBytes, type WindowsMalwareInspectionConfiguration } from "./malware-inspection";
 import { scanClamAvBytes, type ClamAvInspectionConfiguration } from "./clamav-inspection";
 import { parseWorkerProviderAuthorityFacts, type WorkerProviderAuthorityFacts } from "./provider-egress";
+import { effectiveReindexAuthorityMetadata } from "./pending-reindex-authority";
 import type { ManagedProviderEmbeddingRequestContext } from "./managed-provider-vectors";
 import {
   GENERAL_PDF_INSPECTION_VERSION,
@@ -423,7 +424,10 @@ export function createAdminTextInspectionLoader(options: AdminTextInspectionOpti
         }
         // Country-level admission does not establish WA authority: catalogue and
         // admitted jurisdiction must match exactly for either supported scope.
-        const metadata = value.sourceMetadata;
+        // A readmission keeps its declared ranking fields pending until the terminal applies them.
+        const metadata =
+          (value.sourceMetadata ? effectiveReindexAuthorityMetadata(value.sourceMetadata) : null) ??
+          refuse("catalogue_authority_mismatch");
         const draft = metadata?.corpus_scope === "uploaded_local";
         if (
           !matchesIngestionJurisdiction(declared.jurisdiction, entry.jurisdiction) ||

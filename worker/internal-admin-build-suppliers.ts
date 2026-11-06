@@ -38,6 +38,7 @@ import {
   type GeneralPdfInspectionReview,
 } from "./general-pdf-inspection";
 import { workerProviderSourceBinding } from "./provider-egress";
+import { effectiveReindexAuthorityMetadata } from "./pending-reindex-authority";
 import type { JobRow } from "./types";
 
 export const INTERNAL_ADMIN_BUILD_POLICY_VERSION = `owner-internal-admin-build-v1:${australianSourcePolicyVersion}`;
@@ -248,6 +249,9 @@ export function createInternalAdminBuildSuppliers(
       authority: event.authority as TrustedAdmissionAuthority,
     });
     const authority = admission.authority;
+    // A readmission keeps its declared ranking fields pending until the terminal applies them.
+    const declaredMetadata = effectiveReindexAuthorityMetadata(metadata);
+    if (!declaredMetadata) refuse("admission_binding_mismatch");
     if (
       event.id !== initial.admissionEventId ||
       event.document_id !== job.document_id ||
@@ -261,13 +265,13 @@ export function createInternalAdminBuildSuppliers(
       authority.providerProcessing !== "permitted" ||
       !["current", "unknown"].includes(authority.currentness) ||
       !["review_required", "public_index_permitted"].includes(authority.licencePolicy) ||
-      metadata.publisher !== authority.publisher ||
-      metadata.jurisdiction !== authority.jurisdiction ||
-      metadata.source_role !== authority.sourceRole ||
-      metadata.licence_policy !== authority.licencePolicy ||
-      metadata.document_status !== authority.currentness ||
+      declaredMetadata.publisher !== authority.publisher ||
+      declaredMetadata.jurisdiction !== authority.jurisdiction ||
+      declaredMetadata.source_role !== authority.sourceRole ||
+      declaredMetadata.licence_policy !== authority.licencePolicy ||
+      declaredMetadata.document_status !== authority.currentness ||
       metadata.authority_basis !== authority.authorityBasis ||
-      metadata.rights_evidence_ref !== authority.rightsEvidenceRef
+      declaredMetadata.rights_evidence_ref !== authority.rightsEvidenceRef
     )
       refuse("admission_binding_mismatch");
     assertTrustedDocumentStoragePath(document.owner_id!, document.id, document.storage_path);
