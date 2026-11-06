@@ -159,9 +159,9 @@ const envSchema = z
     OPENAI_STRONG_ANSWER_MODEL: z.string().default("gpt-5.6-sol"),
     // Non-answer workloads stay pinned when answer models change. Explicit
     // deployment overrides below continue to win over these legacy fallbacks.
-    OPENAI_QUERY_CLASSIFIER_MODEL: z.string().optional(),
-    OPENAI_SUMMARY_MODEL: z.string().optional(),
-    OPENAI_INDEXING_MODEL: z.string().optional(),
+    OPENAI_QUERY_CLASSIFIER_MODEL: z.preprocess(coerceBlankEnv, z.string().optional()),
+    OPENAI_SUMMARY_MODEL: z.preprocess(coerceBlankEnv, z.string().optional()),
+    OPENAI_INDEXING_MODEL: z.preprocess(coerceBlankEnv, z.string().optional()),
     OPENAI_RERANK_MODEL: z.string().default("gpt-5.6-luna"),
     // Reasoning models (gpt-5*) draw reasoning tokens from this SAME budget as the
     // visible answer, so a low cap makes medium/high-effort reasoning consume the whole

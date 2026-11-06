@@ -375,3 +375,51 @@ it("filters duplicated withdrawn adjacent context while preserving valid adjacen
   const valid = source("adjacent-valid", safe, { adjacent_context: claim });
   expect(sanitizeQuoteCards([{ chunk_id: valid.id, quote: claim }], [valid])[0]?.quote).toBe(claim);
 });
+it("withholds a withdrawn instruction through an abbreviation instead of leaking its tail", () => {
+  const tail = "400 mg nightly with levels at five days.";
+  const independent = "The independent synthetic action B should continue during the scheduled review.";
+  const s = source(
+    "abbreviation-withdrawal",
+    "The following recommendation has been withdrawn. Give synthetic agent Q e.g. " + tail + " " + independent,
+  );
+  const content = claimProofWithoutGeneratedNarrative(s).content;
+  expect(content).not.toContain("400 mg nightly");
+  expect(sanitizeQuoteCards([{ chunk_id: s.id, quote: tail }], [s])).toEqual([]);
+  expect(sourceDirectlySupportsAnswerText(independent, s)).toBe(true);
+});
+it("withholds the recommendation below a withdrawal notice", () => {
+  const s = source("below-withdrawal", "The recommendation below has been withdrawn. " + claim);
+  expect(claimProofWithoutGeneratedNarrative(s).content).not.toContain(claim);
+  expect(sourceDirectlySupportsAnswerText(claim, s)).toBe(false);
+  expect(sanitizeQuoteCards([{ chunk_id: s.id, quote: claim }], [s])).toEqual([]);
+});
+it("withholds the preceding sentence or list item named by a trailing withdrawal notice", () => {
+  const independent = "The independent synthetic action B should continue during the scheduled review.";
+  const prose = source("trailing-prose", claim + " This recommendation has been withdrawn. " + independent);
+  expect(sourceDirectlySupportsAnswerText(claim, prose)).toBe(false);
+  expect(sanitizeQuoteCards([{ chunk_id: prose.id, quote: claim }], [prose])).toEqual([]);
+  expect(sourceDirectlySupportsAnswerText(independent, prose)).toBe(true);
+  const list = source(
+    "trailing-list",
+    "1) " + claim + "\n   Repeat the synthetic check. This recommendation has been withdrawn.\n2) " + independent,
+  );
+  const content = claimProofWithoutGeneratedNarrative(list).content;
+  expect(content).not.toContain(claim);
+  expect(content).not.toContain("Repeat the synthetic check");
+  expect(content).toContain("2) " + independent);
+  expect(sourceDirectlySupportsAnswerText(claim, list)).toBe(false);
+  const inline = source("trailing-inline", claim.replace(/\.$/, "") + "; this recommendation has been withdrawn.");
+  expect(sourceDirectlySupportsAnswerText(claim, inline)).toBe(false);
+});
+it.each([
+  "The following recommendation has not yet been withdrawn. ",
+  "The recommendation below has not yet been withdrawn. ",
+])("treats a not-yet-withdrawn notice as still current: %s", (notice) => {
+  const s = source("not-yet-withdrawn", notice + claim);
+  expect(sourceDirectlySupportsAnswerText(claim, s)).toBe(true);
+  expect(sanitizeQuoteCards([{ chunk_id: s.id, quote: claim }], [s])[0]?.quote).toBe(claim);
+});
+it("keeps the preceding recommendation when a trailing notice says it has not yet been withdrawn", () => {
+  const s = source("trailing-not-yet", claim + " This recommendation has not yet been withdrawn.");
+  expect(sourceDirectlySupportsAnswerText(claim, s)).toBe(true);
+});

@@ -57,6 +57,17 @@ describe("Sol answer defaults and workload isolation", () => {
       OPENAI_INDEXING_MODEL: "gpt-5.6-terra",
     });
   });
+
+  it.each(["", "   "])("treats a blank workload model as unset in Node: %j", async (blank) => {
+    for (const key of ["OPENAI_QUERY_CLASSIFIER_MODEL", "OPENAI_SUMMARY_MODEL", "OPENAI_INDEXING_MODEL"])
+      vi.stubEnv(key, blank);
+    const { env } = await import("@/lib/env");
+    expect(env).toMatchObject({
+      OPENAI_QUERY_CLASSIFIER_MODEL: "gpt-5.6-terra",
+      OPENAI_SUMMARY_MODEL: "gpt-5.6-terra",
+      OPENAI_INDEXING_MODEL: "gpt-5.6-sol",
+    });
+  });
 });
 
 describe("developer-area access-key environment parsing", () => {
