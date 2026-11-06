@@ -1,4 +1,4 @@
-import { createAnswerRequestWatchdog, searchRequestTimeoutMs } from "@/components/clinical-dashboard/search-utils";
+import { createAnswerRequestWatchdog, searchRequestTimeoutMs } from "@/components/clinical-dashboard/request-watchdog";
 
 /** Keep headers and body under one budget, even if a dependency ignores abort. */
 export function createClientRequestBudget(
