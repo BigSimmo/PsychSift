@@ -142,8 +142,10 @@ async function loadCandidateImages() {
   const candidates: BackfillImageRow[] = [];
   const generations = new Map<string, string | null>();
   const looked = new Set<string>();
-  const pageSize = Math.max(limit, 100);
-  for (let offset = 0; candidates.length < limit; offset += pageSize) {
+  // Keep pages below the API's response cap (1,000 rows by default) and advance by the rows
+  // actually returned, so a capped page can never end the scan early.
+  const pageSize = 100;
+  for (let offset = 0; candidates.length < limit;) {
     const { data, error } = await supabase
       .from("document_images")
       .select("id,document_id,page_number,caption,image_type,source_kind,labels,metadata,index_generation_id")
@@ -176,7 +178,8 @@ async function loadCandidateImages() {
       if (generations.has(image.document_id) && generations.get(image.document_id) === image.index_generation_id)
         candidates.push(image);
     }
-    if (page.length < pageSize) break;
+    if (page.length === 0) break;
+    offset += page.length;
   }
   return candidates;
 }
