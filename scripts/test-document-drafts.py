@@ -452,6 +452,18 @@ class DocumentDraftTests(unittest.TestCase):
         self.assertEqual(0o755, stat.S_IMODE(workspace.stat().st_mode))
         self.assertEqual([], list(workspace.iterdir()))
 
+    @unittest.skipUnless(os.name == 'posix', 'POSIX setgid contract')
+    def test_new_workspace_under_setgid_parent_is_accepted_and_resumable(self):
+        parent = self.root / 'setgid-parent'
+        parent.mkdir(mode=0o755)
+        parent.chmod(0o2755)
+        if not parent.stat().st_mode & stat.S_ISGID:
+            self.skipTest('filesystem does not keep the setgid bit')
+        workspace = parent / 'copies'
+        manifest = d.prepare(self.source, workspace, 'setgid', ['note.md'])
+        self.assertEqual(0o700, stat.S_IMODE(workspace.stat().st_mode) & ~stat.S_ISGID)
+        self.assertEqual(manifest, d.prepare(self.source, workspace, 'setgid', ['note.md']))
+
     @unittest.skipUnless(os.name == 'posix', 'POSIX ownership contract')
     def test_existing_private_workspace_of_another_owner_refuses_before_writes(self):
         workspace = self.root / 'other-owner'

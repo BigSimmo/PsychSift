@@ -127,22 +127,58 @@ function imageToVisualInput(image: BackfillImageRow): IndexUnitVisualImage {
   };
 }
 
+function committedGeneration(metadata: unknown) {
+  const value = maintenanceMetadata(metadata).index_generation_id;
+  return typeof value === "string" ? value : null;
+}
+
+/**
+ * Candidates from each document's committed generation only. Retained images from an older
+ * generation can stay searchable with a stale version; backfillDocument would discard them, so
+ * filtering after a plain `.limit()` could fill every run with them and starve later candidates.
+ * Page past them until `limit` committed-generation candidates are found or the rows run out.
+ */
 async function loadCandidateImages() {
-  const { data, error } = await supabase
-    .from("document_images")
-    .select("id,document_id,page_number,caption,image_type,source_kind,labels,metadata,index_generation_id")
-    .eq("searchable", true)
-    .or(
-      [
-        "metadata->>visual_intelligence_version.is.null",
-        `metadata->>visual_intelligence_version.neq.${visualIntelligenceVersion}`,
-        "metadata->>visual_backfill_status.eq.retry",
-      ].join(","),
-    )
-    .order("created_at", { ascending: true })
-    .limit(limit);
-  if (error) throw new Error(error.message);
-  return (data ?? []) as BackfillImageRow[];
+  const candidates: BackfillImageRow[] = [];
+  const generations = new Map<string, string | null>();
+  const looked = new Set<string>();
+  const pageSize = Math.max(limit, 100);
+  for (let offset = 0; candidates.length < limit; offset += pageSize) {
+    const { data, error } = await supabase
+      .from("document_images")
+      .select("id,document_id,page_number,caption,image_type,source_kind,labels,metadata,index_generation_id")
+      .eq("searchable", true)
+      .or(
+        [
+          "metadata->>visual_intelligence_version.is.null",
+          `metadata->>visual_intelligence_version.neq.${visualIntelligenceVersion}`,
+          "metadata->>visual_backfill_status.eq.retry",
+        ].join(","),
+      )
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true })
+      .range(offset, offset + pageSize - 1);
+    if (error) throw new Error(error.message);
+    const page = (data ?? []) as BackfillImageRow[];
+    const unknown = Array.from(new Set(page.map((image) => image.document_id))).filter((id) => !looked.has(id));
+    if (unknown.length) {
+      const { data: documents, error: documentError } = await supabase
+        .from("documents")
+        .select("id,metadata")
+        .in("id", unknown);
+      if (documentError) throw new Error(documentError.message);
+      for (const id of unknown) looked.add(id);
+      for (const document of documents ?? []) generations.set(document.id, committedGeneration(document.metadata));
+    }
+    for (const image of page) {
+      if (candidates.length >= limit) break;
+      // A document that no longer exists has no committed generation and yields no candidates.
+      if (generations.has(image.document_id) && generations.get(image.document_id) === image.index_generation_id)
+        candidates.push(image);
+    }
+    if (page.length < pageSize) break;
+  }
+  return candidates;
 }
 
 function statusForImage(image: BackfillImageRow) {
@@ -251,8 +287,8 @@ async function loadChunks(documentId: string, generation: string | null) {
 async function backfillDocument(documentId: string, images: BackfillImageRow[]) {
   const document = await loadDocument(documentId);
   if (!dryRun) assertLegacyMaintenanceSnapshot(document);
-  const generationValue = maintenanceMetadata(document.metadata).index_generation_id;
-  const generation = typeof generationValue === "string" ? generationValue : null;
+  const generation = committedGeneration(document.metadata);
+  // Recheck against the fresh snapshot: the committed generation can move after candidate selection.
   images = images.filter((image) => image.index_generation_id === generation);
   if (images.length === 0) return;
   const chunks = await loadChunks(documentId, generation);

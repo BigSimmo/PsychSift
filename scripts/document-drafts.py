@@ -104,7 +104,9 @@ def check_workspace(workspace):
     info = workspace.stat()
     if not stat.S_ISDIR(info.st_mode):
         raise ValueError('workspace must be a directory')
-    if os.name == 'posix' and (info.st_uid != os.geteuid() or stat.S_IMODE(info.st_mode) != 0o700):
+    # A setgid bit inherited from the parent grants no access; ignore it so a
+    # workspace created under a setgid directory still meets the 0700 contract.
+    if os.name == 'posix' and (info.st_uid != os.geteuid() or stat.S_IMODE(info.st_mode) & ~stat.S_ISGID != 0o700):
         raise ValueError('workspace must be owned by the current user with mode 0700; preserve it and use a fresh private workspace')
     return workspace
 

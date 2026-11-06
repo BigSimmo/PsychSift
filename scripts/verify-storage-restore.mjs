@@ -181,10 +181,18 @@ export async function runStorageRestoreCli(args) {
   }
   if ((await stat(options["--manifest"])).size > MAX_MANIFEST_BYTES)
     throw new Error("Storage manifest exceeds safety bound");
-  const encoded = await readFile(options["--manifest"], "utf8");
+  // Hash the exact file bytes and refuse invalid UTF-8: lenient decoding maps invalid bytes to
+  // U+FFFD, so a changed manifest could otherwise decode, parse and report the recorded digest.
+  const bytes = await readFile(options["--manifest"]);
+  let encoded;
+  try {
+    encoded = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    throw new Error("Storage manifest is not valid UTF-8");
+  }
   return {
     ...(await verifyStorageRestore(options["--root"], JSON.parse(encoded))),
-    manifestSha256: createHash("sha256").update(encoded).digest("hex"),
+    manifestSha256: createHash("sha256").update(bytes).digest("hex"),
   };
 }
 
