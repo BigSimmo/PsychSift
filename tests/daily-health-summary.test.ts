@@ -69,6 +69,23 @@ describe("daily health summary: judging each check", () => {
     expect(result.link).toBe("[run](https://github.com/o/r/actions/runs/42)");
   });
 
+  it("keeps a failed run reachable alongside an older open issue", () => {
+    const result = assessSource(source("live-site"), {
+      latestRun: { ...run(0.2), conclusion: "failure", html_url: "https://github.com/o/r/actions/runs/42" },
+      issue: issue({}),
+      now: NOW,
+    });
+    expect(result.link).toBe(
+      "[#41](https://github.com/BigSimmo/PsychSift/issues/41) · [run](https://github.com/o/r/actions/runs/42)",
+    );
+    const passing = assessSource(source("live-site"), {
+      latestRun: { ...run(0.2), html_url: "https://github.com/o/r/actions/runs/43" },
+      issue: issue({}),
+      now: NOW,
+    });
+    expect(passing.link).toBe("[#41](https://github.com/BigSimmo/PsychSift/issues/41)");
+  });
+
   it("calls a check green when its workflow ran on time and its issue is closed", () => {
     const result = assessSource(source("live-site"), {
       latestRun: run(2),
@@ -395,6 +412,35 @@ describe("daily health summary: reading GitHub", () => {
     const { body } = renderDailyHealthSummary({ now: NOW, assessments });
     expect(body).not.toContain("John Citizen");
     expect(body).not.toContain("secret error text");
+  });
+
+  it.each([
+    ["a failed pull-request run is newer than a passing main push", "success", "failure", "green"],
+    ["a passing pull-request run is newer than a failed main push", "failure", "success", "amber"],
+  ])("judges CI on main by main pushes only when %s", async (_label, mainConclusion, prConclusion, expected) => {
+    const calls: Array<Record<string, unknown>> = [];
+    const mainRun = { ...run(3), conclusion: mainConclusion, event: "push", head_branch: "main" };
+    const prRun = { ...run(1), conclusion: prConclusion, event: "pull_request", head_branch: "feature" };
+    const github = {
+      rest: {
+        actions: {
+          listWorkflowRuns: async (params: Record<string, unknown>) => {
+            if (params.workflow_id !== "ci.yml") return { data: { workflow_runs: [run(1)] } };
+            calls.push(params);
+            const runs = [prRun, mainRun].filter(
+              (item) =>
+                (params.event === undefined || item.event === params.event) &&
+                (params.branch === undefined || item.head_branch === params.branch),
+            );
+            return { data: { workflow_runs: runs.slice(0, Number(params.per_page ?? 30)) } };
+          },
+        },
+        issues: { listForRepo: async () => ({ data: [] }), listComments: async () => ({ data: [] }) },
+      },
+    };
+    const assessments = await collectAssessments({ github, owner: "BigSimmo", repo: "PsychSift", now: NOW });
+    expect(calls[0]).toMatchObject({ branch: "main", event: "push" });
+    expect(assessments.find((item) => item.key === "ci-main")?.status).toBe(expected);
   });
 
   it("marks a check red when GitHub cannot be read, rather than dropping it", async () => {

@@ -107,6 +107,8 @@ export const SUMMARY_SOURCES = [
     issue: "open",
     onTrouble: "red",
     trouble: "checks on main are failing",
+    // Only pushes to main judge main; a pull-request run of ci.yml says nothing about main.
+    runFilter: { branch: "main", event: "push" },
     // Amber, not red, when the only outstanding checks are the cross-browser legs or the advisory
     // visual baselines (readMainCiOutstanding). Those legs are continue-on-error on main and
     // block nothing. Before this, one flaky Safari tablet leg kept the summary red for days
@@ -250,7 +252,11 @@ export function assessSource(
     typeof latestRun?.html_url === "string" && /^https:\/\/[^\s()]+$/.test(latestRun.html_url)
       ? `[run](${latestRun.html_url})`
       : "";
-  const link = issueLink(issue) || runLink;
+  // An unsuccessful run may not have reached its issue write, so an older issue alone may not
+  // explain the failure: keep the run reachable alongside it.
+  const failedRun = latestRun !== null && latestRun.conclusion !== "success";
+  const link =
+    failedRun && issueLink(issue) && runLink ? `${issueLink(issue)} · ${runLink}` : issueLink(issue) || runLink;
   const runAt = time(latestRun?.updated_at ?? latestRun?.run_started_at ?? latestRun?.created_at);
   const stale = source.maxAgeHours !== null && (runAt === null || nowMs - runAt > source.maxAgeHours * HOUR);
   const staleText =
@@ -399,7 +405,7 @@ export function renderDailyHealthSummary({ now, assessments, answerLines = {}, m
   return { overall, body: lines.join("\n") };
 }
 
-async function newestCompletedRun(github, owner, repo, workflow) {
+async function newestCompletedRun(github, owner, repo, workflow, filter = {}) {
   try {
     const { data } = await github.rest.actions.listWorkflowRuns({
       owner,
@@ -407,6 +413,7 @@ async function newestCompletedRun(github, owner, repo, workflow) {
       workflow_id: workflow,
       status: "completed",
       per_page: 1,
+      ...filter,
     });
     return data.workflow_runs?.[0] ?? null;
   } catch {
@@ -531,7 +538,7 @@ export async function collectAssessments({ github, owner, repo, now }) {
   for (const source of SUMMARY_SOURCES) {
     try {
       const [latestRun, { issue, activity }] = await Promise.all([
-        newestCompletedRun(github, owner, repo, source.workflow),
+        newestCompletedRun(github, owner, repo, source.workflow, source.runFilter),
         source.issue === "recent"
           ? mostRecentlyAlertedIssue(github, owner, repo, source.label, nowMs - source.recentHours * HOUR)
           : newestIssue(github, owner, repo, source.label).then((found) => ({

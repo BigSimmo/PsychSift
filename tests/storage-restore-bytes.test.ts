@@ -1,4 +1,5 @@
 import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -81,11 +82,20 @@ describe("offline Storage restore byte acceptance", () => {
     );
   });
 
-  it("rejects symlinks without reading outside the selected root", async () => {
+  it("rejects symlinks without reading outside the selected root", async (context) => {
     const manifest = await createStorageManifest(source);
     const file = path.join(restored, "clinical-images", "synthetic/image.svg");
     await rm(file);
-    await symlink(path.join(source, "clinical-images", "synthetic/image.svg"), file);
+    try {
+      await symlink(path.join(source, "clinical-images", "synthetic/image.svg"), file);
+    } catch (error) {
+      // Windows without the symlink privilege refuses creation; any other error stays visible.
+      if ((error as NodeJS.ErrnoException).code === "EPERM" && process.platform === "win32") {
+        context.skip();
+        return;
+      }
+      throw error;
+    }
     expect(await verifyStorageRestore(restored, manifest)).toMatchObject({ ok: false, verified: 2 });
     await expect(createStorageManifest(restored)).rejects.toThrow(/symlink/);
   });
@@ -111,5 +121,21 @@ describe("offline Storage restore byte acceptance", () => {
     expect(verified).toMatchObject({ ok: true, manifestSha256: created.manifestSha256 });
     await expect(runStorageRestoreCli(["manifest", "--root", restored, "--output", manifestPath])).rejects.toThrow();
     await expect(runStorageRestoreCli(["verify", "--root", restored, "--root", source])).rejects.toThrow(/repeated/);
+  });
+
+  it("digests the manifest file bytes and refuses invalid UTF-8", async () => {
+    const manifestPath = path.join(fixture, "source-manifest.json");
+    await runStorageRestoreCli(["manifest", "--root", source, "--output", manifestPath]);
+    const bytes = await readFile(manifestPath);
+    const verified = await runStorageRestoreCli(["verify", "--root", restored, "--manifest", manifestPath]);
+    expect(verified.manifestSha256).toBe(createHash("sha256").update(bytes).digest("hex"));
+    const marker = bytes.indexOf("synthetic/document.pdf");
+    const tampered = Buffer.from(bytes);
+    tampered[marker] = 0xff;
+    const tamperedPath = path.join(fixture, "tampered-manifest.json");
+    await writeFile(tamperedPath, tampered);
+    await expect(runStorageRestoreCli(["verify", "--root", restored, "--manifest", tamperedPath])).rejects.toThrow(
+      /UTF-8/,
+    );
   });
 });

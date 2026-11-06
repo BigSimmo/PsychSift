@@ -4,13 +4,13 @@ Recorded 5 November 2026. Implementation source: `33f6478c63aedf9c2d79effd989095
 
 The audit classified 67 dispositions: 19 original findings, 3 later repository observations and 45 followups. They include defects, supported risks, improvements, intentional constraints and acceptance gaps. They are not 67 new software bugs. All disposition IDs appear in the crosswalk below.
 
-The code changes prevent delayed private callbacks crossing account boundaries, preserve generation evidence during document maintenance, purge all 17 private SQL representations on future permanent deletions, enforce coherent CPD/Teaching/hospital transitions, guard stale OnCall attestation, bound Clinical Ask requests and correct monitoring/recovery/build tools. New source admission remains unavailable and explicitly refuses before persistence. Seven new forward migrations are drafted; all 349 historical migrations remain unchanged. No ranking thresholds, clinical fixtures or activation holds were weakened.
+The code changes prevent delayed private callbacks crossing account boundaries, preserve generation evidence during document maintenance, purge all 17 private SQL representations on future permanent deletions, enforce coherent CPD/Teaching/hospital transitions, guard stale OnCall attestation, bound Clinical Ask requests and correct monitoring/recovery/build tools. New source admission remains unavailable and explicitly refuses before persistence. Eight new forward migrations are drafted: the original seven plus `20261106164443_audit_fix_maintenance_snapshot_fence_aliases.sql`, which corrects the maintenance snapshot fences in the fourth; all 349 historical migrations remain unchanged. No ranking thresholds, clinical fixtures or activation holds were weakened.
 
 ## Verification and limits
 
 - Four completed native unit partitions: 2,152 actual files; 34,453 passed, zero failures, two existing conditional skips. This is earlier evidence, not a full rerun on the final dependency graph.
 - Subsequent commit-phase and build corrections passed 94 and 47 affected cases. Final dependency changes passed 203 tests across 15 affected files, whole lint/typecheck, normal production and isolated browser builds, and both output marker scans. Latest overlapping per-file evidence yields 34,459 passes and two skips; it is a controller reconciliation, not a fabricated native full-run report.
-- Real PostgreSQL roles, policies, transactions and lock contention: fresh-seven/upgrade parity has151 public tables,382 functions and59 private objects. Original bare-image history fails at existing SF01; a separately stronger baseline executes the remainder conditionally. Faithful pinned CLI/journal and hosted acceptance remain open.
+- Real PostgreSQL roles, policies, transactions and lock contention: fresh-seven/upgrade parity has151 public tables,382 functions and59 private objects. That parity evidence predates the eighth migration and has not been rerun with it. Original bare-image history fails at existing SF01; a separately stronger baseline executes the remainder conditionally. Faithful pinned CLI/journal and hosted acceptance remain open.
 - Actual small synthetic6.28MB database/Vault restore and18 local object bytes pass fingerprints/SHA checks. This does not establish hosted Auth/StorageHTTP or production RPO/RTO.
 - Native dependency-consumer probes:32 matching before/after cases plus6 glob/rimraf controls; patched follow-redirects has confined loopback negative/positive proof. The three returned installed NPM candidates are patched. This is not a vulnerability-free or bundled-CodSpeed certification.
 - Six current Chromium151 guest scenarios pass at desktop/phone widths, including Escape/focus restoration; no page exceptions/overflow/unexpected external or mutation requests. Required Chromium156 download remains blocked. Real Auth, installed PWA, physical Safari and accessibility conformance are separate.
@@ -22,13 +22,13 @@ The code changes prevent delayed private callbacks crossing account boundaries, 
 
 ## Remaining work packages
 
-### ROLLOUT — Review and safely roll out the audited app/worker fixes and seven draft migrations
+### ROLLOUT — Review and safely roll out the audited app/worker fixes and eight draft migrations
 
 Repository: #36XZRQ. [Immutable request](outstanding-issues-inbox/dd15ac8c-3ea7-4b63-ad95-deae8c36faa8.json). State: Needs you. Suggested owner: Delivery + Database + owner.
 
 Blocker: Local corrections are committed and checked; target deployment, supported CLI/journal replay and old/new fleet acceptance are unverified. Opening a PR does not authorize merge, live SQL or deployment.
 
-Next action: Review candidate PR and seven immutable forward drafts, verify exact target/project/default-ACL prerequisites, rehearse supported replay and mixed versions, quiesce old maintenance/unconditional verification handlers; obtain separate rollout authority.
+Next action: Review candidate PR and all eight immutable forward drafts (including `20261106164443_audit_fix_maintenance_snapshot_fence_aliases.sql`), rerun parity/replay with the eighth, verify exact target/project/default-ACL prerequisites, rehearse supported replay and mixed versions, quiesce old maintenance/unconditional verification handlers; obtain separate rollout authority.
 
 Acceptance: Correct owner/role validation, actual hosted RPC contracts, private drift coverage, malformed historical booking timestamp preflight, stale/concurrent mutation refusal, calendar rollover and versioned-client failure behavior; no old unsafe writer persists. No protected clinical content/flags/history edits.
 
@@ -257,7 +257,7 @@ A local correction awaiting rollout maps to its rollout/integration package. Int
 - **R06** — Sentry recurring-error detection. supported operational gap. Remaining: OPS_MONITOR.
 - **R07** — Reserved-creator global future-function default ACL (existing SF01). confirmed isolated replay blocker; hosted state unverified. Remaining: SCHEMA_PLATFORM, ROLLOUT.
 - **R08** — Public NPM advisory candidates and bundled dev code. all3inspectedinstalledcandidates corrected; currentgraphgatespass. Remaining: WINDOWS_MAINTENANCE.
-- **V01** — Full schema and migration replay. final-seven parity; conditional historical SQL execution. Remaining: SCHEMA_PLATFORM, ROLLOUT.
+- **V01** — Full schema and migration replay. final-seven parity (predates the eighth migration); conditional historical SQL execution. Remaining: SCHEMA_PLATFORM, ROLLOUT.
 - **V02** — Actual role/RLS enforcement. substantially strengthened. Remaining: STAGING_AUTH.
 - **V03** — Real browser account switch. unverified integration boundary. Remaining: STAGING_AUTH.
 - **V04** — Durable primary end-to-end workflow. partially covered. Remaining: WORKER_RECOVERY.
@@ -286,6 +286,6 @@ A local correction awaiting rollout maps to its rollout/integration package. Int
 
 ## Compatibility and rollout
 
-Review the seven draft migrations against the exact target before any merge. Plan schema/app/worker ordering and drain old maintenance and unconditional verification handlers. New versioned RPCs fail closed when missing; older clients can require refresh. Inspect historical timestamp validity before typed overlap queries. The SF01 global-default prerequisite needs platform ownership and cross-schema review. Restore must roll forward to the intended release and reapply retention/deletion policy. Preserve the existing Wait for CI decision and all privacy, source-rights, scanner, canary and specialist holds.
+Review all eight draft migrations, including the snapshot-fence correction, against the exact target before any merge. Plan schema/app/worker ordering and drain old maintenance and unconditional verification handlers. New versioned RPCs fail closed when missing; older clients can require refresh. Inspect historical timestamp validity before typed overlap queries. The SF01 global-default prerequisite needs platform ownership and cross-schema review. Restore must roll forward to the intended release and reapply retention/deletion policy. Preserve the existing Wait for CI decision and all privacy, source-rights, scanner, canary and specialist holds.
 
 The two remaining product policy decisions are trusted decoded-audio duration and immediate private-read revocation scope; source-admission authority/provenance is an additional unresolved contract. No answer, approval or provider allowance is inferred from publishing this packet.
