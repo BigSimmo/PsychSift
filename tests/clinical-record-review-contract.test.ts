@@ -539,7 +539,7 @@ describe("renderedPriorityCards", () => {
     );
   });
 
-  it("keeps indexedClock covered by catalogue sign-off when the UI no longer promotes it", () => {
+  it("pins indexedClock, the Clock card's fallback detail line", () => {
     const signed = signedForm();
     const catalog = catalogFixture() as ReturnType<typeof catalogFixture> & { forms: { indexedClock?: string }[] };
     catalog.forms[0].indexedClock = "within 24 hours";

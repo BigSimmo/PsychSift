@@ -9,8 +9,7 @@ vi.mock("next/navigation", () => ({
 
 import { FormDetailPage } from "@/components/forms/form-detail-page";
 import { priorityFactBody } from "@/components/forms/form-priority-facts-section";
-import { formRecords, getFormRecord } from "@/lib/forms";
-import { formCatalogDetails } from "@/lib/form-catalog";
+import { getFormRecord } from "@/lib/forms";
 
 vi.mock("@/components/account-data-provider", () => ({
   useAccountData: () => ({
@@ -92,28 +91,6 @@ describe("Operational guidance review state", () => {
 });
 
 describe("Priority facts on forms without curated copy", () => {
-  it("retains the canonical clock boundary without promoting an unqualified indexed duration", () => {
-    const form = formRecords.find((entry) => formCatalogDetails(entry)?.form.toLowerCase() === "4a");
-    if (!form) throw new Error("Expected Form 4A");
-    const details = formCatalogDetails(form)!;
-    expect(details.indexedClock).toBeTruthy();
-    expect(details.priorityFacts?.clock).toBeUndefined();
-
-    const clockCard = form.summaryCards?.find((card) => card.id === "clock");
-    expect(clockCard?.title).toBe(details.clock);
-    expect(clockCard?.detail).toBeUndefined();
-    expect(priorityFactBody(form, "clock")).toEqual({
-      title: "Clock / review",
-      body: details.clock,
-      detail: undefined,
-    });
-
-    render(<FormDetailPage form={form} />);
-    const priorityFacts = screen.getByLabelText("Priority facts");
-    expect(within(priorityFacts).getByText(details.clock)).toBeInTheDocument();
-    expect(within(priorityFacts).queryByText(details.indexedClock!)).toBeNull();
-  });
-
   it("drops the empty sub-line and only prints longer wording where there is more to show", () => {
     // Form 4C's catalogue row is boilerplate: no indexedClock, and its clock prose is
     // the generic sentence. It is the shape 34 of the 47 archived forms have.

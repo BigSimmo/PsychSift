@@ -28,9 +28,8 @@ import { signOffKindModules } from "./signoff-kinds/index.mjs";
  *              non-review field) PLUS the form's operational guidance in
  *              data/forms-catalog.json -- the fields in FORM_ATTESTED_CATALOG_FIELDS, and
  *              from `sourceFacts` only `timings` and `sectionCue`. That includes
- *              `indexedClock`, retained in the attested catalogue fields even though the
- *              app no longer promotes its unqualified extraction as a clock detail line.
- *              It also covers `renderedFormGuidance(entry)`: the text the app
+ *              `indexedClock`, which the app's Clock card shows when priorityFacts lacks a
+ *              detail line. It also covers `renderedFormGuidance(entry)`: the text the app
  *              actually shows, including its generic fallback sentences for empty fields
  *              and the three Priority-facts cards. Search-index metadata (aliases, searchTerms, indexedTerms,
  *              riskLevel, ids) and PDF
@@ -152,8 +151,8 @@ export const FORM_ATTESTED_CATALOG_FIELDS = Object.freeze([
   "practicePearls",
   "preUseChecks",
   "priorityFacts",
-  // Keep the existing attestation coverage of the extracted clock cue, independently
-  // of whether the presentation promotes it as a detail line.
+  // The app's Clock card falls back to `indexedClock` for its detail line when a form has no
+  // curated priorityFacts.clock.detail (3A, 4A and 7A among others), so it is shown text.
   "indexedClock",
   "sourceFacts",
 ]);
@@ -320,8 +319,7 @@ function cardSheet(fact, fallbackBody, fallbackDetail, label) {
  * The three Priority-facts cards exactly as the Forms page renders them: the card face
  * (`summaryCardsForDetails` in src/lib/form-catalog.ts) and the tap-for-detail sheet
  * (`priorityFactBody` in src/components/forms/form-priority-facts-section.tsx), including
- * their fallbacks to the canonical catalogue prose. An unqualified indexedClock is not
- * promoted as a detail line. Replicated here because
+ * their fallbacks to the catalogue prose and to `indexedClock`. Replicated here because
  * this plain-Node tool cannot import the app's TypeScript; the contract test compares it
  * with the app's own output for every form, so the two cannot drift apart silently.
  */
@@ -332,12 +330,13 @@ export function renderedPriorityCards(entry) {
   const criteria = curatedCard(facts.criteria);
   // The cards read the app's resolved fields, fallback sentences included.
   const resolved = renderedGuidanceFields(entry);
-  const field = (key) => resolved[key];
+  const field = (key) => (key === "indexedClock" ? displayText(entry?.[key]) : resolved[key]);
+  const indexedClock = field("indexedClock") || undefined;
   return {
     clock: {
       title: clock?.title ?? field("clock"),
-      detail: clock?.detail,
-      sheet: cardSheet(clock, field("clock"), undefined, "Clock / review"),
+      detail: clock?.detail ?? indexedClock,
+      sheet: cardSheet(clock, field("clock"), indexedClock, "Clock / review"),
     },
     authority: {
       title: authority?.title ?? field("maker"),

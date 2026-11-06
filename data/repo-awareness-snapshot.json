@@ -4876,6 +4876,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-11-06-defer-form-clock-detail-suppression.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/archive/search-rag-phase-5.5b-retrieval-follow-up.md",
         "section": "archive",
         "catalogued": true
