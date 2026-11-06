@@ -78,7 +78,10 @@ browser opens the developer area with no sign-in at all.
 
 The response scopes the developer cookie to `/admin/developer-hub`, the only
 entry in `DEVELOPER_ACCESS_COOKIE_PATHS` (`link-access.ts`). Renewal uses the
-same path scope; retired mockup paths receive no developer cookie.
+same path scope, so retired mockup paths receive no newly issued or renewed
+developer cookie. A cookie issued before the retired paths were removed from
+that list may still be sent to those paths by the browser until it expires or
+is cleared; nothing re-issues it there.
 
 **The key travels in a URL either way, so rotate it after exporting logs.**
 Typed or bookmarked, the secret is presented as `?devkey=…` on one request. The

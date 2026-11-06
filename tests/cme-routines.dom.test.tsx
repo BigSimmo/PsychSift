@@ -168,6 +168,40 @@ describe("Routines", () => {
     });
   });
 
+  it("asks before a due one-tap log starts with an unsaved draft, and closes the draft once accepted", async () => {
+    const user = userEvent.setup();
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      if (String(input) === "/api/cme/entries" && init?.method === "POST") {
+        return new Response(JSON.stringify({ entry: { id: "entry-guarded" } }), {
+          status: 201,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      return new Response("unexpected", { status: 500 });
+    });
+    render(
+      <CmeRoutinesRoute nowIso={NOW.toISOString()} initialRoutines={[dueRoutine, notYetDueRoutine]} demoMode={false} />,
+    );
+    await user.click(screen.getByRole("button", { name: /Supervision.*Edit/ }));
+    await user.clear(screen.getByLabelText(/routine name/i));
+    await user.type(screen.getByLabelText(/routine name/i), "Synthetic draft");
+    const logDue = () => screen.getByRole("button", { name: /^log 1\.0 h for supervision$/i });
+
+    await user.click(logDue());
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(screen.getByLabelText(/routine name/i)).toHaveValue("Synthetic draft");
+
+    confirm.mockReturnValue(true);
+    await user.click(logDue());
+    expect(confirm).toHaveBeenCalledTimes(2);
+    await screen.findByTestId("cme-quick-log-saved");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId("cme-routine-form")).toBeNull();
+    expect(navigation.push).not.toHaveBeenCalled();
+  });
+
   it("saves a routine, then one-tap logs a due routine with Undo", async () => {
     const user = userEvent.setup();
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {

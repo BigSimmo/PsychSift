@@ -133,6 +133,41 @@ describe("useUniversalSearch NDJSON integration", () => {
     expect(result.current.error).toBeUndefined();
   });
 
+  it("does not show an expired completed result beside a timeout on refetch", async () => {
+    const query = "synthetic expired cache timeout search";
+    const staleGroup = searchGroup("tools", "Expired reference");
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        `${JSON.stringify({
+          type: "complete",
+          response: { query, groups: [staleGroup], tookMs: 2 },
+        })}\n`,
+      ),
+    );
+    const { result, rerender } = renderHook(
+      ({ enabled }) => useUniversalSearch({ query, enabled, contextMode: "answer" }),
+      { initialProps: { enabled: true } },
+    );
+    await startDebouncedRequest();
+    await flushStream();
+    expect(result.current).toMatchObject({ loading: false, groups: [staleGroup] });
+
+    rerender({ enabled: false });
+    // Let the five-minute cache entry expire, then reopen with a refetch that stalls.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5 * 60 * 1000 + 1);
+    });
+    fetchMock.mockReturnValueOnce(new Promise<Response>(() => undefined));
+    rerender({ enabled: true });
+    await startDebouncedRequest();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(searchRequestTimeoutMs);
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(result.current).toMatchObject({ loading: false, query, groups: [] });
+    expect(result.current.error).toMatch(/timed out|took longer/i);
+  });
+
   it("keeps useful partial groups when the streamed body stalls and does not cache the failure", async () => {
     const query = "synthetic partial timeout search";
     const stream = controlledNdjsonResponse();

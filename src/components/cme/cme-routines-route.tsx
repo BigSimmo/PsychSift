@@ -279,8 +279,13 @@ export function CmeRoutinesRoute({
         now={new Date(nowIso)}
         loggingDue={oneTap.logging}
         onLogDueRoutine={(prefill) => {
+          // Ask before the one-tap save starts: it advances the routine's next due
+          // date, and an open draft kept past it would put the old date back on its
+          // next save. Accepting discards the draft, so close the editor too.
+          if (!confirmShellNavigation()) return;
+          setEditingId(null);
           void oneTap.logDueRoutine(prefill).then((result) => {
-            if (result === "form" && confirmShellNavigation()) router.push(cmeRoutineLogHref(prefill));
+            if (result === "form") router.push(cmeRoutineLogHref(prefill));
           });
         }}
         onLogRoutine={(prefill) => {

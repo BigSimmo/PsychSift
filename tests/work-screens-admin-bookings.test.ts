@@ -665,6 +665,38 @@ describe("bookingCalendarEvents", () => {
     },
   );
 
+  it.each([
+    { name: "a cancelled course", courseStatus: "cancelled" as const, bookingStatus: "booked" as const },
+    { name: "a cancelled booking", courseStatus: "posted" as const, bookingStatus: "cancelled" as const },
+  ])("still emits $name whose clock time does not exist in its work zone, under its stable UID", (cancellation) => {
+    const gap = course("gap-cancelled", {
+      date: "2026-10-04",
+      startTime: "02:30",
+      endTime: "03:30",
+      status: cancellation.courseStatus,
+    });
+    const other = course("other-live", { date: "2026-10-20", startTime: "09:00", endTime: "10:00" });
+    const s = state(
+      [gap, other],
+      [
+        booking("me1", gap.id, cancellation.bookingStatus, "2026-09-01T00:00:00Z", { self: true }),
+        booking("me2", other.id, "booked", "2026-09-01T00:00:00Z", { self: true }),
+      ],
+    );
+    const events = bookingCalendarEvents(s, href, "Australia/Sydney");
+    expect(events.map((event) => event.id)).toEqual([bookingCalendarId(gap.id), bookingCalendarId(other.id)]);
+    expect(events[0]).toMatchObject({
+      status: "cancelled",
+      date: "2026-10-04",
+      startTime: "02:30",
+      durationMinutes: 60,
+    });
+    expect(events[1]?.status).toBeUndefined();
+    const ics = toIcs(events);
+    expect(ics).toContain("UID:booking-gap-cancelled@psychiatry.tools");
+    expect(ics).toContain("STATUS:CANCELLED");
+  });
+
   it("keeps the cancellation and stable UID when exporting a booking in another work zone", () => {
     const c = course("cancelled", { date: "2027-01-15", startTime: "01:30", endTime: "03:00", status: "cancelled" });
     const s = state([c], [booking("me", c.id, "booked", "2026-10-01T00:00:00Z", { self: true })]);

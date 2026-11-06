@@ -58,14 +58,18 @@ export function bookingCalendarEvents(
     const cancelled = course.status === "cancelled" || !live;
     const startsAt = zone ? zonedWallToIso(course.date, course.startTime, zone) : null;
     const endsAt = zone ? zonedWallToIso(course.date, course.endTime, zone) : null;
-    if (zone && (!startsAt || !endsAt)) throw new BookingCalendarTimeError();
+    // A live entry must never land at a different time, so a clock time the zone skips stops
+    // the export. A cancellation only has to reach the calendar under its stable id, and nobody
+    // can edit a cancelled course to fix its time, so it falls back to the recorded wall time
+    // rather than blocking every other entry in a subscribed feed.
+    if (zone && (!startsAt || !endsAt) && !cancelled) throw new BookingCalendarTimeError();
+    const exact = startsAt && endsAt ? { startsAt, endsAt } : null;
     events.push({
       id: bookingCalendarId(course.id),
       title: course.title,
-      date: startsAt ? zonedDateOf(startsAt, CALENDAR_TIME_ZONE) : course.date,
-      startTime: startsAt ? zonedTimeOf(startsAt, CALENDAR_TIME_ZONE) : course.startTime,
-      durationMinutes:
-        startsAt && endsAt ? (Date.parse(endsAt) - Date.parse(startsAt)) / 60_000 : courseMinutes(course),
+      date: exact ? zonedDateOf(exact.startsAt, CALENDAR_TIME_ZONE) : course.date,
+      startTime: exact ? zonedTimeOf(exact.startsAt, CALENDAR_TIME_ZONE) : course.startTime,
+      durationMinutes: exact ? (Date.parse(exact.endsAt) - Date.parse(exact.startsAt)) / 60_000 : courseMinutes(course),
       kind: course.kind === "course" ? "teaching" : "other",
       location: course.location,
       notes: `Booked in PsychSift. Posted by ${course.organiser}.`,

@@ -339,7 +339,10 @@ export function useUniversalSearch(args: {
             return;
           setResult((current) => ({
             groups:
-              requestBudget.timedOut && current.query === trimmedQuery && current.contextMode === args.contextMode
+              requestBudget.timedOut &&
+              current.query === trimmedQuery &&
+              current.contextMode === args.contextMode &&
+              !current.complete
                 ? current.groups
                 : [],
             query: trimmedQuery,
