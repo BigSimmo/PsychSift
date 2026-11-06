@@ -62,9 +62,12 @@ describe("deferred readmission ranking authority migration", () => {
     ])
       expect(migration).toContain(`'${signature}'`);
     const schema = read("supabase/schema.sql");
-    expect(
-      schema.endsWith(`\n\n-- Source migration: 20261106184724_defer_readmission_ranking_authority.sql\n${migration}`),
-    ).toBe(true);
+    const mirrored = `\n\n-- Source migration: 20261106184724_defer_readmission_ranking_authority.sql\n${migration}`;
+    const at = schema.indexOf(mirrored);
+    expect(at).toBeGreaterThan(-1);
+    // Later migrations may follow, each as its own mirrored section.
+    const rest = schema.slice(at + mirrored.length);
+    expect(rest === "" || rest.startsWith("\n-- Source migration: ")).toBe(true);
   });
 });
 
