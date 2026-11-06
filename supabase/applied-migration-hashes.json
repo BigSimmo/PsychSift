@@ -1,7 +1,7 @@
 {
   "note": "sha256 of every migration this repository has shipped, with newlines normalised. An entry whose hash changes means an applied migration was edited, which cannot reach the live database. See scripts/check-migration-immutability.mjs.",
   "generator": "scripts/check-migration-immutability.mjs",
-  "sealed_at": "2026-11-05T16:46:23.942Z",
+  "sealed_at": "2026-11-06T16:45:01.367Z",
   "versions": {
     "20260527000000_bulk_ingestion.sql": "813e8e314064a6dcbaaa55e2765a8ce901d5783b304b4a7af7bb7417a07daf7c",
     "20260527001000_documents_policy_cleanup.sql": "559c26f3172bf75e545a41adef75538b2bf648ea7d53c8eb3d3ea7c244c65a48",
@@ -358,6 +358,7 @@
     "20261105144251_audit_atomic_document_maintenance.sql": "cb4cc89b68a8f8c1cb33e5c03bf301c1430094b5ce27fa95aeaf1d03cc951894",
     "20261105144902_audit_teaching_link_and_booking_lifecycle.sql": "f23642b4aad9b65da68d96784c1fdf43ed71be196f5a9fd76c7b332a8c9d4f79",
     "20261105150056_audit_cpd_entry_concurrency.sql": "7cef8755b872dd3cb24b4f0d4575c09d8f59c196726ad480288a8774854ee0b2",
-    "20261105163543_audit_retire_unfenced_document_reset.sql": "8ce7681e3352d784d31cbefbf2ca285b725a7590aa47ce4ad84c56390d1213ef"
+    "20261105163543_audit_retire_unfenced_document_reset.sql": "8ce7681e3352d784d31cbefbf2ca285b725a7590aa47ce4ad84c56390d1213ef",
+    "20261106164443_audit_fix_maintenance_snapshot_fence_aliases.sql": "42cd773c3db4fedf78590dba182ac17997b56cc5de789a68eef624308e460d37"
   }
 }
