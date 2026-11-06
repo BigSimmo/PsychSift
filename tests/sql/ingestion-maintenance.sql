@@ -84,6 +84,16 @@ do $$ declare stamp timestamptz; begin
   exception when not_null_violation then null; end;
 end $$;
 select pg_temp.assert_true((select count(*)=2 from public.document_index_units), 'failed visual replacement preserves current and rollback generations');
+-- An image id outside this document and generation must be refused, not silently accepted.
+do $$ declare stamp timestamptz; begin
+  select updated_at into stamp from public.documents;
+  begin
+    perform public.replace_document_maintenance_artifacts('30000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000001',stamp,'40000000-0000-4000-8000-000000000001','visual',
+      '{"image_ids":["50000000-0000-4000-8000-0000000000ff"],"units":[],"image_patches":[]}');
+    raise exception 'expected unknown image id to be refused';
+  exception when serialization_failure then null; end;
+end $$;
+select pg_temp.assert_true((select count(*)=2 from public.document_index_units), 'refused unknown image id preserves current and rollback generations');
 select pg_temp.assert_true(to_regprocedure('public.reset_document_index(uuid)') is null, 'generation-blind reset is absent');
 -- Test the actual app role, not only JWT claims or a revoked grant. A retained
 -- destructive function would raise insufficient_privilege instead and fail.

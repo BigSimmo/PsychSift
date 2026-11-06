@@ -99,7 +99,7 @@ begin
       or jsonb_array_length(p_payload->'label_ids_to_delete')>5000 or jsonb_array_length(p_payload->'labels_to_upsert')>5000 then
       raise exception 'invalid_registry_label_population' using errcode='22023'; end if;
     select coalesce(array_agg(value::uuid),'{}'::uuid[]) into source_ids from jsonb_array_elements_text(p_payload->'label_ids_to_delete');
-    if exists(select 1 from unnest(source_ids) id where not exists(select 1 from public.document_labels l where l.id=id
+    if exists(select 1 from unnest(source_ids) as s(id) where not exists(select 1 from public.document_labels l where l.id=s.id
       and l.document_id=d.id and l.owner_id is not distinct from d.owner_id and l.source='generated' and l.label_type in ('site','document_intent'))) then
       raise exception 'registry_label_snapshot_conflict' using errcode='40001'; end if;
     for item in select value from jsonb_array_elements(p_payload->'labels_to_upsert') loop
@@ -125,12 +125,12 @@ begin
       or jsonb_typeof(item->'source_image_ids') is distinct from 'array' then
       raise exception 'invalid_maintenance_summary' using errcode='22023'; end if;
     select coalesce(array_agg(value::uuid),'{}'::uuid[]) into source_ids from jsonb_array_elements_text(item->'source_chunk_ids');
-    if exists(select 1 from unnest(source_ids) id where not exists(select 1 from public.document_chunks c
-      where c.id=id and c.document_id=d.id and c.index_generation_id is not distinct from p_expected_generation_id)) then
+    if exists(select 1 from unnest(source_ids) as s(id) where not exists(select 1 from public.document_chunks c
+      where c.id=s.id and c.document_id=d.id and c.index_generation_id is not distinct from p_expected_generation_id)) then
       raise exception 'maintenance_source_generation_conflict' using errcode='40001'; end if;
     select coalesce(array_agg(value::uuid),'{}'::uuid[]) into image_ids from jsonb_array_elements_text(item->'source_image_ids');
-    if exists(select 1 from unnest(image_ids) id where not exists(select 1 from public.document_images i
-      where i.id=id and i.document_id=d.id and i.index_generation_id is not distinct from p_expected_generation_id)) then
+    if exists(select 1 from unnest(image_ids) as s(id) where not exists(select 1 from public.document_images i
+      where i.id=s.id and i.document_id=d.id and i.index_generation_id is not distinct from p_expected_generation_id)) then
       raise exception 'maintenance_source_generation_conflict' using errcode='40001'; end if;
     insert into public.document_summaries(document_id,owner_id,summary,clinical_specifics,source_chunk_ids,source_image_ids,model,metadata,generated_at,updated_at)
       values(d.id,d.owner_id,item->>'summary',coalesce(item->'clinical_specifics','{}'::jsonb),source_ids,image_ids,item->>'model',item->'metadata',(item->>'generated_at')::timestamptz,(item->>'updated_at')::timestamptz)
@@ -144,8 +144,8 @@ begin
       or jsonb_array_length(p_payload->'image_ids')>1000 or jsonb_array_length(p_payload->'units')>10000 then
       raise exception 'invalid_maintenance_visual_population' using errcode='22023'; end if;
     select coalesce(array_agg(value::uuid),'{}'::uuid[]) into image_ids from jsonb_array_elements_text(p_payload->'image_ids');
-    if exists(select 1 from unnest(image_ids) id where not exists(select 1 from public.document_images i
-      where i.id=id and i.document_id=d.id and i.index_generation_id is not distinct from p_expected_generation_id)) then
+    if exists(select 1 from unnest(image_ids) as s(id) where not exists(select 1 from public.document_images i
+      where i.id=s.id and i.document_id=d.id and i.index_generation_id is not distinct from p_expected_generation_id)) then
       raise exception 'maintenance_source_generation_conflict' using errcode='40001'; end if;
     -- Validate the complete packet before replacing anything. Row/table constraints are still authoritative.
     for item in select value from jsonb_array_elements(p_payload->'units') loop
