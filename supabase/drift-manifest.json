@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-11-05T16:50:45.698Z",
+  "generated_at": "2026-11-06T18:52:27.699Z",
   "generator": "scripts/generate-drift-manifest.ts",
   "postgres_image": "supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83",
   "schema_sha256": "d2f5e18ef530f0a428e176b66313a62ee3fff9fa29d1c95457456f5e1d5180b9",
-  "replay_seconds": 5,
+  "replay_seconds": 16,
   "snapshot": {
     "views": [
       {
@@ -19293,16 +19293,16 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "80066ae9391d629393d44dc61b0fc181",
-        "signature": "public.claim_ingestion_jobs(text,integer,integer)"
+        "def_hash": "c1ef5a420ef6a43ea937c6aa80482575",
+        "signature": "public.claim_ingestion_jobs(text,integer,integer,uuid[],text[])"
       },
       {
         "acl": [
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "c1ef5a420ef6a43ea937c6aa80482575",
-        "signature": "public.claim_ingestion_jobs(text,integer,integer,uuid[],text[])"
+        "def_hash": "80066ae9391d629393d44dc61b0fc181",
+        "signature": "public.claim_ingestion_jobs(text,integer,integer)"
       },
       {
         "acl": [
@@ -19348,16 +19348,16 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "5441f74e90ac73cd54eacc3c74aeae3b",
-        "signature": "public.cme_amend_closed_entry(uuid,uuid,jsonb,text)"
+        "def_hash": "f92eb7f19e851854565ce471c3e5da6c",
+        "signature": "public.cme_amend_closed_entry_v2(uuid,uuid,jsonb,text)"
       },
       {
         "acl": [
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "f92eb7f19e851854565ce471c3e5da6c",
-        "signature": "public.cme_amend_closed_entry_v2(uuid,uuid,jsonb,text)"
+        "def_hash": "5441f74e90ac73cd54eacc3c74aeae3b",
+        "signature": "public.cme_amend_closed_entry(uuid,uuid,jsonb,text)"
       },
       {
         "acl": [
@@ -19380,16 +19380,16 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "66fb1271bb3f11bb7692292bde3f2a00",
-        "signature": "public.cme_close_year(uuid,uuid,jsonb,text)"
+        "def_hash": "d44a8f5f7ec24127a53868d05209eaca",
+        "signature": "public.cme_close_year_v2(uuid,uuid,jsonb,text)"
       },
       {
         "acl": [
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "d44a8f5f7ec24127a53868d05209eaca",
-        "signature": "public.cme_close_year_v2(uuid,uuid,jsonb,text)"
+        "def_hash": "66fb1271bb3f11bb7692292bde3f2a00",
+        "signature": "public.cme_close_year(uuid,uuid,jsonb,text)"
       },
       {
         "acl": [
@@ -19459,16 +19459,16 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "442a83ee92ad1b9f41e8b3cb01bc494f",
-        "signature": "public.cme_guard_entry()"
+        "def_hash": "e6ea7f5c3e88eda5ab682f24fddf50b3",
+        "signature": "public.cme_guard_entry_goal()"
       },
       {
         "acl": [
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "e6ea7f5c3e88eda5ab682f24fddf50b3",
-        "signature": "public.cme_guard_entry_goal()"
+        "def_hash": "442a83ee92ad1b9f41e8b3cb01bc494f",
+        "signature": "public.cme_guard_entry()"
       },
       {
         "acl": [
@@ -19507,14 +19507,6 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "d49e3fb5c0812ebc682ae49dce4ff426",
-        "signature": "public.cme_remove_evidence(uuid,uuid,text)"
-      },
-      {
-        "acl": [
-          "postgres=X/postgres",
-          "service_role=X/postgres"
-        ],
         "def_hash": "bc89ab638134abac5c12dd51fbce0284",
         "signature": "public.cme_remove_evidence_v2(uuid,uuid,text)"
       },
@@ -19523,8 +19515,8 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "a8ff4e9a90a7d404be21f218d29ea6ee",
-        "signature": "public.cme_save_entry(uuid,uuid,uuid,jsonb,boolean,uuid)"
+        "def_hash": "d49e3fb5c0812ebc682ae49dce4ff426",
+        "signature": "public.cme_remove_evidence(uuid,uuid,text)"
       },
       {
         "acl": [
@@ -19533,6 +19525,14 @@
         ],
         "def_hash": "e276a589f81e815c7e2c2bb5aa2945c6",
         "signature": "public.cme_save_entry_v2(uuid,uuid,uuid,jsonb,boolean,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "a8ff4e9a90a7d404be21f218d29ea6ee",
+        "signature": "public.cme_save_entry(uuid,uuid,uuid,jsonb,boolean,uuid)"
       },
       {
         "acl": [
@@ -19702,16 +19702,16 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "b156648e44edd76cf7c0d593c225880d",
-        "signature": "public.corpus_topic_term_stats(text[],uuid)"
+        "def_hash": "f909017309f1d81e24c03b419ff8d46b",
+        "signature": "public.corpus_topic_term_stats_v2(text[],uuid,boolean)"
       },
       {
         "acl": [
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "f909017309f1d81e24c03b419ff8d46b",
-        "signature": "public.corpus_topic_term_stats_v2(text[],uuid,boolean)"
+        "def_hash": "b156648e44edd76cf7c0d593c225880d",
+        "signature": "public.corpus_topic_term_stats(text[],uuid)"
       },
       {
         "acl": [
@@ -19874,16 +19874,16 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "497a62a59a14726895c8ba1177515bec",
-        "signature": "public.get_related_document_metadata(uuid[],uuid)"
+        "def_hash": "8bc8a230f147790d5ffb77345627d4da",
+        "signature": "public.get_related_document_metadata_v2(uuid[],uuid,boolean)"
       },
       {
         "acl": [
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "8bc8a230f147790d5ffb77345627d4da",
-        "signature": "public.get_related_document_metadata_v2(uuid[],uuid,boolean)"
+        "def_hash": "497a62a59a14726895c8ba1177515bec",
+        "signature": "public.get_related_document_metadata(uuid[],uuid)"
       },
       {
         "acl": [
@@ -20082,22 +20082,6 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "cdf9d685c98bc8ff731a0422c29a47a4",
-        "signature": "public.match_document_chunks(extensions.vector,integer,double precision,uuid,uuid)"
-      },
-      {
-        "acl": [
-          "postgres=X/postgres",
-          "service_role=X/postgres"
-        ],
-        "def_hash": "5902c39286335c07714e498ea31513a0",
-        "signature": "public.match_document_chunks_hybrid(extensions.vector,text,integer,double precision,uuid[],uuid)"
-      },
-      {
-        "acl": [
-          "postgres=X/postgres",
-          "service_role=X/postgres"
-        ],
         "def_hash": "d66bcae6cf1a0d3cab904d61abf85af2",
         "signature": "public.match_document_chunks_hybrid_v2(extensions.vector,text,integer,double precision,uuid[],uuid,boolean)"
       },
@@ -20114,16 +20098,16 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "2b890b6f6c617f78f41f06293c9f7ade",
-        "signature": "public.match_document_chunks_text_scoped(text,integer,uuid[],uuid,boolean)"
+        "def_hash": "5902c39286335c07714e498ea31513a0",
+        "signature": "public.match_document_chunks_hybrid(extensions.vector,text,integer,double precision,uuid[],uuid)"
       },
       {
         "acl": [
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "d135c628720cb8a4d86c2ade4cd3b26a",
-        "signature": "public.match_document_chunks_text(text,integer,uuid[],uuid)"
+        "def_hash": "2b890b6f6c617f78f41f06293c9f7ade",
+        "signature": "public.match_document_chunks_text_scoped(text,integer,uuid[],uuid,boolean)"
       },
       {
         "acl": [
@@ -20146,6 +20130,14 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
+        "def_hash": "d135c628720cb8a4d86c2ade4cd3b26a",
+        "signature": "public.match_document_chunks_text(text,integer,uuid[],uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
         "def_hash": "d65062fbd0e3ee39040f2defd0b9ac31",
         "signature": "public.match_document_chunks_v2(extensions.vector,integer,double precision,uuid,uuid,boolean)"
       },
@@ -20162,8 +20154,8 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "bb975485ee3a5776bce4abdc2e3a3cbd",
-        "signature": "public.match_document_embedding_fields_hybrid(extensions.vector,text,integer,double precision,uuid[],uuid)"
+        "def_hash": "cdf9d685c98bc8ff731a0422c29a47a4",
+        "signature": "public.match_document_chunks(extensions.vector,integer,double precision,uuid,uuid)"
       },
       {
         "acl": [
@@ -20178,16 +20170,16 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "48117cf83cf9221a3630e31af0c701ec",
-        "signature": "public.match_document_embedding_fields_text(text,integer,double precision,uuid[],uuid)"
+        "def_hash": "bb975485ee3a5776bce4abdc2e3a3cbd",
+        "signature": "public.match_document_embedding_fields_hybrid(extensions.vector,text,integer,double precision,uuid[],uuid)"
       },
       {
         "acl": [
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "d0e277a2f3067f49463b85ac84b33276",
-        "signature": "public.match_document_index_units_hybrid(extensions.vector,text,integer,double precision,uuid[],uuid)"
+        "def_hash": "48117cf83cf9221a3630e31af0c701ec",
+        "signature": "public.match_document_embedding_fields_text(text,integer,double precision,uuid[],uuid)"
       },
       {
         "acl": [
@@ -20210,8 +20202,8 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "c1ede773fc0498e32bc3b4aa7262b32c",
-        "signature": "public.match_document_lookup_chunks_text(text,uuid[],integer,uuid)"
+        "def_hash": "d0e277a2f3067f49463b85ac84b33276",
+        "signature": "public.match_document_index_units_hybrid(extensions.vector,text,integer,double precision,uuid[],uuid)"
       },
       {
         "acl": [
@@ -20226,8 +20218,8 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "9079b928ee56fd7846e280d10ba1d27c",
-        "signature": "public.match_document_memory_cards_hybrid(extensions.vector,text,integer,double precision,uuid[],uuid)"
+        "def_hash": "c1ede773fc0498e32bc3b4aa7262b32c",
+        "signature": "public.match_document_lookup_chunks_text(text,uuid[],integer,uuid)"
       },
       {
         "acl": [
@@ -20250,16 +20242,16 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "8248e8d1aec23bbad35aca0ddc4dc94d",
-        "signature": "public.match_documents_for_query(text,integer,uuid)"
+        "def_hash": "9079b928ee56fd7846e280d10ba1d27c",
+        "signature": "public.match_document_memory_cards_hybrid(extensions.vector,text,integer,double precision,uuid[],uuid)"
       },
       {
         "acl": [
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "727b925c6663e000a8776111060615a1",
-        "signature": "public.match_documents_for_query_v2(text,integer,uuid,boolean)"
+        "def_hash": "e771e8530913609c5179b5761764b003",
+        "signature": "public.match_document_table_facts_text_v2(text,integer,uuid[],uuid,boolean)"
       },
       {
         "acl": [
@@ -20274,8 +20266,16 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "e771e8530913609c5179b5761764b003",
-        "signature": "public.match_document_table_facts_text_v2(text,integer,uuid[],uuid,boolean)"
+        "def_hash": "727b925c6663e000a8776111060615a1",
+        "signature": "public.match_documents_for_query_v2(text,integer,uuid,boolean)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "8248e8d1aec23bbad35aca0ddc4dc94d",
+        "signature": "public.match_documents_for_query(text,integer,uuid)"
       },
       {
         "acl": [
@@ -20632,16 +20632,16 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "874163cf5aa0b818f3e88ca1ac6f90b2",
-        "signature": "public.record_source_review(uuid,uuid,text,text,text[],date,uuid)"
+        "def_hash": "d9875e7dbcdf19b56945c9d8de05d7c2",
+        "signature": "public.record_source_review_v2(uuid,uuid,text,text,text[],date,uuid,text,text)"
       },
       {
         "acl": [
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "d9875e7dbcdf19b56945c9d8de05d7c2",
-        "signature": "public.record_source_review_v2(uuid,uuid,text,text,text[],date,uuid,text,text)"
+        "def_hash": "874163cf5aa0b818f3e88ca1ac6f90b2",
+        "signature": "public.record_source_review(uuid,uuid,text,text,text[],date,uuid)"
       },
       {
         "acl": [
@@ -20838,16 +20838,16 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "ca2877374851b432c4ca971e1e15f746",
-        "signature": "public.retrieval_owner_matches(uuid,uuid)"
+        "def_hash": "1bc5c6e76cdaa83b6831b36413fb61f5",
+        "signature": "public.retrieval_owner_matches_v2(uuid,uuid,boolean)"
       },
       {
         "acl": [
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "1bc5c6e76cdaa83b6831b36413fb61f5",
-        "signature": "public.retrieval_owner_matches_v2(uuid,uuid,boolean)"
+        "def_hash": "ca2877374851b432c4ca971e1e15f746",
+        "signature": "public.retrieval_owner_matches(uuid,uuid)"
       },
       {
         "acl": [
@@ -20891,6 +20891,14 @@
       },
       {
         "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "00a0abe0f57c7fcf3fd1f730ab730fd0",
+        "signature": "public.roster_calendar_link_urls(uuid,uuid[])"
+      },
+      {
+        "acl": [
           "postgres=X/postgres"
         ],
         "def_hash": "bcf4020df3551b705e8aef6f63e9fd3e",
@@ -20909,14 +20917,6 @@
         ],
         "def_hash": "225129d94188f7a622fead0e0e4a7aad",
         "signature": "public.roster_calendar_links_pin_secret()"
-      },
-      {
-        "acl": [
-          "postgres=X/postgres",
-          "service_role=X/postgres"
-        ],
-        "def_hash": "00a0abe0f57c7fcf3fd1f730ab730fd0",
-        "signature": "public.roster_calendar_link_urls(uuid,uuid[])"
       },
       {
         "acl": [
@@ -21933,6 +21933,14 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
+        "def_hash": "6221817df14048d758d9e6765f226916",
+        "signature": "public.work_can(uuid,text,uuid,uuid,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
         "def_hash": "0c76ee8c1181dbac0c7d078352256785",
         "signature": "public.work_cancel_course_booking(uuid,uuid)"
       },
@@ -21943,14 +21951,6 @@
         ],
         "def_hash": "648b41850477258c0d015136b043bb98",
         "signature": "public.work_cancel_course(uuid,uuid)"
-      },
-      {
-        "acl": [
-          "postgres=X/postgres",
-          "service_role=X/postgres"
-        ],
-        "def_hash": "6221817df14048d758d9e6765f226916",
-        "signature": "public.work_can(uuid,text,uuid,uuid,uuid)"
       },
       {
         "acl": [
@@ -22077,6 +22077,10 @@
       {
         "name": "pg_cron",
         "schema": "pg_catalog"
+      },
+      {
+        "name": "pg_stat_statements",
+        "schema": "extensions"
       },
       {
         "name": "pg_trgm",
@@ -30688,12 +30692,5 @@
     "snapshot_version": 2,
     "migration_history": [],
     "migration_history_probe": "no_history_table"
-  },
-  "replay_provenance": {
-    "method": "Exact pinned OCI filesystem flattened to avoid VFS layer-copy amplification; explicit synthetic Auth claims adapter and repository Storage scaffold; no hosted APIs",
-    "rootfs_sha256": "d6e5d7d6f12615f4726e4be8ab1166b6857c3f7f85e1e8b62008fd2665067b2e",
-    "engine": "PostgreSQL17.6",
-    "network": "none",
-    "source_manifest_digest": "sha256:72b610893752a132325a1c2791ce879f7733022524bcecab4e81918af9854cfd"
   }
 }
