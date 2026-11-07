@@ -15,6 +15,17 @@ function functionBody(sql: string, header: string) {
 }
 
 describe("deferred readmission ranking authority migration", () => {
+  it("keeps provider facts pending-aware without changing leases, permissions, completions or readmission", () => {
+    const name = "20261107001000_pending_readmission_provider_authority.sql";
+    const forward = read(`supabase/migrations/${name}`);
+    expect(forward).toContain("public.read_ingestion_generation_inventory(jsonb,uuid)");
+    expect(forward).toContain("pending_reindex_authority_valid(pa_metadata)");
+    expect(forward).toContain("coalesce(pa_metadata->prior.key,'null'::jsonb) is distinct from prior.value");
+    expect(forward).toContain("pa_metadata:=pa_metadata||(pa_metadata#>'{pending_reindex_authority,values}')");
+    expect(forward).toContain("pending_provider_authority_preimage");
+    expect(forward).not.toMatch(/\b(?:grant|revoke|create function|update public|insert into)\b/i);
+    expect(read("supabase/schema.sql")).toContain(`-- Source migration: ${name}\n${forward}`);
+  });
   it("changes the authority digest only by reading pending values for the three flat keys it already bound", () => {
     const header = "create or replace function public.lock_ingestion_document_authority(";
     const previous = functionBody(
