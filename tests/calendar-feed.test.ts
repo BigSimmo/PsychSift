@@ -51,7 +51,6 @@ import {
 } from "@/lib/calendar/feed-token";
 import { calendarFeedEvents } from "@/lib/calendar/feed-repository";
 import { toIcs } from "@/lib/calendar/ics";
-import { calendarFeedEvents } from "@/lib/calendar/feed-repository";
 import { AuthenticationError } from "@/lib/supabase/auth";
 
 const ownerId = "11111111-1111-4111-8111-111111111111";
