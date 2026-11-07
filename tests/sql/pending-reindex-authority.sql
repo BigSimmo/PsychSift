@@ -12,7 +12,7 @@ insert into public.documents(id,owner_id,title,file_name,file_type,file_size,sto
   '{"corpus_scope":"uploaded_local","admission_event_id":"7a000000-0000-4000-8000-000000000020","admission_policy_version":"trusted-document-admission-v1","provider_processing":"permitted","authority":{"providerProcessing":"permitted","licencePolicy":"review_required","sourceRole":"clinical_guideline","rightsEvidenceRef":"synthetic"},"licence_policy":"review_required","source_role":"clinical_guideline","rights_evidence_ref":"synthetic"}'::jsonb),
  ('7a000000-0000-4000-8000-000000000003','7a000000-0000-4000-8000-000000000009','Synthetic readmission','readmit.pdf','application/pdf',10,
   '7a000000-0000-4000-8000-000000000009/readmit.pdf',repeat('c',64),'indexed',
-  '{"corpus_scope":"uploaded_local","content_mode":"indexed_content","licence_policy":"review_required","source_role":"clinical_reference","publisher":"Superseded synthetic publisher","document_status":"outdated"}'::jsonb);
+  '{"corpus_scope":"uploaded_local","content_mode":"indexed_content","licence_policy":"review_required","source_role":"clinical_reference","publisher":"Superseded synthetic publisher","document_status":"outdated","content_hash":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc","confidentiality_scope":"guidelines-only"}'::jsonb);
 set local session_replication_role=origin;
 
 -- 1. Without a pending block the digest input is byte-identical to the previous formula.
@@ -69,9 +69,53 @@ begin
   or not ingestion_generation_evidence.pending_reindex_authority_valid(after) then raise exception 'TEST_PENDING_BLOCK_WRONG %',pending;end if;
 end $$;
 
+-- Composed boundary: real readmission -> current leased attempt -> provider facts.
+-- No provider, embedding or real source is used. Before the forward fix this
+-- raises provider_authority_admission_mismatch on the deferred publisher/role.
+do $$
+declare doc uuid:='7a000000-0000-4000-8000-000000000003';j public.ingestion_jobs;
+ generation uuid:='7a000000-0000-4000-8000-000000000041';fence jsonb;facts jsonb;m jsonb;bad jsonb;key text;
+begin
+ select * into strict j from public.ingestion_jobs where document_id=doc;
+ update public.ingestion_jobs set status='processing',locked_by='synthetic-provider-facts',locked_at=clock_timestamp(),lease_duration_seconds=600,
+  lease_token='7a000000-0000-4000-8000-000000000040',lease_expires_at=clock_timestamp()+interval '10 minutes',
+  lease_expected_generation_id=null,lease_write_generation_id=generation,
+  lease_authority_digest=public.lock_ingestion_document_authority(doc,false)->>'authority_digest'
+  where id=j.id returning * into j;
+ fence:=jsonb_build_object('version','ingestion-provider-authority-read-v1','fence',jsonb_build_object(
+  'job_kind','node','job_id',j.id,'document_id',doc,'worker_id',j.locked_by,'lease_token',j.lease_token,
+  'expected_generation_id',null,'authority_digest',j.lease_authority_digest));
+ facts:=public.read_ingestion_generation_inventory(fence,generation);
+ if facts#>>'{providerAuthority,declaredAuthority,publisher}' is distinct from 'Synthetic publisher'
+  or facts#>>'{providerAuthority,declaredAuthority,sourceRole}' is distinct from 'clinical_guideline'
+  or facts#>>'{providerAuthority,declaredAuthority,currentness}' is distinct from 'current'
+  then raise exception 'TEST_PENDING_PROVIDER_FACTS_MISSING';end if;
+ select metadata into m from public.documents where id=doc;
+ if m->>'publisher' is distinct from 'Superseded synthetic publisher' or m->>'document_status' is distinct from 'outdated'
+  then raise exception 'TEST_PROVIDER_FACTS_CHANGED_LIVE_RANKING';end if;
+ -- These mutations are transaction-local synthetic data only. Recompute the
+ -- fence where needed so rejection is proved at the pending/provider boundary.
+ foreach key in array array['foreign','malformed','values','withdrawal','stale'] loop
+  bad:=case key
+   when 'foreign' then jsonb_set(m,'{pending_reindex_authority,admissionEventId}','"7a000000-0000-4000-8000-000000000099"')
+   when 'malformed' then jsonb_set(m,'{pending_reindex_authority,version}','"unknown"')
+   when 'values' then jsonb_set(m,'{pending_reindex_authority,values,publisher}','"Unbound synthetic publisher"')
+   when 'withdrawal' then m||'{"licence_policy":"index_forbidden"}'::jsonb
+   else m||'{"publisher":"Changed live publisher"}'::jsonb end;
+  update public.documents set metadata=bad where id=doc;
+  begin
+   perform public.read_ingestion_generation_inventory(fence,generation);
+   raise exception 'TEST_BAD_PROVIDER_PENDING_ACCEPTED %',key;
+  exception when raise_exception then
+   if sqlerrm not in ('provider_authority_admission_mismatch','provider_authority_current_attempt_required') then raise;end if;
+  end;
+ end loop;
+ update public.documents set metadata=m where id=doc;
+end $$;
+
 -- 3. Applying is digest-neutral, writes the declared values, clears the block and is idempotent.
 do $$
-declare doc uuid:='7a000000-0000-4000-8000-000000000003';before text;after text;m jsonb;
+declare doc uuid:='7a000000-0000-4000-8000-000000000003';before text;after text;m jsonb;j public.ingestion_jobs;facts jsonb;
 begin
  before:=(public.lock_ingestion_document_authority(doc,false))->>'authority_digest';
  if before is null then raise exception 'TEST_PENDING_DOCUMENT_NOT_LOCKABLE';end if;
@@ -82,6 +126,12 @@ begin
   or m->'review_date' is distinct from 'null'::jsonb then raise exception 'TEST_PENDING_NOT_APPLIED %',m;end if;
  after:=(public.lock_ingestion_document_authority(doc,false))->>'authority_digest';
  if after is distinct from before then raise exception 'TEST_APPLY_MOVED_DIGEST';end if;
+ select * into strict j from public.ingestion_jobs where document_id=doc;
+ facts:=public.read_ingestion_generation_inventory(jsonb_build_object('version','ingestion-provider-authority-read-v1','fence',
+  jsonb_build_object('job_kind','node','job_id',j.id,'document_id',doc,'worker_id',j.locked_by,'lease_token',j.lease_token,
+  'expected_generation_id',null,'authority_digest',j.lease_authority_digest)),j.lease_write_generation_id);
+ if facts#>>'{providerAuthority,declaredAuthority,publisher}' is distinct from 'Synthetic publisher'
+  then raise exception 'TEST_APPLIED_NONPENDING_PROVIDER_FACTS_CHANGED';end if;
  perform ingestion_generation_evidence.apply_pending_reindex_authority(doc);
  if (select metadata from public.documents where id=doc) is distinct from m then raise exception 'TEST_APPLY_NOT_IDEMPOTENT';end if;
 end $$;
