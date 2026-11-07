@@ -169,4 +169,43 @@ describe("managed preparation temporary ownership", () => {
     expect(beforeCheck).toContain("extracted = original;");
     expect(source.slice(start)).toContain("await cleanupExtractedTemporaryPaths(extracted);");
   });
+  it("reuses inspected rich extraction and captured bytes without another parser run", async () => {
+    const f = fixture();
+    Object.assign(f.source, {
+      sourceFamily: "rich_pdf",
+      richPdf: { extracted: f.original, capturedImages: [], review: {} },
+    });
+    const adopt = vi.fn();
+    const result = await initializeManagedAdminGeneration(
+      f.ctx,
+      { initializeManagedAdminTextGeneration: f.hook },
+      f.job,
+      f.attempt,
+      adopt,
+    );
+    expect(result.pdf?.extracted).toBe(f.original);
+    expect(adopt).toHaveBeenCalledWith(f.original);
+    expect(mocks.extract).not.toHaveBeenCalled();
+    expect(mocks.capture).not.toHaveBeenCalled();
+    expect(mocks.chunks).not.toHaveBeenCalled();
+  });
+  it("owns early rich extraction even when initialization fails before packet preparation", async () => {
+    const f = fixture(),
+      adopt = vi.fn();
+    f.hook.mockImplementationOnce(async (_job, _attempt, context) => {
+      context.adoptPreparedExtraction?.(f.original);
+      throw new Error("before_prepare");
+    });
+    await expect(
+      initializeManagedAdminGeneration(
+        f.ctx,
+        { initializeManagedAdminTextGeneration: f.hook },
+        f.job,
+        f.attempt,
+        adopt,
+      ),
+    ).rejects.toThrow("before_prepare");
+    expect(adopt).toHaveBeenCalledExactlyOnceWith(f.original);
+    expect(rm).not.toHaveBeenCalled();
+  });
 });

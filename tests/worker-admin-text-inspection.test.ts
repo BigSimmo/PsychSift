@@ -14,11 +14,18 @@ import {
   createAdminTextInspectionLoader,
   type AdminTextCurrentFacts,
   type AdminTextScannerConfiguration,
+  type AdminTextInspectionOptions,
 } from "../worker/admin-text-inspection";
 import { scanWindowsDefenderBytes, type WindowsMalwareInspectionConfiguration } from "../worker/malware-inspection";
 import { scanClamAvBytes, type ClamAvInspectionConfiguration } from "../worker/clamav-inspection";
 import { createWorkerProviderEgressContext, workerProviderSourceBinding } from "../worker/provider-egress";
 import type { JobRow } from "../worker/types";
+import { PENDING_REINDEX_AUTHORITY_KEYS } from "../worker/pending-reindex-authority";
+import { GENERAL_PDF_INSPECTION_VERSION, type GeneralPdfInspectionReview } from "../worker/general-pdf-inspection";
+import {
+  ADMIN_UNSCANNED_EXCEPTION_POLICY,
+  type AdminUnscannedExceptionEvidence,
+} from "../supabase/functions/_shared/admin-unscanned-exception";
 
 vi.mock("../worker/malware-inspection", async (original) => ({
   ...(await original<typeof import("../worker/malware-inspection")>()),
@@ -205,6 +212,144 @@ function setupClamAv() {
   return { ...f, configuration, supplied, loadScannerConfiguration, loader };
 }
 
+function setupUnscannedException() {
+  const f = setup();
+  const evidence: AdminUnscannedExceptionEvidence = {
+    grant: {
+      policyVersion: ADMIN_UNSCANNED_EXCEPTION_POLICY,
+      exceptionId: uuid(7),
+      status: "active",
+      administratorId: uuid(8),
+      ownerId: uuid(5),
+      binding: { ...f.binding },
+      admissionDigest: f.current.facts.admissionDigest as ContentSha256,
+      catalogueKey: f.current.catalogueKey,
+      mimeType: "text/plain",
+      sourceByteLength: f.current.sourceBytes.length,
+      purpose: "embedding",
+      approvalReferenceSha256: hash("synthetic owner exception approval"),
+      issuedAt: new Date(Date.now() - 1000).toISOString(),
+      expiresAt: new Date(Date.now() + 60_000).toISOString(),
+    },
+    // Separate current server-owned admission read, not document.metadata.authority.
+    admission: {
+      sourceChannel: "admin_api",
+      actorKind: "administrator",
+      administratorId: uuid(8),
+      administratorActive: true,
+      ownerId: uuid(5),
+      documentId: f.binding.documentId,
+      admissionEventId: f.binding.admissionEventId,
+      admissionDigest: f.current.facts.admissionDigest as ContentSha256,
+      sourceSha256: f.binding.contentSha256,
+    },
+  };
+  const supplied: AdminTextScannerConfiguration = { backend: "admin_unscanned_exception", evidence };
+  const loadScannerConfiguration = vi.fn<AdminTextInspectionOptions["loadScannerConfiguration"]>(async () => supplied);
+  const loader = createAdminTextInspectionLoader({
+    attempt: f.attempt,
+    ownerId: uuid(5),
+    loadCurrent: f.loadCurrent,
+    loadScannerConfiguration,
+  });
+  return { ...f, evidence, supplied, loadScannerConfiguration, loader };
+}
+
+describe("administrator source exception integration", () => {
+  it("checks original and source-derived payload without running or claiming a scanner", async () => {
+    const f = setupUnscannedException();
+    const result = await f.loader(f.request, f.binding);
+    expect(result.sourceObservations.scanner.verdict).toBe("unscanned");
+    expect(result.observations.scanner.verdict).toBe("unscanned");
+    expect(evaluateDocumentIngressSafety(result.sourceObservations).verdict).toBe("pass");
+    expect(evaluateDocumentIngressSafety(result.observations).verdict).toBe("pass");
+    expect(scan).not.toHaveBeenCalled();
+    expect(clamScan).not.toHaveBeenCalled();
+    expect(f.loadScannerConfiguration).toHaveBeenCalledTimes(4);
+    expect(f.loadScannerConfiguration.mock.calls.map(([args]) => args.phase)).toEqual([
+      "source",
+      "source",
+      "payload",
+      "payload",
+    ]);
+  });
+
+  it("reloads revocation on a subsequent egress assertion before the provider stub", async () => {
+    const f = setupUnscannedException();
+    const context = createWorkerProviderEgressContext(f.job, async () => f.job.documents, f.loader);
+    const provider = vi.fn();
+    await assertIngestionProviderEgress(context, "embedding", f.payload);
+    provider();
+    Object.assign(f.evidence.grant, { status: "revoked" });
+    await expect(assertIngestionProviderEgress(context, "embedding", f.payload)).rejects.toThrow(
+      "admin_unscanned_exception_invalid",
+    );
+    expect(provider).toHaveBeenCalledTimes(1);
+  });
+
+  it("refuses renewal of a pinned grant across provider assertions", async () => {
+    const f = setupUnscannedException();
+    const context = createWorkerProviderEgressContext(f.job, async () => f.job.documents, f.loader);
+    await assertIngestionProviderEgress(context, "embedding", f.payload);
+    Object.assign(f.evidence.grant, { exceptionId: uuid(99) });
+    await expect(assertIngestionProviderEgress(context, "embedding", f.payload)).rejects.toThrow(
+      "provider_egress_policy_evidence_mismatch",
+    );
+  });
+
+  it("refuses revocation between the source and payload checks", async () => {
+    const f = setupUnscannedException();
+    f.loadScannerConfiguration.mockImplementation(async (args) => {
+      if (args.phase === "payload") Object.assign(f.evidence.grant, { status: "revoked" });
+      return f.supplied;
+    });
+    await expect(f.loader(f.request, f.binding)).rejects.toThrow("admin_unscanned_exception_invalid");
+  });
+
+  it("does not accept an exception inserted into source metadata", async () => {
+    const f = setup();
+    Object.assign(f.current.sourceMetadata, { unscannedException: setupUnscannedException().evidence });
+    f.loadScannerConfiguration.mockRejectedValue(new Error("scanner unavailable"));
+    await expect(f.loader(f.request, f.binding)).rejects.toThrow("scanner unavailable");
+  });
+
+  it("preserves source-derived payload, rights and identifier refusals", async () => {
+    const invented = setupUnscannedException();
+    const payload = payloadFor(["Invented information absent from the original source."]);
+    await expect(
+      invented.loader({ ...invented.request, payload, payloadSha256: hash(payload) }, invented.binding),
+    ).rejects.toThrow("payload_not_source_derived");
+    expect(invented.loadScannerConfiguration).not.toHaveBeenCalled();
+    const denied = setupUnscannedException();
+    Object.assign(denied.current.policyObservations, { rights: "denied" });
+    await expect(denied.loader(denied.request, denied.binding)).rejects.toThrow(
+      "current_processing_policy_unavailable",
+    );
+    expect(denied.loadScannerConfiguration).not.toHaveBeenCalled();
+    const identifier = setupUnscannedException();
+    const identifiedText = "Synthetic public reference. Medicare 2123 45670 1.\n";
+    const bytes = Buffer.from(identifiedText);
+    const identifiedHash = hash(bytes);
+    Object.assign(identifier.current, {
+      sourceBytes: bytes,
+      binding: { ...identifier.binding, contentSha256: identifiedHash },
+    });
+    Object.assign(identifier.current.facts, { sourceSha256: identifiedHash, sourceByteLength: bytes.length });
+    Object.assign(identifier.current.policyObservations, { binding: identifier.current.binding });
+    await expect(identifier.loader(identifier.request, identifier.current.binding)).rejects.toThrow(
+      "identifier_shape_detected",
+    );
+    expect(identifier.loadScannerConfiguration).not.toHaveBeenCalled();
+  });
+
+  it("never falls back to an exception when a selected scanner fails", async () => {
+    const f = setupClamAv();
+    clamScan.mockRejectedValueOnce(new Error("scanner failed"));
+    await expect(f.loader(f.request, f.binding)).rejects.toThrow("scanner failed");
+    expect(scan).not.toHaveBeenCalled();
+  });
+});
+
 function admittedDraft(f: ReturnType<typeof setup>) {
   // Actual new admission emits source_kind:document, strips catalogue-only
   // input fields and injects the bound authority/admission identity below.
@@ -225,7 +370,90 @@ function admittedDraft(f: ReturnType<typeof setup>) {
   Object.assign(f.current, { sourceMetadata: metadata });
 }
 
+function pendingReadmission(f: ReturnType<typeof setup>, overrides: Record<string, unknown> = {}) {
+  // Readmission leaves the live flat ranking fields as they were and holds the
+  // declared values in pending_reindex_authority until a terminal applies them.
+  const metadata = f.current.sourceMetadata as Record<string, unknown>;
+  const values = Object.fromEntries(PENDING_REINDEX_AUTHORITY_KEYS.map((key) => [key, metadata[key] ?? null]));
+  const prior = {
+    ...Object.fromEntries(PENDING_REINDEX_AUTHORITY_KEYS.map((key) => [key, null])),
+    publisher: "Superseded publisher",
+    source_role: "clinical_reference",
+    licence_policy: "review_required",
+    document_status: "outdated",
+    rights_evidence_ref: null,
+  };
+  for (const key of PENDING_REINDEX_AUTHORITY_KEYS) delete metadata[key];
+  Object.assign(metadata, prior, {
+    pending_reindex_authority: {
+      version: "pending-reindex-authority-v1",
+      admissionEventId: metadata.admission_event_id,
+      values,
+      prior,
+      ...overrides,
+    },
+  });
+}
+
 describe("current administrator plain-text inspection adapter", () => {
+  function generalPdfFixture() {
+    const f = setup(Buffer.from("%PDF-1.7\nSynthetic source bytes\n%%EOF"));
+    const pageText = "Synthetic WA reference\nA source paragraph survives intact with threshold < 3.5.";
+    Object.assign(f.current.facts, { mimeType: "application/pdf" });
+    Object.assign(f.current, { catalogueKey: "wa-health" });
+    Object.assign(f.current.facts.declaredAuthority, {
+      publisher: "WA Health",
+      sourceRole: "service_policy",
+      jurisdiction: "Australia/WA",
+    });
+    Object.assign(f.current.sourceMetadata, {
+      source_catalogue_key: "wa-health",
+      publisher_code: "WAHEALTH",
+      publisher: "WA Health",
+      source_role: "service_policy",
+      jurisdiction: "Australia/WA",
+    });
+    const review: GeneralPdfInspectionReview = {
+      version: GENERAL_PDF_INSPECTION_VERSION,
+      binding: { ...f.binding },
+      sourceSha256: f.binding.contentSha256,
+      sourceByteLength: f.current.sourceBytes.length,
+      pageCount: 1,
+      pages: [{ pageNumber: 1, text: pageText, textSha256: hash(pageText) }],
+      pageInventory: "complete",
+      activeContent: "absent",
+      encryption: "not_encrypted",
+      hiddenText: "consistent",
+      inspectedAt: new Date(Date.now() - 1000).toISOString(),
+      expiresAt: new Date(Date.now() + 60000).toISOString(),
+    };
+    Object.assign(f.current, { generalPdf: review });
+    const payload = payloadFor(["A source paragraph survives intact with threshold < 3.5."]);
+    return { ...f, review, request: { purpose: "embedding" as const, payload, payloadSha256: hash(payload) } };
+  }
+  it("inspects a general WA PDF and its exact source chunk without requiring the fixed national pilot", async () => {
+    const f = generalPdfFixture();
+    const result = await f.loader(f.request, f.binding);
+    expect(evaluateDocumentIngressSafety(result.observations).verdict).toBe("pass");
+    expect(result.observations.policyVersion).toContain(GENERAL_PDF_INSPECTION_VERSION);
+    expect(result.sourceObservations.hiddenText).toBe("consistent");
+    expect(scan).toHaveBeenCalledTimes(2);
+  });
+  it.each(["textHash", "jurisdiction", "unrelatedInput", "activeContent"])(
+    "refuses general PDF %s drift before scanning",
+    async (mutation) => {
+      const f = generalPdfFixture();
+      if (mutation === "textHash") f.review.pages[0]!.textSha256 = hash("changed");
+      if (mutation === "jurisdiction") Object.assign(f.current.facts.declaredAuthority, { jurisdiction: "Australia" });
+      if (mutation === "unrelatedInput") {
+        const payload = payloadFor(["Invented source paragraph"]);
+        f.request = { ...f.request, payload, payloadSha256: hash(payload) };
+      }
+      if (mutation === "activeContent") Object.assign(f.review, { activeContent: "detected" });
+      await expect(f.loader(f.request, f.binding)).rejects.toThrow();
+      expect(scan).not.toHaveBeenCalled();
+    },
+  );
   it("processes the current owner-bound administrator draft without granting public corpus eligibility", async () => {
     const publishedScope = setup();
     const publishedObservations = await publishedScope.loader(publishedScope.request, publishedScope.binding);
@@ -277,6 +505,30 @@ describe("current administrator plain-text inspection adapter", () => {
     expect(scan).not.toHaveBeenCalled();
     expect(clamScan).not.toHaveBeenCalled();
   });
+  it("processes an internal administrator draft with owner-deferred legal review, without publishing it", async () => {
+    const f = setup();
+    Object.assign(f.current.facts.declaredAuthority, { licencePolicy: "review_required" });
+    Object.assign(f.current.sourceMetadata, { licence_policy: "review_required" });
+    admittedDraft(f);
+    Object.assign(f.current.policyObservations, {
+      rights: "review_deferred",
+      indexLicence: "review_deferred",
+      legalReviewDeferral: "owner-internal-build-2026-11-03",
+      processingScope: "owner_internal_build",
+    });
+    const result = await f.loader(f.request, f.binding);
+    expect(evaluateDocumentIngressSafety(result.observations).verdict).toBe("pass");
+    expect(classifySourceAuthority(f.current.sourceMetadata).australianAugmentationEligible).toBe(false);
+  });
+  it("does not apply the internal legal deferral to a public corpus record", async () => {
+    const f = setup();
+    Object.assign(f.current.policyObservations, {
+      rights: "review_deferred",
+      indexLicence: "review_deferred",
+      legalReviewDeferral: "owner-internal-build-2026-11-03",
+    });
+    await expect(f.loader(f.request, f.binding)).rejects.toThrow("current_processing_policy_unavailable");
+  });
   it.each([
     ["publisher_code", "TGA"],
     ["source_catalogue_key", "tga"],
@@ -301,6 +553,36 @@ describe("current administrator plain-text inspection adapter", () => {
       authority: Object.fromEntries(Object.entries(f.current.facts.declaredAuthority).reverse()),
     });
     await expect(f.loader(f.request, f.binding)).resolves.toBeDefined();
+  });
+
+  it("checks a readmitted draft against its pending ranking fields, not the stale live ones", async () => {
+    const f = setup();
+    admittedDraft(f);
+    pendingReadmission(f);
+    expect(f.current.sourceMetadata.publisher).toBe("Superseded publisher");
+    await expect(f.loader(f.request, f.binding)).resolves.toBeDefined();
+  });
+
+  it.each([
+    ["another admission", { admissionEventId: uuid(41) }],
+    ["an unknown version", { version: "pending-reindex-authority-v0" }],
+    ["a missing prior snapshot", { prior: undefined }],
+  ])("refuses a readmitted draft whose pending block has %s", async (_label, overrides) => {
+    const f = setup();
+    admittedDraft(f);
+    pendingReadmission(f, overrides);
+    await expect(f.loader(f.request, f.binding)).rejects.toThrow("catalogue_authority_mismatch");
+    expect(scan).not.toHaveBeenCalled();
+  });
+
+  it("refuses a readmitted draft whose pending ranking fields contradict the declared authority", async () => {
+    const f = setup();
+    admittedDraft(f);
+    pendingReadmission(f);
+    const pending = f.current.sourceMetadata.pending_reindex_authority as { values: Record<string, unknown> };
+    pending.values.licence_policy = "review_required";
+    await expect(f.loader(f.request, f.binding)).rejects.toThrow("catalogue_authority_mismatch");
+    expect(scan).not.toHaveBeenCalled();
   });
 
   it("refuses contradictory nested draft authority despite permissive flattened fields", async () => {

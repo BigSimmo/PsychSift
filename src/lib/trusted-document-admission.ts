@@ -3,6 +3,7 @@ import { createHash, randomUUID } from "node:crypto";
 import type { SourceLicencePolicy } from "@/lib/australian-source-catalogue";
 import type { ClinicalSourceRole } from "@/lib/types";
 import { MAX_UPLOAD_MB_CEILING } from "@/lib/upload-limits";
+import { isIngestionJurisdiction, type IngestionJurisdiction } from "@/lib/ingestion-jurisdiction";
 
 export const trustedDocumentAdmissionPolicyVersion = "trusted-document-admission-v1" as const;
 export const trustedAdministratorRecentAuthenticationSeconds = 900;
@@ -83,7 +84,7 @@ export type TrustedAdmissionAuthority = Readonly<{
   licencePolicy: SourceLicencePolicy;
   rightsEvidenceRef: string;
   publisher: string;
-  jurisdiction: "Australia";
+  jurisdiction: IngestionJurisdiction;
   publicationDate: string | null;
   effectiveDate: string | null;
   reviewDate: string | null;
@@ -496,7 +497,7 @@ function parseAuthority(
   if (value.licencePolicy === "index_forbidden" || value.licencePolicy === "metadata_link_only") {
     throw new Error("Trusted admission requires a content-indexable licence policy.");
   }
-  if (value.jurisdiction !== "Australia") throw new Error("Trusted admission jurisdiction must be Australia.");
+  if (!isIngestionJurisdiction(value.jurisdiction)) throw new Error("Trusted admission jurisdiction is unsupported.");
   if (!new Set(["current", "unknown", "superseded", "withdrawn"]).has(String(value.currentness))) {
     throw new Error("Trusted admission currentness is invalid.");
   }
@@ -530,7 +531,7 @@ function parseAuthority(
     licencePolicy: value.licencePolicy as SourceLicencePolicy,
     rightsEvidenceRef: boundedString(value.rightsEvidenceRef, "rightsEvidenceRef", 500),
     publisher: boundedString(value.publisher, "publisher", 300),
-    jurisdiction: "Australia",
+    jurisdiction: value.jurisdiction,
     publicationDate: explicitNullableIsoDate(value.publicationDate, "publicationDate"),
     effectiveDate: explicitNullableIsoDate(value.effectiveDate, "effectiveDate"),
     reviewDate: explicitNullableIsoDate(value.reviewDate, "reviewDate"),
@@ -542,6 +543,12 @@ function parseAuthority(
     supportedFeatures: Object.freeze([...featureList]) as readonly TrustedAdmissionSupportedFeature[],
     providerProcessing: value.providerProcessing as TrustedAdmissionAuthority["providerProcessing"],
   });
+}
+
+/** Current declarations for a fresh administrator reindex action. This validates
+ * the declaration; it establishes no historical upload or publication approval. */
+export function parseAdministratorReindexAuthority(value: unknown): TrustedAdmissionAuthority {
+  return parseAuthority(value, "admin_api");
 }
 
 function parseActor(value: unknown, sourceChannel: TrustedAdmissionInput["sourceChannel"], ownerId: string) {

@@ -85,6 +85,11 @@ function read(data: unknown, currentFence = fence, currentBinding = binding) {
   };
 }
 describe("worker current-authority facts read", () => {
+  it("retains an exact WA authority declaration without treating it as national permission", async () => {
+    const expected = response();
+    expected.providerAuthority.declaredAuthority.jurisdiction = "Australia/WA";
+    expect((await read(expected).result).declaredAuthority.jurisdiction).toBe("Australia/WA");
+  });
   it("forwards the exact captured fence and returns frozen declarations with rights and safety unavailable", async () => {
     const expected = response();
     const { attempt, rpc, result } = read(expected);

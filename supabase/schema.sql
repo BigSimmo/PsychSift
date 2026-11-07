@@ -39983,3 +39983,1895 @@ begin
     perform public.work_sync_team_supervision(v_service, null);
   end loop;
 end $$;
+
+-- 2026-11-03: general native-text PDF internal-build admission and completion.
+
+-- Source migration: 20261103000000_preserve_wa_admission_jurisdiction.sql
+-- DRAFT: preserve declared WA jurisdiction through the existing admission and
+-- provider-authority facts paths. No new provider or public-corpus authority.
+set local lock_timeout = '5s';
+set local statement_timeout = '120s';
+do $$
+declare definition text; original text; replacement text;
+begin
+ definition:=pg_get_functiondef('public.trusted_document_admission_core(jsonb,jsonb,boolean,text,uuid,text)'::regprocedure);
+ original:='v_authority->>''jurisdiction'' is distinct from ''Australia''';
+ replacement:='coalesce(v_authority->>''jurisdiction'','''') not in (''Australia'',''Australia/WA'')';
+ if length(definition)-length(replace(definition,original,''))<>length(original)
+  or length(definition)-length(replace(definition,'''jurisdiction'', ''Australia'',',''))<>length('''jurisdiction'', ''Australia'',')
+  or not exists(select 1 from pg_proc where oid='public.trusted_document_admission_core(jsonb,jsonb,boolean,text,uuid,text)'::regprocedure and prosecdef and proowner='postgres'::regrole)
+  then raise exception 'wa_admission_core_preimage_mismatch';end if;
+ definition:=replace(definition,original,replacement);
+ definition:=replace(definition,'''jurisdiction'', ''Australia'',','''jurisdiction'', v_authority->>''jurisdiction'',');
+ execute definition;
+ definition:=pg_get_functiondef('public.read_ingestion_generation_inventory(jsonb,uuid)'::regprocedure);
+ original:='pa_authority->>''jurisdiction'' is distinct from ''Australia''';
+ replacement:='coalesce(pa_authority->>''jurisdiction'','''') not in (''Australia'',''Australia/WA'')';
+ if length(definition)-length(replace(definition,original,''))<>length(original)
+  or not exists(select 1 from pg_proc where oid='public.read_ingestion_generation_inventory(jsonb,uuid)'::regprocedure and prosecdef and proowner='postgres'::regrole)
+  then raise exception 'wa_provider_authority_preimage_mismatch';end if;
+ execute replace(definition,original,replacement);
+end $$;
+
+
+-- Source migration: 20261103000100_managed_general_native_pdf_text_terminal.sql
+-- DRAFT: additive native-text-only PDF terminal; no production application is authorized.
+-- Existing fixed-pilot/TXT terminals and their proof contracts are preserved.
+set local lock_timeout = '5s';
+set local statement_timeout = '120s';
+
+create function ingestion_generation_evidence.general_pdf_commit_allowed(f jsonb,g uuid)
+returns boolean language sql stable set search_path='' as $$
+ select coalesce(current_setting('psychsift.general_pdf_terminal_owner',true)=(f->>'document_id')||':'||(f->>'job_id'),false)
+ and exists(select 1 from ingestion_generation_evidence.prerequisite_accounting s
+  join ingestion_generation_evidence.candidates c using(document_id,generation_id)
+  where c.document_id=(f->>'document_id')::uuid and c.generation_id=g and c.job_id=(f->>'job_id')::uuid
+  and c.first_lease_token=(f->>'lease_token')::uuid and c.authority_digest=f->>'authority_digest'
+  and s.snapshot->>'version'='managed-general-pdf-seal-v1'
+  and s.snapshot->>'scope'='administrator-general-native-pdf-text-v1'
+  and s.snapshot->'packet'->'identity'->>'generationId'=g::text
+  and s.snapshot->'packet'->'identity'->>'sourceSha256'=c.source_sha256
+  and s.snapshot_digest='sha256:'||encode(extensions.digest(convert_to(s.snapshot::text,'UTF8'),'sha256'),'hex')
+  and (select count(*) from public.document_chunks r where r.document_id=c.document_id and r.index_generation_id=g)=jsonb_array_length(s.snapshot->'packet'->'chunks')
+  and not exists(select 1 from ingestion_generation_evidence.candidate_chunk_rows cr left join public.document_chunks pr on pr.id=cr.id
+   where cr.document_id=c.document_id and cr.index_generation_id=g and (pr.id is null or
+    (to_jsonb(pr)-array['created_at','search_tsv']) is distinct from
+    (to_jsonb(jsonb_populate_record(null::public.document_chunks,to_jsonb(cr)))-array['created_at','search_tsv']))))
+$$;
+
+create function public.complete_managed_general_pdf(p_fence jsonb,p_generation uuid,p_packet jsonb,p_read_only boolean default false)
+returns jsonb language plpgsql security definer set search_path='' as $$
+declare c ingestion_generation_evidence.candidates; j public.ingestion_jobs; ad public.document_admission_events;
+ original ingestion_generation_evidence.retained_artifacts; witness ingestion_generation_evidence.retained_artifacts;
+ prepared ingestion_generation_evidence.retained_artifacts; final_row ingestion_generation_evidence.retained_artifacts;
+ cr ingestion_generation_evidence.candidate_chunk_rows; prior ingestion_generation_evidence.prerequisite_accounting;
+ a jsonb; identity jsonb; claim jsonb; inspection jsonb; w jsonb; item jsonb; grp jsonb; pg jsonb; unit jsonb;
+ page_row jsonb; page_text text; page_bytes bytea; pages jsonb:='[]'::jsonb; page_total integer; chunk_total integer;
+ page_index integer:=0; chunk_ordinal integer:=0; cursor_byte integer; consumed integer:=0; actual jsonb;
+ seal jsonb; seal_bytes bytea; seal_hash text; result jsonb; next_fence jsonb; checkpoint jsonb; checkpoint_bytes bytea; checkpoint_hash text;
+ quality jsonb; replay text; active_worker text; total_text bigint:=0; inspected_at timestamptz; inspection_expires timestamptz;
+begin
+ if p_read_only is null or p_generation is null or not ingestion_generation_evidence.visual_unit_fence(p_fence)
+  or p_fence->>'job_kind' is distinct from 'node' or octet_length(convert_to(p_packet::text,'UTF8'))>33554432
+  or not ingestion_generation_evidence.keys(p_packet,array['version','profileId','identity','inspection','retainedImageCount','pages','chunks','quality'])
+  or p_packet->>'version' is distinct from 'managed-general-pdf-complete-v1'
+  or p_packet->>'profileId' is distinct from 'administrator-general-native-pdf-text-v1'
+  then raise exception 'managed_general_pdf_invalid_packet';end if;
+ a:=public.lock_ingestion_document_authority((p_fence->>'document_id')::uuid,false);
+ if a is null or a->'document'->>'owner_id' is null
+  or a->'document'->'metadata'->>'corpus_scope' is distinct from 'uploaded_local'
+  or a->'document'->'metadata'->>'content_mode' is distinct from 'indexed_content'
+  or a->'document'->'metadata'->'public_corpus'='true'::jsonb
+  then raise exception 'managed_general_pdf_owner_scope_required';end if;
+ perform 1 from public.ingestion_jobs where document_id=(p_fence->>'document_id')::uuid order by id for update;
+ perform 1 from public.indexing_v3_agent_jobs where document_id=(p_fence->>'document_id')::uuid order by id for update;
+ select * into strict j from public.ingestion_jobs where id=(p_fence->>'job_id')::uuid;
+ select * into strict c from ingestion_generation_evidence.candidates where document_id=(p_fence->>'document_id')::uuid and generation_id=p_generation for update;
+ select convert_from(artifact_bytes,'UTF8')::jsonb into strict claim from ingestion_generation_evidence.retained_artifacts
+  where document_id=c.document_id and generation_id=c.generation_id and family='attempt_control' and unit_key='claim_checkpoint';
+ active_worker:=claim->>'workerId';
+ identity:=jsonb_build_object('documentId',c.document_id,'generationId',c.generation_id,'jobId',c.job_id,'workerId',active_worker,
+  'firstLeaseToken',c.first_lease_token,'attemptNumber',j.attempt_count,'batchId',j.batch_id,'authorityDigest',c.authority_digest,
+  'predecessorGenerationId',c.predecessor_generation_id,'ownerId',c.source_snapshot->'owner_id','sourceSha256',c.source_sha256,
+  'sourceByteLength',c.source_byte_length,'sourceExpectationDigest',c.source_expectation_digest);
+ if a is null or p_packet->'identity' is distinct from identity or c.job_id is distinct from j.id or j.document_id is distinct from c.document_id
+  or j.lease_token is distinct from c.first_lease_token or c.first_lease_token::text is distinct from p_fence->>'lease_token'
+  or j.lease_write_generation_id is distinct from p_generation or active_worker is distinct from p_fence->>'worker_id'
+  or c.predecessor_generation_id is distinct from (p_fence->>'expected_generation_id')::uuid
+  or c.authority_digest is distinct from p_fence->>'authority_digest' or a->>'authority_digest' is distinct from c.authority_digest
+  or j.lease_authority_digest is distinct from c.authority_digest or c.source_snapshot->'owner_id' is distinct from a->'document'->'owner_id'
+  or c.source_sha256 is distinct from 'sha256:'||(a->'document'->>'content_hash')
+  or c.source_byte_length is distinct from (a->'document'->>'file_size')::bigint or c.source_byte_length>157286400
+  or a->'document'->>'file_type' is distinct from 'application/pdf'
+  or exists(select 1 from public.ingestion_jobs o where o.document_id=c.document_id and o.id<>j.id and (o.created_at>j.created_at or o.status in ('pending','processing')))
+  then raise exception 'managed_general_pdf_identity_mismatch';end if;
+ if j.status='completed' then
+  if j.stage<>'general_pdf_text_completed' or j.locked_by is not null or j.lease_expires_at is not null or j.next_run_at is not null
+   or j.lease_expected_generation_id is distinct from p_generation or (a->'document'->>'index_generation_id')::uuid is distinct from p_generation
+   then raise exception 'managed_general_pdf_replay_state';end if;
+ else
+  if p_read_only or j.status<>'processing' or j.locked_by is distinct from active_worker or j.lease_expires_at is null or j.lease_expires_at<=clock_timestamp()
+   or j.lease_expected_generation_id is distinct from c.predecessor_generation_id
+   or (a->'document'->>'index_generation_id')::uuid is distinct from c.predecessor_generation_id
+   or public.assert_current_ingestion_attempt(p_fence,p_generation) is null then raise exception 'managed_general_pdf_current_attempt_required';end if;
+ end if;
+ select * into strict ad from public.document_admission_events where id=(a->'document'->'metadata'->>'admission_event_id')::uuid;
+ if ad.actor_kind is distinct from 'administrator' or ad.source_channel is distinct from 'admin_api'
+  or ad.document_id is distinct from c.document_id or ad.staging_owner_id is distinct from (identity->>'ownerId')::uuid
+  or ad.administrator_id is distinct from ad.staging_owner_id or ad.backend_principal is not null
+  or ad.content_sha256 is distinct from c.source_sha256 or ad.byte_count is distinct from c.source_byte_length
+  or ad.mime_type is distinct from 'application/pdf' or ad.admission_policy_version is distinct from 'trusted-document-admission-v1'
+  or ad.authority is distinct from a->'document'->'metadata'->'authority'
+  or c.source_snapshot->'metadata'->'admission_event_id' is distinct from a->'document'->'metadata'->'admission_event_id'
+  or ad.authority->>'authorityBasis' is distinct from 'administrator_template'
+  or ad.authority->>'providerProcessing' is distinct from 'permitted'
+  or ad.authority->>'purpose' is distinct from 'clinical_retrieval' or ad.authority->>'currentness' is distinct from 'current'
+  or ad.authority->'supportedFeatures' is distinct from '["text"]'::jsonb
+  or coalesce(ad.authority->>'jurisdiction','') not in ('Australia','Australia/WA')
+  or (ad.authority->>'effectiveDate')::date>current_date or (ad.authority->>'expiryDate')::date<=current_date
+  or (ad.authority->>'reviewDate')::date<=current_date then raise exception 'managed_general_pdf_admission_mismatch';end if;
+ perform 1 from auth.users u where u.id=ad.administrator_id
+  and u.raw_app_meta_data->>'site_role' is not distinct from 'administrator'
+  and (to_jsonb(u)->>'deleted_at') is null
+  and ((to_jsonb(u)->>'banned_until') is null or (to_jsonb(u)->>'banned_until')::timestamptz<=clock_timestamp()) for share;
+ if not found then raise exception 'managed_general_pdf_current_administrator_required';end if;
+ select * into strict original from ingestion_generation_evidence.retained_artifacts
+  where document_id=c.document_id and generation_id=c.generation_id and family='private_objects' and unit_key='original-source';
+ if original.representation<>'original_binary' or original.sha256 is distinct from c.source_sha256
+  or original.byte_length<>c.source_byte_length or substring(original.artifact_bytes from 1 for 5)<>convert_to('%PDF-','UTF8')
+  then raise exception 'managed_general_pdf_original_mismatch';end if;
+ -- Validate every retained byte, not hashes supplied by a caller without retained readback.
+ if exists(select 1 from ingestion_generation_evidence.retained_artifacts r where r.document_id=c.document_id and r.generation_id=c.generation_id
+  and (r.sha256<>'sha256:'||encode(extensions.digest(r.artifact_bytes,'sha256'),'hex') or r.byte_length<>octet_length(r.artifact_bytes) or r.source_sha256<>c.source_sha256))
+  then raise exception 'managed_general_pdf_retained_mismatch';end if;
+ inspection:=p_packet->'inspection';
+ if jsonb_typeof(inspection->'inspectedAt') is distinct from 'string'
+  or jsonb_typeof(inspection->'expiresAt') is distinct from 'string'
+  or coalesce(inspection->>'inspectedAt','') !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,9})?Z$'
+  or coalesce(inspection->>'expiresAt','') !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,9})?Z$'
+  then raise exception 'managed_general_pdf_inspection_binding';end if;
+ begin
+  inspected_at:=(inspection->>'inspectedAt')::timestamptz;
+  inspection_expires:=(inspection->>'expiresAt')::timestamptz;
+ exception when invalid_datetime_format or datetime_field_overflow then raise exception 'managed_general_pdf_inspection_binding';
+ end;
+ if not ingestion_generation_evidence.keys(inspection,array['version','binding','sourceSha256','sourceByteLength','pageCount','pages','pageInventory','activeContent','encryption','hiddenText','inspectedAt','expiresAt'])
+  or inspection->>'version' is distinct from 'administrator-general-native-pdf-inspection-v1'
+  or inspection->>'sourceSha256' is distinct from c.source_sha256 or inspection->'sourceByteLength' is distinct from to_jsonb(c.source_byte_length)
+  or inspection->>'pageInventory' is distinct from 'complete' or inspection->>'activeContent' is distinct from 'absent'
+  or inspection->>'encryption' is distinct from 'not_encrypted' or inspection->>'hiddenText' is distinct from 'consistent'
+  or inspection->'binding' is distinct from jsonb_build_object('admissionEventId',ad.id,'documentId',c.document_id,'generationId',c.generation_id,
+   'jobId',j.id,'attemptId',j.id::text||':'||j.attempt_count::text||':'||j.lease_token::text,'leaseId',c.first_lease_token,'contentSha256',c.source_sha256,'authorityDigest',c.authority_digest)
+  or inspection_expires<=inspected_at
+  or inspection_expires>inspected_at+interval '1 day'
+  or inspected_at>coalesce(j.completed_at,clock_timestamp())
+  or inspection_expires<=coalesce(j.completed_at,clock_timestamp())
+  then raise exception 'managed_general_pdf_inspection_binding';end if;
+ page_total:=jsonb_array_length(p_packet->'pages');chunk_total:=jsonb_array_length(p_packet->'chunks');
+ if page_total<1 or page_total>1000 or chunk_total<1 or chunk_total>10000
+  or jsonb_array_length(inspection->'pages')<>page_total or inspection->'pageCount' is distinct from to_jsonb(page_total)
+  then raise exception 'managed_general_pdf_population';end if;
+ select * into strict witness from ingestion_generation_evidence.retained_artifacts
+  where document_id=c.document_id and generation_id=c.generation_id and family='private_objects' and unit_key='original-source-expectation-witness';
+ w:=convert_from(witness.artifact_bytes,'UTF8')::jsonb;
+ if witness.representation<>'source_expectation_witness' or witness.sha256 is distinct from c.source_expectation->'witness'->>'sha256'
+  or c.source_expectation->>'tag' is distinct from 'known' or convert_from(c.source_expectation_bytes,'UTF8')::jsonb is distinct from c.source_expectation
+  or c.source_expectation_digest<>'sha256:'||encode(extensions.digest(c.source_expectation_bytes,'sha256'),'hex')
+  or not ingestion_generation_evidence.keys(w,array['version','qualification','sourceSha256','sourceByteLength','sourceUnits','groups'])
+  or w->>'version' is distinct from 'ingestion-original-applicability-v1' or w->>'qualification' is distinct from 'independently_declared_unverified'
+  or w->>'sourceSha256' is distinct from c.source_sha256 or w->'sourceByteLength' is distinct from to_jsonb(c.source_byte_length)
+  or w->'sourceUnits' is distinct from c.source_expectation->'units' or jsonb_array_length(w->'sourceUnits')<>page_total
+  or jsonb_array_length(w->'groups')<>5 or (select count(distinct value->>'family') from jsonb_array_elements(w->'groups'))<>5
+  then raise exception 'managed_general_pdf_independent_witness';end if;
+ for grp in select value from jsonb_array_elements(w->'groups') loop
+  if not ingestion_generation_evidence.keys(grp,array['family','population'])
+   or not ingestion_generation_evidence.keys(grp->'population',array['tag','requirements','basis','reason'])
+   or grp->>'family' not in ('chunks','images','table_facts','embedding_fields','index_units')
+   or grp->'population'->>'tag' is distinct from 'known'
+   or grp->'population'->'basis' is distinct from '{"scope":"whole_original","kind":"independent_original_declaration"}'::jsonb
+   or (grp->>'family'<>'chunks' and (grp->'population'->'requirements'<>'[]'::jsonb or grp->'population'->>'reason' is distinct from 'no_original_requirements_in_scope'))
+   or (grp->>'family'='chunks' and (jsonb_array_length(grp->'population'->'requirements')<1 or grp->'population'->'reason' is distinct from 'null'::jsonb))
+   then raise exception 'managed_general_pdf_unsupported_original_requirements';end if;
+  for item in select value from jsonb_array_elements(grp->'population'->'requirements') loop
+   if not ingestion_generation_evidence.keys(item,array['id','required','sourceEvidenceIds']) or item->'required' is distinct from 'true'::jsonb
+    or jsonb_array_length(item->'sourceEvidenceIds')<1
+    or exists(select 1 from jsonb_array_elements_text(item->'sourceEvidenceIds') ref where not exists(select 1 from jsonb_array_elements(w->'sourceUnits') su where su.value->>'id'=ref))
+    then raise exception 'managed_general_pdf_source_obligation_mismatch';end if;
+  end loop;
+ end loop;
+ if (select count(distinct value->>'id') from jsonb_array_elements(w->'sourceUnits'))<>page_total
+  or exists(select 1 from jsonb_array_elements(w->'sourceUnits') su where not ingestion_generation_evidence.keys(su.value,array['id','required','dependencies','locator','nativeMapping'])
+   or su.value->'dependencies' is distinct from '[]'::jsonb or su.value->>'nativeMapping' is distinct from 'unavailable')
+  then raise exception 'managed_general_pdf_source_units';end if;
+ if (select count(*) from ingestion_generation_evidence.retained_artifacts where document_id=c.document_id and generation_id=c.generation_id and family='pages')<>page_total
+  or (select count(*) from ingestion_generation_evidence.candidate_chunk_rows where document_id=c.document_id and index_generation_id=c.generation_id)<>chunk_total
+  or (select count(*) from ingestion_generation_evidence.retained_artifacts where document_id=c.document_id and generation_id=c.generation_id and family='chunks')<>2*chunk_total
+  or exists(select 1 from ingestion_generation_evidence.scoped_projection_rows where document_id=c.document_id and generation_id=c.generation_id)
+  or exists(select 1 from ingestion_generation_evidence.visual_unit_rows where document_id=c.document_id and generation_id=c.generation_id)
+  or exists(select 1 from ingestion_generation_evidence.managed_vector_packets where document_id=c.document_id and generation_id=c.generation_id)
+  or exists(select 1 from ingestion_generation_evidence.unit_declarations where document_id=c.document_id and generation_id=c.generation_id
+   and family not in ('private_objects','pages','chunks','document_metadata','quality','attempt_control'))
+  or p_packet->'retainedImageCount' is distinct from to_jsonb((select count(*)::integer from ingestion_generation_evidence.retained_artifacts where document_id=c.document_id and generation_id=c.generation_id and representation='image_binary'))
+  then raise exception 'managed_general_pdf_actual_population';end if;
+ for pg in select value from jsonb_array_elements(p_packet->'pages') loop
+  page_index:=page_index+1;cursor_byte:=0;
+  page_text:=inspection->'pages'->(page_index-1)->>'text';page_bytes:=convert_to(page_text,'UTF8');total_text:=total_text+octet_length(page_bytes);
+  if not ingestion_generation_evidence.keys(pg,array['pageNumber','textSha256','byteLength']) or pg->'pageNumber' is distinct from to_jsonb(page_index)
+   or pg->'byteLength' is distinct from to_jsonb(octet_length(page_bytes)) or octet_length(page_bytes)>2097152
+   or pg->>'textSha256' is distinct from 'sha256:'||encode(extensions.digest(page_bytes,'sha256'),'hex')
+   or inspection->'pages'->(page_index-1)->'pageNumber' is distinct from to_jsonb(page_index)
+   or inspection->'pages'->(page_index-1)->>'textSha256' is distinct from pg->>'textSha256'
+   then raise exception 'managed_general_pdf_page_binding';end if;
+  select value into strict unit from jsonb_array_elements(w->'sourceUnits') where value->>'locator'='pdf-page:'||page_index::text||':native-text:'||(pg->>'textSha256');
+  if unit->'required' is distinct from 'true'::jsonb or not exists(select 1 from jsonb_array_elements(w->'groups') gr
+   cross join lateral jsonb_array_elements(gr.value->'population'->'requirements') req where gr.value->>'family'='chunks' and req.value->'required'='true'::jsonb and req.value->'sourceEvidenceIds' ? (unit->>'id'))
+   then raise exception 'managed_general_pdf_unrepresented_page';end if;
+  select convert_from(artifact_bytes,'UTF8')::jsonb into strict page_row from ingestion_generation_evidence.retained_artifacts
+   where document_id=c.document_id and generation_id=c.generation_id and family='pages' and unit_key=page_index::text and representation='page_projection';
+  if page_row->>'text' is distinct from page_text or page_row->'page_number' is distinct from to_jsonb(page_index) or page_row->'ocr_used' is distinct from 'false'::jsonb
+   or not exists(select 1 from ingestion_generation_evidence.retained_artifacts where document_id=c.document_id and generation_id=c.generation_id
+    and family='private_objects' and unit_key='page:'||page_index::text||':extracted' and representation='extracted_utf8' and artifact_bytes=page_bytes)
+   or not exists(select 1 from ingestion_generation_evidence.retained_artifacts where document_id=c.document_id and generation_id=c.generation_id
+    and family='private_objects' and unit_key='page:'||page_index::text||':persisted' and representation='persisted_utf8' and artifact_bytes=page_bytes)
+   then raise exception 'managed_general_pdf_page_readback';end if;
+  pages:=pages||jsonb_build_array(page_row);
+  for item in select value from jsonb_array_elements(p_packet->'chunks') where (value->>'pageNumber')::integer=page_index order by (value->>'chunkIndex')::integer loop
+   if not ingestion_generation_evidence.keys(item,array['id','chunkIndex','pageNumber','start','end','sha256'])
+    or item->'chunkIndex' is distinct from to_jsonb(chunk_ordinal) or item->'start' is distinct from to_jsonb(cursor_byte)
+    or (item->>'end')::integer<=cursor_byte or (item->>'end')::integer>octet_length(page_bytes) then raise exception 'managed_general_pdf_chunk_coverage';end if;
+   select * into strict cr from ingestion_generation_evidence.candidate_chunk_rows where id=(item->>'id')::uuid and document_id=c.document_id and index_generation_id=c.generation_id;
+   select * into strict prepared from ingestion_generation_evidence.retained_artifacts where document_id=c.document_id and generation_id=c.generation_id and family='chunks' and unit_key=cr.id::text||':prepared';
+   select * into strict final_row from ingestion_generation_evidence.retained_artifacts where document_id=c.document_id and generation_id=c.generation_id and family='chunks' and unit_key=cr.id::text||':final';
+   actual:=(to_jsonb(jsonb_populate_record(null::public.document_chunks,to_jsonb(cr)))-array['created_at','search_tsv','embedding'])||jsonb_build_object('embedding',(cr.embedding::text)::jsonb);
+   if cr.chunk_index<>chunk_ordinal or cr.page_number<>page_index or cr.candidate_owner_id is distinct from (identity->>'ownerId')::uuid
+    or cr.candidate_job_id<>c.job_id or cr.candidate_lease_token<>c.first_lease_token or cr.candidate_authority_digest<>c.authority_digest
+    or cr.candidate_source_sha256<>c.source_sha256 or cr.candidate_source_expectation_digest<>c.source_expectation_digest
+    or cr.candidate_prepared_sha256<>prepared.sha256 or cr.embedding is null or jsonb_array_length((cr.embedding::text)::jsonb)<>1536
+    or not exists(select 1 from jsonb_array_elements_text((cr.embedding::text)::jsonb) coordinate where coordinate::double precision<>0)
+    or cr.image_ids<>'{}'::uuid[] or cr.retrieval_synopsis is not null or cr.section_heading is not null
+    or convert_to(cr.content,'UTF8')<>substring(page_bytes from cursor_byte+1 for (item->>'end')::integer-cursor_byte)
+    or item->>'sha256'<>'sha256:'||encode(extensions.digest(convert_to(cr.content,'UTF8'),'sha256'),'hex')
+    or (convert_from(final_row.artifact_bytes,'UTF8')::jsonb)->'row' is distinct from actual
+    or (convert_from(final_row.artifact_bytes,'UTF8')::jsonb)->>'preparedSha256' is distinct from prepared.sha256
+    or (convert_from(prepared.artifact_bytes,'UTF8')::jsonb)->'row' is distinct from (actual-'embedding')||jsonb_build_object('metadata',(actual->'metadata')-array['ingestion_job_id','ingestion_job_kind','ingestion_lease_token'])
+    then raise exception 'managed_general_pdf_chunk_readback';end if;
+   cursor_byte:=(item->>'end')::integer;chunk_ordinal:=chunk_ordinal+1;consumed:=consumed+1;
+  end loop;
+  if cursor_byte<>octet_length(page_bytes) then raise exception 'managed_general_pdf_page_coverage_gap';end if;
+ end loop;
+ if consumed<>chunk_total or total_text<1 or total_text>8388608 then raise exception 'managed_general_pdf_text_population';end if;
+ if exists(select 1 from ingestion_generation_evidence.unit_declarations d left join ingestion_generation_evidence.outcomes o using(document_id,generation_id,family,unit_key)
+  where d.document_id=c.document_id and d.generation_id=c.generation_id and d.declaration->'required'='true'::jsonb
+  and not(d.family='attempt_control' and d.unit_key='preseal_checkpoint') and (o.outcome->>'disposition' is distinct from 'retained'
+   or not exists(select 1 from ingestion_generation_evidence.retained_artifacts r where r.document_id=d.document_id and r.generation_id=d.generation_id and r.family=d.family and r.unit_key=d.unit_key and r.sha256=o.outcome->>'artifactSha256')))
+  or exists(select 1 from ingestion_generation_evidence.unit_declarations d cross join lateral jsonb_array_elements(d.declaration->'dependencies') dep
+   where d.document_id=c.document_id and d.generation_id=c.generation_id and not exists(select 1 from ingestion_generation_evidence.outcomes o
+    where o.document_id=c.document_id and o.generation_id=c.generation_id and o.family=dep.value->>'family' and o.unit_key=dep.value->>'key' and o.outcome->>'disposition'='retained'))
+  then raise exception 'managed_general_pdf_required_artifacts_missing';end if;
+ quality:=jsonb_build_object('quality_score',1,'extraction_quality','good','issues',jsonb_build_array('native_text_profile_only','optional_enrichment_deferred','clinical_approval_not_assessed'),
+  'metrics',jsonb_build_object('page_count',page_total,'chunk_count',chunk_total,'ocr_page_count',0,'public_image_count',0,'private_retained_image_count',p_packet->'retainedImageCount','scope','administrator-general-native-pdf-text-v1','native_text_exact',true,'visual_fidelity','not_assessed'));
+ if p_packet->'quality' is distinct from quality then raise exception 'managed_general_pdf_quality_mismatch';end if;
+ seal:=jsonb_build_object('version','managed-general-pdf-seal-v1','packet',p_packet,'scope','administrator-general-native-pdf-text-v1',
+  'activated',true,'clinicalApproval','not_assessed','publicationApproval','not_granted','visualFidelity','not_assessed');
+ seal_bytes:=convert_to(seal::text,'UTF8');seal_hash:='sha256:'||encode(extensions.digest(seal_bytes,'sha256'),'hex');
+ checkpoint:=claim||jsonb_build_object('phase','preseal','terminalVersion','managed-general-pdf-complete-v1','terminalPacket',p_packet);
+ checkpoint_bytes:=convert_to(checkpoint::text,'UTF8');checkpoint_hash:='sha256:'||encode(extensions.digest(checkpoint_bytes,'sha256'),'hex');
+ if j.status='completed' then
+  select * into strict prior from ingestion_generation_evidence.prerequisite_accounting where document_id=c.document_id and generation_id=c.generation_id and snapshot->>'version'='managed-general-pdf-seal-v1';
+  if prior.snapshot is distinct from seal or prior.snapshot_digest is distinct from seal_hash
+   or (select count(*) from public.document_pages where document_id=c.document_id and index_generation_id=c.generation_id)<>page_total
+   or (select count(*) from public.document_chunks where document_id=c.document_id and index_generation_id=c.generation_id)<>chunk_total
+   or exists(select 1 from ingestion_generation_evidence.candidate_chunk_rows r left join public.document_chunks p on p.id=r.id where r.document_id=c.document_id and r.index_generation_id=c.generation_id
+    and (p.id is null or (to_jsonb(p)-array['created_at','search_tsv']) is distinct from (to_jsonb(jsonb_populate_record(null::public.document_chunks,to_jsonb(r)))-array['created_at','search_tsv'])))
+   then raise exception 'managed_general_pdf_replay_mismatch';end if;
+  if exists(select 1 from public.document_pages p where p.document_id=c.document_id and p.index_generation_id=c.generation_id
+   and (p.ocr_used or p.text is distinct from inspection->'pages'->(p.page_number-1)->>'text'))
+   or not exists(select 1 from ingestion_generation_evidence.retained_artifacts where document_id=c.document_id and generation_id=c.generation_id and family='attempt_control' and unit_key='preseal_checkpoint' and sha256=checkpoint_hash and artifact_bytes=checkpoint_bytes)
+   or not exists(select 1 from public.document_index_quality where document_id=c.document_id and owner_id=(identity->>'ownerId')::uuid and metrics->>'general_pdf_seal_digest'=seal_hash)
+   then raise exception 'managed_general_pdf_replay_mismatch';end if;
+  replay:='already_completed';
+ else
+  if public.assert_current_ingestion_attempt(p_fence,p_generation) is null then raise exception 'managed_general_pdf_current_attempt_required';end if;
+  if not exists(select 1 from ingestion_generation_evidence.unit_declarations where document_id=c.document_id and generation_id=c.generation_id and family='attempt_control' and unit_key='preseal_checkpoint'
+   and declaration->'dependencies'='[{"family":"attempt_control","key":"claim_checkpoint"},{"family":"private_objects","key":"original-source"}]'::jsonb)
+   then raise exception 'managed_general_pdf_preseal_declaration_required';end if;
+  insert into ingestion_generation_evidence.retained_artifacts(document_id,generation_id,family,unit_key,group_key,representation,source_sha256,artifact_bytes,sha256,byte_length,locator)
+   values(c.document_id,c.generation_id,'attempt_control','preseal_checkpoint','control','provenance_json',c.source_sha256,checkpoint_bytes,checkpoint_hash,octet_length(checkpoint_bytes),'ingestion_attempt:general_pdf_preseal');
+  insert into ingestion_generation_evidence.outcomes(document_id,generation_id,family,unit_key,group_key,outcome)
+   values(c.document_id,c.generation_id,'attempt_control','preseal_checkpoint','control',jsonb_build_object('unitId',jsonb_build_object('family','attempt_control','key','preseal_checkpoint'),'groupKey','control','disposition','retained','artifactSha256',checkpoint_hash,'limitation',null));
+  insert into ingestion_generation_evidence.prerequisite_accounting(document_id,generation_id,snapshot_digest,snapshot) values(c.document_id,c.generation_id,seal_hash,seal);
+  insert into public.document_chunks(id,document_id,page_number,chunk_index,section_heading,section_path,heading_level,parent_heading,anchor_id,content,retrieval_synopsis,content_hash,index_generation_id,token_estimate,image_ids,metadata,embedding)
+   select staged.id,staged.document_id,staged.page_number,staged.chunk_index,staged.section_heading,staged.section_path,staged.heading_level,staged.parent_heading,staged.anchor_id,staged.content,staged.retrieval_synopsis,staged.content_hash,staged.index_generation_id,staged.token_estimate,staged.image_ids,staged.metadata,staged.embedding
+    from ingestion_generation_evidence.candidate_chunk_rows staged where staged.document_id=c.document_id and staged.index_generation_id=c.generation_id;
+  quality:=quality||jsonb_build_object('metrics',quality->'metrics'||jsonb_build_object('general_pdf_seal_digest',seal_hash));
+  perform set_config('psychsift.general_pdf_terminal_owner',c.document_id::text||':'||c.job_id::text,true);
+  result:=public.commit_document_index_generation(p_fence,p_generation,page_total,chunk_total,0,'{}'::jsonb,pages,quality);
+  if result->'ok' is distinct from 'true'::jsonb then raise exception 'managed_general_pdf_commit_failed';end if;
+  next_fence:=result->'fence';result:=public.complete_ingestion_job(next_fence,j.batch_id,'general_pdf_text_completed');
+  if result->'ok' is distinct from 'true'::jsonb then raise exception 'managed_general_pdf_completion_failed';end if;
+  update public.ingestion_jobs set next_run_at=null,lease_expires_at=null,lease_duration_seconds=null where id=c.job_id;
+  perform set_config('psychsift.general_pdf_terminal_owner','',true);replay:='completed';
+ end if;
+ return jsonb_build_object('ok',true,'managedGeneralPdfTerminal',jsonb_build_object('status','general_pdf_text_completed','replay',replay,'activated',true,
+  'seal',jsonb_build_object('bytesHex',encode(seal_bytes,'hex'),'sha256',seal_hash,'byteLength',octet_length(seal_bytes))));
+end $$;
+
+alter function ingestion_generation_evidence.general_pdf_commit_allowed(jsonb,uuid) owner to postgres;
+revoke all on function ingestion_generation_evidence.general_pdf_commit_allowed(jsonb,uuid) from public,anon,authenticated,service_role;
+alter function public.complete_managed_general_pdf(jsonb,uuid,jsonb,boolean) owner to postgres;
+revoke all on function public.complete_managed_general_pdf(jsonb,uuid,jsonb,boolean) from public,anon,authenticated;
+grant execute on function public.complete_managed_general_pdf(jsonb,uuid,jsonb,boolean) to service_role;
+
+-- Extend only the two exact managed allowlists. Preserve all later guard/rollback code.
+do $$
+declare signature text; definition text; old_guard text; new_guard text;
+begin
+ foreach signature in array array['public.commit_document_index_generation(jsonb,uuid,integer,integer,integer,jsonb,jsonb,jsonb)',
+  'public.complete_ingestion_job(jsonb,uuid,text)'] loop
+  definition:=pg_get_functiondef(signature::regprocedure);
+  old_guard:=case when signature like 'public.commit_document%' then
+   'ingestion_generation_evidence.admin_text_commit_allowed(p_fence,p_generation) or ingestion_generation_evidence.admin_pdf_commit_allowed(p_fence,p_generation)' else
+   'ingestion_generation_evidence.admin_text_commit_allowed(p_fence,(p_fence->>''expected_generation_id'')::uuid) or ingestion_generation_evidence.admin_pdf_commit_allowed(p_fence,(p_fence->>''expected_generation_id'')::uuid)' end;
+  if length(definition)-length(replace(definition,old_guard,''))<>length(old_guard)
+   or not exists(select 1 from pg_proc where oid=signature::regprocedure and prosecdef and proowner='postgres'::regrole)
+   then raise exception 'managed_general_pdf_guard_preimage_mismatch';end if;
+  new_guard:=old_guard||case when signature like 'public.commit_document%' then ' or ingestion_generation_evidence.general_pdf_commit_allowed(p_fence,p_generation)'
+   else ' or ingestion_generation_evidence.general_pdf_commit_allowed(p_fence,(p_fence->>''expected_generation_id'')::uuid)' end;
+  execute replace(definition,old_guard,new_guard);
+ end loop;
+end $$;
+
+-- 2026-11-03: current administrator legacy readmission and inspected full-PDF completion.
+-- DRAFT. A fresh authenticated administrator action, not a reconstruction of an
+-- old upload. Shared-library stewardship preserves owner_id NULL and visibility.
+set local lock_timeout='5s';
+set local statement_timeout='120s';
+create function public.readmit_administrator_document_for_reindex(
+ p_document_id uuid,p_correlation_id uuid,p_expected_owner_id uuid,p_expected_public_corpus boolean,
+ p_source_sha256 text,p_byte_count bigint,p_file_name_sha256 text,p_storage_path_sha256 text,
+ p_authority jsonb,p_max_attempts integer default 1)
+returns jsonb language plpgsql security definer set search_path='' as $$
+declare actor uuid:=auth.uid();claims jsonb:=auth.jwt();d public.documents;j public.ingestion_jobs; prior public.document_admission_events;
+ event_id uuid:=gen_random_uuid();job_id uuid:=gen_random_uuid();request jsonb;request_digest text;admission jsonb;next_metadata jsonb;
+ pair record;value text;scope text;now_at timestamptz:=clock_timestamp();date_value date;
+begin
+ if actor is null or claims->>'role' is distinct from 'authenticated' or claims->>'sub' is distinct from actor::text
+  or claims#>>'{app_metadata,site_role}' is distinct from 'administrator' or claims->>'aal' is distinct from 'aal2'
+  or jsonb_typeof(claims->'amr') is distinct from 'array' then raise exception 'administrator_assurance_required' using errcode='42501';end if;
+ if not exists(select 1 from jsonb_array_elements(claims->'amr') m where m->>'method' in ('password','otp','totp','webauthn')
+  and jsonb_typeof(m->'timestamp')='number' and to_timestamp((m->>'timestamp')::double precision) between now_at-interval '900 seconds' and now_at)
+  then raise exception 'administrator_recent_authentication_required' using errcode='42501';end if;
+ perform 1 from auth.users u where u.id=actor and u.raw_app_meta_data->>'site_role'='administrator'
+  and to_jsonb(u)->>'deleted_at' is null and (to_jsonb(u)->>'banned_until' is null or (to_jsonb(u)->>'banned_until')::timestamptz<=now_at) for share;
+ if not found then raise exception 'administrator_assurance_required' using errcode='42501';end if;
+ if p_document_id is null or p_correlation_id is null or p_expected_public_corpus is null or p_max_attempts is null or p_max_attempts not between 1 and 100
+  or coalesce(p_source_sha256,'') !~ '^sha256:[0-9a-f]{64}$' or coalesce(p_file_name_sha256,'') !~ '^sha256:[0-9a-f]{64}$'
+  or coalesce(p_storage_path_sha256,'') !~ '^sha256:[0-9a-f]{64}$' or p_byte_count is null or p_byte_count not between 1 and 157286400
+  then raise exception 'readmission_invalid_identity';end if;
+ select * into strict d from public.documents where id=p_document_id for update;
+ scope:=case when d.owner_id=actor then 'owner_private' when d.owner_id is null and d.metadata->'public_corpus'='true'::jsonb then 'existing_shared_library_stewardship' else null end;
+ if scope is null or d.owner_id is distinct from p_expected_owner_id
+  or (d.metadata->'public_corpus' is not distinct from 'true'::jsonb) is distinct from p_expected_public_corpus
+  then raise exception 'readmission_document_scope_required';end if;
+ if d.file_type<>'application/pdf' or 'sha256:'||d.content_hash is distinct from p_source_sha256 or d.file_size<>p_byte_count
+  or 'sha256:'||encode(extensions.digest(convert_to(d.file_name,'UTF8'),'sha256'),'hex')<>p_file_name_sha256
+  or 'sha256:'||encode(extensions.digest(convert_to(d.storage_path,'UTF8'),'sha256'),'hex')<>p_storage_path_sha256
+  then raise exception 'readmission_source_identity_mismatch';end if;
+ -- This path does not bypass the separate governed public-source control plane.
+ if d.metadata ?| array['public_source_version_id','public_source_activation_event_id','source_catalogue_key']
+  then raise exception 'readmission_governed_source_requires_its_existing_control_plane';end if;
+ if not ingestion_generation_evidence.keys(p_authority,array['version','sourceRole','authorityBasis','licencePolicy','rightsEvidenceRef','publisher','jurisdiction','publicationDate','effectiveDate','reviewDate','expiryDate','currentness','supersedesDocumentId','purpose','supportedFeatures','providerProcessing'])
+  or p_authority->'version' is distinct from '1'::jsonb or p_authority->>'authorityBasis' is distinct from 'administrator_template'
+  or coalesce(p_authority->>'licencePolicy','') not in ('review_required','public_index_permitted')
+  or coalesce(p_authority->>'jurisdiction','') not in ('Australia','Australia/WA')
+  or coalesce(p_authority->>'currentness','') not in ('current','unknown')
+  or p_authority->>'purpose' is distinct from 'clinical_retrieval' or p_authority->>'providerProcessing' is distinct from 'permitted'
+  or coalesce(p_authority->>'sourceRole','') not in ('local_guideline','clinical_guideline','clinical_reference','service_directory','form_reference','tool_reference','safety_alert','regulatory','quality_standard','legal','subsidy','professional_review','service_policy')
+  or jsonb_typeof(p_authority->'rightsEvidenceRef') is distinct from 'string' or length(p_authority->>'rightsEvidenceRef') not between 1 and 500
+  or jsonb_typeof(p_authority->'publisher') is distinct from 'string' or length(p_authority->>'publisher') not between 1 and 300
+  or jsonb_typeof(p_authority->'supportedFeatures') is distinct from 'array'
+  then raise exception 'readmission_invalid_authority';end if;
+ if jsonb_array_length(p_authority->'supportedFeatures') not between 1 and 3
+  or exists(select 1 from jsonb_array_elements_text(p_authority->'supportedFeatures') f where f not in ('images','tables','text'))
+  or (select count(distinct f) from jsonb_array_elements_text(p_authority->'supportedFeatures') f)<>jsonb_array_length(p_authority->'supportedFeatures')
+  or p_authority->'supportedFeatures' is distinct from (select jsonb_agg(f order by f collate "C") from jsonb_array_elements_text(p_authority->'supportedFeatures') f)
+  then raise exception 'readmission_invalid_features';end if;
+ foreach value in array array['publicationDate','effectiveDate','reviewDate','expiryDate'] loop
+  if p_authority->value is distinct from 'null'::jsonb then
+   if jsonb_typeof(p_authority->value) is distinct from 'string' or coalesce(p_authority->>value,'') !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' then raise exception 'readmission_invalid_date';end if;
+   date_value:=(p_authority->>value)::date;
+   if (value='effectiveDate' and date_value>current_date) or (value in ('reviewDate','expiryDate') and date_value<=current_date) then raise exception 'readmission_source_not_current';end if;
+  end if;
+ end loop;
+ if p_authority->'supersedesDocumentId' is distinct from 'null'::jsonb and coalesce(p_authority->>'supersedesDocumentId','') !~ '^[0-9a-f-]{36}$' then raise exception 'readmission_invalid_supersession';end if;
+ request:=jsonb_build_object('version','administrator-current-reindex-readmission-v1','administratorId',actor,'documentId',d.id,'documentOwnerId',d.owner_id,
+  'publicCorpus',p_expected_public_corpus,'sourceSha256',p_source_sha256,'byteCount',p_byte_count,'fileNameSha256',p_file_name_sha256,'storagePathSha256',p_storage_path_sha256,'authority',p_authority,'maxAttempts',p_max_attempts,'correlationId',p_correlation_id);
+ request_digest:='sha256:'||encode(extensions.digest(convert_to(request::text,'UTF8'),'sha256'),'hex');
+ select * into prior from public.document_admission_events e where e.document_id=d.id and e.administrator_id=actor and e.correlation_id=p_correlation_id order by e.created_at desc limit 1;
+ if found then
+  if prior.request_digest<>request_digest then raise exception 'readmission_replay_conflict';end if;
+  return jsonb_build_object('outcome','replayed','admissionEventId',prior.id,'jobId',prior.ingestion_job_id,'scope',scope,'documentOwnerId',d.owner_id,'stewardId',actor);
+ end if;
+ perform 1 from public.ingestion_jobs where document_id=d.id order by id for update;
+ perform 1 from public.indexing_v3_agent_jobs where document_id=d.id order by id for update;
+ if exists(select 1 from public.ingestion_jobs where document_id=d.id and status in ('pending','processing'))
+  or exists(select 1 from public.indexing_v3_agent_jobs where document_id=d.id and status='processing' and lease_expires_at>now_at)
+  then raise exception 'readmission_active_attempt';end if;
+ admission:=jsonb_build_object('version','administrator-current-reindex-readmission-v1','scope',scope,'administratorId',actor,
+  'documentOwnerId',d.owner_id,'sourceSha256',p_source_sha256,'previousAdmissionEventId',d.metadata->'admission_event_id','origin','historical_upload_origin_not_established','clinicalApproval','not_granted','publicationApproval','not_granted');
+ next_metadata:=d.metadata||jsonb_build_object('admission_event_id',event_id,'admission_policy_version','trusted-document-admission-v1','authority',p_authority,
+  'authority_basis','administrator_template','provider_processing','permitted','purpose','clinical_retrieval','supported_features',p_authority->'supportedFeatures',
+  'readmitted_at',now_at,'reindex_readmission',admission);
+ for pair in select * from (values ('source_role','sourceRole'),('licence_policy','licencePolicy'),('rights_evidence_ref','rightsEvidenceRef'),('publisher','publisher'),('jurisdiction','jurisdiction'),('publication_date','publicationDate'),('effective_date','effectiveDate'),('review_date','reviewDate'),('expiry_date','expiryDate'),('document_status','currentness'),('supersedes_document_id','supersedesDocumentId')) p(metadata_key,authority_key) loop
+  next_metadata:=next_metadata||jsonb_build_object(pair.metadata_key,p_authority->pair.authority_key);
+ end loop;
+ insert into public.ingestion_jobs(id,document_id,batch_id,status,stage,progress,max_attempts) values(job_id,d.id,d.import_batch_id,'pending','administrator readmission',0,p_max_attempts) returning * into j;
+ insert into public.document_admission_events(id,document_id,ingestion_job_id,staging_owner_id,source_channel,actor_kind,administrator_id,backend_principal,correlation_id,admission_policy_version,content_sha256,file_name_sha256,storage_path_sha256,mime_type,byte_count,authority,admission_digest,document_input_digest,request_digest)
+ values(event_id,d.id,j.id,actor,'admin_api','administrator',actor,null,p_correlation_id,'trusted-document-admission-v1',p_source_sha256,p_file_name_sha256,p_storage_path_sha256,d.file_type,p_byte_count,p_authority,
+  'sha256:'||encode(extensions.digest(convert_to(admission::text,'UTF8'),'sha256'),'hex'),'sha256:'||encode(extensions.digest(convert_to(to_jsonb(d)::text,'UTF8'),'sha256'),'hex'),request_digest);
+ update public.documents set metadata=next_metadata,updated_at=now_at where id=d.id;
+ -- Visibility, ownership, clinical sign-off and the committed generation were not altered.
+ return jsonb_build_object('outcome','created','admissionEventId',event_id,'jobId',j.id,'scope',scope,'documentOwnerId',d.owner_id,'stewardId',actor,'generationActivated',false);
+end $$;
+alter function public.readmit_administrator_document_for_reindex(uuid,uuid,uuid,boolean,text,bigint,text,text,jsonb,integer) owner to postgres;
+revoke all on function public.readmit_administrator_document_for_reindex(uuid,uuid,uuid,boolean,text,bigint,text,text,jsonb,integer) from public,anon,service_role;
+grant execute on function public.readmit_administrator_document_for_reindex(uuid,uuid,uuid,boolean,text,bigint,text,text,jsonb,integer) to authenticated;
+
+create function public.read_administrator_reindex_authority(p_fence jsonb,p_generation uuid)
+returns jsonb language plpgsql security definer set search_path='' as $$
+declare a jsonb;ad public.document_admission_events;d jsonb;marker jsonb;scope text;
+begin
+ a:=public.assert_current_ingestion_attempt(p_fence,p_generation);
+ if a is null then raise exception 'readmission_current_attempt_required';end if;
+ d:=a->'document';marker:=d->'metadata'->'reindex_readmission';
+ select * into strict ad from public.document_admission_events where id=(d->'metadata'->>'admission_event_id')::uuid;
+ scope:=case when d->>'owner_id'=ad.administrator_id::text then 'owner_private'
+  when d->>'owner_id' is null and d->'metadata'->'public_corpus'='true'::jsonb then 'existing_shared_library_stewardship' else null end;
+ if scope is null or marker->>'version' is distinct from 'administrator-current-reindex-readmission-v1'
+  or marker->>'scope' is distinct from scope or marker->>'administratorId' is distinct from ad.administrator_id::text
+  or marker->'documentOwnerId' is distinct from d->'owner_id'
+  or ad.administrator_id is distinct from ad.staging_owner_id or ad.actor_kind<>'administrator' or ad.source_channel<>'admin_api'
+  or ad.ingestion_job_id is distinct from (p_fence->>'job_id')::uuid
+  or ad.document_id::text is distinct from d->>'id' or ad.content_sha256 is distinct from 'sha256:'||(d->>'content_hash')
+  or to_jsonb(ad.byte_count) is distinct from d->'file_size' or ad.mime_type is distinct from d->>'file_type'
+  or ad.file_name_sha256 is distinct from 'sha256:'||encode(extensions.digest(convert_to(d->>'file_name','UTF8'),'sha256'),'hex')
+  or ad.storage_path_sha256 is distinct from 'sha256:'||encode(extensions.digest(convert_to(d->>'storage_path','UTF8'),'sha256'),'hex')
+  or ad.authority is distinct from d->'metadata'->'authority' or ad.authority->>'providerProcessing' is distinct from 'permitted'
+  or d->'metadata'->>'provider_processing' is distinct from 'permitted'
+  then raise exception 'readmission_authority_identity_mismatch';end if;
+ perform 1 from auth.users u where u.id=ad.administrator_id and u.raw_app_meta_data->>'site_role'='administrator'
+  and to_jsonb(u)->>'deleted_at' is null and (to_jsonb(u)->>'banned_until' is null or (to_jsonb(u)->>'banned_until')::timestamptz<=clock_timestamp()) for share;
+ if not found then raise exception 'readmission_current_administrator_required';end if;
+ return jsonb_build_object('ok',true,'providerAuthority',jsonb_build_object('version','administrator-reindex-authority-facts-v1',
+  'scope',scope,'documentId',ad.document_id,'documentOwnerId',d->'owner_id','stewardId',ad.administrator_id,
+  'jobId',p_fence->'job_id','generationId',p_generation,'authorityDigest',a->'authority_digest','sourceSha256',ad.content_sha256,
+  'sourceByteLength',ad.byte_count,'mimeType',ad.mime_type,'fileNameSha256',ad.file_name_sha256,'storagePathSha256',ad.storage_path_sha256,
+  'admissionEventId',ad.id,'admissionDigest',ad.admission_digest,'admissionPolicyVersion',ad.admission_policy_version,
+  'declaredAuthority',ad.authority,'currentRightsEvidence','unavailable','historicalUploadOrigin','not_established'));
+end $$;
+alter function public.read_administrator_reindex_authority(jsonb,uuid) owner to postgres;
+revoke all on function public.read_administrator_reindex_authority(jsonb,uuid) from public,anon,authenticated;
+grant execute on function public.read_administrator_reindex_authority(jsonb,uuid) to service_role;
+
+-- DRAFT: full inspected-PDF candidate activation, including explicit legacy
+-- stewardship. No provider, historical-origin, clinical or publication approval.
+set local lock_timeout='5s';
+set local statement_timeout='120s';
+create table ingestion_generation_evidence.full_pdf_stages(
+ document_id uuid not null references public.documents(id) on delete cascade,generation_id uuid not null,job_id uuid not null,
+ packet_digest text not null,packet jsonb not null,created_at timestamptz not null default clock_timestamp(),
+ primary key(document_id,generation_id),check(packet_digest~'^sha256:[0-9a-f]{64}$'));
+alter table ingestion_generation_evidence.full_pdf_stages owner to postgres;
+alter table ingestion_generation_evidence.full_pdf_stages enable row level security;
+revoke all on ingestion_generation_evidence.full_pdf_stages from public,anon,authenticated,service_role;
+create function ingestion_generation_evidence.guard_full_pdf_stage() returns trigger language plpgsql set search_path='' as $$
+begin
+ -- The only deletion is the FK cascade after its parent document has actually
+ -- been removed through an already-authorized document deletion. No GUC bypass.
+ if tg_op='DELETE' and pg_trigger_depth()>1 and not exists(select 1 from public.documents where id=old.document_id) then return old;end if;
+ raise exception 'immutable_managed_full_pdf_stage' using errcode='23514';
+end $$;
+create trigger full_pdf_stages_immutable before update or delete on ingestion_generation_evidence.full_pdf_stages
+ for each row execute function ingestion_generation_evidence.guard_full_pdf_stage();
+
+create function ingestion_generation_evidence.full_pdf_ref(b bytea) returns jsonb language sql immutable set search_path='' as $$
+ select jsonb_build_object('bytesHex',encode(b,'hex'),'sha256','sha256:'||encode(extensions.digest(b,'sha256'),'hex'),'byteLength',octet_length(b))
+$$;
+
+create function ingestion_generation_evidence.assert_full_pdf_packet(f jsonb,g uuid,p jsonb)
+returns jsonb language plpgsql set search_path='' as $$
+declare a jsonb;facts jsonb;c ingestion_generation_evidence.candidates;identity jsonb;inspection jsonb;rows jsonb;
+ pg jsonb;image jsonb;source jsonb;table_item jsonb;r jsonb;row_family text;ordinal integer:=0;image_count integer:=0;chunk_count integer;
+ retained ingestion_generation_evidence.retained_artifacts;provenance jsonb;raw_bytes bytea;covered integer;page_text text;pages jsonb:='[]';
+ inspected timestamptz;expires timestamptz;total_bytes bigint:=0;expected_features jsonb;source_units integer:=0;feature_family text;box jsonb;box_index integer;feature_id text;chunk_ordinal integer:=0;
+begin
+ a:=public.assert_current_ingestion_attempt(f,g);if a is null then raise exception 'managed_full_pdf_current_attempt_required';end if;
+ facts:=public.read_administrator_reindex_authority(f,g)->'providerAuthority';
+ select * into strict c from ingestion_generation_evidence.candidates where document_id=(f->>'document_id')::uuid and generation_id=g for update;
+ if octet_length(convert_to(p::text,'UTF8'))>67108864 or not ingestion_generation_evidence.keys(p,array['version','profileId','identity','inspection','rows','quality','deferredOptionalFamilies','clinicalApproval','publicationApproval'])
+  or p->>'version' is distinct from 'managed-full-pdf-packet-v1' or p->>'profileId' is distinct from 'administrator-inspected-full-pdf-v1'
+  or p->>'clinicalApproval' is distinct from 'not_granted' or p->>'publicationApproval' is distinct from 'not_granted'
+  then raise exception 'managed_full_pdf_invalid_packet';end if;
+ identity:=p->'identity';inspection:=p->'inspection';rows:=p->'rows';
+ if identity->>'documentId' is distinct from c.document_id::text or identity->>'generationId' is distinct from g::text
+  or identity->>'jobId' is distinct from c.job_id::text or identity->>'firstLeaseToken' is distinct from c.first_lease_token::text
+  or identity->>'workerId' is distinct from f->>'worker_id' or identity->>'authorityDigest' is distinct from c.authority_digest
+  or identity->'documentOwnerId' is distinct from facts->'documentOwnerId' or identity->'stewardId' is distinct from facts->'stewardId'
+  or identity->>'sourceSha256' is distinct from c.source_sha256 or identity->'sourceByteLength' is distinct from to_jsonb(c.source_byte_length)
+  or identity->>'sourceExpectationDigest' is distinct from c.source_expectation_digest
+  or identity->'predecessorGenerationId' is distinct from coalesce(to_jsonb(c.predecessor_generation_id),'null'::jsonb)
+  or identity->'attemptNumber' is distinct from a->'job'->'attempt_count' or identity->'batchId' is distinct from a->'job'->'batch_id'
+  then raise exception 'managed_full_pdf_identity_mismatch';end if;
+ if not ingestion_generation_evidence.keys(rows,array['chunks','images','table_facts','embedding_fields','index_units','sections','memory_cards'])
+  then raise exception 'managed_full_pdf_row_families';end if;
+ if inspection->>'version' is distinct from 'administrator-rich-pdf-inspection-v2'
+  or inspection->>'sourceSha256' is distinct from c.source_sha256 or inspection->'sourceByteLength' is distinct from to_jsonb(c.source_byte_length)
+  or inspection->>'pageInventory' is distinct from 'complete' or inspection->>'activeContent' is distinct from 'absent'
+  or inspection->>'encryption' is distinct from 'not_encrypted' or inspection->>'hiddenText' is distinct from 'consistent'
+  or inspection->>'verificationScope' is distinct from 'structural_and_extracted_bytes_not_clinical_semantic_approval'
+  or inspection->'binding' is distinct from jsonb_build_object('admissionEventId',facts->'admissionEventId','documentId',c.document_id,'generationId',g,
+   'jobId',c.job_id,'attemptId',c.job_id::text||':'||(a->'job'->>'attempt_count')||':'||c.first_lease_token::text,'leaseId',c.first_lease_token,'contentSha256',c.source_sha256,'authorityDigest',c.authority_digest)
+  or jsonb_typeof(inspection->'inspectedAt') is distinct from 'string' or jsonb_typeof(inspection->'expiresAt') is distinct from 'string'
+  or coalesce(inspection->>'inspectedAt','') !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,9})?Z$'
+  or coalesce(inspection->>'expiresAt','') !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,9})?Z$'
+  then raise exception 'managed_full_pdf_inspection_binding';end if;
+ begin inspected:=(inspection->>'inspectedAt')::timestamptz;expires:=(inspection->>'expiresAt')::timestamptz;
+ exception when invalid_datetime_format or datetime_field_overflow then raise exception 'managed_full_pdf_inspection_binding';end;
+ if inspected>clock_timestamp() or expires<=clock_timestamp() or expires<=inspected or expires>inspected+interval '1 day' then raise exception 'managed_full_pdf_inspection_expired';end if;
+ if jsonb_typeof(inspection->'pages') is distinct from 'array' or jsonb_array_length(inspection->'pages') not between 1 and 5000
+  or inspection->'pageCount' is distinct from to_jsonb(jsonb_array_length(inspection->'pages'))
+  or jsonb_array_length(inspection->'sourceInventory')<>jsonb_array_length(inspection->'pages')
+  or jsonb_array_length(rows->'images')<>jsonb_array_length(inspection->'images') then raise exception 'managed_full_pdf_inspection_population';end if;
+ foreach row_family in array array['chunks','images','table_facts','embedding_fields','index_units','sections','memory_cards'] loop
+  if jsonb_typeof(rows->row_family) is distinct from 'array' or jsonb_array_length(rows->row_family)>20000
+   or (select count(distinct x->>'id') from jsonb_array_elements(rows->row_family) x)<>jsonb_array_length(rows->row_family)
+   then raise exception 'managed_full_pdf_row_population';end if;
+  for r in select value from jsonb_array_elements(rows->row_family) loop
+   if coalesce(r->>'id','')!~'^[0-9a-f-]{36}$' or r->>'document_id' is distinct from c.document_id::text or r->>'index_generation_id' is distinct from g::text
+    or r->'metadata'->>'index_generation_id' is distinct from g::text
+    or (row_family not in ('images','chunks') and r->'owner_id' is distinct from facts->'documentOwnerId')
+    then raise exception 'managed_full_pdf_row_identity';end if;
+   if row_family in ('chunks','embedding_fields','index_units','memory_cards') then
+    if jsonb_typeof(r->'embedding') is distinct from 'array' or jsonb_array_length(r->'embedding')<>1536
+     or exists(select 1 from jsonb_array_elements(r->'embedding') v where jsonb_typeof(v) is distinct from 'number')
+     or not exists(select 1 from jsonb_array_elements_text(r->'embedding') v where v::double precision<>0)
+     then raise exception 'managed_full_pdf_embedding_invalid';end if;
+   end if;
+   if r->>'source_chunk_id' is not null and not exists(select 1 from jsonb_array_elements(rows->'chunks') parent where parent->'id'=r->'source_chunk_id')
+    then raise exception 'managed_full_pdf_chunk_parent';end if;
+   if r->>'source_image_id' is not null and not exists(select 1 from jsonb_array_elements(rows->'images') parent where parent->'id'=r->'source_image_id')
+    then raise exception 'managed_full_pdf_image_parent';end if;
+   if row_family='sections' and exists(select 1 from jsonb_array_elements(r->'chunk_ids') link where not exists(select 1 from jsonb_array_elements(rows->'chunks') parent where parent->'id'=link))
+    then raise exception 'managed_full_pdf_section_parent';end if;
+   if row_family='memory_cards' and (exists(select 1 from jsonb_array_elements(r->'source_chunk_ids') link where not exists(select 1 from jsonb_array_elements(rows->'chunks') parent where parent->'id'=link))
+    or exists(select 1 from jsonb_array_elements(r->'source_image_ids') link where not exists(select 1 from jsonb_array_elements(rows->'images') parent where parent->'id'=link))
+    or(r->>'section_id' is not null and not exists(select 1 from jsonb_array_elements(rows->'sections') parent where parent->'id'=r->'section_id')))
+    then raise exception 'managed_full_pdf_memory_parent';end if;
+  end loop;
+ end loop;
+ chunk_count:=jsonb_array_length(rows->'chunks');
+ for pg in select value from jsonb_array_elements(inspection->'pages') loop
+  ordinal:=ordinal+1;covered:=0;source:=inspection->'sourceInventory'->(ordinal-1);page_text:=pg->>'text';raw_bytes:=convert_to(page_text,'UTF8');total_bytes:=total_bytes+octet_length(raw_bytes);
+  if pg->'pageNumber' is distinct from to_jsonb(ordinal) or source->'pageNumber' is distinct from to_jsonb(ordinal)
+   or pg->>'textSha256' is distinct from 'sha256:'||encode(extensions.digest(raw_bytes,'sha256'),'hex')
+   or pg->>'nativeTextSha256' is distinct from source->>'nativeTextSha256'
+   or pg->'originalFeatures' is distinct from source-array['pageNumber','nativeTextSha256','rasterBboxes','vectorBboxes','tableBboxes']
+   or jsonb_typeof(pg->'ocrUsed') is distinct from 'boolean' then raise exception 'managed_full_pdf_page_binding';end if;
+  source_units:=source_units+1;
+  if not exists(select 1 from jsonb_array_elements(c.source_expectation->'units') u where u->>'id'='source-page-'||ordinal and u->'required'='true'::jsonb
+   and u->>'locator'='pdf-page:'||ordinal||':original-native:'||(source->>'nativeTextSha256') and u->'dependencies'='[]'::jsonb)
+   then raise exception 'managed_full_pdf_original_source_unit';end if;
+  foreach feature_family in array array['raster','figure','table'] loop
+   box_index:=0;
+   for box in select value from jsonb_array_elements(source->(case feature_family when 'raster' then 'rasterBboxes' when 'figure' then 'vectorBboxes' else 'tableBboxes' end)) loop
+    feature_id:='source-page-'||ordinal||'-'||feature_family||'-'||box_index;source_units:=source_units+1;
+    if not exists(select 1 from jsonb_array_elements(c.source_expectation->'units') u where u->>'id'=feature_id and u->'required'='true'::jsonb
+     and u->'dependencies'=jsonb_build_array('source-page-'||ordinal)
+     and u->>'locator'='pdf-page:'||ordinal||':'||feature_family||':'||box_index||':sha256:'||encode(extensions.digest(convert_to(public.site_content_canonical_json(box),'UTF8'),'sha256'),'hex'))
+     then raise exception 'managed_full_pdf_original_feature_unit';end if;
+    box_index:=box_index+1;
+   end loop;
+  end loop;
+  select * into strict retained from ingestion_generation_evidence.retained_artifacts ra where ra.document_id=c.document_id and ra.generation_id=g and ra.family='private_objects' and ra.unit_key='page:'||ordinal||':extracted';
+  if retained.artifact_bytes is distinct from raw_bytes or retained.sha256 is distinct from pg->>'textSha256'
+   or not exists(select 1 from ingestion_generation_evidence.retained_artifacts ra where ra.document_id=c.document_id and ra.generation_id=g and ra.family='private_objects' and ra.unit_key='page:'||ordinal||':persisted' and ra.artifact_bytes=raw_bytes)
+   or not exists(select 1 from ingestion_generation_evidence.retained_artifacts ra where ra.document_id=c.document_id and ra.generation_id=g and ra.family='private_objects' and ra.unit_key='page:'||ordinal||':original-provenance'
+    and 'sha256:'||encode(extensions.digest(convert_to(public.site_content_canonical_json((convert_from(ra.artifact_bytes,'UTF8')::jsonb)->'source_provenance'),'UTF8'),'sha256'),'hex')=pg->>'sourceProvenanceSha256')
+   then raise exception 'managed_full_pdf_page_retention';end if;
+  select convert_from(ra.artifact_bytes,'UTF8')::jsonb into strict r from ingestion_generation_evidence.retained_artifacts ra where ra.document_id=c.document_id and ra.generation_id=g and ra.family='pages' and ra.unit_key=ordinal::text;
+  if r->>'text' is distinct from page_text or r->'ocr_used' is distinct from pg->'ocrUsed' then raise exception 'managed_full_pdf_page_projection';end if;
+  pages:=pages||jsonb_build_array(r);
+  for r in select value from jsonb_array_elements(rows->'chunks') where (value->>'page_number')::integer=ordinal order by (value->>'chunk_index')::integer loop
+   if r->'chunk_index' is distinct from to_jsonb(chunk_ordinal) then raise exception 'managed_full_pdf_chunk_population';end if;chunk_ordinal:=chunk_ordinal+1;
+   raw_bytes:=convert_to(r->>'content','UTF8');if octet_length(raw_bytes)>8191 or btrim(r->>'content')='' or raw_bytes is distinct from substring(convert_to(page_text,'UTF8') from covered+1 for octet_length(raw_bytes))
+    then raise exception 'managed_full_pdf_chunk_source_partition';end if;covered:=covered+octet_length(raw_bytes);
+  end loop;
+  if covered<>octet_length(convert_to(page_text,'UTF8')) then raise exception 'managed_full_pdf_uncovered_page_text';end if;
+  if (source->>'rasterImages')::integer<>jsonb_array_length(source->'rasterBboxes') or (source->>'vectorDrawings')::integer<>jsonb_array_length(source->'vectorBboxes')
+   or (source->>'nativeTables')::integer<>jsonb_array_length(source->'tableBboxes') then raise exception 'managed_full_pdf_original_inventory';end if;
+  if (source->>'nativeTables')::integer>0 and not exists(select 1 from jsonb_array_elements(inspection->'tables') t where t->'pageNumber'=pg->'pageNumber')
+   then raise exception 'managed_full_pdf_missing_source_tables';end if;
+  if ((source->>'rasterImages')::integer>0 or (source->>'vectorDrawings')::integer>0) and not exists(select 1 from jsonb_array_elements(inspection->'images') im where im->'pageNumber'=pg->'pageNumber')
+   then raise exception 'managed_full_pdf_missing_source_visuals';end if;
+ end loop;
+ if source_units<>jsonb_array_length(c.source_expectation->'units') or chunk_ordinal<>chunk_count then raise exception 'managed_full_pdf_required_population';end if;
+ if total_bytes>67108864 or (select count(*) from ingestion_generation_evidence.retained_artifacts ra where ra.document_id=c.document_id and ra.generation_id=g and ra.family='pages')<>ordinal
+  then raise exception 'managed_full_pdf_page_population';end if;
+ for image in select value from jsonb_array_elements(inspection->'images') loop
+  image_count:=image_count+1;if image->'ordinal' is distinct from to_jsonb(image_count) then raise exception 'managed_full_pdf_image_ordinal';end if;
+  select * into strict retained from ingestion_generation_evidence.retained_artifacts ra where ra.document_id=c.document_id and ra.generation_id=g and ra.family='private_objects' and ra.unit_key='image:'||image_count||':binary';
+  if retained.sha256 is distinct from image->>'sha256' or to_jsonb(retained.byte_length) is distinct from image->'byteLength'
+   or retained.sha256<>'sha256:'||encode(extensions.digest(retained.artifact_bytes,'sha256'),'hex') then raise exception 'managed_full_pdf_image_bytes';end if;
+  select convert_from(ra.artifact_bytes,'UTF8')::jsonb into strict provenance from ingestion_generation_evidence.retained_artifacts ra where ra.document_id=c.document_id and ra.generation_id=g and ra.family='private_objects' and ra.unit_key='image:'||image_count||':provenance';
+  if image->>'descriptorSha256' is distinct from 'sha256:'||encode(extensions.digest(convert_to(public.site_content_canonical_json(provenance->'descriptor'),'UTF8'),'sha256'),'hex')
+   or image->>'metadataSha256' is distinct from 'sha256:'||encode(extensions.digest(convert_to(public.site_content_canonical_json(coalesce(provenance->'descriptor'->'metadata','{}'::jsonb)),'UTF8'),'sha256'),'hex')
+   then raise exception 'managed_full_pdf_image_provenance';end if;
+  r:=rows->'images'->(image_count-1);
+  if r->'page_number' is distinct from image->'pageNumber' or r->>'image_hash' is distinct from substring(image->>'sha256' from 8)
+   or r->'metadata'->'managed_artifact_reference' is distinct from jsonb_build_object('version','managed-pdf-image-v1','documentId',c.document_id,'generationId',g,'imageOrdinal',image_count,'sha256',image->'sha256')
+   or r->>'storage_path' is distinct from 'managed-pdf/'||c.document_id::text||'/'||g::text||'/'||image_count
+   then raise exception 'managed_full_pdf_image_projection';end if;
+ end loop;
+ if (select count(*) from ingestion_generation_evidence.retained_artifacts ra where ra.document_id=c.document_id and ra.generation_id=g and ra.representation='image_binary')<>image_count
+  then raise exception 'managed_full_pdf_image_population';end if;
+ for table_item in select value from jsonb_array_elements(inspection->'tables') loop
+  r:=rows->'images'->((table_item->>'imageOrdinal')::integer-1);
+  if r is null or table_item->'rows' is distinct from r->'metadata'->'table_rows'
+   or table_item->>'rowsSha256' is distinct from 'sha256:'||encode(extensions.digest(convert_to(public.site_content_canonical_json(table_item->'rows'),'UTF8'),'sha256'),'hex')
+   or r->'metadata'->'rows_truncated'='true'::jsonb then raise exception 'managed_full_pdf_table_source';end if;
+  if jsonb_array_length(table_item->'rows')>1 and not exists(select 1 from jsonb_array_elements(rows->'table_facts') fact_row where fact_row->'source_image_id'=r->'id')
+   then raise exception 'managed_full_pdf_required_table_facts_missing';end if;
+ end loop;
+ expected_features:=jsonb_build_object('nativeText',case when exists(select 1 from jsonb_array_elements(inspection->'sourceInventory') s where s->'nativeText'='true'::jsonb)then 'complete'else 'not_present'end,
+  'nativeTables',case when exists(select 1 from jsonb_array_elements(inspection->'sourceInventory') s where (s->>'nativeTables')::integer>0)then 'complete'else 'not_present'end,
+  'raster',case when exists(select 1 from jsonb_array_elements(inspection->'sourceInventory') s where (s->>'rasterImages')::integer>0)then 'complete'else 'not_present'end,
+  'figures',case when exists(select 1 from jsonb_array_elements(inspection->'sourceInventory') s where (s->>'rasterImages')::integer>0 or(s->>'vectorDrawings')::integer>0)then 'complete'else 'not_present'end,
+  'ocr',case when exists(select 1 from jsonb_array_elements(inspection->'pages') s where s->'ocrUsed'='true'::jsonb)then 'complete'else 'not_present'end);
+ if inspection->'featureCoverage' is distinct from expected_features then raise exception 'managed_full_pdf_feature_coverage';end if;
+ if jsonb_typeof(p->'quality'->'quality_score') is distinct from 'number' or (p->'quality'->>'quality_score')::numeric not between 0 and 1
+  or coalesce(p->'quality'->>'extraction_quality','') not in('good','partial')
+  or p->'quality'->'metrics'->>'quality_assessment_version' is distinct from 'existing-core-index-quality-v1'
+  or p->'quality'->'metrics'->'page_count' is distinct from to_jsonb(ordinal)
+  or p->'quality'->'metrics'->'extracted_image_count' is distinct from to_jsonb(image_count)
+  or p->'quality'->'metrics'->'ocr_page_count' is distinct from to_jsonb((select count(*)::integer from jsonb_array_elements(inspection->'pages') s where s->'ocrUsed'='true'::jsonb))
+  or p->'quality'->'metrics'->'needs_ocr_page_count' is distinct from '0'::jsonb
+  then raise exception 'managed_full_pdf_observed_quality_required';end if;
+ if a->'document'->>'index_generation_id' is not null and exists(select 1 from public.document_index_quality q where q.document_id=c.document_id
+  and ((q.extraction_quality='good' and p->'quality'->>'extraction_quality'<>'good') or q.quality_score>(p->'quality'->>'quality_score')::real))
+  then raise exception 'managed_full_pdf_quality_regression';end if;
+ for r in select value from jsonb_array_elements(rows->'table_facts') loop
+  select value into strict image from jsonb_array_elements(rows->'images') where value->'id'=r->'source_image_id';
+  if r->'metadata'->'cells' is distinct from (select jsonb_agg(to_jsonb(btrim(left(regexp_replace(cell,'\s+',' ','g'),240))))
+    from jsonb_array_elements_text(image->'metadata'->'table_rows'->((r->'metadata'->>'row_index')::integer)) cell)
+   or not exists(select 1 from jsonb_array_elements(rows->'chunks') ch where ch->'id'=r->'source_chunk_id' and ch->'page_number'=r->'page_number')
+   then raise exception 'managed_full_pdf_fact_source';end if;
+  if (r->>'threshold_value' is not null and not exists(select 1 from jsonb_array_elements_text(r->'metadata'->'cells') cell where regexp_replace(btrim(cell),'\s+',' ','g')=r->>'threshold_value'))
+   or(r->>'action' is not null and not exists(select 1 from jsonb_array_elements_text(r->'metadata'->'cells') cell where regexp_replace(btrim(cell),'\s+',' ','g')=r->>'action'))
+   then raise exception 'managed_full_pdf_fact_relationship';end if;
+ end loop;
+ if exists(select 1 from ingestion_generation_evidence.retained_artifacts artifact_row where artifact_row.document_id=c.document_id and artifact_row.generation_id=g and
+  (artifact_row.source_sha256<>c.source_sha256 or artifact_row.byte_length<>octet_length(artifact_row.artifact_bytes) or artifact_row.sha256<>'sha256:'||encode(extensions.digest(artifact_row.artifact_bytes,'sha256'),'hex')))
+  then raise exception 'managed_full_pdf_retained_integrity';end if;
+ if exists(select 1 from ingestion_generation_evidence.unit_declarations d left join ingestion_generation_evidence.outcomes o using(document_id,generation_id,family,unit_key)
+  where d.document_id=c.document_id and d.generation_id=g and d.declaration->'required'='true'::jsonb
+  and not(d.family='attempt_control' and d.unit_key='preseal_checkpoint')
+  and(o.outcome->>'disposition' is distinct from 'retained' or not exists(select 1 from ingestion_generation_evidence.retained_artifacts proof_artifact
+   where proof_artifact.document_id=d.document_id and proof_artifact.generation_id=g and proof_artifact.family=d.family and proof_artifact.unit_key=d.unit_key and proof_artifact.sha256=o.outcome->>'artifactSha256')))
+  then raise exception 'managed_full_pdf_required_retention_incomplete';end if;
+ if not exists(select 1 from ingestion_generation_evidence.unit_declarations d where d.document_id=c.document_id and d.generation_id=g and d.family='attempt_control' and d.unit_key='preseal_checkpoint'
+  and d.declaration->'dependencies'='[{"family":"attempt_control","key":"claim_checkpoint"},{"family":"private_objects","key":"original-source"}]'::jsonb)
+  then raise exception 'managed_full_pdf_preseal_declaration_required';end if;
+ return jsonb_build_object('pages',pages,'pageCount',ordinal,'chunkCount',chunk_count,'imageCount',(select count(*) from jsonb_array_elements(rows->'images') im where im->'searchable'='true'::jsonb));
+end $$;
+
+create function public.stage_managed_full_pdf(p_fence jsonb,p_generation uuid,p_packet jsonb)
+returns jsonb language plpgsql security definer set search_path='' as $$
+declare digest text;previous ingestion_generation_evidence.full_pdf_stages;bytes bytea;
+begin
+ perform ingestion_generation_evidence.assert_full_pdf_packet(p_fence,p_generation,p_packet);
+ bytes:=convert_to(public.site_content_canonical_json(p_packet),'UTF8');digest:='sha256:'||encode(extensions.digest(bytes,'sha256'),'hex');
+ select * into previous from ingestion_generation_evidence.full_pdf_stages where document_id=(p_fence->>'document_id')::uuid and generation_id=p_generation;
+ if found then if previous.packet is distinct from p_packet or previous.packet_digest<>digest then raise exception 'managed_full_pdf_immutable_stage';end if;
+ else insert into ingestion_generation_evidence.full_pdf_stages(document_id,generation_id,job_id,packet_digest,packet) values((p_fence->>'document_id')::uuid,p_generation,(p_fence->>'job_id')::uuid,digest,p_packet);end if;
+ return jsonb_build_object('ok',true,'packetDigest',digest,'packet',ingestion_generation_evidence.full_pdf_ref(bytes));
+end $$;
+
+create function ingestion_generation_evidence.full_pdf_rows_match(doc uuid,g uuid,p jsonb)
+returns boolean language plpgsql set search_path='' as $$
+declare row_family text;target text;row jsonb;actual jsonb;total integer;ignored text[]:=array['created_at','updated_at','search_tsv'];
+begin
+ foreach row_family in array array['images','chunks','table_facts','embedding_fields','index_units','sections','memory_cards'] loop
+  target:='public.document_'||row_family;
+  execute format('select count(*) from %s where document_id=$1 and index_generation_id=$2',target) into total using doc,g;
+  if total<>jsonb_array_length(p->'rows'->row_family) then return false;end if;
+  for row in select value from jsonb_array_elements(p->'rows'->row_family) loop
+   execute format('select to_jsonb(t)-$2 from %s t where id=$1',target) into actual using (row->>'id')::uuid,ignored;
+   execute format('select to_jsonb(jsonb_populate_record(null::%s,$1))-$2',target) into row using row,ignored;
+   if actual is distinct from row then return false;end if;
+  end loop;
+ end loop;return true;
+end $$;
+
+create function ingestion_generation_evidence.full_pdf_commit_allowed(f jsonb,g uuid)
+returns boolean language sql stable set search_path='' as $$
+ select coalesce(current_setting('psychsift.full_pdf_terminal_owner',true)=(f->>'document_id')||':'||(f->>'job_id'),false)
+ and exists(select 1 from ingestion_generation_evidence.full_pdf_stages s where s.document_id=(f->>'document_id')::uuid and s.generation_id=g and s.job_id=(f->>'job_id')::uuid
+  and s.packet->'identity'->>'authorityDigest'=f->>'authority_digest' and s.packet->'identity'->>'firstLeaseToken'=f->>'lease_token'
+  and ingestion_generation_evidence.full_pdf_rows_match(s.document_id,g,s.packet))
+$$;
+
+create function public.complete_managed_full_pdf(p_fence jsonb,p_generation uuid,p_packet_digest text,p_read_only boolean default false)
+returns jsonb language plpgsql security definer set search_path='' as $$
+declare s ingestion_generation_evidence.full_pdf_stages;j public.ingestion_jobs;a jsonb;stats jsonb;seal jsonb;seal_bytes bytea;seal_hash text;
+ row_family text;target text;columns text;ignored text[]:=array['created_at','updated_at','search_tsv'];result jsonb;quality jsonb;replay text;claim jsonb;checkpoint bytea;checkpoint_hash text;
+begin
+ if p_read_only is null or not ingestion_generation_evidence.visual_unit_fence(p_fence) then raise exception 'managed_full_pdf_invalid_fence';end if;
+ a:=public.lock_ingestion_document_authority((p_fence->>'document_id')::uuid,false);
+ select * into strict j from public.ingestion_jobs where id=(p_fence->>'job_id')::uuid for update;
+ select * into strict s from ingestion_generation_evidence.full_pdf_stages where document_id=(p_fence->>'document_id')::uuid and generation_id=p_generation for update;
+ if a is null or s.packet_digest is distinct from p_packet_digest or s.job_id<>j.id or s.packet->'identity'->>'authorityDigest' is distinct from a->>'authority_digest'
+  or s.packet->'identity'->>'firstLeaseToken' is distinct from p_fence->>'lease_token' or s.packet->'identity'->>'workerId' is distinct from p_fence->>'worker_id'
+  then raise exception 'managed_full_pdf_terminal_identity';end if;
+ seal:=jsonb_build_object('version','managed-full-pdf-seal-v1','packetDigest',s.packet_digest,'identity',s.packet->'identity','clinicalApproval','not_granted','publicationApproval','not_granted','inspectionScope','structural_and_extracted_bytes_not_clinical_semantic_approval');
+ seal_bytes:=convert_to(seal::text,'UTF8');seal_hash:='sha256:'||encode(extensions.digest(seal_bytes,'sha256'),'hex');
+ if j.status='completed' then
+  perform 1 from auth.users u where u.id=(s.packet->'identity'->>'stewardId')::uuid and u.raw_app_meta_data->>'site_role'='administrator'
+   and to_jsonb(u)->>'deleted_at' is null and(to_jsonb(u)->>'banned_until' is null or(to_jsonb(u)->>'banned_until')::timestamptz<=clock_timestamp()) for share;
+  if not found then raise exception 'managed_full_pdf_steward_revoked';end if;
+  if j.stage<>'full_pdf_completed' or (a->'document'->>'index_generation_id')::uuid is distinct from p_generation or not ingestion_generation_evidence.full_pdf_rows_match(s.document_id,p_generation,s.packet)
+   or not exists(select 1 from ingestion_generation_evidence.prerequisite_accounting where document_id=s.document_id and generation_id=p_generation and snapshot=seal and snapshot_digest=seal_hash)
+   then raise exception 'managed_full_pdf_completed_read_mismatch';end if;replay:='already_completed';
+ else
+  if p_read_only then raise exception 'managed_full_pdf_not_completed';end if;
+  stats:=ingestion_generation_evidence.assert_full_pdf_packet(p_fence,p_generation,s.packet);
+  select convert_from(ra.artifact_bytes,'UTF8')::jsonb into strict claim from ingestion_generation_evidence.retained_artifacts ra where ra.document_id=s.document_id and ra.generation_id=p_generation and ra.family='attempt_control' and ra.unit_key='claim_checkpoint';
+  checkpoint:=convert_to((claim||jsonb_build_object('phase','preseal','terminalVersion','managed-full-pdf-packet-v1','packetDigest',s.packet_digest))::text,'UTF8');
+  checkpoint_hash:='sha256:'||encode(extensions.digest(checkpoint,'sha256'),'hex');
+  insert into ingestion_generation_evidence.retained_artifacts(document_id,generation_id,family,unit_key,group_key,representation,source_sha256,artifact_bytes,sha256,byte_length,locator)
+   values(s.document_id,p_generation,'attempt_control','preseal_checkpoint','control','provenance_json',s.packet->'identity'->>'sourceSha256',checkpoint,checkpoint_hash,octet_length(checkpoint),'ingestion_attempt:full_pdf_preseal');
+  insert into ingestion_generation_evidence.outcomes(document_id,generation_id,family,unit_key,group_key,outcome)
+   values(s.document_id,p_generation,'attempt_control','preseal_checkpoint','control',jsonb_build_object('unitId',jsonb_build_object('family','attempt_control','key','preseal_checkpoint'),'groupKey','control','disposition','retained','artifactSha256',checkpoint_hash,'limitation',null));
+  foreach row_family in array array['images','chunks','table_facts','embedding_fields','index_units','sections','memory_cards'] loop
+   target:='public.document_'||row_family;
+   select string_agg(quote_ident(attname),',' order by attnum) into columns from pg_attribute where attrelid=target::regclass and attnum>0 and not attisdropped and attgenerated='' and attname<>all(ignored);
+   execute format('insert into %s(%s) select %s from jsonb_populate_recordset(null::%s,$1)',target,columns,columns,target) using s.packet->'rows'->row_family;
+  end loop;
+  insert into ingestion_generation_evidence.prerequisite_accounting(document_id,generation_id,snapshot_digest,snapshot) values(s.document_id,p_generation,seal_hash,seal);
+  quality:=s.packet->'quality'||jsonb_build_object('metrics',s.packet->'quality'->'metrics'||jsonb_build_object('full_pdf_seal_digest',seal_hash));
+  perform set_config('psychsift.full_pdf_terminal_owner',s.document_id::text||':'||s.job_id::text,true);
+  result:=public.commit_document_index_generation(p_fence,p_generation,(stats->>'pageCount')::integer,(stats->>'chunkCount')::integer,(stats->>'imageCount')::integer,'{}'::jsonb,stats->'pages',quality);
+  if result->'ok' is distinct from 'true'::jsonb then raise exception 'managed_full_pdf_commit_failed';end if;
+  result:=public.complete_ingestion_job(result->'fence',j.batch_id,'full_pdf_completed');if result->'ok' is distinct from 'true'::jsonb then raise exception 'managed_full_pdf_job_completion_failed';end if;
+  update public.ingestion_jobs set next_run_at=null,lease_expires_at=null,lease_duration_seconds=null where id=s.job_id;
+  perform set_config('psychsift.full_pdf_terminal_owner','',true);replay:='completed';
+ end if;
+ return jsonb_build_object('ok',true,'managedFullPdfTerminal',jsonb_build_object('activated',true,'replay',replay,'seal',ingestion_generation_evidence.full_pdf_ref(seal_bytes)));
+end $$;
+
+create function public.read_managed_pdf_image(p_image_id uuid,p_document_id uuid,p_generation uuid)
+returns jsonb language plpgsql security definer set search_path='' as $$
+declare im public.document_images;ref jsonb;a ingestion_generation_evidence.retained_artifacts;d public.documents;
+begin
+ select * into strict d from public.documents where id=p_document_id for share;
+ if d.index_generation_id is distinct from p_generation then raise exception 'managed_pdf_image_generation_mismatch';end if;
+ select * into strict im from public.document_images where id=p_image_id and document_id=d.id and index_generation_id=p_generation for share;
+ ref:=im.metadata->'managed_artifact_reference';
+ if ref->>'version' is distinct from 'managed-pdf-image-v1' or ref->>'documentId' is distinct from d.id::text or ref->>'generationId' is distinct from p_generation::text
+  or coalesce(ref->>'imageOrdinal','')!~'^[1-9][0-9]*$' then raise exception 'managed_pdf_image_reference_invalid';end if;
+ select * into strict a from ingestion_generation_evidence.retained_artifacts ra where ra.document_id=d.id and ra.generation_id=p_generation and ra.family='private_objects' and ra.unit_key='image:'||(ref->>'imageOrdinal')||':binary';
+ if a.byte_length>16777216 or a.sha256 is distinct from ref->>'sha256' or a.sha256<>'sha256:'||encode(extensions.digest(a.artifact_bytes,'sha256'),'hex')
+  then raise exception 'managed_pdf_image_integrity';end if;
+ return jsonb_build_object('bytesHex',encode(a.artifact_bytes,'hex'),'sha256',a.sha256,'byteLength',a.byte_length,'mimeType',im.mime_type);
+end $$;
+
+do $$
+declare signature text;definition text;old_guard text;
+begin
+ foreach signature in array array['public.commit_document_index_generation(jsonb,uuid,integer,integer,integer,jsonb,jsonb,jsonb)','public.complete_ingestion_job(jsonb,uuid,text)'] loop
+  definition:=pg_get_functiondef(signature::regprocedure);old_guard:=case when signature like 'public.commit_document%' then 'ingestion_generation_evidence.general_pdf_commit_allowed(p_fence,p_generation)' else 'ingestion_generation_evidence.general_pdf_commit_allowed(p_fence,(p_fence->>''expected_generation_id'')::uuid)' end;
+  if length(definition)-length(replace(definition,old_guard,''))<>length(old_guard) then raise exception 'managed_full_pdf_guard_preimage';end if;
+  execute replace(definition,old_guard,old_guard||case when signature like 'public.commit_document%' then ' or ingestion_generation_evidence.full_pdf_commit_allowed(p_fence,p_generation)' else ' or ingestion_generation_evidence.full_pdf_commit_allowed(p_fence,(p_fence->>''expected_generation_id'')::uuid)' end);
+ end loop;
+end $$;
+alter function ingestion_generation_evidence.full_pdf_ref(bytea) owner to postgres;
+alter function ingestion_generation_evidence.guard_full_pdf_stage() owner to postgres;
+alter function ingestion_generation_evidence.assert_full_pdf_packet(jsonb,uuid,jsonb) owner to postgres;
+alter function ingestion_generation_evidence.full_pdf_rows_match(uuid,uuid,jsonb) owner to postgres;
+alter function ingestion_generation_evidence.full_pdf_commit_allowed(jsonb,uuid) owner to postgres;
+revoke all on function ingestion_generation_evidence.full_pdf_ref(bytea),ingestion_generation_evidence.assert_full_pdf_packet(jsonb,uuid,jsonb),ingestion_generation_evidence.full_pdf_rows_match(uuid,uuid,jsonb),ingestion_generation_evidence.full_pdf_commit_allowed(jsonb,uuid) from public,anon,authenticated,service_role;
+revoke all on function ingestion_generation_evidence.guard_full_pdf_stage() from public,anon,authenticated,service_role;
+alter function public.stage_managed_full_pdf(jsonb,uuid,jsonb) owner to postgres;
+alter function public.complete_managed_full_pdf(jsonb,uuid,text,boolean) owner to postgres;
+alter function public.read_managed_pdf_image(uuid,uuid,uuid) owner to postgres;
+revoke execute on function public.stage_managed_full_pdf(jsonb,uuid,jsonb) from public,anon,authenticated;
+revoke execute on function public.complete_managed_full_pdf(jsonb,uuid,text,boolean) from public,anon,authenticated;
+revoke execute on function public.read_managed_pdf_image(uuid,uuid,uuid) from public,anon,authenticated;
+grant execute on function public.stage_managed_full_pdf(jsonb,uuid,jsonb),public.complete_managed_full_pdf(jsonb,uuid,text,boolean),public.read_managed_pdf_image(uuid,uuid,uuid) to service_role;
+
+-- Source migration: 20261104000000_managed_full_pdf_summary_projection.sql
+-- DRAFT: packet-v2 publishes its source-anchored summary atomically with the
+-- candidate pointer. Packet-v1 retains its original contract. No live execution.
+begin;
+set local lock_timeout='5s';
+set local statement_timeout='120s';
+
+-- Preserve the immutable v1 implementations without changing their callers or
+-- ACLs. Copies live in the private evidence schema and receive no service grant.
+do $$
+declare signature text;definition text;old_name text;new_name text;
+begin
+ foreach signature in array array['ingestion_generation_evidence.assert_full_pdf_packet(jsonb,uuid,jsonb)',
+  'ingestion_generation_evidence.full_pdf_rows_match(uuid,uuid,jsonb)'] loop
+  old_name:=split_part(signature,'(',1);new_name:=old_name||'_v1';
+  definition:=pg_get_functiondef(signature::regprocedure);
+  if position('CREATE OR REPLACE FUNCTION '||old_name||'(' in definition)<>1 then raise exception 'managed_full_pdf_summary_preimage';end if;
+  execute replace(definition,'CREATE OR REPLACE FUNCTION '||old_name||'(','CREATE OR REPLACE FUNCTION '||new_name||'(');
+ end loop;
+end $$;
+
+-- Every source ID must be unique, ordered as in its admitted parent list, and
+-- resolve to a packet row. Nested claims use the payload's selected parent IDs.
+create function ingestion_generation_evidence.full_pdf_summary_ids(ids jsonb,parents jsonb)
+returns boolean language plpgsql immutable set search_path='' as $$
+declare x jsonb;ordinal bigint;previous bigint:=0;
+begin
+ if jsonb_typeof(ids) is distinct from 'array' or jsonb_typeof(parents) is distinct from 'array' then return false;end if;
+ for x in select value from jsonb_array_elements(ids) loop
+  if jsonb_typeof(x) is distinct from 'string' then return false;end if;
+  select n into ordinal from jsonb_array_elements(parents) with ordinality as p(value,n) where value=x;
+  if ordinal is null or ordinal<=previous then return false;end if;previous:=ordinal;
+ end loop;return true;
+end $$;
+
+create function ingestion_generation_evidence.full_pdf_summary_label_match(content text,label text)
+returns boolean language plpgsql immutable set search_path='' as $$
+declare haystack text:=lower(content);offset_ integer:=1;found_ integer;before_ text;after_ text;
+begin
+ if label is null or label='' then return false;end if;
+ loop
+  found_:=strpos(substr(haystack,offset_),label);if found_=0 then return false;end if;found_:=found_+offset_-1;
+  before_:=case when found_=1 then '' else substr(haystack,found_-1,1) end;after_:=substr(haystack,found_+length(label),1);
+  if before_!~'[[:alnum:]]' and after_!~'[[:alnum:]]' then return true;end if;offset_:=found_+1;
+ end loop;
+end $$;
+
+create function ingestion_generation_evidence.assert_full_pdf_summary(doc uuid,g uuid,p jsonb)
+returns void language plpgsql set search_path='' as $$
+declare projection jsonb:=p->'summaryProjection';s jsonb;payload jsonb;profile jsonb;owner jsonb;item jsonb;label jsonb;expected_label jsonb;
+ chunks jsonb;images jsonb;chunk_ids jsonb;image_ids jsonb;pages jsonb;key text;field text;expected jsonb;items jsonb:='[]';claims jsonb:='[]';
+ projected text;label_index integer:=0;meta jsonb;provider jsonb;
+ profile_keys text[]:=array['applies_to','key_clinical_actions','medication_dose_monitoring','thresholds_timing','escalation_risk_warnings','required_forms_documentation','not_covered','important_tables_images','best_questions','source_quality_notes'];
+begin
+ if not ingestion_generation_evidence.keys(projection,array['version','summary','labels'])
+  or projection->>'version' is distinct from 'managed-pdf-summary-projection-v1' then raise exception 'managed_full_pdf_summary_projection';end if;
+ s:=projection->'summary';owner:=p->'identity'->'documentOwnerId';meta:=s->'metadata';payload:=meta->'source_anchored_summary_v1';
+ if not ingestion_generation_evidence.keys(s,array['document_id','owner_id','summary','clinical_specifics','source_chunk_ids','source_image_ids','model','generated_at','metadata'])
+  or s->>'document_id' is distinct from doc::text or s->'owner_id' is distinct from owner
+  or not ingestion_generation_evidence.keys(meta,array['index_generation_id','source_anchored_summary_v1','source_anchored_summary_projection_complete_v1','managed_summary_request_sha256','managed_summary_provider_evidence'])
+  or meta->>'index_generation_id' is distinct from g::text or meta->'source_anchored_summary_projection_complete_v1' is distinct from 'true'::jsonb
+  or coalesce(meta->>'managed_summary_request_sha256','')!~'^sha256:[a-f0-9]{64}$'
+  then raise exception 'managed_full_pdf_summary_identity';end if;
+ provider:=meta->'managed_summary_provider_evidence';
+ if jsonb_typeof(provider) is distinct from 'object' or provider-array['requestedModel','providerModel','requestId','usage']<>'{}'::jsonb
+  or provider->>'requestedModel' is distinct from s->>'model' or jsonb_typeof(provider->'requestedModel') is distinct from 'string'
+  or jsonb_typeof(provider->'providerModel') is distinct from 'string' or nullif(btrim(provider->>'providerModel'),'') is null
+  or jsonb_typeof(provider->'requestId') is distinct from 'string' or nullif(btrim(provider->>'requestId'),'') is null
+  then raise exception 'managed_full_pdf_summary_provider';end if;
+ if not ingestion_generation_evidence.keys(payload,array['summary_kind','summary_version','document_id','index_generation_id','model','model_version','generated_at','source_chunk_ids','source_image_ids','summary','clinical_specifics','labels','heuristic_fallback'])
+  or payload->>'summary_kind' is distinct from 'structured' or payload->'heuristic_fallback' is distinct from 'false'::jsonb
+  or payload->>'summary_version' is distinct from 'source-anchored-summary-v1'
+  or payload->>'document_id' is distinct from doc::text or payload->>'index_generation_id' is distinct from g::text
+  or coalesce(payload->>'model_version','') not in ('rag-deep-memory-v1','rag-deep-memory-v2')
+  or jsonb_typeof(payload->'model') is distinct from 'string' or length(payload->>'model') not between 1 and 200
+  or nullif(btrim(payload->>'model'),'') is null or payload->>'model' is distinct from s->>'model'
+  or coalesce(payload->>'generated_at','')!~'^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z$'
+  then raise exception 'managed_full_pdf_summary_payload';end if;
+ perform (payload->>'generated_at')::timestamptz;
+ foreach key in array array['summary','clinical_specifics','source_chunk_ids','source_image_ids','model','generated_at'] loop
+  if s->key is distinct from payload->key then raise exception 'managed_full_pdf_summary_projection_mismatch';end if;
+ end loop;
+ chunks:=p->'rows'->'chunks';images:=p->'rows'->'images';
+ select coalesce(jsonb_agg(value->'id'),'[]') into chunk_ids from jsonb_array_elements(chunks);
+ select coalesce(jsonb_agg(value->'id'),'[]') into image_ids from jsonb_array_elements(images);
+ if not ingestion_generation_evidence.full_pdf_summary_ids(payload->'source_chunk_ids',chunk_ids)
+  or not ingestion_generation_evidence.full_pdf_summary_ids(payload->'source_image_ids',image_ids)
+  or jsonb_array_length(payload->'source_chunk_ids')>36 or jsonb_array_length(payload->'source_image_ids')>64
+  or jsonb_array_length(payload->'source_chunk_ids')+jsonb_array_length(payload->'source_image_ids')=0
+  then raise exception 'managed_full_pdf_summary_anchor';end if;
+ if not ingestion_generation_evidence.keys(payload->'clinical_specifics',array['profile','actions','thresholds_timing','medication_monitoring','risk_escalation','documentation_forms','exceptions_gaps'])
+  then raise exception 'managed_full_pdf_summary_profile';end if;
+ profile:=payload->'clinical_specifics'->'profile';
+ if not ingestion_generation_evidence.keys(profile,array['overview']||profile_keys) then raise exception 'managed_full_pdf_summary_profile';end if;
+ foreach key in array profile_keys loop
+  if jsonb_typeof(profile->key) is distinct from 'array' or jsonb_array_length(profile->key)>(case when key='best_questions' then 8 else 6 end)
+   then raise exception 'managed_full_pdf_summary_profile';end if;
+  for item in select value from jsonb_array_elements(profile->key) loop
+   if not ingestion_generation_evidence.keys(item,array['text','source_chunk_ids','source_image_ids','pages','evidence_type','support'])
+    or jsonb_typeof(item->'text') is distinct from 'string' or length(item->>'text') not between 1 and 600
+    or btrim(regexp_replace(item->>'text','\s+',' ','g')) is distinct from item->>'text'
+    or coalesce(item->>'evidence_type','') not in ('text','table','image','mixed','metadata')
+    or coalesce(item->>'support','') not in ('direct','partial','not_found')
+    or not ingestion_generation_evidence.full_pdf_summary_ids(item->'source_chunk_ids',payload->'source_chunk_ids')
+    or not ingestion_generation_evidence.full_pdf_summary_ids(item->'source_image_ids',payload->'source_image_ids')
+    then raise exception 'managed_full_pdf_summary_claim_anchor';end if;
+   if item->>'support'='not_found' then
+    if key not in ('not_covered','source_quality_notes') or item->>'text' not like 'Not established by selected source evidence:%' then raise exception 'managed_full_pdf_summary_not_found';end if;
+   elsif jsonb_array_length(item->'source_chunk_ids')+jsonb_array_length(item->'source_image_ids')=0 then raise exception 'managed_full_pdf_summary_claim_anchor';end if;
+   select coalesce(jsonb_agg(n order by n),'[]') into pages from (
+    select distinct (r->>'page_number')::integer n from jsonb_array_elements(chunks||images) r
+     where (item->'source_chunk_ids') @> jsonb_build_array(r->'id') or (item->'source_image_ids') @> jsonb_build_array(r->'id')) q;
+   if item->'pages' is distinct from pages then raise exception 'managed_full_pdf_summary_claim_pages';end if;
+   if item->>'support'<>'not_found' and jsonb_array_length(item->'source_chunk_ids')+jsonb_array_length(item->'source_image_ids')>0 then
+    items:=items||jsonb_build_array(item);
+    if key in ('applies_to','key_clinical_actions','medication_dose_monitoring','thresholds_timing','escalation_risk_warnings','required_forms_documentation','important_tables_images') then claims:=claims||jsonb_build_array(item);end if;
+   end if;
+  end loop;
+ end loop;
+ select string_agg('- '||(value->>'text'),' ' order by n) into projected from jsonb_array_elements(claims) with ordinality c(value,n) where n<=8;
+ if projected is null or length(projected)>5000 or payload->>'summary' is distinct from projected or profile->>'overview' is distinct from projected then raise exception 'managed_full_pdf_summary_claim_projection';end if;
+ foreach field in array array['actions','thresholds_timing','medication_monitoring','risk_escalation','documentation_forms','exceptions_gaps'] loop
+  key:=case field when 'actions' then 'key_clinical_actions' when 'medication_monitoring' then 'medication_dose_monitoring' when 'risk_escalation' then 'escalation_risk_warnings' when 'documentation_forms' then 'required_forms_documentation' when 'exceptions_gaps' then 'not_covered' else field end;
+  select coalesce(jsonb_agg(value->'text'),'[]') into expected from jsonb_array_elements(profile->key);
+  if payload->'clinical_specifics'->field is distinct from expected then raise exception 'managed_full_pdf_summary_specifics_projection';end if;
+ end loop;
+ if jsonb_typeof(payload->'labels') is distinct from 'array' or jsonb_array_length(payload->'labels')>32
+  or jsonb_typeof(projection->'labels') is distinct from 'array' or jsonb_array_length(projection->'labels')<>jsonb_array_length(payload->'labels')
+  then raise exception 'managed_full_pdf_summary_labels';end if;
+ if (select count(distinct jsonb_build_array(value->'label_type',value->'label')) from jsonb_array_elements(payload->'labels'))<>jsonb_array_length(payload->'labels') then raise exception 'managed_full_pdf_summary_labels';end if;
+ for label in select value from jsonb_array_elements(payload->'labels') loop
+  if not ingestion_generation_evidence.keys(label,array['label','label_type','confidence']) or jsonb_typeof(label->'label') is distinct from 'string'
+   or length(label->>'label') not between 1 and 120 or lower(btrim(regexp_replace(label->>'label','\s+',' ','g'))) is distinct from label->>'label'
+   or coalesce(label->>'label_type','') not in ('site','topic','document_type','medication','risk','setting','workflow','population','service','clinical_action','care_phase','document_intent','content_feature','custom')
+   or jsonb_typeof(label->'confidence') is distinct from 'number' then raise exception 'managed_full_pdf_summary_labels';end if;
+  if (label->>'confidence')::numeric not between 0 and 1 then raise exception 'managed_full_pdf_summary_labels';end if;
+  select value into item from jsonb_array_elements(items) with ordinality i(value,n)
+   where ingestion_generation_evidence.full_pdf_summary_label_match(value->>'text',label->>'label') order by n limit 1;
+  if item is null then raise exception 'managed_full_pdf_summary_label_anchor';end if;
+  expected_label:=label||jsonb_build_object('document_id',doc,'owner_id',owner,'source','generated','metadata',jsonb_build_object('index_generation_id',g,'summary_version',payload->'summary_version','source_chunk_ids',item->'source_chunk_ids','source_image_ids',item->'source_image_ids','pages',item->'pages'));
+  if projection->'labels'->label_index is distinct from expected_label then raise exception 'managed_full_pdf_summary_label_projection';end if;label_index:=label_index+1;
+ end loop;
+end $$;
+
+create or replace function ingestion_generation_evidence.assert_full_pdf_packet(f jsonb,g uuid,p jsonb)
+returns jsonb language plpgsql set search_path='' as $$
+declare legacy jsonb;result jsonb;
+begin
+ if p->>'version'='managed-full-pdf-packet-v1' then return ingestion_generation_evidence.assert_full_pdf_packet_v1(f,g,p);end if;
+ if not ingestion_generation_evidence.keys(p,array['version','profileId','identity','inspection','rows','quality','deferredOptionalFamilies','clinicalApproval','publicationApproval','summaryProjection'])
+  or p->>'version' is distinct from 'managed-full-pdf-packet-v2' or octet_length(convert_to(p::text,'UTF8'))>67108864
+  or jsonb_typeof(p->'deferredOptionalFamilies') is distinct from 'array' or p->'deferredOptionalFamilies' ? 'model_summary'
+  then raise exception 'managed_full_pdf_invalid_packet';end if;
+ -- Only the private validation view drops the projection; staging hashes and
+ -- retains the complete v2 packet, including request and provider evidence.
+ legacy:=(p-'summaryProjection')||jsonb_build_object('version','managed-full-pdf-packet-v1');
+ result:=ingestion_generation_evidence.assert_full_pdf_packet_v1(f,g,legacy);
+ perform ingestion_generation_evidence.assert_full_pdf_summary((f->>'document_id')::uuid,g,p);
+ return result;
+end $$;
+
+create function ingestion_generation_evidence.publish_full_pdf_summary(doc uuid,g uuid,p jsonb)
+returns void language plpgsql set search_path='' as $$
+declare s jsonb:=p->'summaryProjection'->'summary';v_label jsonb;
+begin
+ if p->>'version'<>'managed-full-pdf-packet-v2' then return;end if;
+ perform ingestion_generation_evidence.assert_full_pdf_summary(doc,g,p);
+ if not exists(select 1 from public.documents d where d.id=doc and d.index_generation_id=g and coalesce(to_jsonb(d.owner_id),'null'::jsonb)=s->'owner_id') then raise exception 'managed_full_pdf_summary_pointer_required';end if;
+ insert into public.document_summaries(document_id,owner_id,summary,clinical_specifics,source_chunk_ids,source_image_ids,model,generated_at,metadata)
+ values(doc,(s->>'owner_id')::uuid,s->>'summary',s->'clinical_specifics',array(select jsonb_array_elements_text(s->'source_chunk_ids'))::uuid[],array(select jsonb_array_elements_text(s->'source_image_ids'))::uuid[],s->>'model',(s->>'generated_at')::timestamptz,s->'metadata')
+ on conflict(document_id) do update set owner_id=excluded.owner_id,summary=excluded.summary,clinical_specifics=excluded.clinical_specifics,source_chunk_ids=excluded.source_chunk_ids,source_image_ids=excluded.source_image_ids,model=excluded.model,generated_at=excluded.generated_at,metadata=excluded.metadata,updated_at=clock_timestamp();
+ delete from public.document_labels l where l.document_id=doc and l.source='generated';
+ for v_label in select value from jsonb_array_elements(p->'summaryProjection'->'labels') loop
+  insert into public.document_labels(document_id,owner_id,label,label_type,confidence,source,metadata)
+   values(doc,(v_label->>'owner_id')::uuid,v_label->>'label',v_label->>'label_type',(v_label->>'confidence')::real,'generated',v_label->'metadata');
+ end loop;
+end $$;
+
+create or replace function ingestion_generation_evidence.full_pdf_rows_match(doc uuid,g uuid,p jsonb)
+returns boolean language plpgsql set search_path='' as $$
+declare expected jsonb;actual jsonb;s jsonb;v_label jsonb;ignored text[]:=array['id','created_at','updated_at'];
+begin
+ if not ingestion_generation_evidence.full_pdf_rows_match_v1(doc,g,p) then return false;end if;
+ if p->>'version'='managed-full-pdf-packet-v1' then return true;end if;
+ if p->>'version' is distinct from 'managed-full-pdf-packet-v2' then return false;end if;
+ perform ingestion_generation_evidence.assert_full_pdf_summary(doc,g,p);
+ -- The pointer's BEFORE UPDATE trigger still needs the predecessor's aliases.
+ -- Validate candidate proof now; require the new aliases only after activation.
+ if not exists(select 1 from public.documents d where d.id=doc and d.index_generation_id=g) then return true;end if;
+ s:=p->'summaryProjection'->'summary';
+ select to_jsonb(t)-ignored into actual from public.document_summaries t where t.document_id=doc;
+ select to_jsonb(jsonb_populate_record(null::public.document_summaries,s))-ignored into expected;
+ if actual is distinct from expected then return false;end if;
+ if (select count(*) from public.document_labels t where t.document_id=doc and t.source='generated')<>jsonb_array_length(p->'summaryProjection'->'labels') then return false;end if;
+ for v_label in select value from jsonb_array_elements(p->'summaryProjection'->'labels') loop
+  select to_jsonb(t)-ignored into actual from public.document_labels t where t.document_id=doc and t.source='generated' and t.label_type=v_label->>'label_type' and t.label=v_label->>'label';
+  select to_jsonb(jsonb_populate_record(null::public.document_labels,v_label))-ignored into expected;
+  if actual is distinct from expected then return false;end if;
+ end loop;return true;
+end $$;
+
+-- Patch exactly the successful pointer boundary, preserving its lock/fence/seal
+-- checks. Any summary or job-completion failure rolls the entire call back.
+do $$
+declare definition text;needle text:='  result:=public.complete_ingestion_job(result->''fence'',j.batch_id,''full_pdf_completed'');';
+ checkpoint text:='''terminalVersion'',''managed-full-pdf-packet-v1''';
+begin
+ definition:=pg_get_functiondef('public.complete_managed_full_pdf(jsonb,uuid,text,boolean)'::regprocedure);
+ if length(definition)-length(replace(definition,needle,''))<>length(needle)
+  or length(definition)-length(replace(definition,checkpoint,''))<>length(checkpoint) then raise exception 'managed_full_pdf_summary_terminal_preimage';end if;
+ definition:=replace(definition,checkpoint,'''terminalVersion'',s.packet->>''version''');
+ execute replace(definition,needle,'  perform ingestion_generation_evidence.publish_full_pdf_summary(s.document_id,p_generation,s.packet);'||chr(10)||needle);
+end $$;
+
+alter function ingestion_generation_evidence.assert_full_pdf_packet_v1(jsonb,uuid,jsonb) owner to postgres;
+alter function ingestion_generation_evidence.full_pdf_rows_match_v1(uuid,uuid,jsonb) owner to postgres;
+alter function ingestion_generation_evidence.full_pdf_summary_ids(jsonb,jsonb) owner to postgres;
+alter function ingestion_generation_evidence.full_pdf_summary_label_match(text,text) owner to postgres;
+alter function ingestion_generation_evidence.assert_full_pdf_summary(uuid,uuid,jsonb) owner to postgres;
+alter function ingestion_generation_evidence.publish_full_pdf_summary(uuid,uuid,jsonb) owner to postgres;
+revoke all on function ingestion_generation_evidence.assert_full_pdf_packet_v1(jsonb,uuid,jsonb),ingestion_generation_evidence.full_pdf_rows_match_v1(uuid,uuid,jsonb),ingestion_generation_evidence.full_pdf_summary_ids(jsonb,jsonb),ingestion_generation_evidence.full_pdf_summary_label_match(text,text),ingestion_generation_evidence.assert_full_pdf_summary(uuid,uuid,jsonb),ingestion_generation_evidence.publish_full_pdf_summary(uuid,uuid,jsonb) from public,anon,authenticated,service_role;
+-- Replacements retain their pre-existing postgres ownership and private ACLs.
+commit;
+
+-- Source migration: 20261105000000_managed_reviewed_rendered_pdf.sql
+-- DRAFT: reviewed render evidence is a distinct profile. Native extraction is
+-- excluded; a render review grants no ingestion/provider/publication/clinical
+-- authority. Approval of the exact review digest is trusted runtime policy.
+begin;
+set local lock_timeout='5s';
+set local statement_timeout='120s';
+
+create function ingestion_generation_evidence.rendered_pdf_hash(v jsonb)
+returns text language sql immutable set search_path='' as $$
+ select 'sha256:'||encode(extensions.digest(convert_to(public.site_content_canonical_json(v),'UTF8'),'sha256'),'hex')
+$$;
+
+create function ingestion_generation_evidence.rendered_pdf_rect(outer_box jsonb,inner_box jsonb)
+returns boolean language plpgsql immutable set search_path='' as $$
+begin
+ if jsonb_typeof(outer_box) is distinct from 'array' or jsonb_typeof(inner_box) is distinct from 'array'
+  or jsonb_array_length(outer_box)<>4 or jsonb_array_length(inner_box)<>4
+  or exists(select 1 from jsonb_array_elements(outer_box||inner_box) x where jsonb_typeof(x) is distinct from 'number') then return false;end if;
+ return (inner_box->>0)::numeric>=(outer_box->>0)::numeric and (inner_box->>1)::numeric>=(outer_box->>1)::numeric
+  and (inner_box->>2)::numeric<=(outer_box->>2)::numeric and (inner_box->>3)::numeric<=(outer_box->>3)::numeric
+  and (inner_box->>0)::numeric<(inner_box->>2)::numeric and (inner_box->>1)::numeric<(inner_box->>3)::numeric;
+end $$;
+
+-- Review offsets are JavaScript UTF-16 offsets, including supplementary
+-- characters. Refuse an offset in the middle of a surrogate pair.
+create function ingestion_generation_evidence.rendered_pdf_utf16_slice(v text,start_ integer,end_ integer)
+returns text language plpgsql immutable set search_path='' as $$
+declare n integer:=0;i integer;width_ integer;result text:='';start_found boolean:=false;end_found boolean:=false;ch text;
+begin
+ if start_<0 or end_<=start_ then raise exception 'managed_rendered_pdf_ocr_mapping';end if;
+ for i in 1..length(v) loop
+  if n=start_ then start_found:=true;end if;if n=end_ then end_found:=true;exit;end if;
+  ch:=substr(v,i,1);width_:=case when ascii(ch)>65535 then 2 else 1 end;
+  if n>=start_ and n<end_ then result:=result||ch;end if;n:=n+width_;
+ end loop;
+ if n=end_ then end_found:=true;end if;
+ if not start_found or not end_found then raise exception 'managed_rendered_pdf_ocr_mapping';end if;return result;
+end $$;
+
+create function ingestion_generation_evidence.assert_rendered_pdf_text(v jsonb,ocr text,bounds jsonb,allow_empty boolean default false)
+returns void language plpgsql immutable set search_path='' as $$
+begin
+ if jsonb_typeof(v->'text') is distinct from 'string' or not ingestion_generation_evidence.rendered_pdf_rect(bounds,v->'region')
+  or (btrim(v->>'text')='' and not(allow_empty and v->>'origin'='manual_render_transcription')) then raise exception 'managed_rendered_pdf_text_record';end if;
+ if v->>'origin'='render_ocr' then
+  if not ingestion_generation_evidence.keys(v,array['origin','region','start','end','text']) or coalesce(v->>'start','')!~'^(0|[1-9][0-9]*)$'
+   or coalesce(v->>'end','')!~'^[1-9][0-9]*$'
+   or ingestion_generation_evidence.rendered_pdf_utf16_slice(ocr,(v->>'start')::integer,(v->>'end')::integer) is distinct from v->>'text'
+   then raise exception 'managed_rendered_pdf_ocr_mapping';end if;
+ elsif v->>'origin'='manual_render_transcription' then
+  if not ingestion_generation_evidence.keys(v,array['origin','region','text']) then raise exception 'managed_rendered_pdf_text_record';end if;
+ else raise exception 'managed_rendered_pdf_text_record';end if;
+end $$;
+
+-- All source anchors are independently retained bytes, not hashes supplied only
+-- by the proposed packet. The exact human review is retained and digest-bound.
+create function ingestion_generation_evidence.assert_rendered_pdf_review(doc uuid,g uuid,i jsonb)
+returns void language plpgsql set search_path='' as $$
+declare review jsonb:=i->'reviewRecord';pg jsonb;item jsonb;row_ jsonb;cell jsonb;node jsonb;edge jsonb;geometry jsonb;
+ bounds jsonb;ocr text;parts text[];expected_text text;rows_ jsonb;observed jsonb;seen text[];nodes text[];edges text[];
+ page_no integer:=0;row_no integer;column_no integer;width_ integer;table_count integer:=0;diagram_count integer:=0;raster jsonb;raw_raster bytea;
+ inspected timestamptz;expires timestamptz;reviewed timestamptz;
+begin
+ if not ingestion_generation_evidence.keys(i,array['version','verificationScope','binding','reviewSha256','reviewRecord','inspectedAt','expiresAt','sourceSha256','sourceByteLength','pageCount','pages','images','tables','diagrams','featureCoverage','nativeLayerDisposition','originalNativeConflict'])
+  or i->>'version' is distinct from 'managed-rendered-pdf-inspection-view-v1'
+  or i->>'verificationScope' is distinct from 'source_anchored_render_review_not_clinical_signoff'
+  or i->>'nativeLayerDisposition' is distinct from 'excluded_from_admitted_evidence' or i->>'originalNativeConflict' is distinct from 'unresolved'
+  or not ingestion_generation_evidence.keys(review,array['version','verificationScope','authority','sourceSha256','sourceByteLength','pageCount','nativeLayerDisposition','originalNativeConflict','runtime','rasterContainer','reviewer','pageCoverage','pages'])
+  or review->>'version' is distinct from 'administrator-rendered-pdf-inspection-v1'
+  or review->>'verificationScope' is distinct from i->>'verificationScope'
+  or review->>'authority' is distinct from 'render_review_only_no_ingestion_provider_publication_or_clinical_approval'
+  or review->>'nativeLayerDisposition' is distinct from i->>'nativeLayerDisposition' or review->>'originalNativeConflict' is distinct from i->>'originalNativeConflict'
+  or review->>'pageCoverage' is distinct from 'reviewed_complete' or review->'sourceSha256' is distinct from i->'sourceSha256'
+  or not ingestion_generation_evidence.keys(review->'rasterContainer',array['sha256','byteLength'])
+  or review->'sourceByteLength' is distinct from i->'sourceByteLength' or review->'pageCount' is distinct from i->'pageCount'
+  or i->>'reviewSha256' is distinct from ingestion_generation_evidence.rendered_pdf_hash(review)
+  then raise exception 'managed_rendered_pdf_review_binding';end if;
+ if not ingestion_generation_evidence.keys(review->'reviewer',array['reviewerId','reviewedAt','referenceSha256'])
+  or coalesce(review->'reviewer'->>'reviewerId','')!~'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+  or coalesce(review->'reviewer'->>'referenceSha256','')!~'^sha256:[a-f0-9]{64}$'
+  or not ingestion_generation_evidence.keys(review->'runtime',array['pythonVersion','pymupdfVersion','mupdfVersion','tesseractVersion','pillowVersion','pytesseractVersion','rendererScriptSha256','extractorScriptSha256'])
+  or exists(select 1 from jsonb_each_text(review->'runtime') x where case when x.key like '%Sha256' then x.value!~'^sha256:[a-f0-9]{64}$' else x.value!~'^[A-Za-z0-9.+_-]{1,128}$' end)
+  then raise exception 'managed_rendered_pdf_reviewer_runtime';end if;
+ if coalesce(i->>'inspectedAt','')!~'^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,9})?Z$'
+  or coalesce(i->>'expiresAt','')!~'^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,9})?Z$'
+  or coalesce(review->'reviewer'->>'reviewedAt','')!~'^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,9})?Z$' then raise exception 'managed_rendered_pdf_review_time';end if;
+ begin inspected:=(i->>'inspectedAt')::timestamptz;expires:=(i->>'expiresAt')::timestamptz;reviewed:=(review->'reviewer'->>'reviewedAt')::timestamptz;
+ exception when invalid_datetime_format or datetime_field_overflow then raise exception 'managed_rendered_pdf_review_time';end;
+ if inspected>clock_timestamp() or expires<=clock_timestamp() or expires<=inspected or expires>inspected+interval '1 day' or reviewed>inspected then raise exception 'managed_rendered_pdf_review_time';end if;
+ if jsonb_typeof(review->'pages') is distinct from 'array' or jsonb_array_length(review->'pages') not between 1 and 5000
+  or review->'pageCount' is distinct from to_jsonb(jsonb_array_length(review->'pages')) or jsonb_array_length(i->'pages')<>jsonb_array_length(review->'pages')
+  or jsonb_typeof(i->'tables') is distinct from 'array' or jsonb_typeof(i->'diagrams') is distinct from 'array'
+  then raise exception 'managed_rendered_pdf_review_population';end if;
+ if not exists(select 1 from ingestion_generation_evidence.retained_artifacts a where a.document_id=doc and a.generation_id=g and a.family='private_objects'
+   and a.unit_key='rendered-review-record' and a.sha256=i->>'reviewSha256' and convert_from(a.artifact_bytes,'UTF8')::jsonb=review)
+  then raise exception 'managed_rendered_pdf_review_retention';end if;
+ select convert_from(a.artifact_bytes,'UTF8')::jsonb into strict raster from ingestion_generation_evidence.retained_artifacts a where a.document_id=doc and a.generation_id=g and a.family='private_objects' and a.unit_key='rendered-raster-container';
+ if not ingestion_generation_evidence.keys(raster,array['version','mimeType','sha256','byteLength','bytesHex']) or raster->>'version' is distinct from 'rendered-raster-container-retention-v1'
+  or raster->>'mimeType' is distinct from 'application/pdf' or coalesce(raster->>'bytesHex','')!~'^([a-f0-9]{2})+$'
+  or raster->'sha256' is distinct from review->'rasterContainer'->'sha256' or raster->'byteLength' is distinct from review->'rasterContainer'->'byteLength'
+  then raise exception 'managed_rendered_pdf_raster_retention';end if;
+ raw_raster:=decode(raster->>'bytesHex','hex');
+ if raster->>'sha256' is distinct from 'sha256:'||encode(extensions.digest(raw_raster,'sha256'),'hex') or raster->'byteLength' is distinct from to_jsonb(octet_length(raw_raster))
+  or substring(raw_raster from 1 for 5)<>convert_to('%PDF-','UTF8') then raise exception 'managed_rendered_pdf_raster_retention';end if;
+ for pg in select value from jsonb_array_elements(review->'pages') loop
+  page_no:=page_no+1;parts:=array[]::text[];seen:=array[]::text[];
+  if not ingestion_generation_evidence.keys(pg,array['pageNumber','fullPageReviewed','coordinateSpace','originalGeometrySha256','render','ocrTextSha256','ocrTextByteLength','textCoverage','text','tables','diagrams','unresolvedHolds'])
+   or pg->'pageNumber' is distinct from to_jsonb(page_no) or pg->'fullPageReviewed' is distinct from 'true'::jsonb
+   or pg->>'coordinateSpace' is distinct from 'render_pixels' or pg->>'textCoverage' is distinct from 'reviewed_complete'
+   or pg->'unresolvedHolds' is distinct from '[]'::jsonb or jsonb_typeof(pg->'text') is distinct from 'array'
+   or not ingestion_generation_evidence.keys(pg->'render',array['sha256','byteLength','width','height'])
+   or coalesce(pg->'render'->>'width','')!~'^[1-9][0-9]*$' or coalesce(pg->'render'->>'height','')!~'^[1-9][0-9]*$'
+   or (pg->'render'->>'width')::numeric*(pg->'render'->>'height')::numeric>4000000 then raise exception 'managed_rendered_pdf_page_review';end if;
+  bounds:=jsonb_build_array(0,0,pg->'render'->'width',pg->'render'->'height');
+  select convert_from(a.artifact_bytes,'UTF8') into strict ocr from ingestion_generation_evidence.retained_artifacts a where a.document_id=doc and a.generation_id=g and a.family='private_objects' and a.unit_key='page:'||page_no||':rendered-ocr'
+   and a.sha256=pg->>'ocrTextSha256' and to_jsonb(a.byte_length)=pg->'ocrTextByteLength';
+  select convert_from(a.artifact_bytes,'UTF8')::jsonb into strict geometry from ingestion_generation_evidence.retained_artifacts a where a.document_id=doc and a.generation_id=g and a.family='private_objects' and a.unit_key='page:'||page_no||':rendered-original-geometry';
+  if ingestion_generation_evidence.rendered_pdf_hash(geometry) is distinct from pg->>'originalGeometrySha256' then raise exception 'managed_rendered_pdf_geometry';end if;
+  if not exists(select 1 from jsonb_array_elements(i->'images') im where im->'pageNumber'=pg->'pageNumber' and im->>'sourceKind'='page_region'
+    and im->'sha256'=pg->'render'->'sha256' and im->'byteLength'=pg->'render'->'byteLength' and im->'width'=pg->'render'->'width' and im->'height'=pg->'render'->'height') then raise exception 'managed_rendered_pdf_render_missing';end if;
+  for item in select value from jsonb_array_elements(pg->'text') loop perform ingestion_generation_evidence.assert_rendered_pdf_text(item,ocr,bounds);parts:=array_append(parts,item->>'text');end loop;
+  if pg->'tables'->>'status'='absent' then
+   if not ingestion_generation_evidence.keys(pg->'tables',array['status']) then raise exception 'managed_rendered_pdf_table_coverage';end if;
+  elsif pg->'tables'->>'status'='reviewed_complete' then
+   if not ingestion_generation_evidence.keys(pg->'tables',array['status','records']) or jsonb_typeof(pg->'tables'->'records') is distinct from 'array' or jsonb_array_length(pg->'tables'->'records')=0 then raise exception 'managed_rendered_pdf_table_coverage';end if;
+   for item in select value from jsonb_array_elements(pg->'tables'->'records') loop
+    table_count:=table_count+1;row_no:=0;rows_:='[]';
+    if not ingestion_generation_evidence.keys(item,array['id','region','relationships','rows']) or coalesce(item->>'id','')!~'^[A-Za-z0-9_-]{1,80}$' or item->>'id'=any(seen)
+     or item->>'relationships' is distinct from 'reviewed_complete' or not ingestion_generation_evidence.rendered_pdf_rect(bounds,item->'region')
+     or jsonb_typeof(item->'rows') is distinct from 'array' or jsonb_array_length(item->'rows')=0 then raise exception 'managed_rendered_pdf_table_record';end if;
+    seen:=array_append(seen,item->>'id');width_:=jsonb_array_length(item->'rows'->0->'cells');
+    if width_<1 then raise exception 'managed_rendered_pdf_table_relationships';end if;
+    for row_ in select value from jsonb_array_elements(item->'rows') loop
+     if not ingestion_generation_evidence.keys(row_,array['rowIndex','cells']) or row_->'rowIndex' is distinct from to_jsonb(row_no) or jsonb_array_length(row_->'cells')<>width_ then raise exception 'managed_rendered_pdf_table_relationships';end if;
+     column_no:=0;observed:='[]';
+     for cell in select value from jsonb_array_elements(row_->'cells') loop
+      if not ingestion_generation_evidence.keys(cell,array['columnIndex','content']) or cell->'columnIndex' is distinct from to_jsonb(column_no) then raise exception 'managed_rendered_pdf_table_relationships';end if;
+      perform ingestion_generation_evidence.assert_rendered_pdf_text(cell->'content',ocr,item->'region',true);observed:=observed||jsonb_build_array(cell->'content'->'text');column_no:=column_no+1;
+     end loop;
+     rows_:=rows_||jsonb_build_array(observed);parts:=array_append(parts,(select string_agg(value,E'\t' order by n) from jsonb_array_elements_text(observed) with ordinality q(value,n)));row_no:=row_no+1;
+    end loop;
+    select value into observed from jsonb_array_elements(i->'tables') t where t->'pageNumber'=pg->'pageNumber' and t->'reviewedTableId'=item->'id';
+    if not ingestion_generation_evidence.keys(observed,array['imageOrdinal','pageNumber','reviewedTableId','region','rows','renderSha256']) or observed->'region' is distinct from item->'region' or observed->'rows' is distinct from rows_ or observed->'renderSha256' is distinct from pg->'render'->'sha256' then raise exception 'managed_rendered_pdf_table_projection';end if;
+   end loop;
+  else raise exception 'managed_rendered_pdf_table_coverage';end if;
+  if pg->'diagrams'->>'status'='absent' then
+   if not ingestion_generation_evidence.keys(pg->'diagrams',array['status']) then raise exception 'managed_rendered_pdf_diagram_coverage';end if;
+  elsif pg->'diagrams'->>'status'='reviewed_complete' then
+   if not ingestion_generation_evidence.keys(pg->'diagrams',array['status','records']) or jsonb_typeof(pg->'diagrams'->'records') is distinct from 'array' or jsonb_array_length(pg->'diagrams'->'records')=0 then raise exception 'managed_rendered_pdf_diagram_coverage';end if;
+   for item in select value from jsonb_array_elements(pg->'diagrams'->'records') loop
+    diagram_count:=diagram_count+1;nodes:=array[]::text[];edges:=array[]::text[];
+    if not ingestion_generation_evidence.keys(item,array['id','region','relationships','nodes','edges']) or coalesce(item->>'id','')!~'^[A-Za-z0-9_-]{1,80}$' or item->>'id'=any(seen)
+     or item->>'relationships' is distinct from 'reviewed_complete' or not ingestion_generation_evidence.rendered_pdf_rect(bounds,item->'region')
+     or jsonb_typeof(item->'nodes') is distinct from 'array' or jsonb_array_length(item->'nodes')=0 or jsonb_typeof(item->'edges') is distinct from 'array' then raise exception 'managed_rendered_pdf_diagram_record';end if;
+    seen:=array_append(seen,item->>'id');
+    for node in select value from jsonb_array_elements(item->'nodes') loop
+     if not ingestion_generation_evidence.keys(node,array['id','content']) or coalesce(node->>'id','')!~'^[A-Za-z0-9_-]{1,80}$' or node->>'id'=any(nodes) then raise exception 'managed_rendered_pdf_diagram_relationships';end if;
+     perform ingestion_generation_evidence.assert_rendered_pdf_text(node->'content',ocr,item->'region');nodes:=array_append(nodes,node->>'id');parts:=array_append(parts,node->'content'->>'text');
+    end loop;
+    for edge in select value from jsonb_array_elements(item->'edges') loop
+     if not ingestion_generation_evidence.keys(edge,array['id','fromNodeId','toNodeId','direction','label','region']) or coalesce(edge->>'id','')!~'^[A-Za-z0-9_-]{1,80}$' or edge->>'id'=any(edges)
+      or not(edge->>'fromNodeId'=any(nodes)) or not(edge->>'toNodeId'=any(nodes)) or coalesce(edge->>'direction','') not in('directed','undirected') or not ingestion_generation_evidence.rendered_pdf_rect(item->'region',edge->'region') then raise exception 'managed_rendered_pdf_diagram_relationships';end if;
+     edges:=array_append(edges,edge->>'id');if edge->'label'<>'null'::jsonb then perform ingestion_generation_evidence.assert_rendered_pdf_text(edge->'label',ocr,edge->'region');end if;
+     select value->'content'->>'text' into expected_text from jsonb_array_elements(item->'nodes') where value->'id'=edge->'fromNodeId';
+     select expected_text||case when edge->>'direction'='directed' then ' -> ' else ' -- ' end||(value->'content'->>'text')||case when edge->'label'='null'::jsonb then '' else ': '||(edge->'label'->>'text') end into expected_text from jsonb_array_elements(item->'nodes') where value->'id'=edge->'toNodeId';parts:=array_append(parts,expected_text);
+    end loop;
+    select value into observed from jsonb_array_elements(i->'diagrams') t where t->'pageNumber'=pg->'pageNumber' and t->'reviewedDiagramId'=item->'id';
+    if observed is distinct from jsonb_build_object('pageNumber',pg->'pageNumber','reviewedDiagramId',item->'id','region',item->'region','nodes',item->'nodes','edges',item->'edges','renderSha256',pg->'render'->'sha256') then raise exception 'managed_rendered_pdf_diagram_projection';end if;
+   end loop;
+  else raise exception 'managed_rendered_pdf_diagram_coverage';end if;
+  observed:=i->'pages'->(page_no-1);
+  if not ingestion_generation_evidence.keys(observed,array['pageNumber','text','ocrUsed','sourceProvenanceSha256','renderSha256','ocrTextSha256'])
+   or observed->'pageNumber' is distinct from pg->'pageNumber' or observed->'ocrUsed' is distinct from 'true'::jsonb
+   or observed->>'text' is distinct from array_to_string(parts,E'\n') or observed->'renderSha256' is distinct from pg->'render'->'sha256' or observed->'ocrTextSha256' is distinct from pg->'ocrTextSha256' then raise exception 'managed_rendered_pdf_text_projection';end if;
+ end loop;
+ if table_count<>jsonb_array_length(i->'tables') or diagram_count<>jsonb_array_length(i->'diagrams')
+  or i->'featureCoverage' is distinct from jsonb_build_object('renderedPages','complete','reviewedText','complete','reviewedTables',case when table_count>0 then 'complete' else 'not_present' end,'reviewedDiagrams',case when diagram_count>0 then 'complete' else 'not_present' end,'nativeLayer','excluded_from_admitted_evidence','ocr','complete') then raise exception 'managed_rendered_pdf_feature_coverage';end if;
+end $$;
+
+
+create function ingestion_generation_evidence.assert_rendered_pdf_packet(f jsonb,g uuid,p jsonb)
+returns jsonb language plpgsql set search_path='' as $$
+declare a jsonb;facts jsonb;c ingestion_generation_evidence.candidates;identity jsonb;inspection jsonb;rows jsonb;
+ pg jsonb;image jsonb;source jsonb;table_item jsonb;r jsonb;row_family text;ordinal integer:=0;image_count integer:=0;chunk_count integer;
+ retained ingestion_generation_evidence.retained_artifacts;provenance jsonb;raw_bytes bytea;covered integer;page_text text;pages jsonb:='[]';
+ inspected timestamptz;expires timestamptz;total_bytes bigint:=0;expected_features jsonb;source_units integer:=0;feature_family text;box jsonb;box_index integer;feature_id text;chunk_ordinal integer:=0;review_page jsonb;review_item jsonb;source_id text;
+begin
+ a:=public.assert_current_ingestion_attempt(f,g);if a is null then raise exception 'managed_rendered_pdf_current_attempt_required';end if;
+ facts:=public.read_administrator_reindex_authority(f,g)->'providerAuthority';
+ select * into strict c from ingestion_generation_evidence.candidates where document_id=(f->>'document_id')::uuid and generation_id=g for update;
+ if octet_length(convert_to(p::text,'UTF8'))>67108864 or not ingestion_generation_evidence.keys(p,array['version','profileId','identity','inspection','rows','quality','deferredOptionalFamilies','clinicalApproval','publicationApproval','summaryProjection'])
+  or p->>'version' is distinct from 'managed-rendered-pdf-packet-v1' or p->>'profileId' is distinct from 'administrator-reviewed-rendered-full-pdf-v1'
+  or jsonb_typeof(p->'deferredOptionalFamilies') is distinct from 'array' or p->'deferredOptionalFamilies' ? 'model_summary'
+  or p->>'clinicalApproval' is distinct from 'not_granted' or p->>'publicationApproval' is distinct from 'not_granted'
+  then raise exception 'managed_rendered_pdf_invalid_packet';end if;
+ identity:=p->'identity';inspection:=p->'inspection';rows:=p->'rows';
+ if identity->>'documentId' is distinct from c.document_id::text or identity->>'generationId' is distinct from g::text
+  or identity->>'jobId' is distinct from c.job_id::text or identity->>'firstLeaseToken' is distinct from c.first_lease_token::text
+  or identity->>'workerId' is distinct from f->>'worker_id' or identity->>'authorityDigest' is distinct from c.authority_digest
+  or identity->'documentOwnerId' is distinct from facts->'documentOwnerId' or identity->'stewardId' is distinct from facts->'stewardId'
+  or identity->>'sourceSha256' is distinct from c.source_sha256 or identity->'sourceByteLength' is distinct from to_jsonb(c.source_byte_length)
+  or identity->>'sourceExpectationDigest' is distinct from c.source_expectation_digest
+  or identity->'predecessorGenerationId' is distinct from coalesce(to_jsonb(c.predecessor_generation_id),'null'::jsonb)
+  or identity->'attemptNumber' is distinct from a->'job'->'attempt_count' or identity->'batchId' is distinct from a->'job'->'batch_id'
+  then raise exception 'managed_rendered_pdf_identity_mismatch';end if;
+ if not ingestion_generation_evidence.keys(rows,array['chunks','images','table_facts','embedding_fields','index_units','sections','memory_cards'])
+  then raise exception 'managed_rendered_pdf_row_families';end if;
+
+ -- A current admitted source authority is still mandatory. A review record is
+ -- never an authority to ingest or send data to a provider.
+ if inspection->'binding' is distinct from jsonb_build_object('admissionEventId',facts->'admissionEventId','documentId',c.document_id,'generationId',g,
+   'jobId',c.job_id,'attemptId',c.job_id::text||':'||(a->'job'->>'attempt_count')||':'||c.first_lease_token::text,'leaseId',c.first_lease_token,'contentSha256',c.source_sha256,'authorityDigest',c.authority_digest)
+  or inspection->>'sourceSha256' is distinct from c.source_sha256 or inspection->'sourceByteLength' is distinct from to_jsonb(c.source_byte_length)
+  or jsonb_array_length(rows->'images')<>jsonb_array_length(inspection->'images') then raise exception 'managed_rendered_pdf_inspection_binding';end if;
+ perform ingestion_generation_evidence.assert_rendered_pdf_review(c.document_id,g,inspection);
+ if c.source_expectation->'witness'->>'reference' is distinct from 'independent-original-rendered-pdf-reviewed-inventory-v1' then raise exception 'managed_rendered_pdf_expectation_witness';end if;
+ if not exists(select 1 from ingestion_generation_evidence.retained_artifacts ra where ra.document_id=c.document_id and ra.generation_id=g and ra.family='private_objects' and ra.unit_key='original-source' and ra.sha256=c.source_sha256 and ra.byte_length=c.source_byte_length and substring(ra.artifact_bytes from 1 for 5)=convert_to('%PDF-','UTF8')) then raise exception 'managed_rendered_pdf_original_source';end if;
+ foreach row_family in array array['chunks','images','table_facts','embedding_fields','index_units','sections','memory_cards'] loop
+  if jsonb_typeof(rows->row_family) is distinct from 'array' or jsonb_array_length(rows->row_family)>20000
+   or (select count(distinct x->>'id') from jsonb_array_elements(rows->row_family) x)<>jsonb_array_length(rows->row_family)
+   then raise exception 'managed_rendered_pdf_row_population';end if;
+  for r in select value from jsonb_array_elements(rows->row_family) loop
+   if coalesce(r->>'id','')!~'^[0-9a-f-]{36}$' or r->>'document_id' is distinct from c.document_id::text or r->>'index_generation_id' is distinct from g::text
+    or r->'metadata'->>'index_generation_id' is distinct from g::text
+    or r->'metadata'->>'artifact_generation_id' is distinct from g::text or r->'metadata'->>'source_sha256' is distinct from c.source_sha256
+    or r->'metadata'->>'full_pdf_profile' is distinct from 'administrator-reviewed-rendered-full-pdf-v1'
+    or r->'metadata'->>'inspection_scope' is distinct from 'source_anchored_render_review_not_clinical_signoff'
+    or r->'metadata'->'review_sha256' is distinct from inspection->'reviewSha256'
+    or r->'metadata'->>'native_layer_disposition' is distinct from 'excluded_from_admitted_evidence'
+    or r->'metadata'->>'original_native_conflict' is distinct from 'unresolved'
+    or (row_family not in ('images','chunks') and r->'owner_id' is distinct from facts->'documentOwnerId')
+    then raise exception 'managed_rendered_pdf_row_identity';end if;
+   if row_family in ('chunks','embedding_fields','index_units','memory_cards') then
+    if jsonb_typeof(r->'embedding') is distinct from 'array' or jsonb_array_length(r->'embedding')<>1536
+     or exists(select 1 from jsonb_array_elements(r->'embedding') v where jsonb_typeof(v) is distinct from 'number')
+     or not exists(select 1 from jsonb_array_elements_text(r->'embedding') v where v::double precision<>0)
+     then raise exception 'managed_rendered_pdf_embedding_invalid';end if;
+   end if;
+   if r->>'source_chunk_id' is not null and not exists(select 1 from jsonb_array_elements(rows->'chunks') parent where parent->'id'=r->'source_chunk_id')
+    then raise exception 'managed_rendered_pdf_chunk_parent';end if;
+   if r->>'source_image_id' is not null and not exists(select 1 from jsonb_array_elements(rows->'images') parent where parent->'id'=r->'source_image_id')
+    then raise exception 'managed_rendered_pdf_image_parent';end if;
+   if row_family='sections' and exists(select 1 from jsonb_array_elements(r->'chunk_ids') link where not exists(select 1 from jsonb_array_elements(rows->'chunks') parent where parent->'id'=link))
+    then raise exception 'managed_rendered_pdf_section_parent';end if;
+   if row_family='memory_cards' and (exists(select 1 from jsonb_array_elements(r->'source_chunk_ids') link where not exists(select 1 from jsonb_array_elements(rows->'chunks') parent where parent->'id'=link))
+    or exists(select 1 from jsonb_array_elements(r->'source_image_ids') link where not exists(select 1 from jsonb_array_elements(rows->'images') parent where parent->'id'=link))
+    or(r->>'section_id' is not null and not exists(select 1 from jsonb_array_elements(rows->'sections') parent where parent->'id'=r->'section_id')))
+    then raise exception 'managed_rendered_pdf_memory_parent';end if;
+  end loop;
+ end loop;
+
+ chunk_count:=jsonb_array_length(rows->'chunks');
+ for pg in select value from jsonb_array_elements(inspection->'pages') loop
+  ordinal:=ordinal+1;covered:=0;page_text:=pg->>'text';raw_bytes:=convert_to(page_text,'UTF8');total_bytes:=total_bytes+octet_length(raw_bytes);
+  review_page:=inspection->'reviewRecord'->'pages'->(ordinal-1);source_id:='source-page-'||ordinal;source_units:=source_units+1;
+  if not exists(select 1 from jsonb_array_elements(c.source_expectation->'units') u where u->>'id'=source_id and u->'required'='true'::jsonb and u->'dependencies'='[]'::jsonb and u->>'nativeMapping'='unavailable'
+   and u->>'locator'='pdf-page:'||ordinal||':source:'||c.source_sha256||':render:'||(pg->>'renderSha256')||':ocr:'||(pg->>'ocrTextSha256')||':review:'||(inspection->>'reviewSha256')) then raise exception 'managed_rendered_pdf_original_source_unit';end if;
+  foreach feature_family in array array['table','diagram'] loop
+   for review_item in select value from jsonb_array_elements(coalesce(review_page->(feature_family||'s')->'records','[]')) loop
+    source_units:=source_units+1;
+    if not exists(select 1 from jsonb_array_elements(c.source_expectation->'units') u where u->>'id'=source_id||'-'||feature_family||'-'||(review_item->>'id') and u->'required'='true'::jsonb and u->>'nativeMapping'='unavailable' and u->'dependencies'=jsonb_build_array(source_id)
+     and u->>'locator'='pdf-page:'||ordinal||':render:'||(pg->>'renderSha256')||':review:'||(inspection->>'reviewSha256')||':'||feature_family||':'||(review_item->>'id')||':'||ingestion_generation_evidence.rendered_pdf_hash(review_item)) then raise exception 'managed_rendered_pdf_relationship_source_unit';end if;
+   end loop;
+  end loop;
+  select * into strict retained from ingestion_generation_evidence.retained_artifacts ra where ra.document_id=c.document_id and ra.generation_id=g and ra.family='private_objects' and ra.unit_key='page:'||ordinal||':extracted';
+  if retained.artifact_bytes is distinct from raw_bytes or retained.sha256 is distinct from 'sha256:'||encode(extensions.digest(raw_bytes,'sha256'),'hex')
+   or not exists(select 1 from ingestion_generation_evidence.retained_artifacts ra where ra.document_id=c.document_id and ra.generation_id=g and ra.family='private_objects' and ra.unit_key='page:'||ordinal||':persisted' and ra.artifact_bytes=raw_bytes)
+   or not exists(select 1 from ingestion_generation_evidence.retained_artifacts ra where ra.document_id=c.document_id and ra.generation_id=g and ra.family='private_objects' and ra.unit_key='page:'||ordinal||':original-provenance'
+    and 'sha256:'||encode(extensions.digest(convert_to(public.site_content_canonical_json(convert_from(ra.artifact_bytes,'UTF8')::jsonb),'UTF8'),'sha256'),'hex')=pg->>'sourceProvenanceSha256')
+   then raise exception 'managed_rendered_pdf_page_retention';end if;
+  select convert_from(ra.artifact_bytes,'UTF8')::jsonb into strict provenance from ingestion_generation_evidence.retained_artifacts ra where ra.document_id=c.document_id and ra.generation_id=g and ra.family='private_objects' and ra.unit_key='page:'||ordinal||':original-provenance';
+  if provenance->'rendered_pdf_review' is distinct from jsonb_build_object('version',inspection->'reviewRecord'->'version','reviewSha256',inspection->'reviewSha256','sourceSha256',c.source_sha256,'renderSha256',pg->'renderSha256','ocrTextSha256',pg->'ocrTextSha256','nativeLayerDisposition','excluded_from_admitted_evidence','originalNativeConflict','unresolved','verificationScope',inspection->'verificationScope') then raise exception 'managed_rendered_pdf_page_metadata';end if;
+  select convert_from(ra.artifact_bytes,'UTF8')::jsonb into strict r from ingestion_generation_evidence.retained_artifacts ra where ra.document_id=c.document_id and ra.generation_id=g and ra.family='pages' and ra.unit_key=ordinal::text;
+  if r->>'text' is distinct from page_text or r->'ocr_used' is distinct from pg->'ocrUsed' then raise exception 'managed_rendered_pdf_page_projection';end if;
+  pages:=pages||jsonb_build_array(r);
+  for r in select value from jsonb_array_elements(rows->'chunks') where (value->>'page_number')::integer=ordinal order by (value->>'chunk_index')::integer loop
+   if r->'metadata'->'rendered_pdf_review' is distinct from provenance->'rendered_pdf_review' then raise exception 'managed_rendered_pdf_chunk_review_binding';end if;
+   if r->'chunk_index' is distinct from to_jsonb(chunk_ordinal) then raise exception 'managed_rendered_pdf_chunk_population';end if;chunk_ordinal:=chunk_ordinal+1;
+   raw_bytes:=convert_to(r->>'content','UTF8');if octet_length(raw_bytes)>8191 or btrim(r->>'content')='' or raw_bytes is distinct from substring(convert_to(page_text,'UTF8') from covered+1 for octet_length(raw_bytes))
+    then raise exception 'managed_rendered_pdf_chunk_source_partition';end if;covered:=covered+octet_length(raw_bytes);
+  end loop;
+  if covered<>octet_length(convert_to(page_text,'UTF8')) then raise exception 'managed_rendered_pdf_uncovered_page_text';end if;
+
+ end loop;
+ if source_units<>jsonb_array_length(c.source_expectation->'units') or chunk_ordinal<>chunk_count then raise exception 'managed_rendered_pdf_required_population';end if;
+ if total_bytes>67108864 or (select count(*) from ingestion_generation_evidence.retained_artifacts ra where ra.document_id=c.document_id and ra.generation_id=g and ra.family='pages')<>ordinal then raise exception 'managed_rendered_pdf_page_population';end if;
+ for image in select value from jsonb_array_elements(inspection->'images') loop
+  image_count:=image_count+1;if image->'ordinal' is distinct from to_jsonb(image_count) then raise exception 'managed_rendered_pdf_image_ordinal';end if;
+  if not ingestion_generation_evidence.keys(image,array['ordinal','pageNumber','sourceKind','sha256','byteLength','width','height','descriptorSha256','metadataSha256'])
+   or coalesce(image->>'pageNumber','')!~'^[1-9][0-9]*$' then raise exception 'managed_rendered_pdf_image_binding';end if;
+  review_page:=inspection->'reviewRecord'->'pages'->((image->>'pageNumber')::integer-1);
+  if review_page is null or image->'sha256' is distinct from review_page->'render'->'sha256' or image->'byteLength' is distinct from review_page->'render'->'byteLength'
+   or image->'width' is distinct from review_page->'render'->'width' or image->'height' is distinct from review_page->'render'->'height'
+   or (image_count<=ordinal and (image->>'sourceKind' is distinct from 'page_region' or image->'pageNumber' is distinct from to_jsonb(image_count)))
+   or (image_count>ordinal and image->>'sourceKind' is distinct from 'table_crop') then raise exception 'managed_rendered_pdf_image_binding';end if;
+  select * into strict retained from ingestion_generation_evidence.retained_artifacts ra where ra.document_id=c.document_id and ra.generation_id=g and ra.family='private_objects' and ra.unit_key='image:'||image_count||':binary';
+  if image->>'sourceKind' not in ('page_region','table_crop') or retained.sha256 is distinct from image->>'sha256' or to_jsonb(retained.byte_length) is distinct from image->'byteLength'
+   or retained.sha256<>'sha256:'||encode(extensions.digest(retained.artifact_bytes,'sha256'),'hex') then raise exception 'managed_rendered_pdf_image_bytes';end if;
+  select convert_from(ra.artifact_bytes,'UTF8')::jsonb into strict provenance from ingestion_generation_evidence.retained_artifacts ra where ra.document_id=c.document_id and ra.generation_id=g and ra.family='private_objects' and ra.unit_key='image:'||image_count||':provenance';
+  if image->>'descriptorSha256' is distinct from 'sha256:'||encode(extensions.digest(convert_to(public.site_content_canonical_json(provenance->'descriptor'),'UTF8'),'sha256'),'hex')
+   or image->>'metadataSha256' is distinct from 'sha256:'||encode(extensions.digest(convert_to(public.site_content_canonical_json(coalesce(provenance->'descriptor'->'metadata','{}'::jsonb)),'UTF8'),'sha256'),'hex')
+   or provenance->'descriptor'->'pageNumber' is distinct from image->'pageNumber' or provenance->'descriptor'->'sourceKind' is distinct from image->'sourceKind'
+   or provenance->'descriptor'->'width' is distinct from image->'width' or provenance->'descriptor'->'height' is distinct from image->'height'
+   then raise exception 'managed_rendered_pdf_image_provenance';end if;
+  r:=rows->'images'->(image_count-1);
+  if r->'source_kind' is distinct from image->'sourceKind' or r->'width' is distinct from image->'width' or r->'height' is distinct from image->'height'
+   or (r->'metadata')-array['index_generation_id','artifact_generation_id','source_sha256','full_pdf_profile','inspection_scope','review_sha256','native_layer_disposition','original_native_conflict','managed_artifact_reference'] is distinct from coalesce(provenance->'descriptor'->'metadata','{}'::jsonb)
+   or r->'page_number' is distinct from image->'pageNumber' or r->>'image_hash' is distinct from substring(image->>'sha256' from 8)
+   or r->'metadata'->'managed_artifact_reference' is distinct from jsonb_build_object('version','managed-pdf-image-v1','documentId',c.document_id,'generationId',g,'imageOrdinal',image_count,'sha256',image->'sha256')
+   or r->>'storage_path' is distinct from 'managed-pdf/'||c.document_id::text||'/'||g::text||'/'||image_count
+   then raise exception 'managed_rendered_pdf_image_projection';end if;
+ end loop;
+ if (select count(*) from ingestion_generation_evidence.retained_artifacts ra where ra.document_id=c.document_id and ra.generation_id=g and ra.representation='image_binary')<>image_count
+  or image_count<>ordinal+jsonb_array_length(inspection->'tables')
+  then raise exception 'managed_rendered_pdf_image_population';end if;
+ box_index:=0;
+ for table_item in select value from jsonb_array_elements(inspection->'tables') loop
+  box_index:=box_index+1;
+  r:=rows->'images'->((table_item->>'imageOrdinal')::integer-1);
+  if table_item->'imageOrdinal' is distinct from to_jsonb(ordinal+box_index) or r is null or r->>'source_kind' is distinct from 'table_crop' or r->'page_number' is distinct from table_item->'pageNumber'
+   or table_item->'rows' is distinct from r->'metadata'->'table_rows'
+   or r->'metadata'->'reviewed_table_id' is distinct from table_item->'reviewedTableId'
+   or r->'metadata'->'full_page_render' is distinct from 'true'::jsonb
+   or r->'metadata'->'reviewed_render_region' is distinct from jsonb_build_object('coordinateSpace','render_pixels','region',table_item->'region','renderSha256',table_item->'renderSha256','fullPageImageOrdinal',table_item->'pageNumber','pixelScope','full_page_reuse_not_cropped')
+   or r->'metadata'->'rows_truncated'='true'::jsonb then raise exception 'managed_rendered_pdf_table_source';end if;
+  if jsonb_array_length(table_item->'rows')>1 and not exists(select 1 from jsonb_array_elements(rows->'table_facts') fact_row where fact_row->'source_image_id'=r->'id')
+   then raise exception 'managed_rendered_pdf_required_table_facts_missing';end if;
+ end loop;
+ if jsonb_typeof(p->'quality'->'quality_score') is distinct from 'number' or (p->'quality'->>'quality_score')::numeric not between 0 and 1
+  or coalesce(p->'quality'->>'extraction_quality','') not in('good','partial')
+  or p->'quality'->'metrics'->>'quality_assessment_version' is distinct from 'existing-core-index-quality-v1'
+  or p->'quality'->'metrics'->'page_count' is distinct from to_jsonb(ordinal)
+  or p->'quality'->'metrics'->'extracted_image_count' is distinct from to_jsonb(image_count)
+  or p->'quality'->'metrics'->'ocr_page_count' is distinct from to_jsonb((select count(*)::integer from jsonb_array_elements(inspection->'pages') s where s->'ocrUsed'='true'::jsonb))
+  or p->'quality'->'metrics'->'needs_ocr_page_count' is distinct from '0'::jsonb
+  then raise exception 'managed_rendered_pdf_observed_quality_required';end if;
+ if a->'document'->>'index_generation_id' is not null and exists(select 1 from public.document_index_quality q where q.document_id=c.document_id
+  and ((q.extraction_quality='good' and p->'quality'->>'extraction_quality'<>'good') or q.quality_score>(p->'quality'->>'quality_score')::real))
+  then raise exception 'managed_rendered_pdf_quality_regression';end if;
+ for r in select value from jsonb_array_elements(rows->'table_facts') loop
+  select value into strict image from jsonb_array_elements(rows->'images') where value->'id'=r->'source_image_id';
+  if r->'metadata'->'cells' is distinct from (select jsonb_agg(to_jsonb(btrim(left(regexp_replace(cell,'\s+',' ','g'),240))))
+    from jsonb_array_elements_text(image->'metadata'->'table_rows'->((r->'metadata'->>'row_index')::integer)) cell)
+   or not exists(select 1 from jsonb_array_elements(rows->'chunks') ch where ch->'id'=r->'source_chunk_id' and ch->'page_number'=r->'page_number')
+   then raise exception 'managed_rendered_pdf_fact_source';end if;
+  if (r->>'threshold_value' is not null and not exists(select 1 from jsonb_array_elements_text(r->'metadata'->'cells') cell where regexp_replace(btrim(cell),'\s+',' ','g')=r->>'threshold_value'))
+   or(r->>'action' is not null and not exists(select 1 from jsonb_array_elements_text(r->'metadata'->'cells') cell where regexp_replace(btrim(cell),'\s+',' ','g')=r->>'action'))
+   then raise exception 'managed_rendered_pdf_fact_relationship';end if;
+ end loop;
+ if exists(select 1 from ingestion_generation_evidence.retained_artifacts artifact_row where artifact_row.document_id=c.document_id and artifact_row.generation_id=g and
+  (artifact_row.source_sha256<>c.source_sha256 or artifact_row.byte_length<>octet_length(artifact_row.artifact_bytes) or artifact_row.sha256<>'sha256:'||encode(extensions.digest(artifact_row.artifact_bytes,'sha256'),'hex')))
+  then raise exception 'managed_rendered_pdf_retained_integrity';end if;
+ if exists(select 1 from ingestion_generation_evidence.unit_declarations d left join ingestion_generation_evidence.outcomes o using(document_id,generation_id,family,unit_key)
+  where d.document_id=c.document_id and d.generation_id=g and d.declaration->'required'='true'::jsonb
+  and not(d.family='attempt_control' and d.unit_key='preseal_checkpoint')
+  and(o.outcome->>'disposition' is distinct from 'retained' or not exists(select 1 from ingestion_generation_evidence.retained_artifacts proof_artifact
+   where proof_artifact.document_id=d.document_id and proof_artifact.generation_id=g and proof_artifact.family=d.family and proof_artifact.unit_key=d.unit_key and proof_artifact.sha256=o.outcome->>'artifactSha256')))
+  then raise exception 'managed_rendered_pdf_required_retention_incomplete';end if;
+ if not exists(select 1 from ingestion_generation_evidence.unit_declarations d where d.document_id=c.document_id and d.generation_id=g and d.family='attempt_control' and d.unit_key='preseal_checkpoint'
+  and d.declaration->'dependencies'='[{"family":"attempt_control","key":"claim_checkpoint"},{"family":"private_objects","key":"original-source"}]'::jsonb)
+  then raise exception 'managed_rendered_pdf_preseal_declaration_required';end if;
+ perform ingestion_generation_evidence.assert_full_pdf_summary(c.document_id,g,p);
+ return jsonb_build_object('pages',pages,'pageCount',ordinal,'chunkCount',chunk_count,'imageCount',(select count(*) from jsonb_array_elements(rows->'images') im where im->'searchable'='true'::jsonb));
+end $$;
+
+-- Extend only the rendered witness's immutable private plan. All native plans
+-- keep the existing allowlist and four-representation page population checks.
+create function ingestion_generation_evidence.rendered_pdf_extra_unit(u jsonb)
+returns boolean language sql immutable set search_path='' as $$
+ select coalesce(ingestion_generation_evidence.keys(u,array['id','groupKey','required','dependencies','sourceEvidenceIds','qualification','representation'])
+  and ingestion_generation_evidence.keys(u->'id',array['family','key'])
+  and u->'id'->>'family'='private_objects' and u->>'groupKey'='private_objects' and u->'required'='true'::jsonb
+  and u->'sourceEvidenceIds'='[]'::jsonb and u->>'qualification'='whole_logical_unit_unverified' and (
+   (u->'id'->>'key' in ('rendered-review-record','rendered-raster-container') and u->>'representation'='provenance_json'
+    and u->'dependencies'='[{"family":"private_objects","key":"original-source"}]'::jsonb)
+   or (u->'id'->>'key' ~ '^page:[1-9][0-9]*:rendered-(original-geometry|ocr)$'
+    and u->>'representation'=case split_part(u->'id'->>'key',':',3) when 'rendered-ocr' then 'extracted_utf8' else 'provenance_json' end
+    and u->'dependencies'='[{"family":"private_objects","key":"rendered-review-record"},{"family":"private_objects","key":"rendered-raster-container"}]'::jsonb)),false)
+$$;
+
+create function ingestion_generation_evidence.assert_rendered_pdf_private_plan(reg jsonb)
+returns void language plpgsql immutable set search_path='' as $$
+declare units jsonb:=reg->'declarations'->'units';u jsonb;key_ text;
+begin
+ if reg->'sourceExpectation'->'witness'->>'reference' is distinct from 'independent-original-rendered-pdf-reviewed-inventory-v1' then return;end if;
+ foreach key_ in array array['rendered-review-record','rendered-raster-container'] loop
+  if not exists(select 1 from jsonb_array_elements(units) d where d->'id'->>'key'=key_ and ingestion_generation_evidence.rendered_pdf_extra_unit(d)) then raise exception 'managed_rendered_pdf_private_plan';end if;
+ end loop;
+ for u in select value from jsonb_array_elements(units) where value->'id'->>'key' ~ '^page:[1-9][0-9]*:extracted$' loop
+  foreach key_ in array array['rendered-original-geometry','rendered-ocr'] loop
+   if not exists(select 1 from jsonb_array_elements(units) d where d->'id'->>'key'='page:'||split_part(u->'id'->>'key',':',2)||':'||key_ and ingestion_generation_evidence.rendered_pdf_extra_unit(d)) then raise exception 'managed_rendered_pdf_private_plan';end if;
+  end loop;
+ end loop;
+ if exists(select 1 from jsonb_array_elements(units) d where ingestion_generation_evidence.rendered_pdf_extra_unit(d) and d->'id'->>'key' like 'page:%'
+  and not exists(select 1 from jsonb_array_elements(units) p where p->'id'->>'key'='page:'||split_part(d->'id'->>'key',':',2)||':extracted')) then raise exception 'managed_rendered_pdf_private_plan';end if;
+end $$;
+
+do $$
+declare definition text;needle text;replacement text;witness text:='se->''witness''->>''reference''=''independent-original-rendered-pdf-reviewed-inventory-v1''';
+begin
+ definition:=pg_get_functiondef('public.begin_ingestion_generation_evidence(jsonb,uuid,jsonb,text)'::regprocedure);
+ needle:='when ''binary'' then ''image_binary'' else ''image_provenance'' end)),false))';
+ replacement:='when ''binary'' then ''image_binary'' else ''image_provenance'' end) or ('||witness||' and ingestion_generation_evidence.rendered_pdf_extra_unit(u.value))),false))';
+ if length(definition)-length(replace(definition,needle,''))<>length(needle) then raise exception 'managed_rendered_pdf_private_allowlist_preimage';end if;
+ definition:=replace(definition,needle,replacement);
+ needle:='u.value->''id''->>''key'' like ''page:%'' group by';
+ replacement:='u.value->''id''->>''key'' like ''page:%'' and not ('||witness||' and ingestion_generation_evidence.rendered_pdf_extra_unit(u.value)) group by';
+ if length(definition)-length(replace(definition,needle,''))<>length(needle) then raise exception 'managed_rendered_pdf_private_page_count_preimage';end if;
+ definition:=replace(definition,needle,replacement);
+ needle:='  perform ingestion_generation_evidence.declare_groups(c,p_registration->''declarations'');';
+ if length(definition)-length(replace(definition,needle,''))<>length(needle) then raise exception 'managed_rendered_pdf_private_plan_preimage';end if;
+ execute replace(definition,needle,'  perform ingestion_generation_evidence.assert_rendered_pdf_private_plan(p_registration);'||chr(10)||needle);
+end $$;
+
+-- Extraction quality counts admitted page text once. Raw render OCR is a
+-- separate retained source anchor, never an additional admitted text page.
+do $$
+declare definition text;needle text;replacement text;
+begin
+ definition:=pg_get_functiondef('ingestion_generation_evidence.retain(ingestion_generation_evidence.candidates,jsonb)'::regprocedure);
+ needle:='coalesce(sum(byte_length) filter(where representation=''extracted_utf8''),0)';
+ replacement:='coalesce(sum(byte_length) filter(where representation=''extracted_utf8'' and not (c.source_expectation->''witness''->>''reference''=''independent-original-rendered-pdf-reviewed-inventory-v1'' and unit_key ~ ''^page:[1-9][0-9]*:rendered-ocr$'')),0)';
+ if length(definition)-length(replace(definition,needle,''))<>length(needle) then raise exception 'managed_rendered_pdf_quality_text_preimage';end if;
+ execute replace(definition,needle,replacement);
+end $$;
+
+-- Preserve native v1/v2 dispatch byte-for-byte. The rendered profile calls its
+-- own validator and never fabricates a native-v2 compatibility view.
+do $$
+declare definition text;
+begin
+ definition:=pg_get_functiondef('ingestion_generation_evidence.assert_full_pdf_packet(jsonb,uuid,jsonb)'::regprocedure);
+ if strpos(definition,'CREATE OR REPLACE FUNCTION ingestion_generation_evidence.assert_full_pdf_packet(')<>1 then raise exception 'managed_rendered_pdf_native_dispatch_preimage';end if;
+ execute replace(definition,'FUNCTION ingestion_generation_evidence.assert_full_pdf_packet(', 'FUNCTION ingestion_generation_evidence.assert_full_pdf_native_packet(');
+end $$;
+create or replace function ingestion_generation_evidence.assert_full_pdf_packet(f jsonb,g uuid,p jsonb)
+returns jsonb language plpgsql set search_path='' as $$
+begin
+ if p->>'version'='managed-rendered-pdf-packet-v1' then
+  return ingestion_generation_evidence.assert_rendered_pdf_packet(f,g,p);
+ end if;
+ return ingestion_generation_evidence.assert_full_pdf_native_packet(f,g,p);
+end $$;
+
+-- Reuse the generic summary validator and exact public-row comparator. All
+-- seven row families use the same comparator regardless of evidence profile.
+do $$
+declare definition text;old_branch text;
+begin
+ definition:=pg_get_functiondef('ingestion_generation_evidence.publish_full_pdf_summary(uuid,uuid,jsonb)'::regprocedure);
+ old_branch:='if p->>''version''<>''managed-full-pdf-packet-v2'' then return;end if;';
+ if strpos(definition,old_branch)=0 then raise exception 'managed_rendered_pdf_summary_publish_preimage';end if;
+ execute replace(definition,old_branch,'if p->>''version'' not in (''managed-full-pdf-packet-v2'',''managed-rendered-pdf-packet-v1'') then return;end if;');
+ definition:=pg_get_functiondef('ingestion_generation_evidence.full_pdf_rows_match(uuid,uuid,jsonb)'::regprocedure);
+ old_branch:='if p->>''version'' is distinct from ''managed-full-pdf-packet-v2'' then return false;end if;';
+ if strpos(definition,old_branch)=0 then raise exception 'managed_rendered_pdf_summary_match_preimage';end if;
+ execute replace(definition,old_branch,'if p->>''version'' not in (''managed-full-pdf-packet-v2'',''managed-rendered-pdf-packet-v1'') then return false;end if;');
+end $$;
+
+-- Seal the profile actually admitted, including the exact review and source
+-- identities. Native callers retain their pre-existing seal unchanged.
+do $$
+declare definition text;needle text;
+begin
+ definition:=pg_get_functiondef('public.complete_managed_full_pdf(jsonb,uuid,text,boolean)'::regprocedure);
+ needle:=' seal_bytes:=convert_to(seal::text,''UTF8'');';
+ if length(definition)-length(replace(definition,needle,''))<>length(needle) then raise exception 'managed_rendered_pdf_seal_preimage';end if;
+ execute replace(definition,needle,$patch$
+  if s.packet->>'version'='managed-rendered-pdf-packet-v1' then
+   seal:=jsonb_build_object('version','managed-rendered-pdf-seal-v1','packetDigest',s.packet_digest,'profileId',s.packet->'profileId','identity',s.packet->'identity','clinicalApproval','not_granted','publicationApproval','not_granted',
+    'inspectionScope',s.packet->'inspection'->'verificationScope','nativeLayerDisposition','excluded_from_admitted_evidence','originalNativeConflict','unresolved',
+    'reviewSha256',s.packet->'inspection'->'reviewSha256','reviewer',s.packet->'inspection'->'reviewRecord'->'reviewer','sourceSha256',s.packet->'identity'->'sourceSha256','sourceByteLength',s.packet->'identity'->'sourceByteLength');
+  end if;
+$patch$||needle);
+end $$;
+
+alter function ingestion_generation_evidence.rendered_pdf_hash(jsonb) owner to postgres;
+alter function ingestion_generation_evidence.rendered_pdf_rect(jsonb,jsonb) owner to postgres;
+alter function ingestion_generation_evidence.rendered_pdf_utf16_slice(text,integer,integer) owner to postgres;
+alter function ingestion_generation_evidence.assert_rendered_pdf_text(jsonb,text,jsonb,boolean) owner to postgres;
+alter function ingestion_generation_evidence.assert_rendered_pdf_review(uuid,uuid,jsonb) owner to postgres;
+alter function ingestion_generation_evidence.assert_rendered_pdf_packet(jsonb,uuid,jsonb) owner to postgres;
+alter function ingestion_generation_evidence.assert_full_pdf_native_packet(jsonb,uuid,jsonb) owner to postgres;
+alter function ingestion_generation_evidence.rendered_pdf_extra_unit(jsonb) owner to postgres;
+alter function ingestion_generation_evidence.assert_rendered_pdf_private_plan(jsonb) owner to postgres;
+revoke all on function ingestion_generation_evidence.rendered_pdf_extra_unit(jsonb),ingestion_generation_evidence.assert_rendered_pdf_private_plan(jsonb) from public,anon,authenticated,service_role;
+revoke all on function ingestion_generation_evidence.rendered_pdf_hash(jsonb),ingestion_generation_evidence.rendered_pdf_rect(jsonb,jsonb),ingestion_generation_evidence.rendered_pdf_utf16_slice(text,integer,integer),ingestion_generation_evidence.assert_rendered_pdf_text(jsonb,text,jsonb,boolean),ingestion_generation_evidence.assert_rendered_pdf_review(uuid,uuid,jsonb),ingestion_generation_evidence.assert_rendered_pdf_packet(jsonb,uuid,jsonb),ingestion_generation_evidence.assert_full_pdf_native_packet(jsonb,uuid,jsonb) from public,anon,authenticated,service_role;
+-- Replacement functions retain postgres ownership and their existing ACLs;
+-- stage/complete service RPCs are unchanged. No grants or historical resealing.
+commit;
+
+-- Source migration: 20261106184724_defer_readmission_ranking_authority.sql
+-- DRAFT: a readmission's flat ranking fields (publisher, jurisdiction, dates,
+-- document_status, supersedes_document_id, source_role, licence_policy,
+-- rights_evidence_ref) wait in metadata.pending_reindex_authority until a
+-- successful reindex terminal commits the generation. The admission marker,
+-- metadata.authority and provider_processing stay live so the attempt can claim.
+-- The non-catalogue authority digest binds the pending values when present, so
+-- existing digests are unchanged and the apply step does not move the fence.
+-- Applying fails closed if a live flat value changed mid-attempt (for example a
+-- licence withdrawal). No grants widen; no historical migration is resealed.
+begin;
+set local lock_timeout='5s';
+set local statement_timeout='120s';
+
+create function ingestion_generation_evidence.pending_reindex_authority_valid(m jsonb)
+returns boolean language sql immutable set search_path='' as $$
+ select coalesce(ingestion_generation_evidence.keys(m->'pending_reindex_authority',array['version','admissionEventId','values','prior'])
+  and m#>>'{pending_reindex_authority,version}'='pending-reindex-authority-v1'
+  and m#>'{pending_reindex_authority,admissionEventId}'=m->'admission_event_id'
+  and ingestion_generation_evidence.keys(m#>'{pending_reindex_authority,values}',array['source_role','licence_policy','rights_evidence_ref','publisher','jurisdiction','publication_date','effective_date','review_date','expiry_date','document_status','supersedes_document_id'])
+  and ingestion_generation_evidence.keys(m#>'{pending_reindex_authority,prior}',array['source_role','licence_policy','rights_evidence_ref','publisher','jurisdiction','publication_date','effective_date','review_date','expiry_date','document_status','supersedes_document_id']),false)
+$$;
+
+-- Idempotent: a document without a pending block is left untouched. Callers run
+-- it only after commit_document_index_generation and complete_ingestion_job succeed,
+-- inside the same transaction, so a refusal here rolls the whole terminal back.
+create function ingestion_generation_evidence.apply_pending_reindex_authority(p_document_id uuid)
+returns void language plpgsql security definer set search_path='' as $$
+declare m jsonb;k text;
+begin
+ select metadata into strict m from public.documents where id=p_document_id for update;
+ if not (m ? 'pending_reindex_authority') then return;end if;
+ if not ingestion_generation_evidence.pending_reindex_authority_valid(m) then raise exception 'pending_reindex_authority_invalid';end if;
+ foreach k in array array['source_role','licence_policy','rights_evidence_ref','publisher','jurisdiction','publication_date','effective_date','review_date','expiry_date','document_status','supersedes_document_id'] loop
+  if coalesce(m->k,'null'::jsonb) is distinct from m#>array['pending_reindex_authority','prior',k] then
+   raise exception 'pending_reindex_authority_live_changed';end if;
+ end loop;
+ update public.documents set metadata=(m-'pending_reindex_authority')||(m#>'{pending_reindex_authority,values}') where id=p_document_id;
+end $$;
+
+create or replace function public.lock_ingestion_document_authority(p_document_id uuid, p_try boolean)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare
+  v_key text; v_version_id uuid; v_document public.documents%rowtype;
+  v_version public.public_source_versions%rowtype; v_event public.public_source_activation_events%rowtype;
+  v_policy public.public_source_policy_entries%rowtype;
+  v_attempt public.public_source_upload_attempts%rowtype;
+  v_digest text; v_metadata jsonb; v_effective jsonb;
+begin
+  select v.id, v.source_catalogue_key into v_version_id, v_key
+  from public.public_source_versions v where v.staging_document_id = p_document_id;
+  if v_key is null then
+    select d.metadata->>'source_catalogue_key' into v_key from public.documents d where d.id = p_document_id;
+  end if;
+  if v_key is not null then
+    if p_try then
+      if not pg_catalog.pg_try_advisory_xact_lock(pg_catalog.hashtextextended(v_key, 0)) then return null; end if;
+    else
+      perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(v_key, 0));
+    end if;
+    -- Match current governance writers: advisory, latest event, document, version.
+    -- NOWAIT preserves the latest-event identity; SKIP LOCKED here could select an older event.
+    if p_try then
+      select * into v_event from public.public_source_activation_events
+        where source_catalogue_key = v_key order by activation_sequence desc limit 1 for update nowait;
+    else
+      select * into v_event from public.public_source_activation_events
+        where source_catalogue_key = v_key order by activation_sequence desc limit 1 for update;
+    end if;
+    if not found then return null; end if;
+  end if;
+  if p_try then
+    select * into v_document from public.documents where id = p_document_id for update skip locked;
+  else
+    select * into v_document from public.documents where id = p_document_id for update;
+  end if;
+  if not found then return null; end if;
+  v_metadata := v_document.metadata;
+  if jsonb_typeof(v_metadata) is distinct from 'object' then return null; end if;
+  if v_metadata->>'source_catalogue_key' is distinct from v_key
+    or exists (select 1 from public.public_source_versions v where v.staging_document_id = p_document_id and v.id is distinct from v_version_id)
+    then return null; end if;
+  if v_key is not null then
+    if p_try then
+      select * into v_version from public.public_source_versions where id = v_version_id for update nowait;
+    else
+      select * into v_version from public.public_source_versions where id = v_version_id for update;
+    end if;
+    if not found or v_version.staging_document_id is distinct from p_document_id
+      or v_version.source_catalogue_key is distinct from v_key
+      or v_metadata->>'public_source_version_id' is distinct from v_version.id::text then return null; end if;
+    -- Finalization uses this same upload-attempt lock after the version lock.
+    if p_try then
+      select * into v_attempt from public.public_source_upload_attempts
+        where id = v_version.finalized_upload_attempt_id for update nowait;
+    else
+      select * into v_attempt from public.public_source_upload_attempts
+        where id = v_version.finalized_upload_attempt_id for update;
+    end if;
+    if not found or v_attempt.state is distinct from 'finalized'
+      or v_version.current_upload_attempt_id is distinct from v_attempt.id
+      or v_attempt.version_id is distinct from v_version.id
+      or v_attempt.claim_token is distinct from v_version.upload_lease_token
+      or v_attempt.claim_expires_at is distinct from v_version.upload_lease_expires_at
+      or v_attempt.storage_bucket is distinct from v_version.storage_bucket
+      or v_attempt.storage_path is distinct from v_version.reserved_storage_path then return null; end if;
+    -- The existing control plane owns stewardship, latest activation, lifecycle,
+    -- policy/content metadata and raw-response identity checks. Its locks are reentrant.
+    begin
+      perform public.assert_public_source_document_governance(p_document_id);
+    exception when raise_exception then
+      return null;
+    end;
+    select * into v_policy from public.public_source_policy_entries
+      where source_catalogue_key = v_key;
+    if not found or v_policy.policy_version is distinct from v_version.source_policy_version
+      or v_policy.policy_digest is distinct from v_version.source_policy_digest
+      or v_policy.lifecycle is distinct from 'active'
+      or v_policy.content_mode is distinct from 'indexed_content'
+      or v_policy.exact_document_licence is distinct from 'public_index_permitted'
+      or v_event.policy_version is distinct from v_version.source_policy_version
+      or v_version.intended_disposition is distinct from 'shadow'
+      or v_version.upload_state is distinct from 'finalized'
+      or v_version.reserved_document_id is distinct from p_document_id
+      or v_version.reserved_storage_path is distinct from v_document.storage_path
+      then return null; end if;
+    -- Bind the current immutable control-plane identity and mutable authority.
+    -- Document progress/enrichment metadata is deliberately outside this digest.
+    v_digest := 'sha256:' || encode(extensions.digest(convert_to(jsonb_build_object(
+      'version', to_jsonb(v_version), 'event', to_jsonb(v_event), 'policy', to_jsonb(v_policy),
+      'upload_attempt', to_jsonb(v_attempt),
+      'document', jsonb_build_object('id',v_document.id,'owner',v_document.owner_id,
+        'source',v_document.source_path,'storage',v_document.storage_path,'file',v_document.file_name,
+        'file_type',v_document.file_type,'file_size',v_document.file_size,'content_hash',v_document.content_hash),
+      'source_metadata', (select jsonb_object_agg(entry.key,entry.value) from jsonb_each(v_metadata) entry
+        where entry.key = any(array['corpus_scope','source_kind','source_catalogue_key','source_policy_version',
+          'source_policy_digest','public_source_activation_event_id','public_source_activation_sequence',
+          'public_source_version_id','public_source_steward_id','content_mode','licence_policy','canonical_url',
+          'exact_version_url','version','content_hash','raw_response_hash','raw_response_byte_count',
+          'acquisition_disposition','public_source_storage_bucket']))
+    )::text, 'UTF8'), 'sha256'), 'hex');
+  else
+    -- Any public-source marker forbids silently entering the non-catalogue branch.
+    if v_metadata ?| array['source_catalogue_key','source_policy_version','source_policy_digest','source_activation_event_id',
+      'source_canonical_url','source_exact_url','source_exact_version','source_content_hash',
+      'licence_evidence_digest','public_source_lifecycle','public_source_version_id',
+      'public_source_activation_event_id','public_source_activation_sequence','public_source_steward_id',
+      'public_source_storage_bucket','acquisition_disposition']
+      or v_metadata->>'corpus_scope' = 'australian_public' then return null; end if;
+    -- Trusted admission emits both permissions. A digest alone does not authorize
+    -- provider work: missing, malformed, forbidden or conflicting values fail closed.
+    -- Untagged legacy documents retain their existing eligibility semantics.
+    if (v_metadata ?| array['admission_event_id','admission_policy_version','provider_processing']
+        or (v_metadata->'authority') ? 'providerProcessing')
+      and (v_metadata->'provider_processing' is distinct from '"permitted"'::jsonb
+        or v_metadata#>'{authority,providerProcessing}' is distinct from '"permitted"'::jsonb)
+      then return null; end if;
+    -- A readmission's flat ranking fields wait in pending_reindex_authority until
+    -- a successful terminal applies them. Bind those pending values, so applying
+    -- them leaves this digest unchanged; without the block the digest input is
+    -- byte-identical to the previous definition. A malformed block fails closed.
+    if v_metadata ? 'pending_reindex_authority' then
+      if not ingestion_generation_evidence.pending_reindex_authority_valid(v_metadata) then return null; end if;
+      v_effective := v_metadata || (v_metadata#>'{pending_reindex_authority,values}');
+    else
+      v_effective := v_metadata;
+    end if;
+    v_digest := 'sha256:' || encode(extensions.digest(convert_to(jsonb_build_object(
+      'owner', v_document.owner_id, 'source', v_document.source_path, 'storage', v_document.storage_path,
+      'file', v_document.file_name, 'file_type', v_document.file_type, 'file_size', v_document.file_size,
+      'content_hash', v_document.content_hash, 'corpus_scope', v_metadata->'corpus_scope',
+      'content_mode', v_metadata->'content_mode', 'licence_policy', v_effective->'licence_policy',
+      'source_policy_checked', v_metadata->'source_policy_checked', 'content_identity_verdict', v_metadata->'content_identity_verdict',
+      'content_identity_hash', v_metadata->'content_identity_hash', 'content_identity_verdict_version', v_metadata->'content_identity_verdict_version',
+      'canonical_storage_path', v_metadata->'canonical_storage_path', 'public_corpus', v_metadata->'public_corpus',
+      'admission_event_id', v_metadata->'admission_event_id', 'admission_policy_version', v_metadata->'admission_policy_version',
+      'authority', v_metadata->'authority', 'source_role', v_effective->'source_role', 'authority_basis', v_metadata->'authority_basis',
+      'rights_evidence_ref', v_effective->'rights_evidence_ref', 'provider_processing', v_metadata->'provider_processing',
+      'purpose', v_metadata->'purpose', 'supported_features', v_metadata->'supported_features'
+    )::text, 'UTF8'), 'sha256'), 'hex');
+  end if;
+  return jsonb_build_object('document', to_jsonb(v_document), 'authority_digest', v_digest);
+exception when lock_not_available then
+  -- A claim never waits on a busy authority row; a later bounded poll may retry.
+  return null;
+end $$;
+
+create or replace function public.readmit_administrator_document_for_reindex(
+ p_document_id uuid,p_correlation_id uuid,p_expected_owner_id uuid,p_expected_public_corpus boolean,
+ p_source_sha256 text,p_byte_count bigint,p_file_name_sha256 text,p_storage_path_sha256 text,
+ p_authority jsonb,p_max_attempts integer default 1)
+returns jsonb language plpgsql security definer set search_path='' as $$
+declare actor uuid:=auth.uid();claims jsonb:=auth.jwt();d public.documents;j public.ingestion_jobs; prior public.document_admission_events;
+ event_id uuid:=gen_random_uuid();job_id uuid:=gen_random_uuid();request jsonb;request_digest text;admission jsonb;next_metadata jsonb;
+ pair record;value text;scope text;now_at timestamptz:=clock_timestamp();date_value date;
+ pending_values jsonb:='{}'::jsonb;pending_prior jsonb:='{}'::jsonb;
+begin
+ if actor is null or claims->>'role' is distinct from 'authenticated' or claims->>'sub' is distinct from actor::text
+  or claims#>>'{app_metadata,site_role}' is distinct from 'administrator' or claims->>'aal' is distinct from 'aal2'
+  or jsonb_typeof(claims->'amr') is distinct from 'array' then raise exception 'administrator_assurance_required' using errcode='42501';end if;
+ if not exists(select 1 from jsonb_array_elements(claims->'amr') m where m->>'method' in ('password','otp','totp','webauthn')
+  and jsonb_typeof(m->'timestamp')='number' and to_timestamp((m->>'timestamp')::double precision) between now_at-interval '900 seconds' and now_at)
+  then raise exception 'administrator_recent_authentication_required' using errcode='42501';end if;
+ perform 1 from auth.users u where u.id=actor and u.raw_app_meta_data->>'site_role'='administrator'
+  and to_jsonb(u)->>'deleted_at' is null and (to_jsonb(u)->>'banned_until' is null or (to_jsonb(u)->>'banned_until')::timestamptz<=now_at) for share;
+ if not found then raise exception 'administrator_assurance_required' using errcode='42501';end if;
+ if p_document_id is null or p_correlation_id is null or p_expected_public_corpus is null or p_max_attempts is null or p_max_attempts not between 1 and 100
+  or coalesce(p_source_sha256,'') !~ '^sha256:[0-9a-f]{64}$' or coalesce(p_file_name_sha256,'') !~ '^sha256:[0-9a-f]{64}$'
+  or coalesce(p_storage_path_sha256,'') !~ '^sha256:[0-9a-f]{64}$' or p_byte_count is null or p_byte_count not between 1 and 157286400
+  then raise exception 'readmission_invalid_identity';end if;
+ select * into strict d from public.documents where id=p_document_id for update;
+ scope:=case when d.owner_id=actor then 'owner_private' when d.owner_id is null and d.metadata->'public_corpus'='true'::jsonb then 'existing_shared_library_stewardship' else null end;
+ if scope is null or d.owner_id is distinct from p_expected_owner_id
+  or (d.metadata->'public_corpus' is not distinct from 'true'::jsonb) is distinct from p_expected_public_corpus
+  then raise exception 'readmission_document_scope_required';end if;
+ if d.file_type<>'application/pdf' or 'sha256:'||d.content_hash is distinct from p_source_sha256 or d.file_size<>p_byte_count
+  or 'sha256:'||encode(extensions.digest(convert_to(d.file_name,'UTF8'),'sha256'),'hex')<>p_file_name_sha256
+  or 'sha256:'||encode(extensions.digest(convert_to(d.storage_path,'UTF8'),'sha256'),'hex')<>p_storage_path_sha256
+  then raise exception 'readmission_source_identity_mismatch';end if;
+ -- This path does not bypass the separate governed public-source control plane.
+ if d.metadata ?| array['public_source_version_id','public_source_activation_event_id','source_catalogue_key']
+  then raise exception 'readmission_governed_source_requires_its_existing_control_plane';end if;
+ if not ingestion_generation_evidence.keys(p_authority,array['version','sourceRole','authorityBasis','licencePolicy','rightsEvidenceRef','publisher','jurisdiction','publicationDate','effectiveDate','reviewDate','expiryDate','currentness','supersedesDocumentId','purpose','supportedFeatures','providerProcessing'])
+  or p_authority->'version' is distinct from '1'::jsonb or p_authority->>'authorityBasis' is distinct from 'administrator_template'
+  or coalesce(p_authority->>'licencePolicy','') not in ('review_required','public_index_permitted')
+  or coalesce(p_authority->>'jurisdiction','') not in ('Australia','Australia/WA')
+  or coalesce(p_authority->>'currentness','') not in ('current','unknown')
+  or p_authority->>'purpose' is distinct from 'clinical_retrieval' or p_authority->>'providerProcessing' is distinct from 'permitted'
+  or coalesce(p_authority->>'sourceRole','') not in ('local_guideline','clinical_guideline','clinical_reference','service_directory','form_reference','tool_reference','safety_alert','regulatory','quality_standard','legal','subsidy','professional_review','service_policy')
+  or jsonb_typeof(p_authority->'rightsEvidenceRef') is distinct from 'string' or length(p_authority->>'rightsEvidenceRef') not between 1 and 500
+  or jsonb_typeof(p_authority->'publisher') is distinct from 'string' or length(p_authority->>'publisher') not between 1 and 300
+  or jsonb_typeof(p_authority->'supportedFeatures') is distinct from 'array'
+  then raise exception 'readmission_invalid_authority';end if;
+ if jsonb_array_length(p_authority->'supportedFeatures') not between 1 and 3
+  or exists(select 1 from jsonb_array_elements_text(p_authority->'supportedFeatures') f where f not in ('images','tables','text'))
+  or (select count(distinct f) from jsonb_array_elements_text(p_authority->'supportedFeatures') f)<>jsonb_array_length(p_authority->'supportedFeatures')
+  or p_authority->'supportedFeatures' is distinct from (select jsonb_agg(f order by f collate "C") from jsonb_array_elements_text(p_authority->'supportedFeatures') f)
+  then raise exception 'readmission_invalid_features';end if;
+ foreach value in array array['publicationDate','effectiveDate','reviewDate','expiryDate'] loop
+  if p_authority->value is distinct from 'null'::jsonb then
+   if jsonb_typeof(p_authority->value) is distinct from 'string' or coalesce(p_authority->>value,'') !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' then raise exception 'readmission_invalid_date';end if;
+   date_value:=(p_authority->>value)::date;
+   if (value='effectiveDate' and date_value>current_date) or (value in ('reviewDate','expiryDate') and date_value<=current_date) then raise exception 'readmission_source_not_current';end if;
+  end if;
+ end loop;
+ if p_authority->'supersedesDocumentId' is distinct from 'null'::jsonb and coalesce(p_authority->>'supersedesDocumentId','') !~ '^[0-9a-f-]{36}$' then raise exception 'readmission_invalid_supersession';end if;
+ request:=jsonb_build_object('version','administrator-current-reindex-readmission-v1','administratorId',actor,'documentId',d.id,'documentOwnerId',d.owner_id,
+  'publicCorpus',p_expected_public_corpus,'sourceSha256',p_source_sha256,'byteCount',p_byte_count,'fileNameSha256',p_file_name_sha256,'storagePathSha256',p_storage_path_sha256,'authority',p_authority,'maxAttempts',p_max_attempts,'correlationId',p_correlation_id);
+ request_digest:='sha256:'||encode(extensions.digest(convert_to(request::text,'UTF8'),'sha256'),'hex');
+ select * into prior from public.document_admission_events e where e.document_id=d.id and e.administrator_id=actor and e.correlation_id=p_correlation_id order by e.created_at desc limit 1;
+ if found then
+  if prior.request_digest<>request_digest then raise exception 'readmission_replay_conflict';end if;
+  return jsonb_build_object('outcome','replayed','admissionEventId',prior.id,'jobId',prior.ingestion_job_id,'scope',scope,'documentOwnerId',d.owner_id,'stewardId',actor);
+ end if;
+ perform 1 from public.ingestion_jobs where document_id=d.id order by id for update;
+ perform 1 from public.indexing_v3_agent_jobs where document_id=d.id order by id for update;
+ if exists(select 1 from public.ingestion_jobs where document_id=d.id and status in ('pending','processing'))
+  or exists(select 1 from public.indexing_v3_agent_jobs where document_id=d.id and status='processing' and lease_expires_at>now_at)
+  then raise exception 'readmission_active_attempt';end if;
+ admission:=jsonb_build_object('version','administrator-current-reindex-readmission-v1','scope',scope,'administratorId',actor,
+  'documentOwnerId',d.owner_id,'sourceSha256',p_source_sha256,'previousAdmissionEventId',d.metadata->'admission_event_id','origin','historical_upload_origin_not_established','clinicalApproval','not_granted','publicationApproval','not_granted');
+ next_metadata:=d.metadata||jsonb_build_object('admission_event_id',event_id,'admission_policy_version','trusted-document-admission-v1','authority',p_authority,
+  'authority_basis','administrator_template','provider_processing','permitted','purpose','clinical_retrieval','supported_features',p_authority->'supportedFeatures',
+  'readmitted_at',now_at,'reindex_readmission',admission);
+ for pair in select * from (values ('source_role','sourceRole'),('licence_policy','licencePolicy'),('rights_evidence_ref','rightsEvidenceRef'),('publisher','publisher'),('jurisdiction','jurisdiction'),('publication_date','publicationDate'),('effective_date','effectiveDate'),('review_date','reviewDate'),('expiry_date','expiryDate'),('document_status','currentness'),('supersedes_document_id','supersedesDocumentId')) p(metadata_key,authority_key) loop
+  pending_values:=pending_values||jsonb_build_object(pair.metadata_key,p_authority->pair.authority_key);
+  pending_prior:=pending_prior||jsonb_build_object(pair.metadata_key,coalesce(d.metadata->pair.metadata_key,'null'::jsonb));
+ end loop;
+ -- Retrieval ranking reads these flat keys. They stay live-unchanged until a
+ -- successful reindex terminal applies them; a failed attempt leaves them as they were.
+ next_metadata:=next_metadata||jsonb_build_object('pending_reindex_authority',jsonb_build_object('version','pending-reindex-authority-v1',
+  'admissionEventId',event_id,'values',pending_values,'prior',pending_prior));
+ insert into public.ingestion_jobs(id,document_id,batch_id,status,stage,progress,max_attempts) values(job_id,d.id,d.import_batch_id,'pending','administrator readmission',0,p_max_attempts) returning * into j;
+ insert into public.document_admission_events(id,document_id,ingestion_job_id,staging_owner_id,source_channel,actor_kind,administrator_id,backend_principal,correlation_id,admission_policy_version,content_sha256,file_name_sha256,storage_path_sha256,mime_type,byte_count,authority,admission_digest,document_input_digest,request_digest)
+ values(event_id,d.id,j.id,actor,'admin_api','administrator',actor,null,p_correlation_id,'trusted-document-admission-v1',p_source_sha256,p_file_name_sha256,p_storage_path_sha256,d.file_type,p_byte_count,p_authority,
+  'sha256:'||encode(extensions.digest(convert_to(admission::text,'UTF8'),'sha256'),'hex'),'sha256:'||encode(extensions.digest(convert_to(to_jsonb(d)::text,'UTF8'),'sha256'),'hex'),request_digest);
+ update public.documents set metadata=next_metadata,updated_at=now_at where id=d.id;
+ -- Visibility, ownership, clinical sign-off and the committed generation were not altered.
+ return jsonb_build_object('outcome','created','admissionEventId',event_id,'jobId',j.id,'scope',scope,'documentOwnerId',d.owner_id,'stewardId',actor,'generationActivated',false);
+end $$;
+
+-- Apply only on the first successful completion, after the commit and job
+-- completion succeeded. Completed/read-only replay branches are unchanged.
+do $$
+declare signature text;definition text;needle text;doc text;
+begin
+ foreach signature in array array['public.complete_managed_full_pdf(jsonb,uuid,text,boolean)',
+  'public.complete_managed_general_pdf(jsonb,uuid,jsonb,boolean)','ingestion_generation_evidence.complete_admin_pdf(jsonb,uuid,jsonb,boolean)'] loop
+  doc:=case when signature like 'public.complete_managed_full_pdf%' then 's' else 'c' end;
+  needle:='  update public.ingestion_jobs set next_run_at=null,lease_expires_at=null,lease_duration_seconds=null where id='||doc||'.job_id;';
+  definition:=pg_get_functiondef(signature::regprocedure);
+  if length(definition)-length(replace(definition,needle,''))<>length(needle)
+   or strpos(definition,'apply_pending_reindex_authority')<>0
+   or not exists(select 1 from pg_proc where oid=signature::regprocedure and proowner='postgres'::regrole)
+   then raise exception 'pending_reindex_authority_terminal_preimage';end if;
+  execute replace(definition,needle,'  perform ingestion_generation_evidence.apply_pending_reindex_authority('||doc||'.document_id);'||chr(10)||needle);
+ end loop;
+end $$;
+
+alter function ingestion_generation_evidence.pending_reindex_authority_valid(jsonb) owner to postgres;
+alter function ingestion_generation_evidence.apply_pending_reindex_authority(uuid) owner to postgres;
+revoke all on function ingestion_generation_evidence.pending_reindex_authority_valid(jsonb),ingestion_generation_evidence.apply_pending_reindex_authority(uuid) from public,anon,authenticated,service_role;
+alter function public.lock_ingestion_document_authority(uuid,boolean) owner to postgres;
+revoke all on function public.lock_ingestion_document_authority(uuid,boolean) from public,anon,authenticated,service_role;
+alter function public.readmit_administrator_document_for_reindex(uuid,uuid,uuid,boolean,text,bigint,text,text,jsonb,integer) owner to postgres;
+revoke all on function public.readmit_administrator_document_for_reindex(uuid,uuid,uuid,boolean,text,bigint,text,text,jsonb,integer) from public,anon,service_role;
+grant execute on function public.readmit_administrator_document_for_reindex(uuid,uuid,uuid,boolean,text,bigint,text,text,jsonb,integer) to authenticated;
+-- Patched terminals retain their postgres ownership and existing ACLs.
+commit;
+
+-- Source migration: 20261106223559_full_pdf_packet_parent_lookups.sql
+-- DRAFT: the full-PDF and rendered-PDF packet validators checked every row's
+-- parent references by rescanning rows->'chunks' (whose elements carry
+-- 1536-value embeddings), rows->'images' and rows->'sections' once per row, so
+-- validation cost grew with rows x parents. Each validator now collects the
+-- parent IDs (and chunk ID/page pairs for table facts) once, before the row
+-- loop, and tests membership against those arrays.
+-- Behaviour is unchanged: coalesce(x=any(ids),false) is false exactly when no
+-- parent has an equal id, which is when the old not-exists test raised. A
+-- family that is not an array yields a null list, and every such family has
+-- already raised before any lookup reads it. Same exception codes; ownership
+-- and ACLs are kept by create or replace. No grants widen.
+begin;
+set local lock_timeout='5s';
+set local statement_timeout='120s';
+
+do $$
+declare signature text;definition text;needles text[];replacements text[];expected integer[];i integer;
+begin
+ needles:=array[
+  $q$chunk_ordinal integer:=0;$q$,
+  $q$ foreach row_family in array array['chunks','images','table_facts','embedding_fields','index_units','sections','memory_cards'] loop$q$,
+  $q$not exists(select 1 from jsonb_array_elements(rows->'chunks') parent where parent->'id'=r->'source_chunk_id')$q$,
+  $q$not exists(select 1 from jsonb_array_elements(rows->'images') parent where parent->'id'=r->'source_image_id')$q$,
+  $q$not exists(select 1 from jsonb_array_elements(rows->'chunks') parent where parent->'id'=link)$q$,
+  $q$not exists(select 1 from jsonb_array_elements(rows->'images') parent where parent->'id'=link)$q$,
+  $q$not exists(select 1 from jsonb_array_elements(rows->'sections') parent where parent->'id'=r->'section_id')$q$,
+  $q$not exists(select 1 from jsonb_array_elements(rows->'chunks') ch where ch->'id'=r->'source_chunk_id' and ch->'page_number'=r->'page_number')$q$];
+ replacements:=array[
+  $q$chunk_ordinal integer:=0;parent_chunk_ids jsonb[];parent_image_ids jsonb[];parent_section_ids jsonb[];chunk_page_keys jsonb[];$q$,
+  $q$ parent_chunk_ids:=case when jsonb_typeof(rows->'chunks')='array' then array(select x->'id' from jsonb_array_elements(rows->'chunks') x) end;
+ parent_image_ids:=case when jsonb_typeof(rows->'images')='array' then array(select x->'id' from jsonb_array_elements(rows->'images') x) end;
+ parent_section_ids:=case when jsonb_typeof(rows->'sections')='array' then array(select x->'id' from jsonb_array_elements(rows->'sections') x) end;
+ chunk_page_keys:=case when jsonb_typeof(rows->'chunks')='array' then array(select jsonb_build_array(x->'id',x->'page_number') from jsonb_array_elements(rows->'chunks') x where x->'id' is not null and x->'page_number' is not null) end;
+ foreach row_family in array array['chunks','images','table_facts','embedding_fields','index_units','sections','memory_cards'] loop$q$,
+  $q$not coalesce(r->'source_chunk_id'=any(parent_chunk_ids),false)$q$,
+  $q$not coalesce(r->'source_image_id'=any(parent_image_ids),false)$q$,
+  $q$not coalesce(link=any(parent_chunk_ids),false)$q$,
+  $q$not coalesce(link=any(parent_image_ids),false)$q$,
+  $q$not coalesce(r->'section_id'=any(parent_section_ids),false)$q$,
+  $q$(r->'source_chunk_id' is null or r->'page_number' is null or not coalesce(jsonb_build_array(r->'source_chunk_id',r->'page_number')=any(chunk_page_keys),false))$q$];
+ expected:=array[1,1,1,1,2,1,1,1];
+ foreach signature in array array['ingestion_generation_evidence.assert_full_pdf_packet_v1(jsonb,uuid,jsonb)',
+  'ingestion_generation_evidence.assert_rendered_pdf_packet(jsonb,uuid,jsonb)'] loop
+  definition:=pg_get_functiondef(signature::regprocedure);
+  if strpos(definition,'parent_chunk_ids')<>0
+   or not exists(select 1 from pg_proc where oid=signature::regprocedure and proowner='postgres'::regrole)
+   then raise exception 'full_pdf_parent_lookup_preimage';end if;
+  for i in 1..array_length(needles,1) loop
+   if (length(definition)-length(replace(definition,needles[i],'')))/length(needles[i])<>expected[i] then raise exception 'full_pdf_parent_lookup_preimage';end if;
+   definition:=replace(definition,needles[i],replacements[i]);
+  end loop;
+  if strpos(definition,$q$jsonb_array_elements(rows->'chunks') parent$q$)<>0 or strpos(definition,$q$jsonb_array_elements(rows->'images') parent$q$)<>0
+   or strpos(definition,$q$jsonb_array_elements(rows->'sections') parent$q$)<>0 or strpos(definition,$q$jsonb_array_elements(rows->'chunks') ch where$q$)<>0
+   then raise exception 'full_pdf_parent_lookup_postimage';end if;
+  execute definition;
+ end loop;
+end $$;
+
+-- Patched validators retain their postgres ownership and existing ACLs.
+commit;

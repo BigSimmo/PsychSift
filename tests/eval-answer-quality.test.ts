@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   answerTargetingThresholdFailure,
@@ -232,6 +232,62 @@ describe("answer dump records", () => {
     expect(Object.keys(diagnostics[0])).not.toContain("document_id");
   });
 
+  it("retains the actual relevance band without copying explanations or reclassifying sources", () => {
+    const base = {
+      id: "synthetic-context-source",
+      document_id: "synthetic-context-document",
+      title: "Synthetic procedure",
+      file_name: "synthetic-procedure.pdf",
+      page_number: 1,
+      chunk_index: 0,
+      section_heading: null,
+      content: "The synthetic procedure requires a completed admission checklist.",
+      image_ids: [],
+      similarity: 0.5,
+      images: [],
+    };
+    const relevance = {
+      label: "SYNTHETIC_PRIVATE_EXPLANATION",
+      matchedTerms: ["SYNTHETIC_PRIVATE_EXPLANATION"],
+      missingTerms: [],
+      directSourceCount: 0,
+      weakSourceCount: 1,
+      score: 0.4,
+      supportReason: "SYNTHETIC_PRIVATE_EXPLANATION",
+      isSourceBacked: true,
+      coverageScore: 0.4,
+      rankScore: 0.4,
+      titleMatchedTerms: [],
+      contentMatchedTerms: [],
+      metadataMatchedTerms: [],
+      chips: [],
+    };
+    const sources = [
+      ...(["direct", "partial", "nearby", "none"] as const).map((verdict) => ({
+        ...base,
+        id: `synthetic-${verdict}`,
+        relevance: { ...relevance, verdict },
+      })),
+      { ...base, id: "synthetic-unclassified" },
+      { ...base, id: "synthetic-malformed", relevance: { ...relevance, verdict: "SYNTHETIC_PRIVATE_VERDICT" } },
+    ] as unknown as RagAnswer["sources"];
+
+    const diagnostics = buildRagDiagnosticDumpRecord("synthetic-context-bands", "Synthetic admission checklist", {
+      ...answer,
+      sources,
+    } as RagAnswer).sources;
+    expect(diagnostics.map((source) => source.ranking.context_relevance_verdict)).toEqual([
+      "direct",
+      "partial",
+      "nearby",
+      "none",
+      null,
+      null,
+    ]);
+    expect(JSON.stringify(diagnostics)).not.toContain("SYNTHETIC_PRIVATE");
+    expect(sources[1].relevance?.verdict).toBe("partial");
+  });
+
   it("records the scores and pipeline reasons behind each source's rank", () => {
     const [ranked, bare] = buildBoundedRagSourceDiagnostics([
       {
@@ -265,6 +321,7 @@ describe("answer dump records", () => {
       },
     ] as unknown as RagAnswer["sources"]);
     expect(ranked.ranking).toEqual({
+      context_relevance_verdict: null,
       answer_evidence_score: null,
       hybrid_score: 0.6,
       rank_score: 1.3475,
@@ -274,6 +331,7 @@ describe("answer dump records", () => {
       match_reasons: ["retrieval_signal:document_title_phrase", "second_stage_rerank"],
     });
     expect(bare.ranking).toEqual({
+      context_relevance_verdict: null,
       answer_evidence_score: null,
       hybrid_score: null,
       rank_score: null,
@@ -370,6 +428,47 @@ describe("answer dump records", () => {
     });
     expect(Object.keys(record)).not.toContain("openAIRequestIds");
     expect(JSON.stringify(record)).not.toContain("request-private");
+  });
+
+  it("prices every attributed generation attempt and labels cache-write bounds", () => {
+    vi.stubEnv(
+      "RAG_EVAL_MODEL_PRICES_JSON",
+      JSON.stringify({
+        fast: { input: 2, output: 10 },
+        strong: { input: 4, output: 20, cacheWrite: 5 },
+      }),
+    );
+    try {
+      const record = buildRagDiagnosticDumpRecord("cost-case", "Synthetic question", {
+        ...answer,
+        modelUsed: "strong",
+        openAIUsageAttempts: [
+          { model: "fast", usage: { input_tokens: 1_000, output_tokens: 100 } },
+          { model: "strong", usage: { input_tokens: 1_000, output_tokens: 100 } },
+        ],
+      });
+      expect(record.estimated_cost_usd).toBeCloseTo(0.01);
+      expect(record.cost_estimate_basis).toBe("cache_write_upper_bound");
+      const failed = buildRagDiagnosticDumpRecord("failed-cost-case", "Synthetic question", {
+        ...answer,
+        openAIUsageAttempts: [{ model: "fast" }],
+      });
+      expect(failed.provider_attempted).toBe(true);
+      expect(failed.estimated_cost_usd).toBeNull();
+      const retried = buildRagDiagnosticDumpRecord(
+        "retry-case",
+        "Synthetic question",
+        {
+          ...answer,
+          openAIUsageAttempts: [{ model: "fast", usage: { input_tokens: 1_000, output_tokens: 100 } }],
+        },
+        1,
+      );
+      expect(retried.estimated_cost_usd).toBeNull();
+      expect(retried.unpriced_outer_attempts).toBe(1);
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it("dumps cited sources as the subset of retrieved sources the answer actually cites", () => {

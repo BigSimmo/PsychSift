@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  issueRichAdminUnscannedReceipt,
+  RICH_ADMIN_UNSCANNED_POLICY,
+} from "../supabase/functions/_shared/rich-admin-unscanned-exception";
+import {
   ProviderEgressDeniedError,
   createDocumentIngressSafetyAuthority,
   evaluateDocumentIngressSafety,
@@ -74,6 +78,78 @@ function policyEvidence(result: ReturnType<typeof evaluateDocumentIngressSafety>
 }
 
 describe("document ingress safety decision", () => {
+  it("labels a rich unscanned exception with its matched scanner policy", () => {
+    const uuid = (value: number) => `10000000-0000-4000-8000-${String(value).padStart(12, "0")}`;
+    const richBinding = binding({
+      admissionEventId: uuid(1),
+      documentId: uuid(2),
+      generationId: uuid(3),
+      jobId: uuid(4),
+      leaseId: uuid(5),
+    });
+    const scope = {
+      binding: richBinding,
+      documentOwnerId: uuid(6),
+      stewardId: uuid(6),
+      scope: "owner_private" as const,
+      existingSharedPublic: false,
+      admissionDigest: authorityDigest,
+    };
+    const exceptionReceipt = issueRichAdminUnscannedReceipt(
+      {
+        version: RICH_ADMIN_UNSCANNED_POLICY,
+        grant: {
+          exceptionId: uuid(7),
+          approvalReferenceSha256: authorityDigest,
+          status: "active",
+          issuedAt: new Date(Date.now() - 1000).toISOString(),
+          expiresAt: new Date(Date.now() + 60000).toISOString(),
+          allowedPurposes: ["embedding"],
+        },
+        provenance: { ...scope, administratorId: scope.stewardId, administratorActive: true },
+      },
+      scope,
+      "embedding",
+      contentSha256,
+    );
+    const observations = cleanObservations("embedding", {
+      binding: richBinding,
+      scanner: { verdict: "unscanned", scannerVersion: RICH_ADMIN_UNSCANNED_POLICY, contentSha256, exceptionReceipt },
+    });
+    const result = evaluateDocumentIngressSafety(observations);
+    expect(result.verdict).toBe("pass");
+    if (result.verdict !== "pass") throw new Error("expected pass");
+    expect(result.checks).toContainEqual(
+      expect.stringMatching(new RegExp(`^scanner:unscanned:${RICH_ADMIN_UNSCANNED_POLICY}:sha256:`)),
+    );
+    expect(
+      quarantineCodes({ ...observations, scanner: { ...observations.scanner, scannerVersion: "wrong-policy" } }),
+    ).toContain("unscanned_exception_invalid");
+  });
+  it("allows an explicit owner-deferred legal review for an administrator internal build", () => {
+    const result = evaluateDocumentIngressSafety({
+      ...cleanObservations(),
+      rights: "review_deferred",
+      indexLicence: "review_deferred",
+      legalReviewDeferral: "owner-internal-build-2026-11-03",
+      processingScope: "owner_internal_build",
+    });
+    expect(result.verdict).toBe("pass");
+    if (result.verdict === "pass") {
+      expect(result.checks).toContain("legal_review:owner_deferred:internal_build");
+      expect(result.checks).not.toContain("rights:permitted");
+    }
+  });
+  it.each([
+    { rights: "review_deferred", indexLicence: "review_deferred" },
+    { rights: "review_deferred", indexLicence: "review_deferred", legalReviewDeferral: "arbitrary" },
+    { rights: "denied", legalReviewDeferral: "owner-internal-build-2026-11-03" },
+    { indexLicence: "not_permitted", legalReviewDeferral: "owner-internal-build-2026-11-03" },
+    { source: "link_only", legalReviewDeferral: "owner-internal-build-2026-11-03" },
+    { scanner: { verdict: "unavailable" }, legalReviewDeferral: "owner-internal-build-2026-11-03" },
+  ])("does not let legal deferral bypass absent authority or an explicit refusal: %j", (overrides) => {
+    expect(evaluateDocumentIngressSafety({ ...cleanObservations(), ...overrides }).verdict).toBe("quarantine");
+  });
   it.each(["caption", "embedding", "summary", "deep_memory"] as const)(
     "passes complete trusted observations for the %s purpose",
     (purpose) => {

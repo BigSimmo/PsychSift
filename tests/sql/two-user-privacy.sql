@@ -128,6 +128,7 @@ select pg_temp.assert_true(not exists (
 create temp table allowed_browser_functions(signature text primary key, reason text not null);
 insert into allowed_browser_functions values
   ('admit_administrator_document(jsonb,jsonb,boolean)', 'administrator plus recent sign-in, checked inside'),
+  ('readmit_administrator_document_for_reindex(uuid,uuid,uuid,boolean,text,bigint,text,text,jsonb,integer)', 'current database administrator plus recent MFA, checked below; queues work only after all source checks'),
   ('publish_site_content_record(text,uuid,text,bigint,text,text,text)', 'administrator, checked inside'),
   ('record_site_content_reconciliation_plan(jsonb)', 'administrator, checked inside'),
   ('retire_site_content_record(text,uuid,text,bigint,text,text,text)', 'administrator, checked inside'),
@@ -166,7 +167,31 @@ select pg_temp.expect_admin_refusal($q$select public.admit_administrator_documen
 select pg_temp.expect_admin_refusal($q$select * from public.publish_site_content_record('service', gen_random_uuid(), 'v', 0, null, null, null)$q$);
 select pg_temp.expect_admin_refusal($q$select * from public.retire_site_content_record('service', gen_random_uuid(), 'v', 0, null, null, null)$q$);
 select pg_temp.expect_admin_refusal($q$select public.record_site_content_reconciliation_plan('{}'::jsonb)$q$);
+select pg_temp.expect_admin_refusal($q$select public.readmit_administrator_document_for_reindex(null, null, null, false, null, 0, null, null, '{}'::jsonb, 1)$q$);
 reset role;
+
+-- Readmission has the same administrator entry point, with a stricter recent-MFA
+-- contract. A browser JWT assertion cannot replace current auth.users authority.
+-- All calls below are expected refusals on this disposable database; none queue work.
+select pg_temp.assert_true(not has_function_privilege('anon',
+  'public.readmit_administrator_document_for_reindex(uuid,uuid,uuid,boolean,text,bigint,text,text,jsonb,integer)', 'EXECUTE'),
+  'anonymous readmission must remain refused');
+select pg_temp.assert_true(not has_function_privilege('service_role',
+  'public.readmit_administrator_document_for_reindex(uuid,uuid,uuid,boolean,text,bigint,text,text,jsonb,integer)', 'EXECUTE'),
+  'service role cannot impersonate an administrator readmission');
+select pg_temp.act_as(pg_temp.uid('a'));
+select pg_temp.expect_admin_refusal($q$select public.readmit_administrator_document_for_reindex(null, null, null, false, null, 0, null, null, '{}'::jsonb, 1)$q$);
+reset role;
+select set_config('request.jwt.claims', jsonb_build_object(
+  'sub', pg_temp.uid('a'), 'role', 'authenticated', 'aal', 'aal2',
+  'app_metadata', jsonb_build_object('site_role', 'administrator'),
+  'amr', jsonb_build_array(jsonb_build_object('method', 'totp', 'timestamp', extract(epoch from clock_timestamp())))
+)::text, true);
+set local role authenticated;
+select pg_temp.expect_admin_refusal($q$select public.readmit_administrator_document_for_reindex(null, null, null, false, null, 0, null, null, '{}'::jsonb, 1)$q$);
+reset role;
+select pg_temp.assert_true(not exists(select 1 from public.ingestion_jobs),
+  'refused readmission probes must never queue work');
 
 -- ---------------------------------------------------------------------------------------------
 -- Part 3: owner policies, exercised as if a browser grant existed. Each doctor gets a full set

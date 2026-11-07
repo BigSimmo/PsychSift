@@ -4,8 +4,11 @@ Use this sequence when applying RAG indexing changes to the live `PsychSift Prod
 
 > **Current status: the library re-index is stopped by owner decision** (see
 > [the decision](decisions/2026-10-17-library-reindex-stopped.md)). Do not start a re-index from this runbook.
-> The one exception is the three-document pilot in
-> [the pilot decision](decisions/2026-10-23-reindex-pilot-approved.md), which has its own scope and spend cap.
+> The historical three-document pilot in
+> [the pilot decision](decisions/2026-10-23-reindex-pilot-approved.md) remains parked.
+> The [1 November engineering decision](decisions/2026-11-01-ingestion-preparation-only.md)
+> authorizes preparation; obtain explicit permission for ingestion or re-index execution.
+> See the [current unlock and acceptance plan](reindex-unlock-plan.md) before proposing a run.
 >
 > **Every command below that touches the live database, the worker or OpenAI needs the owner's explicit yes first.**
 > `npm run reindex` (with or without `--yes`), `recover:ingestion -- --apply`, `worker:once`,
@@ -13,6 +16,63 @@ Use this sequence when applying RAG indexing changes to the live `PsychSift Prod
 > embeddings and captions. Before any billable run, follow "Spending approval for each billable run" in
 > [`AGENTS.md`](../AGENTS.md) and [`docs/agents/shared-context-and-memory.md`](agents/shared-context-and-memory.md):
 > a named purpose, a total estimate and a hard cap, approved before the run.
+
+## Offline rendered-PDF review validation
+
+The private three-source/eight-page pack still needs the owner's actual source-fidelity
+observations and complete review records. Its local Windows location is not available in
+the cloud checkout. Use the strict record contract in
+[`worker/rendered-pdf-review.ts`](../worker/rendered-pdf-review.ts): verify every full page,
+text region and reading order, table row/cell association, and diagram node/connection;
+establish absence explicitly where appropriate. Unresolved or irregular table relationships
+remain held. Preserve the excluded native layer and its unresolved conflict.
+
+After the complete record has an independently approved canonical digest, the local operator
+can validate it without a provider request, queue change or policy update. Run from the
+repository root using absolute paths on the host holding the private originals:
+
+```sh
+node --import tsx --import ./scripts/enable-server-only-stub.mjs scripts/validate-rendered-pdf-review.ts \
+  --source <absolute-original.pdf> --artifact-root <absolute-private-directory> \
+  --source-sha256 sha256:<source-digest> --review <absolute-complete-review.json> \
+  --approved-review-sha256 sha256:<independently-approved-canonical-review-digest>
+```
+
+The canonical digest is `renderedPdfReviewDigest(record)`, not a raw JSON-file hash. The
+command requires it as an explicit external input and never issues approval. It makes a fresh
+bounded local render/OCR inspection, retains that inspection privately under `--artifact-root`,
+and reuses the source/runtime/pixel/OCR/geometry/relationship validator. Output contains only
+hashes, counts and structural validation status. It does not authenticate the reviewer or
+the reference behind `reviewer.referenceSha256`, establish clinical acceptance, configure a
+live allowlist or authorize ingestion. A runtime or artifact mismatch requires investigation
+and a source-bound review of the changed evidence; do not replace the approved digest simply
+to make validation pass. Keep the worker paused and the library stop in force.
+
+## Prepared current-administrator PDF readmission
+
+The prepared single-document API accepts `mode: "full"` with an explicit
+`readmission: { correlationId, authority }` object. Authority is a new current administrator
+declaration using the existing admission schema; it is never copied silently from historical
+upload metadata. The route requires current bearer/cookie administrator authentication,
+downloads and verifies that document's stored original, then uses the authenticated user's
+`readmit_administrator_document_for_reindex` RPC. The database additionally requires recent
+multi-factor authentication. Existing owner-private records or actual shared-library rows
+(`owner_id: null`, `metadata.public_corpus: true`) are the supported ownership scopes.
+
+**Invoking this API queues that exact document. Do not invoke it during preparation or before
+the owner's reindex execution approval.** It preserves ownership, visibility and the current
+index, and does not establish who uploaded the historical original or grant clinical/publication
+approval. Replays use the same correlation ID; a second legacy queue call is prohibited.
+The application and draft readmission migration must be deployed and verified before the
+contract is operational; this documentation is not deployment evidence.
+
+Full PDF requests without this explicit readmission are held with `readmission_required`.
+Bulk full/retry requests return a per-document 409 result for PDFs instead of queuing them;
+there is no new batch authority/readmission UI. Existing text and enrichment paths remain.
+The consolidated script screens current PDF job metadata against actual admission/source
+identity before recovery or worker spawn. That screen establishes scheduling prerequisites
+only; the worker still independently reloads fenced authority, current administrator facts,
+source bytes and active processing policy before any provider request.
 
 ## Consolidated pipeline command
 

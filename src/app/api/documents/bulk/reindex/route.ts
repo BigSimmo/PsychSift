@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     const { data: documents, error: documentError } = await supabase
       .from("documents")
       .select(
-        "id,owner_id,title,file_name,source_path,import_batch_id,status,error_message,page_count,chunk_count,image_count,metadata",
+        "id,owner_id,title,file_name,file_type,source_path,import_batch_id,status,error_message,page_count,chunk_count,image_count,metadata",
       )
       .eq("owner_id", user.id)
       .in("id", documentIds);
@@ -62,7 +62,15 @@ export async function POST(request: Request) {
     });
     if (!safety.ok) return NextResponse.json(ingestionMutationSafetyPayload(safety), { status: safety.status });
 
-    const results: Array<{ documentId: string; mode: string; ok: boolean; jobId?: string; error?: string }> = [];
+    const results: Array<{
+      documentId: string;
+      mode: string;
+      ok: boolean;
+      jobId?: string;
+      error?: string;
+      status?: number;
+      code?: string;
+    }> = [];
 
     let processableDocuments = documents;
 
@@ -119,6 +127,19 @@ export async function POST(request: Request) {
           continue;
         }
 
+        if (document.file_type === "application/pdf") {
+          results.push({
+            documentId: document.id,
+            mode: parsed.mode,
+            ok: false,
+            status: 409,
+            code: "readmission_required",
+            error:
+              "PDF reindexing requires authenticated per-document current-administrator readmission. No job was queued.",
+          });
+          continue;
+        }
+
         const staleBefore = new Date(Date.now() - env.WORKER_STALE_AFTER_MINUTES * 60_000).toISOString();
         const { data: reindexResult, error: reindexError } = await supabase.rpc(
           "request_ingestion_reindex_if_agent_idle",
@@ -157,11 +178,14 @@ export async function POST(request: Request) {
 
     invalidateRagCachesForOwner(user.id);
     const missingDocumentIds = documentIds.filter((id) => !documents.some((document) => document.id === id));
-    return NextResponse.json({
-      ok: missingDocumentIds.length === 0 && results.every((result) => result.ok),
-      results,
-      missingDocumentIds,
-    });
+    return NextResponse.json(
+      {
+        ok: missingDocumentIds.length === 0 && results.every((result) => result.ok),
+        results,
+        missingDocumentIds,
+      },
+      { status: results.length > 0 && results.every((result) => result.code === "readmission_required") ? 409 : 200 },
+    );
   } catch (error) {
     if (error instanceof AuthenticationError) return unauthorizedResponse();
     if (error instanceof PublicApiError) return jsonError(error, error.status);

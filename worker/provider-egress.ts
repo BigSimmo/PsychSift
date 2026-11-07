@@ -8,6 +8,7 @@ import {
 import { createUnavailableIngestionProviderEgressContext } from "../supabase/functions/_shared/unavailable-ingestion-provider-egress";
 import type { JobDocument, JobRow } from "./types";
 import { z } from "zod";
+import { INGESTION_JURISDICTIONS } from "../src/lib/ingestion-jurisdiction";
 import {
   IngestionAttemptError,
   runIngestionPersistence,
@@ -32,7 +33,7 @@ const authorityText = (max: number) =>
     .max(max)
     .refine((value) => value.trim() === value && !/[\u0000-\u001f\u007f]/.test(value));
 // Decode admitted declarations, not a new rights or clinical-policy decision.
-const declaredAuthoritySchema = z
+export const declaredAuthoritySchema = z
   .object({
     version: z.literal(1),
     sourceRole: z.enum([
@@ -54,7 +55,7 @@ const declaredAuthoritySchema = z
     licencePolicy: z.enum(["review_required", "public_index_permitted"]),
     rightsEvidenceRef: authorityText(500),
     publisher: authorityText(300),
-    jurisdiction: z.literal("Australia"),
+    jurisdiction: z.enum(INGESTION_JURISDICTIONS),
     publicationDate: authorityDate,
     effectiveDate: authorityDate,
     reviewDate: authorityDate,

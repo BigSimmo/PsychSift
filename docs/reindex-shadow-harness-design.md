@@ -1,14 +1,19 @@
 # Shadow Re-Index + Eval-Gate Harness — Implementation Runbook
 
-Status: **design ready, not yet applied** — the SQL here touches retrieval and MUST be
-validated against the live `PsychSift Production` before use (see "Mandatory validation").
+Status: **historical design; requires revision before implementation**. The single-generation
+GUC sketch below is not an approved implementation. Follow the
+[current unlock and acceptance plan](reindex-unlock-plan.md#shadow-re-index) instead.
+Evaluation must preserve the rest of the corpus and bind its override and retrieval to the
+same transaction; separate PostgREST calls cannot establish session affinity. No SQL here may
+be applied on the strength of this document.
 The offline decision core (`src/lib/reindex-eval-gate.ts` — `decideReindexGate`) is built and
-unit-tested; this doc specifies the remaining live pieces so they are turnkey when the billed
-OpenAI key + Supabase service secrets are available.
+unit-tested; its offline report command is described in the current plan. The live integration
+still requires revised design, implementation, review and separately authorized validation.
 
 **Until this harness is applied, the eval gate is advisory and by hand** (audit 2026-10-20 ING-A-04).
-Nothing calls `decideReindexGate`: the worker refuses only a zero-chunk, zero-image generation, so a
-worse re-extraction can replace a good live one unchecked. Before approving any library reload, run a
+No worker promotion path calls `decideReindexGate`: the worker has structural and terminal checks,
+including refusing an empty generation, but no baseline/candidate quality gate. A structurally valid
+worse re-extraction can replace a good live one. Before approving any library reload, run a
 baseline eval canary first, then after the reload run `npm run reindex:health` and a second canary,
 and compare the two. Revert on any recall drop or per-case regression.
 

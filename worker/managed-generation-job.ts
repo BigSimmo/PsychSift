@@ -21,6 +21,7 @@ import {
 import {
   assertCandidateChunkApplicability,
   prepareCandidateChunks,
+  prepareNativeTextPdfCandidateChunks,
   serializeCandidateChunkRows,
   stageCandidateChunks,
 } from "./candidate-chunks";
@@ -39,6 +40,11 @@ import { cleanString, sanitizeJsonbRecord } from "./ingestion-sanitize";
 import type { IngestionMutation, IngestionStageContext } from "./ingestion-stage-context";
 import type { WorkerRuntimeOptions } from "./main";
 import { evaluateManagedAdminPdfCompletion, completeManagedAdminPdfAttempt } from "./managed-admin-pdf-terminal";
+import {
+  buildManagedGeneralPdfChunks,
+  prepareManagedGeneralPdfTerminalPacket,
+  completeManagedGeneralPdfAttempt,
+} from "./managed-general-pdf-terminal";
 import {
   buildManagedAdminTextChunks,
   completeManagedAdminTextAttempt,
@@ -61,10 +67,18 @@ import type { ManagedProviderEmbeddingBatchContext } from "./managed-provider-ve
 import { produceManagedVectorFinalPacket, stageManagedVectorFinal } from "./managed-vector-final";
 import { decodeRetainedOriginalWitness } from "./original-witness-readback";
 import type { JobRow } from "./types";
+import { prepareManagedRenderedPdfGeneration } from "./managed-rendered-pdf-terminal";
+import { workerProviderSourceBinding } from "./provider-egress";
+import { prepareManagedFullPdfGeneration, runManagedFullPdfGeneration } from "./managed-full-pdf-terminal";
+import { prepareManagedPdfSummaryContext, prepareManagedPdfSummaryProjection } from "./managed-pdf-summary";
+import { freezeGenerationEvidence, generationEvidenceDigest } from "../src/lib/ingestion-generation-evidence";
 
 export type ManagedGenerationLoaders = Pick<
   WorkerRuntimeOptions,
-  "loadManagedAdminTextSectionLayout" | "loadManagedNativePdfSourceRoles" | "loadManagedAdminPdfCompletionEvidence"
+  | "loadManagedAdminTextSectionLayout"
+  | "loadManagedNativePdfSourceRoles"
+  | "loadManagedAdminPdfCompletionEvidence"
+  | "loadManagedGeneralPdfInspection"
 >;
 
 export async function runManagedGenerationJob(
@@ -76,10 +90,14 @@ export async function runManagedGenerationJob(
     heartbeat: ReturnType<typeof setInterval>;
     buffer: Buffer;
     extracted: ExtractedDocument;
-    capturedImages: Awaited<ReturnType<typeof captureGenerationImages>>;
+    capturedImages: Readonly<Awaited<ReturnType<typeof captureGenerationImages>>>;
     pageRows: ReturnType<typeof buildDocumentPageRowsForPersistence>;
     evidenceInventory: Awaited<ReturnType<IngestionMutation>>;
     issuedControlSnapshot: ReturnType<typeof captureIssuedAttemptControl>;
+    renderedPdf?: NonNullable<
+      Awaited<ReturnType<NonNullable<WorkerRuntimeOptions["loadManagedRenderedPdfInspection"]>>>
+    >;
+    richPdf?: import("./rich-pdf-inspection").RichPdfInspectionResult & { stewardId: string; summaryEnabled?: boolean };
   },
 ): Promise<void> {
   const { ingestionRpcClient, mutation, workerEmbedTexts } = ctx;
@@ -116,6 +134,9 @@ export async function runManagedGenerationJob(
       maximumUploadMb: env.MAX_UPLOAD_MB,
       documentMetadata: job.documents.metadata,
       capturedImages,
+      ...(args.renderedPdf
+        ? { renderedReview: args.renderedPdf.acceptedReview, renderedRasterBytes: args.renderedPdf.renderedRasterBytes }
+        : {}),
       deferOptionalProducerDeclarations: true,
     },
     evidenceInventory.inventory,
@@ -130,6 +151,157 @@ export async function runManagedGenerationJob(
     packet: controlPacket,
     extracted,
   });
+  if (args.renderedPdf) {
+    if (originalWitness.status !== "retained" || args.renderedPdf.summaryEnabled !== true)
+      throw new Error("managed_rendered_pdf_prerequisite_required");
+    const prepared = await prepareManagedRenderedPdfGeneration({
+      job,
+      issued: issuedControlSnapshot,
+      retentionPacket: packet,
+      originalBytes: buffer,
+      acceptedReview: args.renderedPdf.acceptedReview,
+      binding: workerProviderSourceBinding(job, job.documents),
+      capturedImages,
+      stewardId: args.renderedPdf.stewardId,
+    });
+    if (!ctx.workerGenerateSourceSummary) throw new Error("managed_pdf_summary_runtime_required");
+    const summaryContext = prepareManagedPdfSummaryContext({
+      document: {
+        id: job.document_id,
+        title: job.documents.title,
+        file_name: job.documents.file_name,
+        source_path: job.documents.source_path ?? null,
+        metadata: job.documents.metadata,
+      },
+      packet: prepared.packet,
+    });
+    const generated = await ctx.workerGenerateSourceSummary(job, summaryContext);
+    attempt.check();
+    const summaryProjection = prepareManagedPdfSummaryProjection(summaryContext, generated, job.documents.owner_id);
+    const nextPacket = {
+      ...prepared.packet,
+      summaryProjection,
+      deferredOptionalFamilies: prepared.packet.deferredOptionalFamilies.filter((family) => family !== "model_summary"),
+    };
+    const plan = freezeGenerationEvidence({
+      ...prepared,
+      packet: nextPacket,
+      planDigest: generationEvidenceDigest(nextPacket),
+    });
+    await stageGenerationPrerequisite({ packet, mutation: (name, payload) => mutation(attempt, name, payload) });
+    await runManagedFullPdfGeneration({
+      plan,
+      attempt,
+      embed: (texts, context) => workerEmbedTexts(job, texts, context, plan.planDigest),
+      mutation: (name, payload) => mutation(attempt, name, payload),
+      stopHeartbeat: () => clearInterval(heartbeat),
+      rpc: (name, payload) =>
+        ingestionRpcClient.rpc(name, payload).abortSignal(controlPlaneAbortSignal(attempt.signal)),
+    });
+    invalidateRagCachesForDocumentMutation(job.documents.owner_id ?? "anonymous", {
+      affectsPublicCorpus: job.documents.owner_id == null,
+    });
+    return;
+  }
+  if (args.richPdf) {
+    if (originalWitness.status !== "retained") throw new Error("managed_rich_pdf_original_witness_required");
+    let plan = prepareManagedFullPdfGeneration({
+      job,
+      issued: issuedControlSnapshot,
+      retentionPacket: packet,
+      originalBytes: buffer,
+      review: args.richPdf.review,
+      extracted,
+      capturedImages,
+      stewardId: args.richPdf.stewardId,
+    });
+    if (args.richPdf.summaryEnabled === true) {
+      if (!ctx.workerGenerateSourceSummary) throw new Error("managed_pdf_summary_runtime_required");
+      const summaryContext = prepareManagedPdfSummaryContext({
+        document: {
+          id: job.document_id,
+          title: job.documents.title,
+          file_name: job.documents.file_name,
+          source_path: job.documents.source_path ?? null,
+          metadata: job.documents.metadata,
+        },
+        packet: plan.packet,
+      });
+      const generated = await ctx.workerGenerateSourceSummary(job, summaryContext);
+      attempt.check();
+      const summaryProjection = prepareManagedPdfSummaryProjection(summaryContext, generated, job.documents.owner_id);
+      const nextPacket = {
+        ...plan.packet,
+        version: "managed-full-pdf-packet-v2",
+        summaryProjection,
+        deferredOptionalFamilies: plan.packet.deferredOptionalFamilies.filter((family) => family !== "model_summary"),
+      };
+      plan = freezeGenerationEvidence({
+        ...plan,
+        packet: nextPacket,
+        planDigest: generationEvidenceDigest(nextPacket),
+      });
+    }
+    await stageGenerationPrerequisite({ packet, mutation: (name, payload) => mutation(attempt, name, payload) });
+    await runManagedFullPdfGeneration({
+      plan,
+      attempt,
+      embed: (texts, context) => workerEmbedTexts(job, texts, context, plan.planDigest),
+      mutation: (name, payload) => mutation(attempt, name, payload),
+      stopHeartbeat: () => clearInterval(heartbeat),
+      rpc: (name, payload) =>
+        ingestionRpcClient.rpc(name, payload).abortSignal(controlPlaneAbortSignal(attempt.signal)),
+    });
+    invalidateRagCachesForDocumentMutation(job.documents.owner_id ?? "anonymous", {
+      affectsPublicCorpus: job.documents.owner_id == null,
+    });
+    return;
+  }
+  if (
+    originalWitness.status === "retained" &&
+    job.documents.file_type === "application/pdf" &&
+    options.loadManagedGeneralPdfInspection
+  ) {
+    const inspection = await options.loadManagedGeneralPdfInspection(job, packet.registration.sourceSha256, attempt);
+    attempt.check();
+    if (inspection) {
+      const candidateInput = {
+        packet,
+        originalBytes: buffer,
+        witnessBytes: originalWitness.witnessBytes,
+        extracted,
+        inspection,
+      };
+      const chunkRows = buildManagedGeneralPdfChunks({ ...candidateInput, documentId: job.document_id });
+      const chunkPlan = prepareNativeTextPdfCandidateChunks({ ...candidateInput, chunkRows });
+      const terminalPacket = prepareManagedGeneralPdfTerminalPacket({
+        ...candidateInput,
+        issued: issuedControlSnapshot,
+        ownerId: job.documents.owner_id!,
+        chunkRows,
+      });
+      await stageGenerationPrerequisite({ packet, mutation: (name, payload) => mutation(attempt, name, payload) });
+      await stageCandidateChunks({
+        plan: chunkPlan,
+        batchSize: Math.min(env.WORKER_BATCH_SIZE, 128),
+        embed: (texts) => workerEmbedTexts(job, texts),
+        assertEmbedding: assertEmbeddingDim,
+        mutation: (name, payload) => mutation(attempt, name, payload),
+        check: () => attempt.check(),
+      });
+      await completeManagedGeneralPdfAttempt({
+        attempt,
+        packet: terminalPacket,
+        stopHeartbeat: () => clearInterval(heartbeat),
+        rpc: (name, payload) =>
+          ingestionRpcClient.rpc(name, payload).abortSignal(controlPlaneAbortSignal(attempt.signal)),
+      });
+      invalidateRagCachesForDocumentMutation(job.documents.owner_id ?? "anonymous", {
+        affectsPublicCorpus: !job.documents.owner_id,
+      });
+      return;
+    }
+  }
   if (
     originalWitness.status === "retained" &&
     job.documents.file_type === "text/plain" &&

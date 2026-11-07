@@ -1,6 +1,6 @@
 import { expectedFileCoverage } from "@/lib/eval-document-matching";
 import type { RagEvalCase } from "@/lib/rag/rag-eval-cases";
-import type { RagAnswer, SearchResult, VisualEvidenceCard } from "@/lib/types";
+import type { OpenAITokenUsage, RagAnswer, SearchResult, VisualEvidenceCard } from "@/lib/types";
 import { findOwnerIdByEmail } from "./lib/find-owner-id-by-email";
 
 export { expectedFileCoverage, type ExpectedFileCoverage } from "@/lib/eval-document-matching";
@@ -74,7 +74,7 @@ export function isProviderRateLimitError(error: unknown) {
 export async function withProviderBackoff<T>(
   label: string,
   operation: () => Promise<T>,
-  options: { maxAttempts?: number; initialDelayMs?: number; maxDelayMs?: number } = {},
+  options: { maxAttempts?: number; initialDelayMs?: number; maxDelayMs?: number; onFailedAttempt?: () => void } = {},
 ) {
   const maxAttempts = options.maxAttempts ?? providerRetryNumber(process.env.RAG_EVAL_PROVIDER_RETRY_ATTEMPTS, 4);
   const initialDelayMs =
@@ -85,6 +85,7 @@ export async function withProviderBackoff<T>(
     try {
       return await operation();
     } catch (error) {
+      options.onFailedAttempt?.();
       if (!isProviderRateLimitError(error) || attempt >= maxAttempts) throw error;
       const delayMs = Math.min(initialDelayMs * 2 ** (attempt - 1), maxDelayMs);
       console.warn(
@@ -325,4 +326,120 @@ export function estimateCostUsd(result: { inputTokens: number; cachedInputTokens
     (uncachedInput * rates.input + result.cachedInputTokens * rates.cachedInput + result.outputTokens * rates.output) /
     1_000_000
   );
+}
+
+/** Explicit USD per million token rates. No provider lookup or inferred model aliases. */
+export type EvalModelPrices = Record<
+  string,
+  { input: number; cachedInput?: number; cacheWrite?: number; output: number }
+>;
+export type EvalProviderAttempt = { model: string; usage?: OpenAITokenUsage };
+export type EvalCostEstimate = {
+  estimatedCostUsd: number | null;
+  pricingBasis: "usage_estimate" | "cache_write_upper_bound" | "legacy_rate_estimate" | "provider_free" | "unknown";
+};
+
+const validCostNumber = (value: unknown): value is number =>
+  typeof value === "number" && Number.isFinite(value) && value >= 0;
+
+export function estimateProviderAttemptsCost(
+  attempts: readonly EvalProviderAttempt[],
+  prices: EvalModelPrices,
+): EvalCostEstimate {
+  let total = 0;
+  let boundedCacheWrite = false;
+  for (const attempt of attempts) {
+    const rates = Object.hasOwn(prices, attempt.model) ? prices[attempt.model] : undefined;
+    const usage = attempt.usage;
+    if (
+      !rates ||
+      !usage ||
+      !validCostNumber(rates.input) ||
+      !validCostNumber(rates.output) ||
+      (rates.cachedInput !== undefined && !validCostNumber(rates.cachedInput)) ||
+      (rates.cacheWrite !== undefined && !validCostNumber(rates.cacheWrite)) ||
+      !validCostNumber(usage.input_tokens) ||
+      !validCostNumber(usage.output_tokens) ||
+      (usage.cached_input_tokens !== undefined && !validCostNumber(usage.cached_input_tokens)) ||
+      (usage.cache_write_tokens !== undefined && !validCostNumber(usage.cache_write_tokens))
+    )
+      return { estimatedCostUsd: null, pricingBasis: "unknown" };
+    const cached = usage.cached_input_tokens ?? 0;
+    const uncached = usage.input_tokens - cached;
+    if (uncached < 0 || (usage.cache_write_tokens ?? 0) > uncached) {
+      return { estimatedCostUsd: null, pricingBasis: "unknown" };
+    }
+    const writeRate = rates.cacheWrite ?? rates.input;
+    // When the provider does not expose cache-write usage, reserve its possible premium
+    // over every uncached input token. This is an upper estimate, never measured writes.
+    const unknownWritePremium = usage.cache_write_tokens === undefined && writeRate > rates.input && uncached > 0;
+    const writes = usage.cache_write_tokens ?? (unknownWritePremium ? uncached : 0);
+    boundedCacheWrite ||= unknownWritePremium;
+    // Reasoning tokens are a subset of output_tokens, so never add them again.
+    total +=
+      ((uncached - writes) * rates.input +
+        writes * writeRate +
+        cached * (rates.cachedInput ?? rates.input) +
+        usage.output_tokens * rates.output) /
+      1_000_000;
+  }
+  return Number.isFinite(total)
+    ? { estimatedCostUsd: total, pricingBasis: boundedCacheWrite ? "cache_write_upper_bound" : "usage_estimate" }
+    : { estimatedCostUsd: null, pricingBasis: "unknown" };
+}
+
+export function estimateProviderAttemptsCostUsd(attempts: readonly EvalProviderAttempt[], prices: EvalModelPrices) {
+  return estimateProviderAttemptsCost(attempts, prices).estimatedCostUsd;
+}
+
+/** Model-priced mode fails closed when only aggregate/final-model telemetry is available. */
+export function estimateAnswerCost(
+  answer: Pick<RagAnswer, "openAIUsage" | "openAIUsageAttempts">,
+  providerAttempted: boolean,
+  unpricedAttempts = 0,
+): EvalCostEstimate {
+  if (unpricedAttempts > 0) return { estimatedCostUsd: null, pricingBasis: "unknown" };
+  if (!providerAttempted && !answer.openAIUsageAttempts?.length) {
+    return { estimatedCostUsd: 0, pricingBasis: "provider_free" };
+  }
+  const rawPrices = process.env.RAG_EVAL_MODEL_PRICES_JSON;
+  if (rawPrices !== undefined) {
+    if (!answer.openAIUsageAttempts?.length) return { estimatedCostUsd: null, pricingBasis: "unknown" };
+    try {
+      const prices: unknown = JSON.parse(rawPrices);
+      if (!prices || typeof prices !== "object" || Array.isArray(prices)) {
+        return { estimatedCostUsd: null, pricingBasis: "unknown" };
+      }
+      return estimateProviderAttemptsCost(answer.openAIUsageAttempts, prices as EvalModelPrices);
+    } catch {
+      return { estimatedCostUsd: null, pricingBasis: "unknown" };
+    }
+  }
+  // Existing env overrides retain their historical aggregate estimate. A failed
+  // observed attempt without usage must still make even this estimate unknown.
+  if (
+    answer.openAIUsageAttempts?.some(
+      ({ usage }) =>
+        !usage ||
+        !validCostNumber(usage.input_tokens) ||
+        !validCostNumber(usage.output_tokens) ||
+        (usage.cached_input_tokens !== undefined &&
+          (!validCostNumber(usage.cached_input_tokens) || usage.cached_input_tokens > usage.input_tokens)) ||
+        (usage.cache_write_tokens !== undefined &&
+          (!validCostNumber(usage.cache_write_tokens) ||
+            usage.cache_write_tokens > usage.input_tokens - (usage.cached_input_tokens ?? 0))),
+    )
+  ) {
+    return { estimatedCostUsd: null, pricingBasis: "unknown" };
+  }
+  const usage = answer.openAIUsage;
+  const estimatedCostUsd =
+    usage && (usage.input_tokens ?? 0) + (usage.output_tokens ?? 0) > 0
+      ? estimateCostUsd({
+          inputTokens: usage.input_tokens ?? 0,
+          cachedInputTokens: usage.cached_input_tokens ?? 0,
+          outputTokens: usage.output_tokens ?? 0,
+        })
+      : null;
+  return { estimatedCostUsd, pricingBasis: estimatedCostUsd === null ? "unknown" : "legacy_rate_estimate" };
 }

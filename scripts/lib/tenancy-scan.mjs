@@ -1691,10 +1691,9 @@ export const DERIVED_QUERY_INVENTORY = [
     table: "ingestion_jobs",
     fn: "POST",
     queries: 1,
-    proof: PROOF_KINDS.OWNER_PINNED_DOCUMENT_ID,
-    identifier: "id",
+    proof: PROOF_KINDS.PARENT_DOCUMENT_VERIFIED,
     reason:
-      'Competing-job diagnostic read for the document id the handler already loaded with `.eq("owner_id", user.id)`; a 404 is returned before this point when the caller does not own it.',
+      "Competing-job diagnostic reads only the parent id already resolved through withOwnerReadScope. The readmission branch verifies exact existing shared or private scope and returns before this diagnostic; the remaining legacy branch additionally requires document.owner_id === user.id before any queue or diagnostic.",
   },
   {
     file: "src/app/api/documents/[id]/search/route.ts",
@@ -1734,6 +1733,15 @@ export const DERIVED_QUERY_INVENTORY = [
     proof: PROOF_KINDS.REVIEWED_INDIRECT,
     reason:
       "Read-then-verify: selects only `id,document_id` for a caller-supplied chunk id, then calls readableDocumentId on the returned document_id and returns null unless the requester can read it (owned, or published public corpus, via withOwnerReadScope). No chunk content is selected and nothing is returned for a chunk the caller cannot read.",
+  },
+  {
+    file: "src/app/api/images/[id]/content/route.ts",
+    table: "document_images",
+    fn: "GET",
+    queries: 1,
+    proof: PROOF_KINDS.PARENT_DOCUMENT_VERIFIED,
+    reason:
+      "Private managed image bytes are read only after the parent document passes withOwnerReadScope and the image matches its committed generation; the service-only artifact RPC additionally binds image, document and generation. Unauthorized parents return 404 before any bytes RPC.",
   },
   {
     file: "src/app/api/images/[id]/signed-url/route.ts",
