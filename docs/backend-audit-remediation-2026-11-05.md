@@ -4,7 +4,7 @@ Recorded 5 November 2026. Implementation source: `33f6478c63aedf9c2d79effd989095
 
 The audit classified 67 dispositions: 19 original findings, 3 later repository observations and 45 followups. They include defects, supported risks, improvements, intentional constraints and acceptance gaps. They are not 67 new software bugs. All disposition IDs appear in the crosswalk below.
 
-The code changes prevent delayed private callbacks crossing account boundaries, preserve generation evidence during document maintenance, purge all 17 private SQL representations on future permanent deletions, enforce coherent CPD/Teaching/hospital transitions, guard stale OnCall attestation, bound Clinical Ask requests and correct monitoring/recovery/build tools. New source admission remains unavailable and explicitly refuses before persistence. Eight new forward migrations are drafted: the original seven plus `20261106164443_audit_fix_maintenance_snapshot_fence_aliases.sql`, which corrects the maintenance snapshot fences in the fourth; all 349 historical migrations remain unchanged. No ranking thresholds, clinical fixtures or activation holds were weakened.
+The code changes prevent delayed private callbacks crossing account boundaries, preserve generation evidence during document maintenance, purge all 17 private SQL representations on future permanent deletions, enforce coherent CPD/Teaching/hospital transitions, guard stale OnCall attestation, bound Clinical Ask requests and correct monitoring/recovery/build tools. New source admission remains unavailable and explicitly refuses before persistence. Eight new forward migrations are drafted: the original seven plus `20261107000800_audit_fix_maintenance_snapshot_fence_aliases.sql`, which corrects the maintenance snapshot fences in the fourth; all 349 historical migrations remain unchanged. No ranking thresholds, clinical fixtures or activation holds were weakened.
 
 ## Verification and limits
 
@@ -28,7 +28,7 @@ Repository: #36XZRQ. [Immutable request](outstanding-issues-inbox/dd15ac8c-3ea7-
 
 Blocker: Local corrections are committed and checked; target deployment, supported CLI/journal replay and old/new fleet acceptance are unverified. Opening a PR does not authorize merge, live SQL or deployment.
 
-Next action: Review candidate PR and all eight immutable forward drafts (including `20261106164443_audit_fix_maintenance_snapshot_fence_aliases.sql`), rerun parity/replay with the eighth, verify exact target/project/default-ACL prerequisites, rehearse supported replay and mixed versions, quiesce old maintenance/unconditional verification handlers; obtain separate rollout authority.
+Next action: Review candidate PR and all eight immutable forward drafts (including `20261107000800_audit_fix_maintenance_snapshot_fence_aliases.sql`), rerun parity/replay with the eighth, verify exact target/project/default-ACL prerequisites, rehearse supported replay and mixed versions, quiesce old maintenance/unconditional verification handlers; obtain separate rollout authority.
 
 Acceptance: Correct owner/role validation, actual hosted RPC contracts, private drift coverage, malformed historical booking timestamp preflight, stale/concurrent mutation refusal, calendar rollover and versioned-client failure behavior; no old unsafe writer persists. No protected clinical content/flags/history edits.
 

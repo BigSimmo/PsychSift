@@ -85,7 +85,7 @@ describe("schema_drift_snapshot definition parity (migration vs schema.sql)", ()
   };
 
   // The newest migration that redefines schema_drift_snapshot(); schema.sql must mirror it.
-  const LATEST_DEFINER_MIGRATION = "20261105144240_audit_private_evidence_lifecycle_and_drift.sql";
+  const LATEST_DEFINER_MIGRATION = "20261107000100_audit_private_evidence_lifecycle_and_drift.sql";
 
   it(`migration ${LATEST_DEFINER_MIGRATION.slice(0, 14)} (latest definer) and schema.sql carry byte-identical definitions`, () => {
     const fromMigration = extract(read(`supabase/migrations/${LATEST_DEFINER_MIGRATION}`));

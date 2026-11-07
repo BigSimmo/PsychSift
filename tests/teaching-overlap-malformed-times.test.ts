@@ -18,7 +18,7 @@ const latest = readdirSync(migrations)
 
 describe("teaching_find_supervisor_overlap_v1", () => {
   it("guards every stored-time cast in its latest definition", () => {
-    expect(latest).toBe("20261106224403_audit_overlap_skip_malformed_booking_times.sql");
+    expect(latest).toBe("20261107000900_audit_overlap_skip_malformed_booking_times.sql");
     const sql = readFileSync(path.join(migrations, latest!), "utf8");
     for (const field of ["startsAt", "endsAt"]) {
       const casts = sql.split(`(r.ratings->>'${field}')::timestamptz`).length - 1;

@@ -1,4 +1,4 @@
--- teaching_find_supervisor_overlap_v1 (20261105144902) cast each existing booking's
+-- teaching_find_supervisor_overlap_v1 (20261107000500) cast each existing booking's
 -- startsAt/endsAt string straight to timestamptz, so one malformed stored timestamp aborted
 -- the whole overlap check with booking_database_error. The app check it replaced skipped a
 -- booking whose times Date.parse could not read. A string that is not a valid timestamptz

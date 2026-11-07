@@ -1,4 +1,4 @@
--- Correct the snapshot fences in replace_document_maintenance_artifacts (20261105144251).
+-- Correct the snapshot fences in replace_document_maintenance_artifacts (20261107000400).
 -- Its `unnest(...) id ... x.id=id` checks resolved the bare `id` to the inner table's own
 -- column, so the label, summary-source and visual image generation fences were always
 -- satisfied. Alias the unnest as s(id) and compare against s.id. Body otherwise unchanged.

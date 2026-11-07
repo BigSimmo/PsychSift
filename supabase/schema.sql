@@ -41876,7 +41876,7 @@ end $$;
 -- Patched validators retain their postgres ownership and existing ACLs.
 commit;
 
--- supabase/migrations/20261105144240_audit_private_evidence_lifecycle_and_drift.sql
+-- supabase/migrations/20261107000100_audit_private_evidence_lifecycle_and_drift.sql
 -- Permanent document removal also removes reconstructable ingestion evidence.
 -- Active/rollback evidence remains immutable while its parent document exists.
 -- This drafts no age-based retention, legal hold, historical orphan sweep or backup purge.
@@ -42351,7 +42351,7 @@ revoke execute on function public.schema_drift_snapshot() from public, anon, aut
 grant execute on function public.schema_drift_snapshot() to service_role;
 
 
--- supabase/migrations/20261105144246_audit_cpd_close_coherence.sql
+-- supabase/migrations/20261107000200_audit_cpd_close_coherence.sql
 -- Bind annual statuses to every evaluator input; retain immutable snapshots and reasoned amendments.
 -- Older application instances lacking inputs fail closed rather than freezing an unchecked evaluation.
 set local lock_timeout = '5s';
@@ -42486,7 +42486,7 @@ revoke all on function public.cme_close_year_v2(uuid, uuid, jsonb, text) from pu
 grant execute on function public.cme_close_year_v2(uuid, uuid, jsonb, text) to service_role;
 
 
--- supabase/migrations/20261105144248_audit_hospital_lifecycle.sql
+-- supabase/migrations/20261107000300_audit_hospital_lifecycle.sql
 -- Keep linked teams in live hospitals. Both directions share the hospital-row lock,
 -- including direct service-role writes and the existing atomic move/revocation RPC.
 set local lock_timeout = '5s';
@@ -42528,7 +42528,7 @@ grant execute on function public.work_guard_live_hospital_team(), public.work_gu
   to service_role;
 
 
--- supabase/migrations/20261105144251_audit_atomic_document_maintenance.sql
+-- supabase/migrations/20261107000400_audit_atomic_document_maintenance.sql
 -- Draft only. Applying/merging this migration requires the owner's own database approval.
 -- Existing source identities only; no backend admission, scanner or supplier authority is minted.
 set local lock_timeout = '5s';
@@ -43212,7 +43212,7 @@ revoke all on function public.commit_document_deep_memory_generation(uuid,text,u
   from public,anon,authenticated,service_role;
 
 
--- supabase/migrations/20261105144902_audit_teaching_link_and_booking_lifecycle.sql
+-- supabase/migrations/20261107000500_audit_teaching_link_and_booking_lifecycle.sql
 -- Enforce the existing twenty-active-link ceiling atomically, including older application writers.
 -- A versioned create authority makes newer apps refuse schemas lacking this contract.
 set local lock_timeout = '5s';
@@ -43306,7 +43306,7 @@ grant execute on function public.teaching_find_supervisor_overlap_v1(uuid, times
   to service_role;
 
 
--- supabase/migrations/20261105150056_audit_cpd_entry_concurrency.sql
+-- supabase/migrations/20261107000600_audit_cpd_entry_concurrency.sql
 -- Full manual CPD edits and amendments replace exactly the stored content their editor read.
 -- Strengthen the legacy RPCs too: old clients without expectedVersion fail closed on edits.
 -- Creates retain request-id idempotency; intentional Teaching create/restore remains separate.
@@ -43482,7 +43482,7 @@ alter function public.cme_save_entry_v2(uuid,uuid,uuid,jsonb,boolean,uuid) owner
 alter function public.cme_amend_closed_entry_v2(uuid,uuid,jsonb,text) owner to postgres;
 
 
--- supabase/migrations/20261105163543_audit_retire_unfenced_document_reset.sql
+-- supabase/migrations/20261107000700_audit_retire_unfenced_document_reset.sql
 -- Retire the confirmed destructive, unfenced reset authority after first-party callers
 -- moved to generation-preserving enqueue/maintenance. Historical migration text and
 -- validators remain immutable. Old maintenance tooling must be quiesced before rollout.
@@ -43494,8 +43494,8 @@ set local statement_timeout = '30s';
 drop function public.reset_document_index(uuid) restrict;
 
 
--- supabase/migrations/20261106164443_audit_fix_maintenance_snapshot_fence_aliases.sql
--- Correct the snapshot fences in replace_document_maintenance_artifacts (20261105144251).
+-- supabase/migrations/20261107000800_audit_fix_maintenance_snapshot_fence_aliases.sql
+-- Correct the snapshot fences in replace_document_maintenance_artifacts (20261107000400).
 -- Its `unnest(...) id ... x.id=id` checks resolved the bare `id` to the inner table's own
 -- column, so the label, summary-source and visual image generation fences were always
 -- satisfied. Alias the unnest as s(id) and compare against s.id. Body otherwise unchanged.
@@ -43686,8 +43686,8 @@ revoke all on function public.replace_document_maintenance_artifacts(uuid,uuid,t
 grant execute on function public.replace_document_maintenance_artifacts(uuid,uuid,timestamptz,uuid,text,jsonb) to service_role;
 
 
--- supabase/migrations/20261106224403_audit_overlap_skip_malformed_booking_times.sql
--- teaching_find_supervisor_overlap_v1 (20261105144902) cast each existing booking's
+-- supabase/migrations/20261107000900_audit_overlap_skip_malformed_booking_times.sql
+-- teaching_find_supervisor_overlap_v1 (20261107000500) cast each existing booking's
 -- startsAt/endsAt string straight to timestamptz, so one malformed stored timestamp aborted
 -- the whole overlap check with booking_database_error. The app check it replaced skipped a
 -- booking whose times Date.parse could not read. A string that is not a valid timestamptz
