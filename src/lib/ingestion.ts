@@ -46,14 +46,11 @@ export function ingestionJobRetryRejectionReason(status: string | null | undefin
   return null;
 }
 
-// Audit R15/R16: the retry route must NOT demote an already-indexed document to
-// `queued`. A queued document takes the worker's non-atomic path, which runs
-// reset_document_index at job start and deletes the entire live committed index
-// hours before any replacement commit — so a transient failure of a healthy
-// indexed document would otherwise destroy its clinical index. Indexed
-// documents keep their status (atomic reindex: the old index stays live until
-// the new commit swaps the generation); only non-indexed documents are
-// re-queued. Either way we clear error_message and stamp the rollback fence.
+// Audit R15/R16: retry preserves an indexed document's status and committed
+// generation while the fenced worker builds its replacement. Only non-indexed
+// documents are re-queued. The worker resets only its own uncommitted attempt
+// artifacts; the retired generation-blind reset is unavailable. Either way we
+// clear error_message and stamp the rollback fence.
 export function retryDocumentQueueUpdate(args: { documentStatus: string | null | undefined; fenceStamp: string }): {
   status?: "queued";
   error_message: null;

@@ -14,6 +14,7 @@ import {
   rowToCmeEntry,
 } from "@/lib/cme/repository";
 import type { CmeEntry } from "@/lib/cme/types";
+import { cmeEntryVersion, withoutCmeEntryVersions } from "@/lib/cme/entry-version";
 
 describe("row mapping", () => {
   it("round-trips an entry with several allocations", () => {
@@ -40,7 +41,14 @@ describe("row mapping", () => {
         { ...row, id: entry.id },
         entry.allocations.map((a) => ({ category: a.category, hours: a.hours })),
       ),
-    ).toEqual(entry);
+    ).toEqual({ ...entry, version: cmeEntryVersion(entry) });
+  });
+
+  it("drops edit versions from display-only lists and keeps every other field", () => {
+    const entry = { ...baseEntry(), evidenceCount: 2 };
+    const versioned = { ...entry, version: cmeEntryVersion(entry) };
+    expect(withoutCmeEntryVersions([versioned, entry])).toEqual([entry, entry]);
+    expect(withoutCmeEntryVersions(undefined)).toBeUndefined();
   });
 
   it("carries a cost through as whole cents, never a float", () => {
@@ -75,7 +83,7 @@ describe("row mapping", () => {
       { ...row, id: entry.id },
       entry.allocations.map((a) => ({ category: a.category, hours: a.hours })),
     );
-    expect(result).toEqual(entry);
+    expect(result).toEqual({ ...entry, version: cmeEntryVersion(entry) });
   });
 });
 
@@ -403,7 +411,7 @@ describe("insertCmeEntry", () => {
     const client = { rpc: vi.fn().mockResolvedValue(response), from: vi.fn() };
     const result = await insertCmeEntry(client as never, "owner-1", "year-1", ENTRY, "request-1");
     expect(client.rpc).toHaveBeenCalledWith(
-      "cme_save_entry",
+      "cme_save_entry_v2",
       expect.objectContaining({
         p_owner_id: "owner-1",
         p_year_id: "year-1",

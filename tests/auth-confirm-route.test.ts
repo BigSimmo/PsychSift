@@ -186,6 +186,35 @@ describe("/auth/confirm", () => {
     expect(response.headers.get("location")).toBe("https://psychiatry.tools/documents");
   });
 
+  it.each(["https://evil.example", "null", ""])("rejects origin %j before consuming any body", async (origin) => {
+    const verifyOtp = vi.fn(async () => ({ error: null }));
+    const { POST } = await loadConfirm(verifyOtp);
+    const request = confirmPost("token_hash=h&type=email", origin ? { origin } : {});
+    const formData = vi.spyOn(request, "formData");
+    const getReader = vi.spyOn(request.body!, "getReader");
+    const response = await POST(request);
+    expect(response.status).toBe(303);
+    expect(formData).not.toHaveBeenCalled();
+    expect(getReader).not.toHaveBeenCalled();
+    expect(verifyOtp).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["declared oversize", "token_hash=h&type=email", { "content-length": "20000" }],
+    ["streamed oversize", `token_hash=h&type=email&ignored=${"x".repeat(20000)}`, {}],
+    ["wrong content type", "token_hash=h&type=email", { "content-type": "text/plain" }],
+    ["overlong hash", `token_hash=${"h".repeat(1025)}&type=email`, {}],
+    ["overlong destination", `token_hash=h&type=email&next=${"n".repeat(4097)}`, {}],
+    ["duplicate token", "token_hash=h&token_hash=other&type=email", {}],
+  ] as const)("refuses %s before consulting Auth", async (_label, body, headers) => {
+    const verifyOtp = vi.fn(async () => ({ error: null }));
+    const { POST } = await loadConfirm(verifyOtp);
+    const response = await POST(confirmPost(body, { origin: "https://clinical.example", ...headers }));
+    expect(response.status).toBe(303);
+    expect(new URL(response.headers.get("location")!).searchParams.get("auth_error")).toBe("verify_failed");
+    expect(verifyOtp).not.toHaveBeenCalled();
+  });
+
   it("refuses a cross-site post without spending the code", async () => {
     const verifyOtp = vi.fn(async () => ({ error: null }));
     const { POST } = await loadConfirm(verifyOtp);
@@ -193,7 +222,7 @@ describe("/auth/confirm", () => {
     for (const headers of [{ origin: "https://evil.example" }, {}] as Array<Record<string, string>>) {
       const response = await POST(confirmPost("token_hash=h&type=email&next=%2Fdocuments", headers));
       expect(response.status).toBe(303);
-      expect(response.headers.get("location")).toBe("https://clinical.example/documents?auth_error=verify_failed");
+      expect(response.headers.get("location")).toBe("https://clinical.example/?auth_error=verify_failed");
     }
     expect(verifyOtp).not.toHaveBeenCalled();
   });

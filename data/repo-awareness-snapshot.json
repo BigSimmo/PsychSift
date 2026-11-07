@@ -4070,6 +4070,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/backend-audit-remediation-2026-11-05.md",
+        "section": "root",
+        "catalogued": false
+      },
+      {
         "path": "docs/production-readiness.md",
         "section": "root",
         "catalogued": true

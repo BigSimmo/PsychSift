@@ -3,9 +3,12 @@ import {
   ON_CALL_RECURRENCE_FREQUENCIES,
   ON_CALL_REVIEW_INTERVAL_MONTHS,
   isOnCallHttpUrl,
+  mergeOnCallEntryVerification,
+  onCallEntryVerificationContentMatches,
   onCallDetailsSchemaFor,
   onCallEntryFreshness,
 } from "@/lib/on-call/entry-model";
+import { onCallEntryFixture } from "./helpers/on-call-entry-fixture";
 import { selectCardEntries } from "@/lib/on-call/card-selection";
 
 const NOW = new Date("2026-09-04T00:00:00.000Z");
@@ -180,5 +183,37 @@ describe("link fields accept http and https only", () => {
     expect(isOnCallHttpUrl("javascript:alert(1)")).toBe(false);
     expect(isOnCallHttpUrl("not a url")).toBe(false);
     expect(isOnCallHttpUrl(undefined)).toBe(false);
+  });
+});
+
+describe("verification response reconciliation", () => {
+  const reviewed = onCallEntryFixture({
+    section: "contacts",
+    title: "Synthetic contact",
+    details: { role: "Synthetic role", phone: "5100" },
+    lastVerifiedAt: "2024-01-01T00:00:00Z",
+  });
+  it("compares content independently of JSON object-key order", () => {
+    expect(
+      onCallEntryVerificationContentMatches(reviewed, {
+        ...reviewed,
+        details: { phone: "5100", role: "Synthetic role" },
+      }),
+    ).toBe(true);
+  });
+  it("keeps a newer verification when an earlier verification arrives later", () => {
+    const current = { ...reviewed, lastVerifiedAt: "2026-11-05T12:30:00Z" };
+    expect(
+      mergeOnCallEntryVerification(current, reviewed, { ...reviewed, lastVerifiedAt: "2026-11-05T12:00:00Z" }),
+    ).toEqual(current);
+  });
+  it("does not attest content that differs in the returned server snapshot", () => {
+    expect(
+      mergeOnCallEntryVerification(reviewed, reviewed, {
+        ...reviewed,
+        title: "Changed remotely",
+        lastVerifiedAt: "2026-11-05T12:00:00Z",
+      }),
+    ).toBeNull();
   });
 });

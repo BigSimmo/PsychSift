@@ -1,7 +1,7 @@
 import "server-only";
 
 import { calendarFeedPath, generateCalendarFeedToken, hashCalendarFeedToken } from "@/lib/calendar/feed-token";
-import { cmeDeadlineEvents, cmeRoutineEvents } from "@/lib/cme/calendar-events";
+import { cmeDeadlineEvents, cmeRoutineEvents, cmeReportingWindowClose } from "@/lib/cme/calendar-events";
 import { cpdYearOf, perthCalendarDate } from "@/lib/cme/cpd-year";
 import { fetchOwnerCmeRoutines, fetchOwnerCmeYear } from "@/lib/cme/repository";
 import { addDays, type CalendarEvent } from "@/lib/calendar/calendar-event";
@@ -215,19 +215,31 @@ async function fetchOwnerBookingEvents(
 
 export async function calendarFeedEvents(supabase: AdminClient, ownerId: string, now: Date): Promise<CalendarEvent[]> {
   const year = cpdYearOf(now);
+  const today = perthCalendarDate(now);
   const calendarPreferences = fetchOwnerCalendarPreferences(supabase, ownerId);
-  const [thisYear, nextYear, routines, teaching, teachingSessions, preferences, rosterSettings, rotations, bookings] =
-    await Promise.all([
-      fetchOwnerCmeYear(supabase, ownerId, year),
-      fetchOwnerCmeYear(supabase, ownerId, year + 1),
-      fetchOwnerCmeRoutines(supabase, ownerId),
-      fetchVisibleOnCallEntries(supabase, ownerId, { section: "education" }),
-      fetchTeachingFeedSessions(supabase, ownerId, now),
-      calendarPreferences,
-      fetchOwnerRosterSettingsForFeed(supabase, ownerId),
-      fetchRotationFeedEvents(supabase, ownerId, now),
-      calendarPreferences.then(({ zone }) => fetchOwnerBookingEvents(supabase, ownerId, now, zone)),
-    ]);
+  const [
+    previousYear,
+    thisYear,
+    nextYear,
+    routines,
+    teaching,
+    teachingSessions,
+    preferences,
+    rosterSettings,
+    rotations,
+    bookings,
+  ] = await Promise.all([
+    today <= cmeReportingWindowClose(year - 1) ? fetchOwnerCmeYear(supabase, ownerId, year - 1) : null,
+    fetchOwnerCmeYear(supabase, ownerId, year),
+    fetchOwnerCmeYear(supabase, ownerId, year + 1),
+    fetchOwnerCmeRoutines(supabase, ownerId),
+    fetchVisibleOnCallEntries(supabase, ownerId, { section: "education" }),
+    fetchTeachingFeedSessions(supabase, ownerId, now),
+    calendarPreferences,
+    fetchOwnerRosterSettingsForFeed(supabase, ownerId),
+    fetchRotationFeedEvents(supabase, ownerId, now),
+    calendarPreferences.then(({ zone }) => fetchOwnerBookingEvents(supabase, ownerId, now, zone)),
+  ]);
   let rosterShifts: CalendarEvent[] = [];
   if (rosterSettings.calendarShifts) {
     const own = await fetchOwnerShifts(supabase, ownerId, now);
@@ -236,6 +248,8 @@ export async function calendarFeedEvents(supabase: AdminClient, ownerId: string,
     rosterShifts = rosterShiftEvents(shifts.filter((shift) => Date.parse(shift.startsAt) <= windowEndMillis));
   }
   const events = [
+    // Only the prior year's still-open reporting date belongs here, not its elapsed December dates.
+    ...(previousYear ? cmeDeadlineEvents(previousYear).filter((event) => event.date >= today) : []),
     ...(thisYear ? cmeDeadlineEvents(thisYear) : []),
     ...(nextYear ? cmeDeadlineEvents(nextYear) : []),
     ...cmeRoutineEvents(routines),

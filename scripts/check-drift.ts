@@ -138,6 +138,7 @@ const categoryKeys: Record<string, (o: SnapshotObject) => string> = {
   constraints: (o) => `${o.table}.${o.name}`,
   triggers: (o) => `${o.table}.${o.name}`,
   storage_buckets: (o) => String(o.id),
+  private_objects: (o) => String(o.identity),
 };
 
 // Fields that identify content per category (compared as canonical JSON).
@@ -151,6 +152,7 @@ const comparedFields: Record<string, string[]> = {
   constraints: ["def"],
   triggers: ["def"],
   storage_buckets: ["public", "file_size_limit", "allowed_mime_types"],
+  private_objects: ["state"],
 };
 
 function canonical(value: unknown): string {

@@ -1,7 +1,10 @@
 import base64
 import importlib.util
+import io
 import json
+import os
 from pathlib import Path
+import stat
 import tempfile
 import unittest
 import subprocess
@@ -414,6 +417,101 @@ class DocumentDraftTests(unittest.TestCase):
         candidate.write_bytes(b'Heading\n=======\nProse containing ======= and <<<<<<< tokens.\n')
         self.assertFalse(self.reconcile(['note.md'])['conflict'])
         self.assertIn(b'=======', base64.b64decode(d.export(self.workspace, self.manifest)[0]['after_base64']))
+
+    @unittest.skipUnless(os.name == 'posix', 'POSIX permission contract')
+    def test_copies_and_reconciliation_keep_private_document_audience_under_022(self):
+        parent = self.root / 'traversable-parent'
+        parent.mkdir(mode=0o755)
+        parent.chmod(0o755)
+        source = parent / 'source'
+        source.mkdir(mode=0o700)
+        original = source / 'note.md'
+        original.write_bytes(b'private synthetic document\n')
+        original.chmod(0o600)
+        workspace = parent / 'copies'
+        previous_umask = os.umask(0o022)
+        try:
+            manifest = d.prepare(source, workspace, 'private-copy', ['note.md'])
+            d.reconcile(workspace, manifest, [])
+        finally:
+            os.umask(previous_umask)
+        self.assertEqual(0o700, stat.S_IMODE(workspace.stat().st_mode))
+        for artifact in workspace.rglob('*'):
+            if artifact.is_file():
+                self.assertEqual(0o600, stat.S_IMODE(artifact.stat().st_mode), str(artifact))
+        self.assertEqual(0o600, stat.S_IMODE(original.stat().st_mode))
+        self.assertEqual(b'private synthetic document\n', original.read_bytes())
+
+    @unittest.skipUnless(os.name == 'posix', 'POSIX permission contract')
+    def test_existing_public_workspace_refuses_without_chmod_or_new_files(self):
+        workspace = self.root / 'public-workspace'
+        workspace.mkdir(mode=0o755)
+        workspace.chmod(0o755)
+        with self.assertRaises(ValueError):
+            d.prepare(self.source, workspace, 'existing-public', ['note.md'])
+        self.assertEqual(0o755, stat.S_IMODE(workspace.stat().st_mode))
+        self.assertEqual([], list(workspace.iterdir()))
+
+    @unittest.skipUnless(os.name == 'posix', 'POSIX setgid contract')
+    def test_new_workspace_under_setgid_parent_is_accepted_and_resumable(self):
+        parent = self.root / 'setgid-parent'
+        parent.mkdir(mode=0o755)
+        parent.chmod(0o2755)
+        if not parent.stat().st_mode & stat.S_ISGID:
+            self.skipTest('filesystem does not keep the setgid bit')
+        workspace = parent / 'copies'
+        manifest = d.prepare(self.source, workspace, 'setgid', ['note.md'])
+        self.assertEqual(0o700, stat.S_IMODE(workspace.stat().st_mode) & ~stat.S_ISGID)
+        self.assertEqual(manifest, d.prepare(self.source, workspace, 'setgid', ['note.md']))
+
+    @unittest.skipUnless(os.name == 'posix', 'POSIX ownership contract')
+    def test_existing_private_workspace_of_another_owner_refuses_before_writes(self):
+        workspace = self.root / 'other-owner'
+        workspace.mkdir(mode=0o700)
+        workspace.chmod(0o700)
+        actual_owner = workspace.stat().st_uid
+        with patch.object(d.os, 'geteuid', return_value=actual_owner + 1):
+            with self.assertRaises(ValueError):
+                d.prepare(self.source, workspace, 'other-owner', ['note.md'])
+        self.assertEqual(actual_owner, workspace.stat().st_uid)
+        self.assertEqual(0o700, stat.S_IMODE(workspace.stat().st_mode))
+        self.assertEqual([], list(workspace.iterdir()))
+
+    def test_oversized_text_refuses_after_only_limit_plus_one_input_bytes(self):
+        reads = []
+
+        class Input(io.BytesIO):
+            def read(self, size=-1):
+                reads.append(size)
+                return super().read(size)
+
+        class FileProbe:
+            def read_bytes(self):
+                reads.append(-1)
+                return b'x' * 17
+
+            def open(self, mode):
+                if mode != 'rb':
+                    raise AssertionError('document must be opened read-only')
+                return Input(b'x' * 17)
+
+        with patch.object(d, 'MAX_BYTES', 16):
+            with self.assertRaises(ValueError):
+                d.read_text(FileProbe())
+        self.assertEqual([17], reads)
+
+    def test_bounded_read_preserves_utf8_binary_and_exact_limit_contracts(self):
+        path = self.root / 'bounded.txt'
+        with patch.object(d, 'MAX_BYTES', 4):
+            path.write_bytes(b'\xc3\xa9\xc3\xa9')
+            self.assertEqual(b'\xc3\xa9\xc3\xa9', d.read_text(path))
+            for value in (b'abcde', b'ab\0c'):
+                path.write_bytes(value)
+                with self.assertRaises(ValueError):
+                    d.read_text(path)
+            path.write_bytes(b'abc\xff')
+            with self.assertRaises(UnicodeDecodeError):
+                d.read_text(path)
 
 
 if __name__ == '__main__':

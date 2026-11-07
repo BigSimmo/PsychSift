@@ -1,5 +1,26 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+describe("optional Supabase URL environment parsing", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  it("treats blank offline URLs as absent while keeping required server configuration fail-closed", async () => {
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "  ");
+    vi.stubEnv("SUPABASE_DB_URL", "");
+    const { env, requireServerEnv } = await import("@/lib/env");
+    expect(env.NEXT_PUBLIC_SUPABASE_URL).toBeUndefined();
+    expect(env.SUPABASE_DB_URL).toBeUndefined();
+    expect(requireServerEnv).toThrow("Missing server environment variables");
+  });
+
+  it.each(["NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_DB_URL"])("still rejects a malformed nonblank %s", async (key) => {
+    vi.stubEnv(key, "invalid-url");
+    await expect(import("@/lib/env")).rejects.toThrow();
+  });
+});
+
 describe("Sol answer defaults and workload isolation", () => {
   afterEach(() => {
     vi.unstubAllEnvs();

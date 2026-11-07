@@ -1,5 +1,8 @@
 "use client";
 
+import { OnCallEntrySessionBoundary } from "@/components/on-call/on-call-entry-session-boundary";
+import { peekOnCallEntrySessionEpoch } from "@/lib/on-call/entry-cache-keys";
+
 import { focusOnCallEntryHashTarget } from "@/components/on-call/on-call-page-anchors";
 
 import { Plus } from "lucide-react";
@@ -36,9 +39,21 @@ import { onCallPageSections } from "@/components/on-call/on-call-page-sections";
 import { OnCallEmptyState } from "@/components/on-call/kit/empty-state";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/components/ui-primitives";
-import { cacheOnCallEntries, updateCachedOnCallEntries, useOnCallEntries } from "@/lib/on-call/entry-store";
+import {
+  cacheOnCallEntries,
+  readCachedOnCallEntries,
+  updateCachedOnCallEntries,
+  useOnCallEntries,
+} from "@/lib/on-call/entry-store";
 import { useOnCallLinkedDocumentsState } from "@/lib/on-call/linked-documents";
-import { onCallEntryFreshness, type OnCallEntry, onCallEntryIsEditable } from "@/lib/on-call/entry-model";
+import {
+  mergeOnCallEntryVerification,
+  onCallEntryVerificationContentMatches,
+  onCallEntrySchema,
+  onCallEntryFreshness,
+  type OnCallEntry,
+  onCallEntryIsEditable,
+} from "@/lib/on-call/entry-model";
 import { recordOnCallRecent } from "@/lib/on-call/recent-storage";
 import { selectUpcomingTeachingSessions } from "@/lib/on-call/teaching-schedule";
 import { isAdminWorkforceExplainer } from "@/lib/admin/placement";
@@ -175,7 +190,8 @@ const ON_CALL_ADD_HINT: Partial<Record<OnCallPageView, string>> = {
  * names on their contacts. The add, edit and verify controls below are gated on
  * `isAuthenticated`, because their routes require one.
  */
-export function OnCallSectionPage({ view }: { view: OnCallPageView }) {
+function OnCallSectionPageSession({ view }: { view: OnCallPageView }) {
+  const sessionEpoch = peekOnCallEntrySessionEpoch();
   const { zone } = useWorkTimeZone();
   const { isAuthenticated } = useAccountData();
   const [editorState, setEditorState] = useState<{ open: boolean; entry: OnCallEntry | null }>({
@@ -315,20 +331,50 @@ export function OnCallSectionPage({ view }: { view: OnCallPageView }) {
    */
   async function verifyAllStale() {
     setVerifyAllState({ running: true, error: null });
-    let working = [...entries];
-    const commit = () => cacheOnCallEntries(working);
+    const updates = new Map<string, { reviewed: OnCallEntry; verified: OnCallEntry }>();
+    const changedMessage = "An entry changed or was removed while confirming. Review the latest entries and try again.";
+    const commit = () => {
+      if (sessionEpoch !== peekOnCallEntrySessionEpoch() || updates.size === 0) return true;
+      const latest = readCachedOnCallEntries()?.entries ?? entries;
+      let applied = 0;
+      cacheOnCallEntries(
+        latest.map((entry) => {
+          const update = updates.get(entry.id);
+          if (!update) return entry;
+          const merged = mergeOnCallEntryVerification(entry, update.reviewed, update.verified);
+          if (merged) applied += 1;
+          return merged ?? entry;
+        }),
+        sessionEpoch,
+      );
+      return applied === updates.size;
+    };
 
     for (const entry of staleEntries) {
+      if (sessionEpoch !== peekOnCallEntrySessionEpoch()) return;
       try {
-        const response = await fetch(`/api/on-call/entries/${entry.id}/verify`, { method: "POST" });
-        if (!response.ok) throw new Error(`Could not confirm ${entry.title}.`);
-        const payload: unknown = await response.json();
-        const updated = (payload as { entry?: OnCallEntry } | null)?.entry;
-        if (updated) {
-          working = working.some((existing) => existing.id === updated.id)
-            ? working.map((existing) => (existing.id === updated.id ? updated : existing))
-            : [...working, updated];
+        if (!entry.updatedAt) throw new Error("Reload the entries and review the latest content before confirming it.");
+        const latest = readCachedOnCallEntries()?.entries ?? entries;
+        const current = latest.find((candidate) => candidate.id === entry.id);
+        if (!current || !onCallEntryVerificationContentMatches(current, entry)) throw new Error(changedMessage);
+        const response = await fetch(`/api/on-call/entries/${entry.id}/verify`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ expectedUpdatedAt: entry.updatedAt }),
+        });
+        if (!response.ok)
+          throw new Error(
+            response.status === 409 || response.status === 428
+              ? `Could not confirm ${entry.title}. Reload and review the latest entry before trying again.`
+              : `Could not confirm ${entry.title}.`,
+          );
+        const payload: unknown = await response.json().catch(() => null);
+        const parsed = onCallEntrySchema.safeParse((payload as { entry?: unknown } | null)?.entry);
+        if (!parsed.success || parsed.data.id !== entry.id) {
+          throw new Error(`The confirmation response was invalid for ${entry.title}. Try again.`);
         }
+        if (sessionEpoch !== peekOnCallEntrySessionEpoch()) return;
+        updates.set(parsed.data.id, { reviewed: entry, verified: parsed.data });
       } catch (error) {
         commit();
         const isOfflineError =
@@ -346,22 +392,25 @@ export function OnCallSectionPage({ view }: { view: OnCallPageView }) {
       }
     }
 
-    commit();
-    setVerifyAllState({ running: false, error: null });
+    const applied = commit();
+    setVerifyAllState({ running: false, error: applied ? null : changedMessage });
   }
 
   // Both run after an await (a verify, an editor save), so they update the
   // latest cached list rather than this render's `entries` snapshot.
   function upsertCachedEntry(entry: OnCallEntry) {
-    updateCachedOnCallEntries(entries, (current) =>
-      current.some((existing) => existing.id === entry.id)
-        ? current.map((existing) => (existing.id === entry.id ? entry : existing))
-        : [...current, entry],
+    updateCachedOnCallEntries(
+      entries,
+      (current) =>
+        current.some((existing) => existing.id === entry.id)
+          ? current.map((existing) => (existing.id === entry.id ? entry : existing))
+          : [...current, entry],
+      sessionEpoch,
     );
   }
 
   function removeCachedEntry(id: string) {
-    updateCachedOnCallEntries(entries, (current) => current.filter((existing) => existing.id !== id));
+    updateCachedOnCallEntries(entries, (current) => current.filter((existing) => existing.id !== id), sessionEpoch);
   }
 
   // Writing needs an account, and so does reading anything but the preview. Each list component drops
@@ -546,5 +595,13 @@ export function OnCallSectionPage({ view }: { view: OnCallPageView }) {
         />
       ) : null}
     </>
+  );
+}
+
+export function OnCallSectionPage(props: Parameters<typeof OnCallSectionPageSession>[0]) {
+  return (
+    <OnCallEntrySessionBoundary>
+      <OnCallSectionPageSession {...props} />
+    </OnCallEntrySessionBoundary>
   );
 }

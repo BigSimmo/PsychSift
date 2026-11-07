@@ -1,5 +1,9 @@
 "use client";
 
+import { OnCallEntrySessionBoundary } from "@/components/on-call/on-call-entry-session-boundary";
+
+import { peekOnCallEntrySessionEpoch } from "@/lib/on-call/entry-cache-keys";
+
 import { Plus } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
@@ -71,7 +75,8 @@ function noSubscription() {
   return () => {};
 }
 
-export function AdminHelpPage({ now: nowProp }: { now?: Date } = {}) {
+function AdminHelpPageSession({ now: nowProp }: { now?: Date } = {}) {
+  const sessionEpoch = peekOnCallEntrySessionEpoch();
   const { zone } = useWorkTimeZone();
   const router = useRouter();
   const { isAuthenticated } = useAccountData();
@@ -116,18 +121,23 @@ export function AdminHelpPage({ now: nowProp }: { now?: Date } = {}) {
   }, [filtered]);
 
   function upsertCachedEntry(entry: OnCallEntry) {
+    if (sessionEpoch !== peekOnCallEntrySessionEpoch()) return;
     if (isOnCallExampleEntry(entry)) return;
     // The latest cache, not this render's list: two saves in flight would otherwise undo each other.
     const latest = readCachedOnCallEntries()?.entries ?? entries;
     const next = latest.some((existing) => existing.id === entry.id)
       ? latest.map((existing) => (existing.id === entry.id ? entry : existing))
       : [...latest, entry];
-    cacheOnCallEntries(next);
+    cacheOnCallEntries(next, sessionEpoch);
   }
 
   function removeCachedEntry(id: string) {
+    if (sessionEpoch !== peekOnCallEntrySessionEpoch()) return;
     const latest = readCachedOnCallEntries()?.entries ?? entries;
-    cacheOnCallEntries(latest.filter((existing) => existing.id !== id));
+    cacheOnCallEntries(
+      latest.filter((existing) => existing.id !== id),
+      sessionEpoch,
+    );
   }
 
   function openNewEntry() {
@@ -272,4 +282,12 @@ export function AdminHelpPage({ now: nowProp }: { now?: Date } = {}) {
 function listInWords(words: readonly string[]): string {
   if (words.length <= 1) return words.join("");
   return `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}`;
+}
+
+export function AdminHelpPage(props: Parameters<typeof AdminHelpPageSession>[0] = {}) {
+  return (
+    <OnCallEntrySessionBoundary>
+      <AdminHelpPageSession {...props} />
+    </OnCallEntrySessionBoundary>
+  );
 }

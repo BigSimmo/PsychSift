@@ -107,6 +107,8 @@ export const SUMMARY_SOURCES = [
     issue: "open",
     onTrouble: "red",
     trouble: "checks on main are failing",
+    // Only pushes to main judge main; a pull-request run of ci.yml says nothing about main.
+    runFilter: { branch: "main", event: "push" },
     // Amber, not red, when the only outstanding checks are the cross-browser legs or the advisory
     // visual baselines (readMainCiOutstanding). Those legs are continue-on-error on main and
     // block nothing. Before this, one flaky Safari tablet leg kept the summary red for days
@@ -246,7 +248,15 @@ export function assessSource(
   { latestRun = null, issue = null, recentMarkers = null, botActivityAt = null, clearingRun = null, now },
 ) {
   const nowMs = time(now) ?? Date.now();
-  const link = issueLink(issue);
+  const runLink =
+    typeof latestRun?.html_url === "string" && /^https:\/\/[^\s()]+$/.test(latestRun.html_url)
+      ? `[run](${latestRun.html_url})`
+      : "";
+  // An unsuccessful run may not have reached its issue write, so an older issue alone may not
+  // explain the failure: keep the run reachable alongside it.
+  const failedRun = latestRun !== null && latestRun.conclusion !== "success";
+  const link =
+    failedRun && issueLink(issue) && runLink ? `${issueLink(issue)} · ${runLink}` : issueLink(issue) || runLink;
   const runAt = time(latestRun?.updated_at ?? latestRun?.run_started_at ?? latestRun?.created_at);
   const stale = source.maxAgeHours !== null && (runAt === null || nowMs - runAt > source.maxAgeHours * HOUR);
   const staleText =
@@ -297,6 +307,17 @@ export function assessSource(
     } else {
       detail = "service ok, answers within limits";
     }
+  }
+
+  // Freshness proves only that the detector attempted a run. Failures (including a failed
+  // issue write), cancellations, skips and unknown conclusions cannot establish service health.
+  // Preserve intentionally inert/event-driven no-run defaults and any stronger service alert.
+  if (latestRun && latestRun.conclusion !== "success") {
+    detail =
+      status === "green"
+        ? "latest monitoring run did not succeed; health is unassessed"
+        : `latest monitoring run did not succeed; last known: ${detail}`;
+    if (status === "green") status = "amber";
   }
 
   if (stale) {
@@ -384,7 +405,7 @@ export function renderDailyHealthSummary({ now, assessments, answerLines = {}, m
   return { overall, body: lines.join("\n") };
 }
 
-async function newestCompletedRun(github, owner, repo, workflow) {
+async function newestCompletedRun(github, owner, repo, workflow, filter = {}) {
   try {
     const { data } = await github.rest.actions.listWorkflowRuns({
       owner,
@@ -392,6 +413,7 @@ async function newestCompletedRun(github, owner, repo, workflow) {
       workflow_id: workflow,
       status: "completed",
       per_page: 1,
+      ...filter,
     });
     return data.workflow_runs?.[0] ?? null;
   } catch {
@@ -516,7 +538,7 @@ export async function collectAssessments({ github, owner, repo, now }) {
   for (const source of SUMMARY_SOURCES) {
     try {
       const [latestRun, { issue, activity }] = await Promise.all([
-        newestCompletedRun(github, owner, repo, source.workflow),
+        newestCompletedRun(github, owner, repo, source.workflow, source.runFilter),
         source.issue === "recent"
           ? mostRecentlyAlertedIssue(github, owner, repo, source.label, nowMs - source.recentHours * HOUR)
           : newestIssue(github, owner, repo, source.label).then((found) => ({

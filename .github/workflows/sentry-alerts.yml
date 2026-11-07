@@ -15,8 +15,8 @@ name: Sentry production alerts
 # Setup (owner, once): a Sentry personal token with event:read, org:read and project:read,
 # stored as the repository secret SENTRY_ALERTS_TOKEN. The organisation and project are
 # discovered from the token; set the repository variables SENTRY_ORG / SENTRY_PROJECT only
-# if the account holds more than one of either. Without the secret every run is a warning
-# and nothing else.
+# if the account holds more than one of either. Without the secret the detector fails as
+# unavailable, so the daily summary cannot describe its silence as healthy.
 
 on:
   workflow_dispatch:
@@ -51,7 +51,7 @@ jobs:
           script: |
             const token = (process.env.SENTRY_ALERTS_TOKEN || "").trim();
             if (!token) {
-              core.warning("SENTRY_ALERTS_TOKEN is not set, so Sentry errors are not reaching the owner. See the header of sentry-alerts.yml.");
+              core.setFailed("SENTRY_ALERTS_TOKEN is not set; Sentry monitoring is unavailable.");
               return;
             }
 

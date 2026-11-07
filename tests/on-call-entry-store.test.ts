@@ -78,6 +78,33 @@ describe("on-call entry cache", () => {
     vi.useRealTimers();
   });
 
+  it.each(["verify", "edit", "delete"])("rejects a late %s cache write after an account transition", (operation) => {
+    cacheOnCallEntries([contact]);
+    const fallback = readCachedOnCallEntries()!.entries;
+    const initiatingEpoch = peekOnCallEntrySessionEpoch();
+    clearOnCallEntryCache();
+    const nextAccount = { ...contact, id: "22222222-2222-4222-8222-222222222222", title: "Synthetic account B" };
+    cacheOnCallEntries([nextAccount]);
+    const update = vi.fn((current: OnCallEntry[]) => (operation === "delete" ? [] : [...current, contact]));
+    expect(updateCachedOnCallEntries(fallback, update, initiatingEpoch)).toBe(false);
+    expect(update).not.toHaveBeenCalled();
+    expect(readCachedOnCallEntries()?.entries).toEqual([nextAccount]);
+  });
+
+  it.each([
+    { invalid: [{ id: "invalid-row" }] },
+    { invalid: [null] },
+    { invalid: [contact, { ...contact, id: "invalid" }] },
+  ])("refuses invalid cache entries without replacing the last good list: %#", ({ invalid }) => {
+    cacheOnCallEntries([contact]);
+    expect(cacheOnCallEntries(invalid as unknown as OnCallEntry[])).toBe(false);
+    expect(readCachedOnCallEntries()?.entries).toEqual([contact]);
+    expect(
+      updateCachedOnCallEntries([contact], () => invalid as unknown as OnCallEntry[], peekOnCallEntrySessionEpoch()),
+    ).toBe(false);
+    expect(readCachedOnCallEntries()?.entries).toEqual([contact]);
+  });
+
   it("returns null when nothing has ever been cached", () => {
     expect(readCachedOnCallEntries()).toBeNull();
   });
@@ -214,17 +241,19 @@ describe("on-call entry cache", () => {
     const second = { ...other, lastVerifiedAt: "2026-09-04T12:00:00.000Z" };
     const replace = (updated: OnCallEntry) => (current: OnCallEntry[]) =>
       current.map((existing) => (existing.id === updated.id ? updated : existing));
-    expect(updateCachedOnCallEntries(snapshot, replace(first))).toBe(true);
-    expect(updateCachedOnCallEntries(snapshot, replace(second))).toBe(true);
+    expect(updateCachedOnCallEntries(snapshot, replace(first), peekOnCallEntrySessionEpoch())).toBe(true);
+    expect(updateCachedOnCallEntries(snapshot, replace(second), peekOnCallEntrySessionEpoch())).toBe(true);
     expect(readCachedOnCallEntries()?.entries).toEqual([first, second]);
   });
 
   it("falls back to the screen's own list when nothing is cached", () => {
-    expect(updateCachedOnCallEntries([contact], (current) => current.filter(() => false))).toBe(true);
+    expect(
+      updateCachedOnCallEntries([contact], (current) => current.filter(() => false), peekOnCallEntrySessionEpoch()),
+    ).toBe(true);
     expect(readCachedOnCallEntries()?.entries).toEqual([]);
     clearOnCallEntryCache();
     const updated = { ...contact, title: "Renamed" };
-    updateCachedOnCallEntries([contact], (current) => current.map(() => updated));
+    updateCachedOnCallEntries([contact], (current) => current.map(() => updated), peekOnCallEntrySessionEpoch());
     expect(readCachedOnCallEntries()?.entries).toEqual([updated]);
   });
 

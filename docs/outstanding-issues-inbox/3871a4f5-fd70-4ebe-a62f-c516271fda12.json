@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "3871a4f5-fd70-4ebe-a62f-c516271fda12",
+  "createdOn": "2026-11-05",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "task",
+    "summary": "Set private-read and independent bearer/feed revocation semantics",
+    "detail": "2026-11-05 backend audit (F01, F02), local source33f6478: Immediate private GET revocation policy remains unsettled; established verified-token read fast path and separately issued bearer/feed scope/expiry remain intentional constraints. Next: Specify which private reads need live account bans/revocation, freshness bounds and behavior for independently issued feed/signed credentials; then implement and verify only the selected policy. Acceptance: Real Auth two-user expired/revoked/blocked/session-refresh tests match documented policy across HTTP/cache/export/feed paths. Do not equate sign-out with automatic revocation of every independent credential. Suggested owner: Identity + product owner. No merge, deployment, live migration, provider spending or specialist approval is granted by logging this task.",
+    "source": "docs/backend-audit-remediation-2026-11-05.md; backend-audit-2026-11-05:READ_POLICY; source33f6478c63aedf9c2d79effd9890951035f552b2",
+    "issueUlid": "01M6PNKG966WD257F5CM2BFP59"
+  }
+}

@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { DEMO_CME_YEAR } from "@/lib/cme/demo-year";
 import type { OnCallEntry } from "@/lib/on-call/entry-model";
 
 const mocks = vi.hoisted(() => ({
@@ -48,8 +49,8 @@ import {
   hashCalendarFeedToken,
   parseCalendarFeedToken,
 } from "@/lib/calendar/feed-token";
-import { toIcs } from "@/lib/calendar/ics";
 import { calendarFeedEvents } from "@/lib/calendar/feed-repository";
+import { toIcs } from "@/lib/calendar/ics";
 import { AuthenticationError } from "@/lib/supabase/auth";
 
 const ownerId = "11111111-1111-4111-8111-111111111111";
@@ -88,6 +89,40 @@ beforeEach(() => {
   mocks.onCall.mockResolvedValue([]);
   mocks.teachingFeed.mockResolvedValue([]);
   mocks.bookings.mockResolvedValue({ status: "not-set-up" });
+});
+
+describe("prior-year CPD reporting in the subscription", () => {
+  it.each(["2027-01-15T00:00:00Z", "2027-02-28T16:00:00Z", "2027-03-01T15:59:59Z"])(
+    "keeps a confirmed RANZCP deadline through its Perth calendar date at %s",
+    async (date) => {
+      mocks.cmeYear.mockImplementation(async (_client, _owner, year) =>
+        year === 2026
+          ? { ...DEMO_CME_YEAR, year, confirmedSource: "au-ranzcp-2026-v1; synthetic confirmed source" }
+          : null,
+      );
+      const events = await calendarFeedEvents({ from: mocks.from } as never, ownerId, new Date(date));
+      expect(mocks.cmeYear).toHaveBeenCalledWith(expect.anything(), ownerId, 2026);
+      expect(events).toContainEqual(expect.objectContaining({ id: "cme-2026-mycpd-close", date: "2027-03-01" }));
+      expect(events).not.toContainEqual(expect.objectContaining({ id: "cme-2026-year-end" }));
+    },
+  );
+
+  it("stops reading the prior year after reporting closes and retains current and next year events", async () => {
+    mocks.cmeYear.mockImplementation(async (_client, _owner, year) => ({ ...DEMO_CME_YEAR, year }));
+    const events = await calendarFeedEvents({ from: mocks.from } as never, ownerId, new Date("2027-03-01T16:00:00Z"));
+    expect(mocks.cmeYear).not.toHaveBeenCalledWith(expect.anything(), ownerId, 2026);
+    expect(events).toContainEqual(expect.objectContaining({ id: "cme-2027-year-end" }));
+    expect(events).toContainEqual(expect.objectContaining({ id: "cme-2028-year-end" }));
+  });
+
+  it.each([null, { ...DEMO_CME_YEAR, year: 2026, confirmedSource: "Another CPD home" }])(
+    "adds no reporting deadline for an unconfirmed or non-RANZCP prior year",
+    async (previous) => {
+      mocks.cmeYear.mockImplementation(async (_client, _owner, year) => (year === 2026 ? previous : null));
+      const events = await calendarFeedEvents({ from: mocks.from } as never, ownerId, new Date("2027-01-15T00:00:00Z"));
+      expect(events).not.toContainEqual(expect.objectContaining({ id: "cme-2026-mycpd-close" }));
+    },
+  );
 });
 
 describe("calendar feed tokens", () => {

@@ -75,6 +75,7 @@ export async function streamClinicalAsk(
   signal: AbortSignal,
   onEvent: (event: ClinicalAskStreamEvent) => void,
 ): Promise<ClinicalAskFinalPayload> {
+  if (signal.aborted) return failedPayload(request, "aborted");
   const controller = new AbortController();
   const onAbort = () => controller.abort(signal.reason);
   signal.addEventListener("abort", onAbort, { once: true });

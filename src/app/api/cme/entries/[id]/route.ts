@@ -117,6 +117,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
           sourceUrl: fields.sourceUrl,
           buckets: fields.buckets,
           formalPeerReviewHours: fields.formalPeerReviewHours,
+          version: fields.expectedVersion,
         },
         amendmentReason,
       );
@@ -170,6 +171,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       sourceUrl: body.sourceUrl === undefined ? (existingRow.source_url ?? null) : body.sourceUrl,
       buckets: body.buckets,
       formalPeerReviewHours: body.formalPeerReviewHours,
+      version: body.expectedVersion,
     };
     const saved = await saveCmeEntry(supabase, user.id, yearRow.id, entry);
     return NextResponse.json({ entry: saved });

@@ -393,6 +393,11 @@ export class SupervisorBookingRepository {
 }
 
 function bookingDatabaseError(error: { message?: string; code?: string } | null): PublicApiError {
+  if (error?.code === "PGRST202" || error?.code === "42883") {
+    return new PublicApiError("Supervision availability is unavailable. Reload before trying again.", 503, {
+      code: "booking_store_unavailable",
+    });
+  }
   if (error?.code === "22P02") return new PublicApiError("Invalid booking identifier.", 400, { code: "invalid_id" });
   if (error?.code === "23503")
     return new PublicApiError("Referenced booking user was not found.", 400, { code: "invalid_reference" });
@@ -422,11 +427,25 @@ function isBookingRow(row: RegistrarAssessmentRow): boolean {
  * Durable Supabase-backed booking repository storing supervisor availability and bookings
  * in `public.registrar_assessments` under `category = 'supervisor_review'`.
  */
+type BookingOverlapClient = RegistrarAssessmentsTableClient & {
+  rpc(
+    name: "teaching_find_supervisor_overlap_v1",
+    args: {
+      p_supervisor_id: string;
+      p_starts_at: string;
+      p_ends_at: string;
+      p_exclude_id: string;
+      p_before_created_at: string | null;
+      p_before_id: string | null;
+    },
+  ): PromiseLike<{ data: RegistrarAssessmentRow[] | null; error: { message?: string; code?: string } | null }>;
+};
+
 export class DurableSupervisorBookingRepository {
-  private readonly db: RegistrarAssessmentsTableClient;
+  private readonly db: BookingOverlapClient;
 
   constructor(client: RegistrarAssessmentsTableClient | { from: (...args: never[]) => unknown }) {
-    this.db = client as unknown as RegistrarAssessmentsTableClient;
+    this.db = client as unknown as BookingOverlapClient;
   }
 
   async getSlot(slotId: string): Promise<SupervisorBookingRecord> {
@@ -470,7 +489,9 @@ export class DurableSupervisorBookingRepository {
     // The check above and the insert are separate statements, so two concurrent requests can both
     // pass it. Re-check after inserting: if an overlapping slot that sorts earlier (created_at, then
     // id) exists, this one withdraws itself, so exactly one of any concurrent overlapping pair survives.
-    const earlier = (await this.overlappingActiveSlots(created)).filter((other) => compareCreation(other, created) < 0);
+    const earlier = (await this.overlappingActiveSlots(created, true)).filter(
+      (other) => compareCreation(other, created) < 0,
+    );
     if (earlier.length > 0) {
       if (await this.withdrawConcurrentDuplicate(created)) {
         throw new BookingSlotConflictError("Supervisor already has an overlapping availability slot in this window.");
@@ -483,15 +504,21 @@ export class DurableSupervisorBookingRepository {
     return created;
   }
 
-  /** Every non-cancelled slot of the same supervisor whose window overlaps `slot`, excluding itself. */
-  private async overlappingActiveSlots(slot: SupervisorBookingRecord): Promise<SupervisorBookingRecord[]> {
-    const supervisorSlots = await this.listBookingsForActor({ actorId: slot.supervisorId, role: "supervisor" });
-    return supervisorSlots.filter(
-      (existing) =>
-        existing.id !== slot.id &&
-        existing.bookingState !== "cancelled" &&
-        windowsOverlap(existing.startsAt, existing.endsAt, slot.startsAt, slot.endsAt),
-    );
+  /** The database compares actual instants and returns at most one relevant overlapping slot. */
+  private async overlappingActiveSlots(
+    slot: SupervisorBookingRecord,
+    earlierOnly = false,
+  ): Promise<SupervisorBookingRecord[]> {
+    const { data, error } = await this.db.rpc("teaching_find_supervisor_overlap_v1", {
+      p_supervisor_id: slot.supervisorId,
+      p_starts_at: slot.startsAt,
+      p_ends_at: slot.endsAt,
+      p_exclude_id: slot.id,
+      p_before_created_at: earlierOnly ? slot.createdAt : null,
+      p_before_id: earlierOnly ? slot.id : null,
+    });
+    if (error) throw bookingDatabaseError(error);
+    return (data ?? []).filter(isBookingRow).map(rowToBookingRecord);
   }
 
   /** Withdraws `slot` only while it is still open and unchanged; returns whether it was withdrawn. */

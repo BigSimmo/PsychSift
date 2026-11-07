@@ -41875,3 +41875,1864 @@ end $$;
 
 -- Patched validators retain their postgres ownership and existing ACLs.
 commit;
+
+-- supabase/migrations/20261107000100_audit_private_evidence_lifecycle_and_drift.sql
+-- Permanent document removal also removes reconstructable ingestion evidence.
+-- Active/rollback evidence remains immutable while its parent document exists.
+-- This drafts no age-based retention, legal hold, historical orphan sweep or backup purge.
+set local lock_timeout = '5s';
+set local statement_timeout = '60s';
+
+create or replace function ingestion_generation_evidence.immutable() returns trigger
+language plpgsql set search_path='' as $$ declare worker text; attempt jsonb; begin
+  -- A real parent deletion is the only lifecycle exception. No caller-controlled bypass.
+  if tg_op='DELETE' then
+    if tg_table_schema='ingestion_generation_evidence' and tg_level='ROW'
+      and pg_catalog.pg_trigger_depth() > 1 and current_user='postgres'
+      and not exists (select 1 from public.documents d where d.id=old.document_id) then
+      return old;
+    end if;
+  end if;
+  if tg_table_name='candidates' and tg_op='UPDATE' then
+    if old.expected_inventory_digest is null
+      and new.expected_inventory_digest ~ '^sha256:[0-9a-f]{64}$'
+      and to_jsonb(old)-'expected_inventory_digest'=to_jsonb(new)-'expected_inventory_digest'
+      and current_user='postgres' then return new; end if;
+    if current_user='postgres' and old.source_section_layout is null and old.source_section_layout_bytes is null
+      and old.source_section_layout_digest is null and new.source_section_layout is not null
+      and new.source_section_layout_bytes is not null and new.source_section_layout_digest is not null
+      and to_jsonb(old)-array['source_section_layout','source_section_layout_bytes','source_section_layout_digest']
+        =to_jsonb(new)-array['source_section_layout','source_section_layout_bytes','source_section_layout_digest'] then
+      select locked_by into worker from public.ingestion_jobs where id=old.job_id and document_id=old.document_id;
+      attempt:=public.assert_current_ingestion_attempt(jsonb_build_object('job_kind','node','job_id',old.job_id,
+        'document_id',old.document_id,'worker_id',worker,'lease_token',old.first_lease_token,
+        'expected_generation_id',old.predecessor_generation_id,'authority_digest',old.authority_digest),old.generation_id);
+      if attempt is not null then
+        perform ingestion_generation_evidence.assert_admin_text_source_section_layout(new::ingestion_generation_evidence.candidates);
+        return new;
+      end if;
+    end if;
+  end if;
+  raise exception 'immutable_ingestion_generation_evidence' using errcode='23514';
+end $$;
+
+alter function ingestion_generation_evidence.immutable() owner to postgres;
+revoke all on function ingestion_generation_evidence.immutable() from public, anon, authenticated, service_role;
+
+create or replace function ingestion_generation_evidence.purge_deleted_document()
+returns trigger
+language plpgsql security definer
+set search_path = ''
+as $purge$
+begin
+  if tg_table_schema <> 'public' or tg_table_name <> 'documents' or tg_op <> 'DELETE'
+    or tg_when <> 'AFTER' or tg_level <> 'ROW'
+    or exists (select 1 from public.documents d where d.id = old.id) then
+    raise exception 'permanent_document_delete_required' using errcode = '23514';
+  end if;
+  -- Child-first order preserves all existing FK and immutability constraints.
+  delete from ingestion_generation_evidence.managed_vector_final_receipts where document_id = old.id;
+  delete from ingestion_generation_evidence.managed_vector_chunk_rows where document_id = old.id;
+  delete from ingestion_generation_evidence.managed_vector_field_rows where document_id = old.id;
+  delete from ingestion_generation_evidence.managed_vector_index_rows where document_id = old.id;
+  delete from ingestion_generation_evidence.scoped_projection_artifacts where document_id = old.id;
+  delete from ingestion_generation_evidence.visual_unit_rows where document_id = old.id;
+  delete from ingestion_generation_evidence.visual_unit_expectations where document_id = old.id;
+  delete from ingestion_generation_evidence.scoped_projection_rows where document_id = old.id;
+  delete from ingestion_generation_evidence.scoped_projection_expectations where document_id = old.id;
+  delete from ingestion_generation_evidence.retained_artifacts where document_id = old.id;
+  delete from ingestion_generation_evidence.outcomes where document_id = old.id;
+  delete from ingestion_generation_evidence.unit_declarations where document_id = old.id;
+  delete from ingestion_generation_evidence.producer_declarations where document_id = old.id;
+  delete from ingestion_generation_evidence.prerequisite_accounting where document_id = old.id;
+  delete from ingestion_generation_evidence.candidate_chunk_rows where document_id = old.id;
+  delete from ingestion_generation_evidence.managed_vector_packets where document_id = old.id;
+  delete from ingestion_generation_evidence.candidates where document_id = old.id;
+  return old;
+end;
+$purge$;
+alter function ingestion_generation_evidence.purge_deleted_document() owner to postgres;
+revoke all on function ingestion_generation_evidence.purge_deleted_document() from public, anon, authenticated, service_role;
+create trigger purge_private_ingestion_evidence_after_document_delete
+  after delete on public.documents for each row
+  execute function ingestion_generation_evidence.purge_deleted_document();
+
+-- Serialize permanent document deletion with ingestion job creation. The
+-- parent row lock conflicts with the FK key-share lock taken by a concurrent
+-- ingestion_jobs insert: either the job commits first and deletion returns an
+-- active_job outcome, or deletion commits first and the insert receives 23503.
+create or replace function public.delete_document_if_idle(
+  p_document_id uuid,
+  p_owner_id uuid,
+  p_document_bucket text,
+  p_image_bucket text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_document public.documents%rowtype;
+  v_active_job public.ingestion_jobs%rowtype;
+  v_active_agent_job public.indexing_v3_agent_jobs%rowtype;
+  v_cleanup_job_id uuid;
+  v_image_paths text[] := '{}'::text[];
+  v_chunk_ids uuid[] := '{}'::uuid[];
+begin
+  if p_document_id is null or p_owner_id is null then
+    raise exception 'Document and owner identifiers are required.' using errcode = '22023';
+  end if;
+  if nullif(btrim(p_document_bucket), '') is null or nullif(btrim(p_image_bucket), '') is null then
+    raise exception 'Storage bucket names are required.' using errcode = '22023';
+  end if;
+
+  select d.*
+    into v_document
+    from public.documents d
+   where d.id = p_document_id
+     and d.owner_id = p_owner_id
+   for update;
+
+  if not found then
+    return jsonb_build_object('outcome', 'not_found');
+  end if;
+
+  select j.*
+    into v_active_job
+    from public.ingestion_jobs j
+   where j.document_id = p_document_id
+     and j.status in ('pending', 'processing')
+   order by j.created_at asc, j.id asc
+   limit 1;
+
+  if found then
+    return jsonb_build_object(
+      'outcome', 'active_job',
+      'job_id', v_active_job.id,
+      'job_status', v_active_job.status
+    );
+  end if;
+
+  -- Agent-only work also owns the document. Its FK insert takes the same parent
+  -- key-share lock, so this check is serialized with admission just like node work.
+  select j.* into v_active_agent_job
+    from public.indexing_v3_agent_jobs j
+   where j.document_id = p_document_id and j.status in ('pending', 'processing')
+   order by j.created_at asc, j.id asc limit 1;
+  if found then
+    return jsonb_build_object('outcome', 'active_job', 'job_id', v_active_agent_job.id,
+      'job_status', v_active_agent_job.status);
+  end if;
+
+  select coalesce(array_agg(distinct i.storage_path order by i.storage_path)
+                          filter (where i.storage_path is not null and btrim(i.storage_path) <> ''), '{}'::text[])
+    into v_image_paths
+    from public.document_images i
+   where i.document_id = p_document_id;
+
+  select coalesce(array_agg(c.id order by c.id), '{}'::uuid[])
+    into v_chunk_ids
+    from public.document_chunks c
+   where c.document_id = p_document_id;
+
+  insert into public.storage_cleanup_jobs (
+    owner_id,
+    document_id,
+    document_title,
+    document_bucket,
+    document_paths,
+    image_bucket,
+    image_paths,
+    status,
+    metadata
+  ) values (
+    p_owner_id,
+    p_document_id,
+    v_document.title,
+    p_document_bucket,
+    case
+      when v_document.storage_path is null or btrim(v_document.storage_path) = '' then '{}'::text[]
+      else array[v_document.storage_path]
+    end,
+    p_image_bucket,
+    v_image_paths,
+    'pending',
+    jsonb_build_object(
+      'operation', 'permanent_document_delete',
+      'created_by', 'delete_document_if_idle'
+    )
+  )
+  returning id into v_cleanup_job_id;
+
+  if cardinality(v_chunk_ids) > 0 then
+    delete from public.rag_queries
+     where source_chunk_ids && v_chunk_ids;
+    delete from public.rag_query_misses
+     where top_chunk_ids && v_chunk_ids
+        or cited_chunk_ids && v_chunk_ids;
+  end if;
+
+  delete from public.rag_query_misses
+   where clicked_document_id = p_document_id
+      or expected_document_id = p_document_id;
+
+  delete from public.rag_response_cache
+   where owner_id = p_owner_id
+     and cache_kind in ('search', 'answer');
+
+  delete from public.documents where id = p_document_id;
+
+  return jsonb_build_object(
+    'outcome', 'deleted',
+    'cleanup_job_id', v_cleanup_job_id,
+    'document_title', v_document.title,
+    'source_path', v_document.storage_path,
+    'image_paths', to_jsonb(v_image_paths)
+  );
+end;
+$$;
+
+revoke all on function public.delete_document_if_idle(uuid, uuid, text, text)
+  from public, anon, authenticated;
+grant execute on function public.delete_document_if_idle(uuid, uuid, text, text)
+  to service_role;
+
+-- Explicit application-owned private schema only. Platform schemas remain excluded.
+create or replace function ingestion_generation_evidence.schema_drift_inventory()
+returns jsonb
+language sql stable
+set search_path = ''
+as $inventory$
+  with owned_schema as (
+    select n.* from pg_catalog.pg_namespace n
+    where n.nspname = 'ingestion_generation_evidence'
+      and not exists (select 1 from pg_catalog.pg_depend d
+        where d.classid = 'pg_catalog.pg_namespace'::regclass and d.objid = n.oid and d.deptype = 'e')
+  ), objects as (
+    select 'schema:' || n.nspname as identity, jsonb_build_object(
+      'owner', pg_catalog.pg_get_userbyid(n.nspowner),
+      'acl', (select jsonb_agg(a.item::text order by a.item::text)
+        from unnest(coalesce(n.nspacl, pg_catalog.acldefault('n', n.nspowner))) a(item))
+    ) as state from owned_schema n
+    union all
+    select 'relation:' || n.nspname || '.' || c.relname, jsonb_build_object(
+      'kind', c.relkind, 'owner', pg_catalog.pg_get_userbyid(c.relowner),
+      'acl', (select jsonb_agg(a.item::text order by a.item::text)
+        from unnest(coalesce(c.relacl, pg_catalog.acldefault(case when c.relkind = 'S' then 'S'::"char" else 'r'::"char" end, c.relowner))) a(item)),
+      'rls_enabled', c.relrowsecurity, 'rls_forced', c.relforcerowsecurity,
+      'reloptions', (select jsonb_agg(o.opt order by o.opt) from unnest(c.reloptions) o(opt)),
+      'view_definition', case when c.relkind in ('v','m') then pg_catalog.pg_get_viewdef(c.oid) end,
+      'sequence', (select to_jsonb(s) - 'seqrelid' from pg_catalog.pg_sequence s where s.seqrelid = c.oid),
+      'columns', (select jsonb_agg(jsonb_build_object(
+        'name', a.attname, 'type', pg_catalog.format_type(a.atttypid, a.atttypmod),
+        'not_null', a.attnotnull, 'identity', a.attidentity, 'generated', a.attgenerated,
+        'default', pg_catalog.pg_get_expr(ad.adbin, ad.adrelid),
+        'acl', (select jsonb_agg(x.item::text order by x.item::text) from unnest(a.attacl) x(item))
+      ) order by a.attname) from pg_catalog.pg_attribute a
+        left join pg_catalog.pg_attrdef ad on ad.adrelid = a.attrelid and ad.adnum = a.attnum
+        where a.attrelid = c.oid and a.attnum > 0 and not a.attisdropped),
+      'constraints', (select jsonb_agg(jsonb_build_object(
+        'name', x.conname, 'definition', pg_catalog.pg_get_constraintdef(x.oid),
+        'validated', x.convalidated, 'deferrable', x.condeferrable, 'deferred', x.condeferred
+      ) order by x.conname) from pg_catalog.pg_constraint x where x.conrelid = c.oid),
+      'indexes', (select jsonb_agg(jsonb_build_object(
+        'identity', ni.nspname || '.' || ci.relname, 'definition', pg_catalog.pg_get_indexdef(i.indexrelid),
+        'valid', i.indisvalid, 'ready', i.indisready, 'live', i.indislive
+      ) order by ci.relname) from pg_catalog.pg_index i
+        join pg_catalog.pg_class ci on ci.oid = i.indexrelid
+        join pg_catalog.pg_namespace ni on ni.oid = ci.relnamespace where i.indrelid = c.oid),
+      'triggers', (select jsonb_agg(jsonb_build_object(
+        'name', t.tgname, 'enabled', t.tgenabled, 'definition', pg_catalog.pg_get_triggerdef(t.oid)
+      ) order by t.tgname) from pg_catalog.pg_trigger t where t.tgrelid = c.oid and not t.tgisinternal),
+      'policies', (select jsonb_agg(jsonb_build_object(
+        'name', p.polname, 'permissive', p.polpermissive, 'command', p.polcmd,
+        'roles', (select jsonb_agg(case when r.role = 0 then 'public' else pg_catalog.pg_get_userbyid(r.role) end
+          order by case when r.role = 0 then 'public' else pg_catalog.pg_get_userbyid(r.role) end) from unnest(p.polroles) r(role)),
+        'qual', pg_catalog.pg_get_expr(p.polqual, p.polrelid),
+        'with_check', pg_catalog.pg_get_expr(p.polwithcheck, p.polrelid)
+      ) order by p.polname) from pg_catalog.pg_policy p where p.polrelid = c.oid)
+    ) from pg_catalog.pg_class c join owned_schema n on n.oid = c.relnamespace
+    where c.relkind in ('r','p','v','m','f','S') and not exists (
+      select 1 from pg_catalog.pg_depend d where d.classid = 'pg_catalog.pg_class'::regclass
+        and d.objid = c.oid and d.deptype = 'e')
+    union all
+    select 'function:' || p.oid::regprocedure::text, jsonb_build_object(
+      'owner', pg_catalog.pg_get_userbyid(p.proowner),
+      -- Hash complete SQL, including quoted literals. Only normalize platform line endings.
+      'def_hash', md5(replace(pg_catalog.pg_get_functiondef(p.oid), E'\r\n', E'\n')),
+      'config', (select jsonb_agg(v.item order by v.item) from unnest(p.proconfig) v(item)),
+      'security_definer', p.prosecdef,
+      'acl', (select jsonb_agg(a.item::text order by a.item::text)
+        from unnest(coalesce(p.proacl, pg_catalog.acldefault('f', p.proowner))) a(item))
+    ) from pg_catalog.pg_proc p join owned_schema n on n.oid = p.pronamespace
+    where p.prokind in ('f','p') and not exists (
+      select 1 from pg_catalog.pg_depend d where d.classid = 'pg_catalog.pg_proc'::regclass
+        and d.objid = p.oid and d.deptype = 'e')
+    union all
+    select 'default_acl:' || pg_catalog.pg_get_userbyid(d.defaclrole) || ':' ||
+      coalesce(n.nspname, '*') || ':' || d.defaclobjtype::text, jsonb_build_object(
+      'acl', (select jsonb_agg(a.item::text order by a.item::text) from unnest(d.defaclacl) a(item))
+    ) from pg_catalog.pg_default_acl d
+      left join pg_catalog.pg_namespace n on n.oid = d.defaclnamespace
+    where d.defaclnamespace in (select oid from owned_schema)
+      or (d.defaclnamespace = 0 and d.defaclrole = 'postgres'::regrole)
+  )
+  select coalesce(jsonb_agg(jsonb_build_object('identity', identity, 'state', state) order by identity), '[]'::jsonb)
+  from objects;
+$inventory$;
+alter function ingestion_generation_evidence.schema_drift_inventory() owner to postgres;
+revoke all on function ingestion_generation_evidence.schema_drift_inventory() from public, anon, authenticated, service_role;
+
+create or replace function public.schema_drift_snapshot()
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path to ''
+as $$
+declare
+  snapshot jsonb;
+  buckets jsonb := '[]'::jsonb;
+  history jsonb := '[]'::jsonb;
+  history_probe text := 'no_history_table';
+begin
+  select jsonb_build_object(
+    'snapshot_version', 2,
+    'captured_at', now(),
+    'private_objects', ingestion_generation_evidence.schema_drift_inventory(),
+    'extensions', coalesce((
+      select jsonb_agg(jsonb_build_object('name', e.extname, 'schema', n.nspname) order by e.extname)
+      from pg_extension e
+      join pg_namespace n on n.oid = e.extnamespace
+      where e.extname <> 'plpgsql'
+    ), '[]'::jsonb),
+    'tables', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'name', c.relname,
+        'rls_enabled', c.relrowsecurity,
+        'rls_forced', c.relforcerowsecurity,
+        'reloptions', (select array_agg(o.opt order by o.opt) from unnest(c.reloptions) o(opt)),
+        'acl', (select array_agg(a.item::text order by a.item::text) from unnest(coalesce(c.relacl, acldefault('r', c.relowner))) a(item)),
+        'columns', (
+          select jsonb_agg(jsonb_build_object(
+            'name', att.attname,
+            'type', format_type(att.atttypid, att.atttypmod),
+            'not_null', att.attnotnull,
+            'identity', att.attidentity,
+            'generated', att.attgenerated,
+            'default', pg_get_expr(ad.adbin, ad.adrelid)
+          ) order by att.attname)
+          from pg_attribute att
+          left join pg_attrdef ad on ad.adrelid = att.attrelid and ad.adnum = att.attnum
+          where att.attrelid = c.oid and att.attnum > 0 and not att.attisdropped
+        )
+      ) order by c.relname)
+      from pg_class c
+      where c.relnamespace = 'public'::regnamespace and c.relkind = 'r'
+    ), '[]'::jsonb),
+    'views', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'name', c.relname,
+        'def_hash', md5(regexp_replace(pg_get_viewdef(c.oid), '\s+', '', 'g'))
+      ) order by c.relname)
+      from pg_class c
+      where c.relnamespace = 'public'::regnamespace and c.relkind in ('v', 'm')
+    ), '[]'::jsonb),
+    'functions', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'signature', p.oid::regprocedure::text,
+        -- A '--' starts a line comment only where the text before it on that line holds no
+        -- open quote, so a '--' inside a '...' or "..." value (a URL such as
+        -- Next-Step---Drug-..., a Markdown '| --- |' row) is hashed as content.
+        'def_hash', md5(regexp_replace(regexp_replace(regexp_replace(pg_get_functiondef(p.oid), '/\*.*?\*/', '', 'gs'), '(^|\n)((?:[^''"\n-]|-(?!-)|''[^''\n]*''|"[^"\n]*")*)--[^\n]*', '\1\2', 'g'), '\s+', '', 'g')),
+        'acl', (select array_agg(a.item::text order by a.item::text) from unnest(coalesce(p.proacl, acldefault('f', p.proowner))) a(item))
+      ) order by p.oid::regprocedure::text)
+      from pg_proc p
+      where p.pronamespace = 'public'::regnamespace
+        and p.prokind = 'f'
+        and not exists (
+          select 1 from pg_depend dep
+          where dep.classid = 'pg_proc'::regclass and dep.objid = p.oid and dep.deptype = 'e'
+        )
+    ), '[]'::jsonb),
+    'indexes', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'name', ci.relname,
+        'table', ct.relname,
+        'def', pg_get_indexdef(ci.oid),
+        'def_hash', md5(regexp_replace(pg_get_indexdef(ci.oid), '\s+', '', 'g'))
+      ) order by ci.relname)
+      from pg_index i
+      join pg_class ci on ci.oid = i.indexrelid
+      join pg_class ct on ct.oid = i.indrelid
+      where ct.relnamespace = 'public'::regnamespace
+        and ci.relnamespace = 'public'::regnamespace
+    ), '[]'::jsonb),
+    'policies', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'schema', pol.schemaname,
+        'table', pol.tablename,
+        'name', pol.policyname,
+        'permissive', pol.permissive,
+        'roles', (select array_agg(r.role::text order by r.role::text) from unnest(pol.roles) r(role)),
+        'cmd', pol.cmd,
+        'qual', pol.qual,
+        'with_check', pol.with_check
+      ) order by pol.schemaname, pol.tablename, pol.policyname)
+      from pg_policies pol
+      where pol.schemaname in ('public', 'storage')
+    ), '[]'::jsonb),
+    'constraints', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'table', ct.relname,
+        'name', con.conname,
+        'def', pg_get_constraintdef(con.oid)
+      ) order by ct.relname, con.conname)
+      from pg_constraint con
+      join pg_class ct on ct.oid = con.conrelid
+      where con.connamespace = 'public'::regnamespace and ct.relkind = 'r'
+    ), '[]'::jsonb),
+    'triggers', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'table', ct.relname,
+        'name', t.tgname,
+        'def', pg_get_triggerdef(t.oid)
+      ) order by ct.relname, t.tgname)
+      from pg_trigger t
+      join pg_class ct on ct.oid = t.tgrelid
+      where ct.relnamespace = 'public'::regnamespace and not t.tgisinternal
+    ), '[]'::jsonb)
+  ) into snapshot;
+
+  if to_regclass('storage.buckets') is not null then
+    execute 'select coalesce(jsonb_agg(jsonb_build_object('
+      || '''id'', b.id, ''public'', b.public, ''file_size_limit'', b.file_size_limit, '
+      || '''allowed_mime_types'', b.allowed_mime_types) order by b.id), ''[]''::jsonb) '
+      || 'from storage.buckets b'
+      into buckets;
+  end if;
+
+  -- Migration-history integrity probe. A version recorded without executed
+  -- statements is the fingerprint of a history repair / mark-applied row and
+  -- must be covered by a fail-fast guard migration + a reviewed allowlist entry
+  -- (docs/database-drift-detection.md, "Guard-migration contract").
+  if to_regclass('supabase_migrations.schema_migrations') is not null then
+    if exists (
+      select 1
+      from pg_attribute att
+      where att.attrelid = 'supabase_migrations.schema_migrations'::regclass
+        and att.attname = 'statements'
+        and att.attnum > 0
+        and not att.attisdropped
+    ) then
+      execute 'select coalesce(jsonb_agg(jsonb_build_object('
+        || '''version'', m.version, ''name'', m.name, '
+        || '''signal'', case when m.statements is null then ''null'' else ''empty'' end'
+        || ') order by m.version), ''[]''::jsonb) '
+        || 'from supabase_migrations.schema_migrations m '
+        || 'where m.statements is null or cardinality(m.statements) = 0'
+        into history;
+      history_probe := 'ok';
+    else
+      history_probe := 'no_statements_column';
+    end if;
+  end if;
+
+  return snapshot || jsonb_build_object(
+    'storage_buckets', buckets,
+    'migration_history', history,
+    'migration_history_probe', history_probe
+  );
+end;
+$$;
+
+revoke execute on function public.schema_drift_snapshot() from public, anon, authenticated;
+grant execute on function public.schema_drift_snapshot() to service_role;
+
+
+-- supabase/migrations/20261107000200_audit_cpd_close_coherence.sql
+-- Bind annual statuses to every evaluator input; retain immutable snapshots and reasoned amendments.
+-- Older application instances lacking inputs fail closed rather than freezing an unchecked evaluation.
+set local lock_timeout = '5s';
+set local statement_timeout = '30s';
+
+-- Requirement task updates and direct allocation writes must serialize with close too.
+-- Lock both sides of a move in year-id order. Account/year cascades find no year and pass.
+create or replace function public.cme_guard_requirement() returns trigger
+language plpgsql security invoker set search_path = public, pg_catalog, pg_temp as $$
+declare v_year public.cme_years;
+begin
+  for v_year in
+    select y.* from public.cme_years y
+    where (tg_op <> 'INSERT' and y.id = old.year_id and y.owner_id = old.owner_id)
+       or (tg_op <> 'DELETE' and y.id = new.year_id and y.owner_id = new.owner_id)
+    order by y.id for update
+  loop
+    if v_year.closed_at is not null then raise exception 'cme_year_closed'; end if;
+  end loop;
+  if tg_op = 'DELETE' then return old; end if;
+  return new;
+end $$;
+
+create or replace function public.cme_guard_allocation() returns trigger
+language plpgsql security invoker set search_path = public, pg_catalog, pg_temp as $$
+declare v_entry public.cme_entries; v_closed_at timestamptz;
+begin
+  -- Lock the entry before reading its year in a separate statement. A join locking only
+  -- the year can retain a stale association if an entry moves to another year while waiting.
+  for v_entry in
+    select e.* from public.cme_entries e
+    where (tg_op <> 'INSERT' and e.id = old.entry_id and e.owner_id = old.owner_id)
+       or (tg_op <> 'DELETE' and e.id = new.entry_id and e.owner_id = new.owner_id)
+    order by e.id for share
+  loop
+    select y.closed_at into v_closed_at from public.cme_years y
+      where y.id = v_entry.year_id and y.owner_id = v_entry.owner_id for update;
+    if v_closed_at is not null
+      and not public.cme_entry_amendment_in_progress(v_entry.id, v_entry.owner_id) then
+      raise exception 'cme_year_closed';
+    end if;
+  end loop;
+  if tg_op = 'DELETE' then return old; end if;
+  return new;
+end $$;
+
+create or replace function public.cme_close_year(p_owner_id uuid, p_year_id uuid, p_evaluation jsonb, p_shortfall_note text default null)
+returns jsonb
+language plpgsql security invoker set search_path = public, pg_catalog, pg_temp as $$
+declare
+  v_year public.cme_years; v_snapshot public.cme_year_snapshots; v_record jsonb; v_inputs jsonb;
+  v_total numeric; v_count integer; v_note text := nullif(btrim(coalesce(p_shortfall_note, '')), '');
+begin
+  if p_owner_id is null or p_year_id is null or jsonb_typeof(p_evaluation) is distinct from 'object' then
+    raise exception 'cme_invalid_request';
+  end if;
+  if v_note is not null and char_length(v_note) > 2000 then raise exception 'cme_invalid_request'; end if;
+  perform pg_advisory_xact_lock(hashtextextended(p_owner_id::text, 23092026));
+  select * into v_year from public.cme_years where owner_id=p_owner_id and id=p_year_id for update;
+  if not found then raise exception 'cme_year_not_confirmed'; end if;
+  if v_year.closed_at is not null then raise exception 'cme_year_closed'; end if;
+
+  select count(*), coalesce(sum(a.hours), 0) into v_count, v_total
+  from public.cme_entries e
+  left join lateral (
+    select sum(hours) as hours from public.cme_allocations where owner_id=p_owner_id and entry_id=e.id
+  ) a on true
+  where e.owner_id=p_owner_id and e.year_id=p_year_id and e.archived_at is null;
+  if round(v_total, 2) is distinct from round((p_evaluation->>'totalHours')::numeric, 2)
+    or v_count is distinct from (p_evaluation->>'entryCount')::integer then
+    raise exception 'cme_close_conflict';
+  end if;
+
+  v_record := jsonb_build_object(
+    'year', v_year.year,
+    'totalHours', v_year.total_hours,
+    'confirmedOn', v_year.confirmed_on,
+    'confirmedSource', v_year.confirmed_source,
+    'requirements', (
+      select coalesce(jsonb_agg(jsonb_build_object(
+        'id', r.id, 'label', r.label, 'source', r.source, 'spec', r.spec, 'completedOn', r.completed_on
+      ) order by r.sort_order, r.id), '[]'::jsonb)
+      from public.cme_requirements r where r.owner_id=p_owner_id and r.year_id=p_year_id
+    ),
+    'entries', (
+      select coalesce(jsonb_agg(jsonb_build_object(
+        'id', e.id, 'date', e.activity_date, 'title', e.title, 'reflection', e.reflection,
+        'costCents', e.cost_cents, 'routineId', e.routine_id, 'documentId', e.document_id,
+        'sourceUrl', e.source_url, 'buckets', to_jsonb(e.buckets),
+        'formalPeerReviewHours', e.formal_peer_review_hours,
+        'allocations', (
+          select coalesce(jsonb_agg(jsonb_build_object('category', a.category, 'hours', a.hours) order by a.category), '[]'::jsonb)
+          from public.cme_allocations a where a.owner_id=p_owner_id and a.entry_id=e.id
+        )
+      ) order by e.activity_date, e.id), '[]'::jsonb)
+      from public.cme_entries e where e.owner_id=p_owner_id and e.year_id=p_year_id and e.archived_at is null
+    )
+  );
+
+  -- Compare the complete inputs used by evaluateYear(), not only the lossy total/count.
+  -- The same year lock is taken by every requirement, activity and allocation writer.
+  v_inputs := jsonb_build_object(
+    'year', v_record->'year', 'totalHours', v_record->'totalHours',
+    'confirmedOn', v_record->'confirmedOn', 'confirmedSource', v_record->'confirmedSource',
+    'requirements', (select coalesce(jsonb_agg(r order by r->>'id'), '[]'::jsonb)
+      from jsonb_array_elements(v_record->'requirements') r),
+    'entries', (select coalesce(jsonb_agg(jsonb_build_object(
+      'id', e->'id', 'buckets', e->'buckets',
+      'formalPeerReviewHours', e->'formalPeerReviewHours', 'allocations', e->'allocations'
+    ) order by e->>'id'), '[]'::jsonb) from jsonb_array_elements(v_record->'entries') e)
+  );
+  if p_evaluation->'inputs' is distinct from v_inputs then
+    raise exception 'cme_close_conflict';
+  end if;
+
+  insert into public.cme_year_snapshots(owner_id, year_id, shortfall_note, record, evaluation, total_hours, target_hours)
+  values (p_owner_id, p_year_id, v_note, v_record, p_evaluation, round(v_total, 2), v_year.total_hours)
+  returning * into v_snapshot;
+  update public.cme_years set closed_at = v_snapshot.closed_at, shortfall_note = v_note
+  where owner_id=p_owner_id and id=p_year_id;
+  return to_jsonb(v_snapshot);
+end $$;
+
+-- New app instances must refuse old schemas rather than letting the legacy RPC ignore inputs.
+-- Old app instances on the new schema also fail closed in cme_close_year without inputs.
+create function public.cme_close_year_v2(p_owner_id uuid, p_year_id uuid, p_evaluation jsonb, p_shortfall_note text default null)
+returns jsonb language sql security invoker set search_path = public, pg_catalog, pg_temp as $$
+  select public.cme_close_year(p_owner_id, p_year_id, p_evaluation, p_shortfall_note)
+$$;
+alter function public.cme_close_year_v2(uuid, uuid, jsonb, text) owner to postgres;
+revoke all on function public.cme_close_year_v2(uuid, uuid, jsonb, text) from public, anon, authenticated;
+grant execute on function public.cme_close_year_v2(uuid, uuid, jsonb, text) to service_role;
+
+
+-- supabase/migrations/20261107000300_audit_hospital_lifecycle.sql
+-- Keep linked teams in live hospitals. Both directions share the hospital-row lock,
+-- including direct service-role writes and the existing atomic move/revocation RPC.
+set local lock_timeout = '5s';
+set local statement_timeout = '30s';
+
+create function public.work_guard_live_hospital_team() returns trigger
+language plpgsql security invoker set search_path = public, pg_catalog, pg_temp as $$
+begin
+  perform 1 from public.work_hospitals
+    where id = new.hospital_id and archived_at is null for share;
+  if not found then raise exception 'work_hospital_unavailable'; end if;
+  return new;
+end $$;
+
+create trigger work_hospital_team_live_guard
+  before insert or update of hospital_id on public.work_hospital_teams
+  for each row execute function public.work_guard_live_hospital_team();
+
+create function public.work_guard_hospital_archive() returns trigger
+language plpgsql security invoker set search_path = public, pg_catalog, pg_temp as $$
+begin
+  -- UPDATE holds the conflicting hospital-row lock before this trigger runs. Re-read
+  -- links here after any wait; an earlier application preflight is not authoritative.
+  if old.archived_at is null and new.archived_at is not null and exists (
+    select 1 from public.work_hospital_teams where hospital_id = old.id
+  ) then raise exception 'work_hospital_has_teams'; end if;
+  return new;
+end $$;
+
+create trigger work_hospital_archive_guard
+  before update of archived_at on public.work_hospitals
+  for each row execute function public.work_guard_hospital_archive();
+
+alter function public.work_guard_live_hospital_team() owner to postgres;
+alter function public.work_guard_hospital_archive() owner to postgres;
+revoke all on function public.work_guard_live_hospital_team(), public.work_guard_hospital_archive()
+  from public, anon, authenticated;
+grant execute on function public.work_guard_live_hospital_team(), public.work_guard_hospital_archive()
+  to service_role;
+
+
+-- supabase/migrations/20261107000400_audit_atomic_document_maintenance.sql
+-- Draft only. Applying/merging this migration requires the owner's own database approval.
+-- Existing source identities only; no backend admission, scanner or supplier authority is minted.
+set local lock_timeout = '5s';
+set local statement_timeout = '60s';
+
+create function public.enqueue_import_document(
+  p_document_id uuid, p_owner_id uuid, p_content_hash text, p_batch_id uuid,
+  p_force boolean, p_max_attempts integer
+) returns jsonb language plpgsql security definer set search_path = '' as $$
+declare d public.documents; j public.ingestion_jobs;
+begin
+  if auth.role() is distinct from 'service_role' then raise exception 'service_role_required' using errcode='42501'; end if;
+  if p_owner_id is null or p_content_hash is null or p_content_hash = '' or p_force is null
+    or p_max_attempts is null or p_max_attempts not between 1 and 100 then
+    raise exception 'invalid_import_queue_request' using errcode='22023';
+  end if;
+  select * into d from public.documents where id=p_document_id for update;
+  if not found or d.owner_id is distinct from p_owner_id or d.content_hash is distinct from p_content_hash then
+    raise exception 'import_document_identity_conflict' using errcode='40001';
+  end if;
+  perform 1 from public.import_batches where id=p_batch_id and owner_id=p_owner_id for share;
+  if not found then raise exception 'import_batch_owner_conflict' using errcode='40001'; end if;
+  select * into j from public.ingestion_jobs where document_id=d.id and status in ('pending','processing') order by id limit 1 for update;
+  if found then return jsonb_build_object('outcome','already_active','job_id',j.id); end if;
+  perform 1 from public.indexing_v3_agent_jobs where document_id=d.id and status in ('pending','processing') for update;
+  if found then raise exception 'maintenance_active_agent_job' using errcode='40001'; end if;
+  if d.status='indexed' and not p_force then return jsonb_build_object('outcome','skipped'); end if;
+  -- Generation A and its counters remain usable until a fenced worker promotes B.
+  insert into public.ingestion_jobs(document_id,batch_id,status,stage,progress,max_attempts)
+    values(d.id,p_batch_id,'pending','queued',0,p_max_attempts) returning * into j;
+  update public.documents set status=case when d.status='indexed' then d.status else 'queued' end,
+    error_message=null where id=d.id;
+  return jsonb_build_object('outcome','enqueued','job_id',j.id);
+end $$;
+alter function public.enqueue_import_document(uuid,uuid,text,uuid,boolean,integer) owner to postgres;
+revoke all on function public.enqueue_import_document(uuid,uuid,text,uuid,boolean,integer) from public,anon,authenticated,service_role;
+grant execute on function public.enqueue_import_document(uuid,uuid,text,uuid,boolean,integer) to service_role;
+
+-- One transaction replaces only the current public projection. Generation-retained evidence is
+-- never a maintenance target. Managed documents continue through their existing fenced worker.
+create function public.replace_document_maintenance_artifacts(
+  p_document_id uuid, p_owner_id uuid, p_expected_updated_at timestamptz,
+  p_expected_generation_id uuid, p_operation text, p_payload jsonb
+) returns jsonb language plpgsql security definer set search_path = '' as $$
+declare
+  d public.documents; item jsonb; patch jsonb; image_ids uuid[]; source_ids uuid[];
+  unit public.document_index_units; field public.document_embedding_fields; image public.document_images; summary_row public.document_summaries;
+  visual_types text[] := array['visual_summary','flowchart_step','diagram_decision','risk_matrix_cell','medication_chart_row','chart_finding','visual_askable_question','table_threshold'];
+begin
+  if auth.role() is distinct from 'service_role' then raise exception 'service_role_required' using errcode='42501'; end if;
+  if p_expected_updated_at is null or p_operation is null or p_operation not in ('labels','enrichment','visual','images','stamp','embedding-fields','registry')
+    or jsonb_typeof(p_payload) is distinct from 'object' then raise exception 'invalid_maintenance_request' using errcode='22023'; end if;
+  select * into d from public.documents where id=p_document_id for update;
+  if not found or d.owner_id is distinct from p_owner_id or d.updated_at is distinct from p_expected_updated_at
+    or d.index_generation_id is distinct from p_expected_generation_id or d.status is distinct from 'indexed' then
+    raise exception 'maintenance_snapshot_conflict' using errcode='40001';
+  end if;
+  if d.metadata ?| array['admission_event_id','public_source_version_id','source_catalogue_key','public_source_activation_event_id'] or d.metadata->>'corpus_scope'='australian_public' then raise exception 'managed_evidence_requires_fenced_worker' using errcode='42501'; end if;
+  perform 1 from public.ingestion_jobs where document_id=d.id and status in ('pending','processing') for update;
+  if found then raise exception 'maintenance_active_ingestion_job' using errcode='40001'; end if;
+  perform 1 from public.indexing_v3_agent_jobs where document_id=d.id and status in ('pending','processing') for update;
+  if found then raise exception 'maintenance_active_agent_job' using errcode='40001'; end if;
+  patch:=coalesce(p_payload->'metadata_patch','{}'::jsonb);
+  if p_operation='registry' then
+    if d.file_type is distinct from 'application/vnd.clinical-kb.registry+json'
+      or patch->>'source_kind' is distinct from 'registry_record'
+      or (patch->>'registry_record_kind' in ('service','form','medication','differential')) is not true
+      or d.storage_path is distinct from 'registry://'||(patch->>'registry_record_kind')||'/'||(patch->>'registry_record_id')
+      or d.source_path is distinct from 'registry://'||(patch->>'registry_record_kind')||'/'||(patch->>'registry_record_slug')
+      or jsonb_typeof(patch) is distinct from 'object' or exists(select 1 from jsonb_object_keys(patch) k where k<>all(array[
+        'source_kind','registry_record_kind','registry_record_subkind','registry_record_id','registry_record_slug','source_title',
+        'document_status','clinical_validation_status','clinical_validation_evidence','source_role','extraction_quality','publisher','jurisdiction'])) then
+      raise exception 'invalid_registry_maintenance_scope' using errcode='22023'; end if;
+  else
+  if jsonb_typeof(patch) is distinct from 'object' or exists(select 1 from jsonb_object_keys(patch) k
+    where k<>all(array['rag_enrichment_version','rag_indexing_version','rag_memory_version','rag_enrichment_updated_at',
+      'generated_label_count','organization_profile','organization_profile_version','coverage_profile',
+      'enrichment_prompt_strategy','enrichment_prompt_chunk_ids','version_stamped_at',
+      'searchable_image_count','skipped_image_count','image_enriched_at'])) then
+    raise exception 'invalid_maintenance_metadata_keys' using errcode='22023';
+  end if;
+  end if;
+
+  if p_operation in ('labels','enrichment') then
+    if jsonb_typeof(p_payload->'labels') is distinct from 'array' or jsonb_array_length(p_payload->'labels')>5000 then
+      raise exception 'invalid_maintenance_labels' using errcode='22023'; end if;
+    for item in select value from jsonb_array_elements(p_payload->'labels') loop
+      if jsonb_typeof(item) is distinct from 'object' or nullif(btrim(item->>'label'),'') is null
+        or jsonb_typeof(item->'metadata') is distinct from 'object' then raise exception 'invalid_maintenance_label' using errcode='22023'; end if;
+    end loop;
+    -- The delete and all replacement inserts share this transaction; insert failure restores A.
+    delete from public.document_labels where document_id=d.id and source='generated';
+    insert into public.document_labels(document_id,owner_id,label,label_type,source,confidence,metadata)
+      select d.id,d.owner_id,r.label,r.label_type,'generated',r.confidence,r.metadata
+      from jsonb_to_recordset(p_payload->'labels') r(label text,label_type text,confidence real,metadata jsonb);
+  end if;
+  if p_operation='registry' then
+    if jsonb_typeof(p_payload->'label_ids_to_delete') is distinct from 'array' or jsonb_typeof(p_payload->'labels_to_upsert') is distinct from 'array'
+      or jsonb_array_length(p_payload->'label_ids_to_delete')>5000 or jsonb_array_length(p_payload->'labels_to_upsert')>5000 then
+      raise exception 'invalid_registry_label_population' using errcode='22023'; end if;
+    select coalesce(array_agg(value::uuid),'{}'::uuid[]) into source_ids from jsonb_array_elements_text(p_payload->'label_ids_to_delete');
+    if exists(select 1 from unnest(source_ids) id where not exists(select 1 from public.document_labels l where l.id=id
+      and l.document_id=d.id and l.owner_id is not distinct from d.owner_id and l.source='generated' and l.label_type in ('site','document_intent'))) then
+      raise exception 'registry_label_snapshot_conflict' using errcode='40001'; end if;
+    for item in select value from jsonb_array_elements(p_payload->'labels_to_upsert') loop
+      if item->>'label_type' is distinct from 'document_intent' or item->>'label' is distinct from
+        (case patch->>'registry_record_kind' when 'service' then 'operational-process' when 'form' then 'documentation-requirement'
+          when 'medication' then 'medication-instruction' when 'differential' then 'decision-support' end)
+        or jsonb_typeof(item->'metadata') is distinct from 'object' then
+        raise exception 'invalid_registry_intent_label' using errcode='22023'; end if;
+    end loop;
+    delete from public.document_labels where document_id=d.id and owner_id is not distinct from d.owner_id
+      and source='generated' and id=any(source_ids);
+    insert into public.document_labels(document_id,owner_id,label,label_type,source,confidence,metadata)
+      select d.id,d.owner_id,r.label,'document_intent','generated',r.confidence,r.metadata
+      from jsonb_to_recordset(p_payload->'labels_to_upsert') r(label text,confidence real,metadata jsonb)
+      on conflict(document_id,label_type,label,source) do update set confidence=excluded.confidence,metadata=excluded.metadata;
+  end if;
+
+  if p_operation='enrichment' then
+    item:=p_payload->'summary';
+    if jsonb_typeof(item) is distinct from 'object' or nullif(btrim(item->>'summary'),'') is null
+      or jsonb_typeof(item->'metadata') is distinct from 'object'
+      or jsonb_typeof(item->'source_chunk_ids') is distinct from 'array'
+      or jsonb_typeof(item->'source_image_ids') is distinct from 'array' then
+      raise exception 'invalid_maintenance_summary' using errcode='22023'; end if;
+    select coalesce(array_agg(value::uuid),'{}'::uuid[]) into source_ids from jsonb_array_elements_text(item->'source_chunk_ids');
+    if exists(select 1 from unnest(source_ids) id where not exists(select 1 from public.document_chunks c
+      where c.id=id and c.document_id=d.id and c.index_generation_id is not distinct from p_expected_generation_id)) then
+      raise exception 'maintenance_source_generation_conflict' using errcode='40001'; end if;
+    select coalesce(array_agg(value::uuid),'{}'::uuid[]) into image_ids from jsonb_array_elements_text(item->'source_image_ids');
+    if exists(select 1 from unnest(image_ids) id where not exists(select 1 from public.document_images i
+      where i.id=id and i.document_id=d.id and i.index_generation_id is not distinct from p_expected_generation_id)) then
+      raise exception 'maintenance_source_generation_conflict' using errcode='40001'; end if;
+    insert into public.document_summaries(document_id,owner_id,summary,clinical_specifics,source_chunk_ids,source_image_ids,model,metadata,generated_at,updated_at)
+      values(d.id,d.owner_id,item->>'summary',coalesce(item->'clinical_specifics','{}'::jsonb),source_ids,image_ids,item->>'model',item->'metadata',(item->>'generated_at')::timestamptz,(item->>'updated_at')::timestamptz)
+      on conflict(document_id) do update set owner_id=excluded.owner_id,summary=excluded.summary,clinical_specifics=excluded.clinical_specifics,
+        source_chunk_ids=excluded.source_chunk_ids,source_image_ids=excluded.source_image_ids,model=excluded.model,metadata=excluded.metadata,
+        generated_at=excluded.generated_at,updated_at=excluded.updated_at returning * into summary_row;
+  end if;
+
+  if p_operation='visual' then
+    if jsonb_typeof(p_payload->'image_ids') is distinct from 'array' or jsonb_typeof(p_payload->'units') is distinct from 'array'
+      or jsonb_array_length(p_payload->'image_ids')>1000 or jsonb_array_length(p_payload->'units')>10000 then
+      raise exception 'invalid_maintenance_visual_population' using errcode='22023'; end if;
+    select coalesce(array_agg(value::uuid),'{}'::uuid[]) into image_ids from jsonb_array_elements_text(p_payload->'image_ids');
+    if exists(select 1 from unnest(image_ids) id where not exists(select 1 from public.document_images i
+      where i.id=id and i.document_id=d.id and i.index_generation_id is not distinct from p_expected_generation_id)) then
+      raise exception 'maintenance_source_generation_conflict' using errcode='40001'; end if;
+    -- Validate the complete packet before replacing anything. Row/table constraints are still authoritative.
+    for item in select value from jsonb_array_elements(p_payload->'units') loop
+      unit:=jsonb_populate_record(null::public.document_index_units,item);
+      if unit.document_id is distinct from d.id or unit.owner_id is distinct from d.owner_id
+        or unit.index_generation_id is distinct from p_expected_generation_id or unit.source_image_id is null
+        or not(unit.source_image_id=any(image_ids)) or unit.unit_type is null or not(unit.unit_type=any(visual_types)) then
+        raise exception 'invalid_maintenance_visual_identity' using errcode='22023'; end if;
+      if unit.source_chunk_id is not null and not exists(select 1 from public.document_chunks c where c.id=unit.source_chunk_id
+        and c.document_id=d.id and c.index_generation_id is not distinct from p_expected_generation_id) then
+        raise exception 'maintenance_source_generation_conflict' using errcode='40001'; end if;
+    end loop;
+    delete from public.document_index_units where document_id=d.id and index_generation_id is not distinct from p_expected_generation_id
+      and source_image_id=any(image_ids) and unit_type=any(visual_types);
+    for item in select value from jsonb_array_elements(p_payload->'units') loop
+      unit:=jsonb_populate_record(null::public.document_index_units,item);
+      insert into public.document_index_units(owner_id,document_id,unit_type,source_chunk_id,source_image_id,page_start,page_end,
+        heading_path,title,content,normalized_terms,source_span,quality_score,extraction_mode,index_generation_id,embedding,metadata)
+      values(d.owner_id,d.id,unit.unit_type,unit.source_chunk_id,unit.source_image_id,unit.page_start,unit.page_end,
+        coalesce(unit.heading_path,'{}'),unit.title,unit.content,coalesce(unit.normalized_terms,'{}'),unit.source_span,
+        coalesce(unit.quality_score,0.7),coalesce(unit.extraction_mode,'deterministic'),p_expected_generation_id,unit.embedding,coalesce(unit.metadata,'{}'));
+    end loop;
+  end if;
+
+  if p_operation in ('visual','images') then
+    if jsonb_typeof(p_payload->'image_patches') is distinct from 'array' or jsonb_array_length(p_payload->'image_patches')>1000 then
+      raise exception 'invalid_maintenance_image_population' using errcode='22023'; end if;
+    for item in select value from jsonb_array_elements(p_payload->'image_patches') loop
+      select * into image from public.document_images i where i.id=(item->>'id')::uuid and i.document_id=d.id
+        and i.index_generation_id is not distinct from p_expected_generation_id for update;
+      if not found or (p_operation='visual' and not(image.id=any(image_ids))) then
+        raise exception 'maintenance_source_generation_conflict' using errcode='40001'; end if;
+      if jsonb_typeof(item) is distinct from 'object' or exists(select 1 from jsonb_object_keys(item) k where k<>all(array[
+        'id','metadata','caption','image_type','searchable','clinical_relevance_score','skip_reason','image_hash','perceptual_hash','labels']))
+        or (item ? 'metadata' and jsonb_typeof(item->'metadata') is distinct from 'object') then
+        raise exception 'invalid_maintenance_image_patch' using errcode='22023'; end if;
+      image:=jsonb_populate_record(image,item-'id'-'metadata');
+      update public.document_images set caption=image.caption,image_type=image.image_type,searchable=image.searchable,
+        clinical_relevance_score=image.clinical_relevance_score,skip_reason=image.skip_reason,image_hash=image.image_hash,
+        perceptual_hash=image.perceptual_hash,labels=image.labels,metadata=coalesce(metadata,'{}')||coalesce(item->'metadata','{}')
+        where id=image.id;
+    end loop;
+  end if;
+  if p_operation='embedding-fields' then
+    if jsonb_typeof(p_payload->'fields') is distinct from 'array' or jsonb_array_length(p_payload->'fields')>1000 then
+      raise exception 'invalid_maintenance_embedding_fields' using errcode='22023'; end if;
+    for item in select value from jsonb_array_elements(p_payload->'fields') loop
+      field:=jsonb_populate_record(null::public.document_embedding_fields,item);
+      if field.document_id is distinct from d.id or field.owner_id is distinct from d.owner_id or field.source_chunk_id is null
+        or field.field_type not in ('document_title','document_summary') or not exists(select 1 from public.document_chunks c
+          where c.id=field.source_chunk_id and c.document_id=d.id and c.index_generation_id is not distinct from p_expected_generation_id) then
+        raise exception 'maintenance_source_generation_conflict' using errcode='40001'; end if;
+      insert into public.document_embedding_fields(owner_id,document_id,source_chunk_id,field_type,content,content_hash,embedding,index_generation_id,metadata)
+        values(d.owner_id,d.id,field.source_chunk_id,field.field_type,field.content,field.content_hash,field.embedding,p_expected_generation_id,
+          coalesce(field.metadata,'{}')||jsonb_build_object('index_generation_id',p_expected_generation_id));
+    end loop;
+  end if;
+
+  if p_operation='stamp' then
+    update public.document_summaries set metadata=coalesce(metadata,'{}')||patch where document_id=d.id;
+    update public.document_labels set metadata=coalesce(metadata,'{}')||patch where document_id=d.id and source='generated';
+  end if;
+  if p_operation='images' and (jsonb_typeof(p_payload->'image_count') is distinct from 'number'
+    or (p_payload->>'image_count')::numeric < 0 or (p_payload->>'image_count')::numeric<>trunc((p_payload->>'image_count')::numeric)) then
+    raise exception 'invalid_maintenance_image_count' using errcode='22023'; end if;
+  update public.documents set metadata=coalesce(metadata,'{}')||patch,
+    image_count=case when p_operation='images' then (p_payload->>'image_count')::integer else image_count end
+    where id=d.id returning * into d;
+  return jsonb_build_object('updated_at',d.updated_at,'metadata',d.metadata,'summary',to_jsonb(summary_row));
+end $$;
+alter function public.replace_document_maintenance_artifacts(uuid,uuid,timestamptz,uuid,text,jsonb) owner to postgres;
+revoke all on function public.replace_document_maintenance_artifacts(uuid,uuid,timestamptz,uuid,text,jsonb) from public,anon,authenticated,service_role;
+grant execute on function public.replace_document_maintenance_artifacts(uuid,uuid,timestamptz,uuid,text,jsonb) to service_role;
+
+-- Snapshot-fenced legacy local producer commit. Current-generation cleanup only; retained
+-- generations remain available to rollback. The fenced worker overload is unchanged.
+create function public.commit_document_maintenance_deep_memory(
+  p_document_id uuid,
+  p_owner_id uuid,
+  p_expected_updated_at timestamptz,
+  p_expected_generation_id uuid,
+  p_chunk_patches jsonb,
+  p_aliases jsonb,
+  p_producer text,
+  p_artifact_generation_id uuid,
+  p_rag_memory_version text,
+  p_document_intelligence_version text,
+  p_section_count integer,
+  p_memory_card_count integer,
+  p_index_unit_counts_by_type jsonb,
+  p_repaired_anchor_count integer default 0
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_document_metadata jsonb;
+  v_document_updated_at timestamptz;
+  v_chunk_patch jsonb;
+  v_chunk_count integer;
+  v_live_document public.documents;
+  v_document_owner_id uuid;
+  v_committed_index_generation uuid;
+  v_total_section_count integer;
+  v_total_memory_card_count integer;
+  v_total_index_unit_count integer;
+  v_section_count integer;
+  v_memory_card_count integer;
+  v_index_unit_count integer;
+  v_expected_index_unit_count integer;
+  v_index_unit_counts_by_type jsonb;
+begin
+  if auth.role() is distinct from 'service_role' then raise exception 'service_role_required' using errcode='42501'; end if;
+  if p_producer is distinct from 'local-worker' then raise exception 'maintenance_local_producer_required' using errcode='42501'; end if;
+  if nullif(btrim(p_producer), '') is null
+    or nullif(btrim(p_rag_memory_version), '') is null
+    or nullif(btrim(p_document_intelligence_version), '') is null
+  then
+    raise exception 'Deep-memory producer must be non-empty.' using errcode = '22023';
+  end if;
+  if p_artifact_generation_id is null then
+    raise exception 'Deep-memory artifact generation must be set.' using errcode = '22023';
+  end if;
+  if p_section_count is null or p_memory_card_count is null or p_repaired_anchor_count is null
+    or p_section_count < 0 or p_memory_card_count < 0 or p_repaired_anchor_count < 0
+  then
+    raise exception 'Deep-memory counts cannot be negative.' using errcode = '22023';
+  end if;
+  if p_index_unit_counts_by_type is null or jsonb_typeof(p_index_unit_counts_by_type) <> 'object' then
+    raise exception 'Deep-memory index-unit counts must be an object.' using errcode = '22023';
+  end if;
+  if exists (
+    select 1
+    from jsonb_each(p_index_unit_counts_by_type) item
+    where jsonb_typeof(item.value) <> 'number'
+      or (item.value #>> '{}')::numeric < 0
+      or trunc((item.value #>> '{}')::numeric) <> (item.value #>> '{}')::numeric
+      or (item.value #>> '{}')::numeric > 2147483647
+  ) then
+    raise exception 'Deep-memory index-unit counts must be nonnegative integers.' using errcode = '22023';
+  end if;
+
+  select coalesce(d.metadata, '{}'::jsonb), d.owner_id, d.updated_at
+  into v_document_metadata, v_document_owner_id, v_document_updated_at
+  from public.documents d
+  where d.id = p_document_id
+  for update;
+
+  if not found then
+    raise exception 'Document % does not exist.', p_document_id using errcode = 'P0002';
+  end if;
+
+  perform 1 from public.documents where id=p_document_id and status='indexed';
+  if not found then raise exception 'maintenance_snapshot_conflict' using errcode='40001'; end if;
+  if p_expected_updated_at is null or v_document_updated_at is distinct from p_expected_updated_at
+    or v_document_owner_id is distinct from p_owner_id
+    or (nullif(v_document_metadata->>'index_generation_id',''))::uuid is distinct from p_expected_generation_id then
+    raise exception 'maintenance_snapshot_conflict' using errcode='40001';
+  end if;
+  if v_document_metadata ?| array['admission_event_id','public_source_version_id','source_catalogue_key','public_source_activation_event_id'] or v_document_metadata->>'corpus_scope'='australian_public' then raise exception 'managed_evidence_requires_fenced_worker' using errcode='42501'; end if;
+  perform 1 from public.ingestion_jobs where document_id=p_document_id and status in ('pending','processing') for update;
+  if found then raise exception 'maintenance_active_ingestion_job' using errcode='40001'; end if;
+  perform 1 from public.indexing_v3_agent_jobs where document_id=p_document_id and status in ('pending','processing') for update;
+  if found then raise exception 'maintenance_active_agent_job' using errcode='40001'; end if;
+  -- NULL legacy lineage cannot be assigned to a retained generation without evidence.
+  -- Refuse instead of deleting potential rollback rows or publishing duplicate visible rows.
+  if exists(select 1 from public.document_sections where document_id=p_document_id and index_generation_id is null)
+    or exists(select 1 from public.document_memory_cards where document_id=p_document_id and index_generation_id is null)
+    or exists(select 1 from public.document_index_units where document_id=p_document_id and index_generation_id is null) then
+    raise exception 'legacy_generation_lineage_requires_fenced_reindex' using errcode='23514';
+  end if;
+  if jsonb_typeof(p_chunk_patches) is distinct from 'array' then raise exception 'invalid_maintenance_chunk_patches' using errcode='22023'; end if;
+  for v_chunk_patch in select value from jsonb_array_elements(p_chunk_patches) loop
+    if jsonb_typeof(v_chunk_patch) is distinct from 'object' or jsonb_typeof(v_chunk_patch->'metadata') is distinct from 'object'
+      or exists(select 1 from jsonb_object_keys(v_chunk_patch->'metadata') k where k<>all(array[
+        'anchor_id','anchor_repaired_by','rag_indexing_version','rag_memory_version','rag_memory_updated_at','document_intelligence_version'])) then
+      raise exception 'invalid_maintenance_chunk_patch' using errcode='22023'; end if;
+    update public.document_chunks set
+      anchor_id=coalesce(anchor_id,v_chunk_patch->>'anchor_id'),
+      metadata=coalesce(metadata,'{}')||(v_chunk_patch->'metadata')
+      where id=(v_chunk_patch->>'id')::uuid and document_id=p_document_id
+        and index_generation_id is not distinct from p_expected_generation_id;
+    get diagnostics v_chunk_count=row_count;
+    if v_chunk_count<>1 then raise exception 'maintenance_source_generation_conflict' using errcode='40001'; end if;
+  end loop;
+
+  begin
+    v_committed_index_generation := nullif(v_document_metadata->>'index_generation_id', '')::uuid;
+  exception when invalid_text_representation then
+    raise exception 'Document % has an invalid committed index generation.', p_document_id using errcode = '22023';
+  end;
+  if v_committed_index_generation is null then
+    raise exception 'Document % has no committed index generation.', p_document_id using errcode = '23514';
+  end if;
+  if v_committed_index_generation = p_artifact_generation_id then
+    raise exception 'Staged deep-memory generation must differ from the committed index generation.' using errcode = '23514';
+  end if;
+
+  -- A generation UUID is a single-producer staging boundary. Reject collisions
+  -- rather than interpreting another producer's rows as part of this commit.
+  if exists (
+    select 1 from public.document_sections
+    where document_id = p_document_id
+      and artifact_generation_id = p_artifact_generation_id
+      and producer is distinct from p_producer
+  ) or exists (
+    select 1 from public.document_memory_cards
+    where document_id = p_document_id
+      and artifact_generation_id = p_artifact_generation_id
+      and producer is distinct from p_producer
+  ) or exists (
+    select 1 from public.document_index_units
+    where document_id = p_document_id
+      and artifact_generation_id = p_artifact_generation_id
+      and producer is distinct from p_producer
+  ) then
+    raise exception 'Deep-memory artifact generation belongs to another producer.' using errcode = '23514';
+  end if;
+
+  -- Re-check producer evidence inside the transaction. Legacy NULL-generation
+  -- local-worker rows predate explicit producer metadata and are the only
+  -- unlabelled shape eligible for producer-scoped replacement.
+  if exists (
+    select 1 from public.document_sections
+    where document_id = p_document_id
+      and (
+        (producer is not null and nullif(metadata->>'generated_by', '') is distinct from producer)
+        or (producer is null and nullif(metadata->>'generated_by', '') is not null and metadata->>'generated_by' <> p_producer)
+        or (producer is null and artifact_generation_id is not null)
+        or (
+          producer is null
+          and nullif(metadata->>'generated_by', '') is null
+          and not (
+            p_producer = 'local-worker'
+            and artifact_generation_id is null
+            and metadata->>'rag_indexing_version' in ('rag-deep-memory-v1', 'rag-deep-memory-v2')
+          )
+        )
+      )
+  ) or exists (
+    select 1 from public.document_memory_cards
+    where document_id = p_document_id
+      and (
+        (producer is not null and nullif(metadata->>'generated_by', '') is distinct from producer)
+        or (producer is null and nullif(metadata->>'generated_by', '') is not null and metadata->>'generated_by' <> p_producer)
+        or (producer is null and artifact_generation_id is not null)
+        or (
+          producer is null
+          and nullif(metadata->>'generated_by', '') is null
+          and not (p_producer = 'local-worker' and artifact_generation_id is null)
+        )
+      )
+  ) or exists (
+    select 1 from public.document_index_units
+    where document_id = p_document_id
+      and (
+        (producer is not null and nullif(metadata->>'generated_by', '') is distinct from producer)
+        or (producer is null and nullif(metadata->>'generated_by', '') is not null and metadata->>'generated_by' <> p_producer)
+        or (producer is null and artifact_generation_id is not null)
+        or (
+          producer is null
+          and nullif(metadata->>'generated_by', '') is null
+          and not (p_producer = 'local-worker' and artifact_generation_id is null)
+        )
+      )
+  ) then
+    raise exception 'Deep-memory artifact producer evidence is contradictory or ambiguous.' using errcode = '23514';
+  end if;
+
+  select count(*) into v_total_section_count
+  from public.document_sections
+  where document_id = p_document_id
+    and artifact_generation_id = p_artifact_generation_id;
+
+  select count(*) into v_total_memory_card_count
+  from public.document_memory_cards
+  where document_id = p_document_id
+    and artifact_generation_id = p_artifact_generation_id;
+
+  select count(*) into v_total_index_unit_count
+  from public.document_index_units
+  where document_id = p_document_id
+    and artifact_generation_id = p_artifact_generation_id;
+
+  select count(*) into v_section_count
+  from public.document_sections
+  where document_id = p_document_id
+    and producer = p_producer
+    and artifact_generation_id = p_artifact_generation_id
+    and index_generation_id = p_artifact_generation_id
+    and owner_id is not distinct from v_document_owner_id
+    and metadata->>'generated_by' = p_producer
+    and metadata->>'artifact_generation_id' = p_artifact_generation_id::text
+    and metadata->>'index_generation_id' = p_artifact_generation_id::text;
+
+  select count(*) into v_memory_card_count
+  from public.document_memory_cards
+  where document_id = p_document_id
+    and producer = p_producer
+    and artifact_generation_id = p_artifact_generation_id
+    and index_generation_id = p_artifact_generation_id
+    and owner_id is not distinct from v_document_owner_id
+    and metadata->>'generated_by' = p_producer
+    and metadata->>'artifact_generation_id' = p_artifact_generation_id::text
+    and metadata->>'index_generation_id' = p_artifact_generation_id::text;
+
+  select coalesce(sum(unit_count), 0)::integer, coalesce(jsonb_object_agg(unit_type, unit_count), '{}'::jsonb)
+  into v_index_unit_count, v_index_unit_counts_by_type
+  from (
+    select unit_type, count(*)::integer as unit_count
+    from public.document_index_units
+    where document_id = p_document_id
+      and producer = p_producer
+      and artifact_generation_id = p_artifact_generation_id
+      and index_generation_id = p_artifact_generation_id
+      and owner_id is not distinct from v_document_owner_id
+      and metadata->>'generated_by' = p_producer
+      and metadata->>'artifact_generation_id' = p_artifact_generation_id::text
+      and metadata->>'index_generation_id' = p_artifact_generation_id::text
+    group by unit_type
+  ) staged_index_units;
+
+  select coalesce(sum(value::integer), 0)
+  into v_expected_index_unit_count
+  from jsonb_each_text(coalesce(p_index_unit_counts_by_type, '{}'::jsonb));
+
+  if v_total_section_count <> v_section_count
+    or v_total_memory_card_count <> v_memory_card_count
+    or v_total_index_unit_count <> coalesce(v_index_unit_count, 0)
+    or v_section_count <> p_section_count
+    or v_memory_card_count <> p_memory_card_count
+    or coalesce(v_index_unit_count, 0) <> v_expected_index_unit_count
+    or v_index_unit_counts_by_type <> coalesce(p_index_unit_counts_by_type, '{}'::jsonb)
+  then
+    raise exception 'Staged deep-memory artifact counts do not match the commit contract.' using errcode = '23514';
+  end if;
+
+  if exists (
+    select 1
+    from public.document_memory_cards card
+    left join public.document_sections section
+      on section.id = card.section_id
+      and section.document_id = p_document_id
+      and section.producer = p_producer
+      and section.artifact_generation_id = p_artifact_generation_id
+    where card.document_id = p_document_id
+      and card.producer = p_producer
+      and card.artifact_generation_id = p_artifact_generation_id
+      and card.section_id is not null
+      and section.id is null
+  ) then
+    raise exception 'Staged memory cards reference a section outside the staged generation.' using errcode = '23514';
+  end if;
+
+  -- Refuse to null another producer's section reference through ON DELETE SET
+  -- NULL. This keeps the "other producers untouched" guarantee literal.
+  if exists (
+    select 1
+    from public.document_memory_cards card
+    join public.document_sections section on section.id = card.section_id
+    where section.document_id = p_document_id
+      and section.artifact_generation_id is distinct from p_artifact_generation_id
+      and (
+        section.producer = p_producer
+        or (
+          section.producer is null
+          and (
+            section.metadata->>'generated_by' = p_producer
+            or (
+              p_producer = 'local-worker'
+              and nullif(section.metadata->>'generated_by', '') is null
+              and section.metadata->>'rag_indexing_version' in ('rag-deep-memory-v1', 'rag-deep-memory-v2')
+            )
+          )
+        )
+      )
+      and not (
+        (card.producer = p_producer and card.metadata->>'generated_by' = p_producer)
+        or (card.producer is null and card.metadata->>'generated_by' = p_producer)
+        or (
+          p_producer = 'local-worker'
+          and card.producer is null
+          and card.artifact_generation_id is null
+          and nullif(card.metadata->>'generated_by', '') is null
+        )
+      )
+  ) then
+    raise exception 'Another producer references an older section owned by this producer.' using errcode = '23514';
+  end if;
+
+  update public.document_sections
+  set
+    index_generation_id = v_committed_index_generation,
+    metadata = coalesce(metadata, '{}'::jsonb) || jsonb_build_object(
+      'generated_by', p_producer,
+      'artifact_generation_id', p_artifact_generation_id,
+      'index_generation_id', v_committed_index_generation
+    ),
+    updated_at = now()
+  where document_id = p_document_id
+    and producer = p_producer
+    and artifact_generation_id = p_artifact_generation_id;
+
+  update public.document_memory_cards
+  set
+    index_generation_id = v_committed_index_generation,
+    metadata = coalesce(metadata, '{}'::jsonb) || jsonb_build_object(
+      'generated_by', p_producer,
+      'artifact_generation_id', p_artifact_generation_id,
+      'index_generation_id', v_committed_index_generation
+    ),
+    updated_at = now()
+  where document_id = p_document_id
+    and producer = p_producer
+    and artifact_generation_id = p_artifact_generation_id;
+
+  update public.document_index_units
+  set
+    index_generation_id = v_committed_index_generation,
+    metadata = coalesce(metadata, '{}'::jsonb) || jsonb_build_object(
+      'generated_by', p_producer,
+      'artifact_generation_id', p_artifact_generation_id,
+      'index_generation_id', v_committed_index_generation
+    ),
+    updated_at = now()
+  where document_id = p_document_id
+    and producer = p_producer
+    and artifact_generation_id = p_artifact_generation_id;
+
+  delete from public.document_memory_cards
+  where document_id = p_document_id
+    and index_generation_id is not distinct from p_expected_generation_id
+    and artifact_generation_id is distinct from p_artifact_generation_id
+    and (
+      (producer = p_producer and metadata->>'generated_by' = p_producer)
+      or (producer is null and metadata->>'generated_by' = p_producer)
+      or (
+        p_producer = 'local-worker'
+        and producer is null
+        and artifact_generation_id is null
+        and nullif(metadata->>'generated_by', '') is null
+      )
+    );
+
+  delete from public.document_index_units
+  where document_id = p_document_id
+    and index_generation_id is not distinct from p_expected_generation_id
+    and artifact_generation_id is distinct from p_artifact_generation_id
+    and (
+      (producer = p_producer and metadata->>'generated_by' = p_producer)
+      or (producer is null and metadata->>'generated_by' = p_producer)
+      or (
+        p_producer = 'local-worker'
+        and producer is null
+        and artifact_generation_id is null
+        and nullif(metadata->>'generated_by', '') is null
+      )
+    );
+
+  delete from public.document_sections
+  where document_id = p_document_id
+    and index_generation_id is not distinct from p_expected_generation_id
+    and artifact_generation_id is distinct from p_artifact_generation_id
+    and (
+      (producer = p_producer and metadata->>'generated_by' = p_producer)
+      or (
+        producer is null
+        and (
+          metadata->>'generated_by' = p_producer
+          or (
+            p_producer = 'local-worker'
+            and nullif(metadata->>'generated_by', '') is null
+            and metadata->>'rag_indexing_version' in ('rag-deep-memory-v1', 'rag-deep-memory-v2')
+          )
+        )
+      )
+    );
+
+  if jsonb_typeof(p_aliases) is distinct from 'array' then raise exception 'invalid_maintenance_aliases' using errcode='22023'; end if;
+  -- Alias suggestions remain optional, but any accepted insert shares this exact snapshot.
+  begin
+    insert into public.rag_aliases(owner_id,alias,canonical,alias_type,weight,enabled,metadata)
+      select p_owner_id,r.alias,r.canonical,r.alias_type,r.weight,r.enabled,
+        coalesce(r.metadata,'{}')||jsonb_build_object('document_id',p_document_id)
+      from jsonb_to_recordset(p_aliases) r(alias text,canonical text,alias_type text,weight real,enabled boolean,metadata jsonb);
+  exception when check_violation or not_null_violation or unique_violation then null;
+  end;
+
+  -- This is deliberately the final logical mutation. Any error above rolls
+  -- back both activation and producer-scoped cleanup before metadata advertises
+  -- the new deep-memory generation.
+  perform public.apply_document_metadata_patch(
+    p_document_id,
+    jsonb_build_object(
+      'rag_indexing_version', p_rag_memory_version,
+      'rag_memory_version', p_rag_memory_version,
+      'rag_memory_updated_at', now(),
+      'document_intelligence_version', p_document_intelligence_version,
+      'document_intelligence_updated_at', now(),
+      'section_count', p_section_count,
+      'memory_card_count', p_memory_card_count,
+      'index_unit_count', v_expected_index_unit_count,
+      'index_unit_counts_by_type', coalesce(p_index_unit_counts_by_type, '{}'::jsonb),
+      'repaired_anchor_count', p_repaired_anchor_count,
+      'deep_memory_generations', jsonb_build_object(p_producer, p_artifact_generation_id)
+    )
+  );
+
+  select * into v_live_document from public.documents where id=p_document_id;
+  return jsonb_build_object(
+    'updated_at',v_live_document.updated_at, 'metadata',v_live_document.metadata,
+    'document_id', p_document_id,
+    'producer', p_producer,
+    'artifact_generation_id', p_artifact_generation_id,
+    'index_generation_id', v_committed_index_generation,
+    'section_count', p_section_count,
+    'memory_card_count', p_memory_card_count,
+    'index_unit_count', v_expected_index_unit_count
+  );
+end;
+$$;
+alter function public.commit_document_maintenance_deep_memory(uuid,uuid,timestamptz,uuid,jsonb,jsonb,text,uuid,text,text,integer,integer,jsonb,integer) owner to postgres;
+revoke all on function public.commit_document_maintenance_deep_memory(uuid,uuid,timestamptz,uuid,jsonb,jsonb,text,uuid,text,text,integer,integer,jsonb,integer) from public,anon,authenticated,service_role;
+grant execute on function public.commit_document_maintenance_deep_memory(uuid,uuid,timestamptz,uuid,jsonb,jsonb,text,uuid,text,text,integer,integer,jsonb,integer) to service_role;
+
+-- No active application/script caller needs either destructive legacy entry point. The worker
+-- uses the separate IngestionFence overload; maintenance now uses the snapshot-fenced commit.
+-- Keep definitions/history intact while closing these obsolete execution paths to app roles.
+revoke all on function public.reset_document_index(uuid) from public,anon,authenticated,service_role;
+revoke all on function public.commit_document_deep_memory_generation(uuid,text,uuid,text,text,integer,integer,jsonb,integer)
+  from public,anon,authenticated,service_role;
+
+
+-- supabase/migrations/20261107000500_audit_teaching_link_and_booking_lifecycle.sql
+-- Enforce the existing twenty-active-link ceiling atomically, including older application writers.
+-- A versioned create authority makes newer apps refuse schemas lacking this contract.
+set local lock_timeout = '5s';
+set local statement_timeout = '30s';
+
+create function public.teaching_guard_epa_pending_limit() returns trigger
+language plpgsql security invoker set search_path = public, pg_catalog, pg_temp as $$
+declare v_now timestamptz;
+begin
+  if new.status <> 'pending' or new.expires_at <= clock_timestamp() then return new; end if;
+  perform pg_advisory_xact_lock(hashtextextended(new.registrar_id::text, 5112026));
+  v_now := clock_timestamp();
+  if new.expires_at <= v_now then return new; end if;
+  -- A pending update that does not consume another slot may preserve legacy over-limit rows.
+  -- Re-check expiry after acquiring the lock so a waiting renewal cannot revive an uncounted slot.
+  if tg_op = 'UPDATE' and old.registrar_id = new.registrar_id
+    and old.status = 'pending' and old.expires_at > v_now then return new; end if;
+  if (select count(*) from public.teaching_epa_magic_links
+      where registrar_id = new.registrar_id and status = 'pending' and expires_at > v_now
+        and id <> new.id) >= 20 then
+    raise exception 'magic_link_limit_reached';
+  end if;
+  return new;
+end $$;
+
+create trigger teaching_epa_pending_limit_guard
+  before insert or update of registrar_id, status, expires_at on public.teaching_epa_magic_links
+  for each row execute function public.teaching_guard_epa_pending_limit();
+
+create function public.teaching_create_epa_magic_link_v1(p_registrar_id uuid, p_link jsonb)
+returns jsonb language plpgsql security invoker set search_path = public, pg_catalog, pg_temp as $$
+declare v_link public.teaching_epa_magic_links;
+begin
+  if p_registrar_id is null or jsonb_typeof(p_link) is distinct from 'object' then
+    raise exception 'magic_link_invalid_request';
+  end if;
+  insert into public.teaching_epa_magic_links(
+    registrar_id, token_hash, epa_number, trainee_name, supervisor_name, supervisor_role,
+    clinical_setting, status, expires_at, updated_at
+  ) values (
+    p_registrar_id, p_link->>'token_hash', (p_link->>'epa_number')::smallint,
+    p_link->>'trainee_name', p_link->>'supervisor_name', p_link->>'supervisor_role',
+    p_link->>'clinical_setting', 'pending', (p_link->>'expires_at')::timestamptz,
+    coalesce((p_link->>'updated_at')::timestamptz, now())
+  ) returning * into v_link;
+  return to_jsonb(v_link);
+end $$;
+
+alter function public.teaching_guard_epa_pending_limit() owner to postgres;
+alter function public.teaching_create_epa_magic_link_v1(uuid, jsonb) owner to postgres;
+revoke all on function public.teaching_guard_epa_pending_limit(), public.teaching_create_epa_magic_link_v1(uuid, jsonb)
+  from public, anon, authenticated;
+grant execute on function public.teaching_guard_epa_pending_limit(), public.teaching_create_epa_magic_link_v1(uuid, jsonb)
+  to service_role;
+
+-- Bound the result of overlap checks without comparing raw JSON timestamp text. Existing
+-- cancellation and earlier-created-slot priority semantics remain the same as the app.
+create function public.teaching_find_supervisor_overlap_v1(
+  p_supervisor_id uuid, p_starts_at timestamptz, p_ends_at timestamptz, p_exclude_id uuid,
+  p_before_created_at timestamptz default null, p_before_id uuid default null
+) returns setof public.registrar_assessments
+language plpgsql security invoker set search_path = public, pg_catalog, pg_temp as $$
+begin
+  if p_supervisor_id is null or p_starts_at is null or p_ends_at is null or p_ends_at <= p_starts_at
+    or p_exclude_id is null or ((p_before_created_at is null) <> (p_before_id is null)) then
+    raise exception 'invalid_booking_window';
+  end if;
+  return query select r.* from public.registrar_assessments r
+  where r.assessor_id = p_supervisor_id and r.category = 'supervisor_review'
+    and r.ratings->>'kind' = 'supervisor_booking' and r.id <> p_exclude_id
+    and (case when r.ratings->>'bookingState' in ('open', 'booked', 'completed', 'cancelled')
+      then r.ratings->>'bookingState' when r.status = 'archived' then 'cancelled' else 'active' end) <> 'cancelled'
+    and (p_before_created_at is null or (r.created_at, r.id) < (p_before_created_at, p_before_id))
+    -- CASE also fences casts from unrelated assessment JSON if the planner reorders filters.
+    and (case when r.assessor_id = p_supervisor_id and r.category = 'supervisor_review'
+      and r.ratings->>'kind' = 'supervisor_booking' then
+        case when jsonb_typeof(r.ratings->'startsAt') = 'string'
+          then (r.ratings->>'startsAt')::timestamptz else r.created_at end
+      else null end) < p_ends_at
+    and (case when r.assessor_id = p_supervisor_id and r.category = 'supervisor_review'
+      and r.ratings->>'kind' = 'supervisor_booking' then
+        case when jsonb_typeof(r.ratings->'endsAt') = 'string'
+          then (r.ratings->>'endsAt')::timestamptz else r.updated_at end
+      else null end) > p_starts_at
+  order by r.created_at, r.id limit 1;
+end $$;
+alter function public.teaching_find_supervisor_overlap_v1(uuid, timestamptz, timestamptz, uuid, timestamptz, uuid) owner to postgres;
+revoke all on function public.teaching_find_supervisor_overlap_v1(uuid, timestamptz, timestamptz, uuid, timestamptz, uuid)
+  from public, anon, authenticated;
+grant execute on function public.teaching_find_supervisor_overlap_v1(uuid, timestamptz, timestamptz, uuid, timestamptz, uuid)
+  to service_role;
+
+
+-- supabase/migrations/20261107000600_audit_cpd_entry_concurrency.sql
+-- Full manual CPD edits and amendments replace exactly the stored content their editor read.
+-- Strengthen the legacy RPCs too: old clients without expectedVersion fail closed on edits.
+-- Creates retain request-id idempotency; intentional Teaching create/restore remains separate.
+-- Apply before the app release: new clients use versioned RPCs and never fall back.
+
+set local lock_timeout = '5s';
+set local statement_timeout = '30s';
+
+-- Called only after the writer has locked the owner-scoped entry FOR UPDATE. Allocation
+-- guards take FOR SHARE on that entry, so allocations cannot change across this comparison.
+-- VOLATILE gives this lookup a fresh snapshot after a lock wait. Include copied/archive
+-- state so narrow alternate mutations also invalidate a stale full-record editor.
+create function public.cme_entry_edit_version(p_owner_id uuid, p_entry_id uuid)
+returns jsonb
+language sql volatile security invoker set search_path = public, pg_catalog, pg_temp as $$
+  select jsonb_build_object(
+    'id',e.id,'date',e.activity_date,'title',e.title,'reflection',e.reflection,
+    'costCents',e.cost_cents,'routineId',e.routine_id,'documentId',e.document_id,
+    'sourceUrl',e.source_url,'buckets',to_jsonb(e.buckets),
+    'formalPeerReviewHours',coalesce(e.formal_peer_review_hours,0),
+    'transcribed',e.transcribed_at is not null,'archived',e.archived_at is not null,
+    'allocations',(
+      select coalesce(jsonb_agg(jsonb_build_object('category',a.category,'hours',a.hours) order by a.category),'[]'::jsonb)
+      from public.cme_allocations a where a.owner_id=p_owner_id and a.entry_id=e.id
+    )
+  ) from public.cme_entries e where e.owner_id=p_owner_id and e.id=p_entry_id
+$$;
+
+create or replace function public.cme_save_entry(p_owner_id uuid,p_year_id uuid,p_entry_id uuid,p_entry jsonb,p_create boolean,p_request_id uuid default null) returns jsonb
+language plpgsql security invoker set search_path = public, pg_catalog, pg_temp as $$
+declare
+  v_year public.cme_years; v_existing public.cme_entries; v_saved public.cme_entries;
+  v_routine public.cme_routines; v_alloc jsonb; v_review numeric; v_total numeric; v_count integer;
+begin
+  if p_owner_id is null or p_year_id is null or p_entry_id is null or p_create is null
+    or jsonb_typeof(p_entry) is distinct from 'object' then raise exception 'cme_invalid_request'; end if;
+  perform pg_advisory_xact_lock(hashtextextended(p_owner_id::text, 23092026));
+  if p_create and p_request_id is not null then
+    select * into v_existing from public.cme_entries where owner_id=p_owner_id and request_id=p_request_id;
+    if found then
+      if v_existing.request_payload is distinct from p_entry then raise exception 'cme_retry_conflict'; end if;
+      return to_jsonb(v_existing) || jsonb_build_object('cme_allocations',(select coalesce(jsonb_agg(jsonb_build_object('category',category,'hours',hours)),'[]') from public.cme_allocations where owner_id=p_owner_id and entry_id=v_existing.id));
+    end if;
+  end if;
+  select * into v_year from public.cme_years where owner_id=p_owner_id and id=p_year_id for update;
+  if not found then raise exception 'cme_year_not_confirmed'; end if;
+  if v_year.closed_at is not null then raise exception 'cme_year_closed'; end if;
+  if extract(year from (p_entry->>'date')::date) <> v_year.year then raise exception 'cme_invalid_request'; end if;
+  if not p_create then
+    select * into v_existing from public.cme_entries where owner_id=p_owner_id and id=p_entry_id for update;
+    if not found then raise exception 'cme_entry_not_found'; end if;
+    if v_existing.archived_at is not null then raise exception 'cme_entry_archived'; end if;
+    if p_entry->'expectedVersion' is distinct from public.cme_entry_edit_version(p_owner_id,p_entry_id) then raise exception 'cme_entry_conflict'; end if;
+    if exists(select 1 from public.cme_years where owner_id=p_owner_id and id=v_existing.year_id and closed_at is not null) then raise exception 'cme_year_closed'; end if;
+  end if;
+  if jsonb_typeof(p_entry->'allocations') is distinct from 'array' then raise exception 'cme_invalid_request'; end if;
+  select count(*),coalesce(sum((a->>'hours')::numeric),0),coalesce(sum((a->>'hours')::numeric) filter(where a->>'category'='reviewing'),0)
+    into v_count,v_total,v_review from jsonb_array_elements(p_entry->'allocations') a;
+  if v_count not between 1 and 3 or v_total > 24 or coalesce((p_entry->>'formalPeerReviewHours')::numeric,0) not between 0 and v_review then raise exception 'cme_invalid_request'; end if;
+  if p_entry->>'documentId' is not null and not exists(select 1 from public.documents where owner_id=p_owner_id and id=(p_entry->>'documentId')::uuid) then raise exception 'cme_invalid_link'; end if;
+  if p_entry->>'routineId' is not null then
+    select * into v_routine from public.cme_routines where owner_id=p_owner_id and id=(p_entry->>'routineId')::uuid for update;
+    if not found or (p_create and v_routine.archived_at is not null) then raise exception 'cme_invalid_link'; end if;
+  end if;
+  if p_create then
+    insert into public.cme_entries(id,owner_id,year_id,activity_date,title,reflection,cost_cents,routine_id,document_id,buckets,formal_peer_review_hours,request_id,request_payload,source_url)
+    values(p_entry_id,p_owner_id,p_year_id,(p_entry->>'date')::date,p_entry->>'title',p_entry->>'reflection',(p_entry->>'costCents')::integer,(p_entry->>'routineId')::uuid,(p_entry->>'documentId')::uuid,array(select jsonb_array_elements_text(p_entry->'buckets')),coalesce((p_entry->>'formalPeerReviewHours')::numeric,0),p_request_id,p_entry,p_entry->>'sourceUrl')
+    returning * into v_saved;
+  else
+    update public.cme_entries set year_id=p_year_id,activity_date=(p_entry->>'date')::date,title=p_entry->>'title',reflection=p_entry->>'reflection',cost_cents=(p_entry->>'costCents')::integer,routine_id=(p_entry->>'routineId')::uuid,document_id=(p_entry->>'documentId')::uuid,buckets=array(select jsonb_array_elements_text(p_entry->'buckets')),formal_peer_review_hours=coalesce((p_entry->>'formalPeerReviewHours')::numeric,0),source_url=p_entry->>'sourceUrl'
+    where owner_id=p_owner_id and id=p_entry_id returning * into v_saved;
+    delete from public.cme_allocations where owner_id=p_owner_id and entry_id=p_entry_id;
+  end if;
+  for v_alloc in select value from jsonb_array_elements(p_entry->'allocations') loop
+    insert into public.cme_allocations(owner_id,entry_id,category,hours) values(p_owner_id,p_entry_id,v_alloc->>'category',(v_alloc->>'hours')::numeric);
+  end loop;
+  -- A routine advances only after the complete entry is saved, in this same
+  -- transaction. An idempotent retry returns above and never advances twice.
+  if p_create and v_routine.id is not null and v_routine.next_due is not null and v_routine.next_due <= (p_entry->>'date')::date then
+    update public.cme_routines set next_due=((p_entry->>'date')::date + case v_routine.cadence when 'weekly' then interval '7 days' when 'monthly' then interval '1 month' else interval '3 months' end)::date where owner_id=p_owner_id and id=v_routine.id;
+  end if;
+  return to_jsonb(v_saved)||jsonb_build_object('cme_allocations',p_entry->'allocations');
+end $$;
+
+create or replace function public.cme_amend_closed_entry(p_owner_id uuid, p_entry_id uuid, p_entry jsonb, p_reason text)
+returns jsonb
+language plpgsql security invoker set search_path = public, pg_catalog, pg_temp as $$
+declare
+  v_year public.cme_years; v_existing public.cme_entries; v_saved public.cme_entries; v_routine public.cme_routines;
+  v_alloc jsonb; v_review numeric; v_total numeric; v_count integer; v_before jsonb;
+  v_reason text := btrim(coalesce(p_reason, ''));
+begin
+  if p_owner_id is null or p_entry_id is null or jsonb_typeof(p_entry) is distinct from 'object' then
+    raise exception 'cme_invalid_request';
+  end if;
+  if char_length(v_reason) not between 3 and 1000 then raise exception 'cme_amendment_reason_invalid'; end if;
+  perform pg_advisory_xact_lock(hashtextextended(p_owner_id::text, 23092026));
+  select * into v_existing from public.cme_entries where owner_id=p_owner_id and id=p_entry_id for update;
+  if not found then raise exception 'cme_entry_not_found'; end if;
+  if v_existing.archived_at is not null then raise exception 'cme_entry_archived'; end if;
+  if p_entry->'expectedVersion' is distinct from public.cme_entry_edit_version(p_owner_id,p_entry_id) then raise exception 'cme_entry_conflict'; end if;
+  select * into v_year from public.cme_years where owner_id=p_owner_id and id=v_existing.year_id for update;
+  if not found then raise exception 'cme_year_not_confirmed'; end if;
+  if v_year.closed_at is null then raise exception 'cme_year_open'; end if;
+  if extract(year from (p_entry->>'date')::date) <> v_year.year then raise exception 'cme_invalid_request'; end if;
+  if jsonb_typeof(p_entry->'allocations') is distinct from 'array' then raise exception 'cme_invalid_request'; end if;
+  select count(*),coalesce(sum((a->>'hours')::numeric),0),coalesce(sum((a->>'hours')::numeric) filter(where a->>'category'='reviewing'),0)
+    into v_count,v_total,v_review from jsonb_array_elements(p_entry->'allocations') a;
+  if v_count not between 1 and 3 or v_total > 24 or coalesce((p_entry->>'formalPeerReviewHours')::numeric,0) not between 0 and v_review then raise exception 'cme_invalid_request'; end if;
+  if p_entry->>'documentId' is not null and not exists(select 1 from public.documents where owner_id=p_owner_id and id=(p_entry->>'documentId')::uuid) then raise exception 'cme_invalid_link'; end if;
+  if p_entry->>'routineId' is not null then
+    select * into v_routine from public.cme_routines where owner_id=p_owner_id and id=(p_entry->>'routineId')::uuid;
+    if not found then raise exception 'cme_invalid_link'; end if;
+  end if;
+
+  v_before := jsonb_build_object(
+    'date', v_existing.activity_date, 'title', v_existing.title, 'reflection', v_existing.reflection,
+    'costCents', v_existing.cost_cents, 'routineId', v_existing.routine_id, 'documentId', v_existing.document_id,
+    'sourceUrl', v_existing.source_url, 'buckets', to_jsonb(v_existing.buckets),
+    'formalPeerReviewHours', v_existing.formal_peer_review_hours,
+    'allocations', (
+      select coalesce(jsonb_agg(jsonb_build_object('category', category, 'hours', hours) order by category), '[]'::jsonb)
+      from public.cme_allocations where owner_id=p_owner_id and entry_id=p_entry_id
+    )
+  );
+  insert into public.cme_year_amendments(owner_id, year_id, entry_id, reason, before, after)
+  values (
+    p_owner_id, v_year.id, p_entry_id, v_reason, v_before,
+    jsonb_build_object(
+      'date', p_entry->'date', 'title', p_entry->'title', 'reflection', p_entry->'reflection',
+      'costCents', p_entry->'costCents', 'routineId', p_entry->'routineId', 'documentId', p_entry->'documentId',
+      'sourceUrl', p_entry->'sourceUrl', 'buckets', p_entry->'buckets',
+      'formalPeerReviewHours', coalesce(p_entry->'formalPeerReviewHours', '0'::jsonb),
+      'allocations', p_entry->'allocations'
+    )
+  );
+
+  update public.cme_entries set activity_date=(p_entry->>'date')::date,title=p_entry->>'title',reflection=p_entry->>'reflection',cost_cents=(p_entry->>'costCents')::integer,routine_id=(p_entry->>'routineId')::uuid,document_id=(p_entry->>'documentId')::uuid,buckets=array(select jsonb_array_elements_text(p_entry->'buckets')),formal_peer_review_hours=coalesce((p_entry->>'formalPeerReviewHours')::numeric,0),source_url=p_entry->>'sourceUrl'
+  where owner_id=p_owner_id and id=p_entry_id returning * into v_saved;
+  delete from public.cme_allocations where owner_id=p_owner_id and entry_id=p_entry_id;
+  for v_alloc in select value from jsonb_array_elements(p_entry->'allocations') loop
+    insert into public.cme_allocations(owner_id,entry_id,category,hours) values(p_owner_id,p_entry_id,v_alloc->>'category',(v_alloc->>'hours')::numeric);
+  end loop;
+  return to_jsonb(v_saved)||jsonb_build_object('cme_allocations',p_entry->'allocations');
+end $$;
+
+-- Versioned names prevent new app/old database overlap from silently ignoring the guard.
+create function public.cme_save_entry_v2(p_owner_id uuid,p_year_id uuid,p_entry_id uuid,p_entry jsonb,p_create boolean,p_request_id uuid default null)
+returns jsonb language sql volatile security invoker set search_path = public, pg_catalog, pg_temp as $$
+  select public.cme_save_entry(p_owner_id,p_year_id,p_entry_id,p_entry,p_create,p_request_id)
+$$;
+create function public.cme_amend_closed_entry_v2(p_owner_id uuid,p_entry_id uuid,p_entry jsonb,p_reason text)
+returns jsonb language sql volatile security invoker set search_path = public, pg_catalog, pg_temp as $$
+  select public.cme_amend_closed_entry(p_owner_id,p_entry_id,p_entry,p_reason)
+$$;
+
+revoke all on function
+  public.cme_entry_edit_version(uuid,uuid),
+  public.cme_save_entry(uuid,uuid,uuid,jsonb,boolean,uuid),
+  public.cme_amend_closed_entry(uuid,uuid,jsonb,text),
+  public.cme_save_entry_v2(uuid,uuid,uuid,jsonb,boolean,uuid),
+  public.cme_amend_closed_entry_v2(uuid,uuid,jsonb,text)
+from public, anon, authenticated;
+grant execute on function
+  public.cme_entry_edit_version(uuid,uuid),
+  public.cme_save_entry(uuid,uuid,uuid,jsonb,boolean,uuid),
+  public.cme_amend_closed_entry(uuid,uuid,jsonb,text),
+  public.cme_save_entry_v2(uuid,uuid,uuid,jsonb,boolean,uuid),
+  public.cme_amend_closed_entry_v2(uuid,uuid,jsonb,text)
+to service_role;
+alter function public.cme_entry_edit_version(uuid,uuid) owner to postgres;
+alter function public.cme_save_entry_v2(uuid,uuid,uuid,jsonb,boolean,uuid) owner to postgres;
+alter function public.cme_amend_closed_entry_v2(uuid,uuid,jsonb,text) owner to postgres;
+
+
+-- supabase/migrations/20261107000700_audit_retire_unfenced_document_reset.sql
+-- Retire the confirmed destructive, unfenced reset authority after first-party callers
+-- moved to generation-preserving enqueue/maintenance. Historical migration text and
+-- validators remain immutable. Old maintenance tooling must be quiesced before rollout.
+set local lock_timeout = '5s';
+set local statement_timeout = '30s';
+
+-- RESTRICT intentionally refuses an undiscovered catalog dependency; never cascade.
+-- The fenced worker reset_ingestion_attempt_artifacts(jsonb,uuid) is unchanged.
+drop function public.reset_document_index(uuid) restrict;
+
+
+-- supabase/migrations/20261107000800_audit_fix_maintenance_snapshot_fence_aliases.sql
+-- Correct the snapshot fences in replace_document_maintenance_artifacts (20261107000400).
+-- Its `unnest(...) id ... x.id=id` checks resolved the bare `id` to the inner table's own
+-- column, so the label, summary-source and visual image generation fences were always
+-- satisfied. Alias the unnest as s(id) and compare against s.id. Body otherwise unchanged.
+-- Draft only. Applying/merging this migration requires the owner's own database approval.
+set local lock_timeout = '5s';
+set local statement_timeout = '60s';
+
+create or replace function public.replace_document_maintenance_artifacts(
+  p_document_id uuid, p_owner_id uuid, p_expected_updated_at timestamptz,
+  p_expected_generation_id uuid, p_operation text, p_payload jsonb
+) returns jsonb language plpgsql security definer set search_path = '' as $$
+declare
+  d public.documents; item jsonb; patch jsonb; image_ids uuid[]; source_ids uuid[];
+  unit public.document_index_units; field public.document_embedding_fields; image public.document_images; summary_row public.document_summaries;
+  visual_types text[] := array['visual_summary','flowchart_step','diagram_decision','risk_matrix_cell','medication_chart_row','chart_finding','visual_askable_question','table_threshold'];
+begin
+  if auth.role() is distinct from 'service_role' then raise exception 'service_role_required' using errcode='42501'; end if;
+  if p_expected_updated_at is null or p_operation is null or p_operation not in ('labels','enrichment','visual','images','stamp','embedding-fields','registry')
+    or jsonb_typeof(p_payload) is distinct from 'object' then raise exception 'invalid_maintenance_request' using errcode='22023'; end if;
+  select * into d from public.documents where id=p_document_id for update;
+  if not found or d.owner_id is distinct from p_owner_id or d.updated_at is distinct from p_expected_updated_at
+    or d.index_generation_id is distinct from p_expected_generation_id or d.status is distinct from 'indexed' then
+    raise exception 'maintenance_snapshot_conflict' using errcode='40001';
+  end if;
+  if d.metadata ?| array['admission_event_id','public_source_version_id','source_catalogue_key','public_source_activation_event_id'] or d.metadata->>'corpus_scope'='australian_public' then raise exception 'managed_evidence_requires_fenced_worker' using errcode='42501'; end if;
+  perform 1 from public.ingestion_jobs where document_id=d.id and status in ('pending','processing') for update;
+  if found then raise exception 'maintenance_active_ingestion_job' using errcode='40001'; end if;
+  perform 1 from public.indexing_v3_agent_jobs where document_id=d.id and status in ('pending','processing') for update;
+  if found then raise exception 'maintenance_active_agent_job' using errcode='40001'; end if;
+  patch:=coalesce(p_payload->'metadata_patch','{}'::jsonb);
+  if p_operation='registry' then
+    if d.file_type is distinct from 'application/vnd.clinical-kb.registry+json'
+      or patch->>'source_kind' is distinct from 'registry_record'
+      or (patch->>'registry_record_kind' in ('service','form','medication','differential')) is not true
+      or d.storage_path is distinct from 'registry://'||(patch->>'registry_record_kind')||'/'||(patch->>'registry_record_id')
+      or d.source_path is distinct from 'registry://'||(patch->>'registry_record_kind')||'/'||(patch->>'registry_record_slug')
+      or jsonb_typeof(patch) is distinct from 'object' or exists(select 1 from jsonb_object_keys(patch) k where k<>all(array[
+        'source_kind','registry_record_kind','registry_record_subkind','registry_record_id','registry_record_slug','source_title',
+        'document_status','clinical_validation_status','clinical_validation_evidence','source_role','extraction_quality','publisher','jurisdiction'])) then
+      raise exception 'invalid_registry_maintenance_scope' using errcode='22023'; end if;
+  else
+  if jsonb_typeof(patch) is distinct from 'object' or exists(select 1 from jsonb_object_keys(patch) k
+    where k<>all(array['rag_enrichment_version','rag_indexing_version','rag_memory_version','rag_enrichment_updated_at',
+      'generated_label_count','organization_profile','organization_profile_version','coverage_profile',
+      'enrichment_prompt_strategy','enrichment_prompt_chunk_ids','version_stamped_at',
+      'searchable_image_count','skipped_image_count','image_enriched_at'])) then
+    raise exception 'invalid_maintenance_metadata_keys' using errcode='22023';
+  end if;
+  end if;
+
+  if p_operation in ('labels','enrichment') then
+    if jsonb_typeof(p_payload->'labels') is distinct from 'array' or jsonb_array_length(p_payload->'labels')>5000 then
+      raise exception 'invalid_maintenance_labels' using errcode='22023'; end if;
+    for item in select value from jsonb_array_elements(p_payload->'labels') loop
+      if jsonb_typeof(item) is distinct from 'object' or nullif(btrim(item->>'label'),'') is null
+        or jsonb_typeof(item->'metadata') is distinct from 'object' then raise exception 'invalid_maintenance_label' using errcode='22023'; end if;
+    end loop;
+    -- The delete and all replacement inserts share this transaction; insert failure restores A.
+    delete from public.document_labels where document_id=d.id and source='generated';
+    insert into public.document_labels(document_id,owner_id,label,label_type,source,confidence,metadata)
+      select d.id,d.owner_id,r.label,r.label_type,'generated',r.confidence,r.metadata
+      from jsonb_to_recordset(p_payload->'labels') r(label text,label_type text,confidence real,metadata jsonb);
+  end if;
+  if p_operation='registry' then
+    if jsonb_typeof(p_payload->'label_ids_to_delete') is distinct from 'array' or jsonb_typeof(p_payload->'labels_to_upsert') is distinct from 'array'
+      or jsonb_array_length(p_payload->'label_ids_to_delete')>5000 or jsonb_array_length(p_payload->'labels_to_upsert')>5000 then
+      raise exception 'invalid_registry_label_population' using errcode='22023'; end if;
+    select coalesce(array_agg(value::uuid),'{}'::uuid[]) into source_ids from jsonb_array_elements_text(p_payload->'label_ids_to_delete');
+    if exists(select 1 from unnest(source_ids) as s(id) where not exists(select 1 from public.document_labels l where l.id=s.id
+      and l.document_id=d.id and l.owner_id is not distinct from d.owner_id and l.source='generated' and l.label_type in ('site','document_intent'))) then
+      raise exception 'registry_label_snapshot_conflict' using errcode='40001'; end if;
+    for item in select value from jsonb_array_elements(p_payload->'labels_to_upsert') loop
+      if item->>'label_type' is distinct from 'document_intent' or item->>'label' is distinct from
+        (case patch->>'registry_record_kind' when 'service' then 'operational-process' when 'form' then 'documentation-requirement'
+          when 'medication' then 'medication-instruction' when 'differential' then 'decision-support' end)
+        or jsonb_typeof(item->'metadata') is distinct from 'object' then
+        raise exception 'invalid_registry_intent_label' using errcode='22023'; end if;
+    end loop;
+    delete from public.document_labels where document_id=d.id and owner_id is not distinct from d.owner_id
+      and source='generated' and id=any(source_ids);
+    insert into public.document_labels(document_id,owner_id,label,label_type,source,confidence,metadata)
+      select d.id,d.owner_id,r.label,'document_intent','generated',r.confidence,r.metadata
+      from jsonb_to_recordset(p_payload->'labels_to_upsert') r(label text,confidence real,metadata jsonb)
+      on conflict(document_id,label_type,label,source) do update set confidence=excluded.confidence,metadata=excluded.metadata;
+  end if;
+
+  if p_operation='enrichment' then
+    item:=p_payload->'summary';
+    if jsonb_typeof(item) is distinct from 'object' or nullif(btrim(item->>'summary'),'') is null
+      or jsonb_typeof(item->'metadata') is distinct from 'object'
+      or jsonb_typeof(item->'source_chunk_ids') is distinct from 'array'
+      or jsonb_typeof(item->'source_image_ids') is distinct from 'array' then
+      raise exception 'invalid_maintenance_summary' using errcode='22023'; end if;
+    select coalesce(array_agg(value::uuid),'{}'::uuid[]) into source_ids from jsonb_array_elements_text(item->'source_chunk_ids');
+    if exists(select 1 from unnest(source_ids) as s(id) where not exists(select 1 from public.document_chunks c
+      where c.id=s.id and c.document_id=d.id and c.index_generation_id is not distinct from p_expected_generation_id)) then
+      raise exception 'maintenance_source_generation_conflict' using errcode='40001'; end if;
+    select coalesce(array_agg(value::uuid),'{}'::uuid[]) into image_ids from jsonb_array_elements_text(item->'source_image_ids');
+    if exists(select 1 from unnest(image_ids) as s(id) where not exists(select 1 from public.document_images i
+      where i.id=s.id and i.document_id=d.id and i.index_generation_id is not distinct from p_expected_generation_id)) then
+      raise exception 'maintenance_source_generation_conflict' using errcode='40001'; end if;
+    insert into public.document_summaries(document_id,owner_id,summary,clinical_specifics,source_chunk_ids,source_image_ids,model,metadata,generated_at,updated_at)
+      values(d.id,d.owner_id,item->>'summary',coalesce(item->'clinical_specifics','{}'::jsonb),source_ids,image_ids,item->>'model',item->'metadata',(item->>'generated_at')::timestamptz,(item->>'updated_at')::timestamptz)
+      on conflict(document_id) do update set owner_id=excluded.owner_id,summary=excluded.summary,clinical_specifics=excluded.clinical_specifics,
+        source_chunk_ids=excluded.source_chunk_ids,source_image_ids=excluded.source_image_ids,model=excluded.model,metadata=excluded.metadata,
+        generated_at=excluded.generated_at,updated_at=excluded.updated_at returning * into summary_row;
+  end if;
+
+  if p_operation='visual' then
+    if jsonb_typeof(p_payload->'image_ids') is distinct from 'array' or jsonb_typeof(p_payload->'units') is distinct from 'array'
+      or jsonb_array_length(p_payload->'image_ids')>1000 or jsonb_array_length(p_payload->'units')>10000 then
+      raise exception 'invalid_maintenance_visual_population' using errcode='22023'; end if;
+    select coalesce(array_agg(value::uuid),'{}'::uuid[]) into image_ids from jsonb_array_elements_text(p_payload->'image_ids');
+    if exists(select 1 from unnest(image_ids) as s(id) where not exists(select 1 from public.document_images i
+      where i.id=s.id and i.document_id=d.id and i.index_generation_id is not distinct from p_expected_generation_id)) then
+      raise exception 'maintenance_source_generation_conflict' using errcode='40001'; end if;
+    -- Validate the complete packet before replacing anything. Row/table constraints are still authoritative.
+    for item in select value from jsonb_array_elements(p_payload->'units') loop
+      unit:=jsonb_populate_record(null::public.document_index_units,item);
+      if unit.document_id is distinct from d.id or unit.owner_id is distinct from d.owner_id
+        or unit.index_generation_id is distinct from p_expected_generation_id or unit.source_image_id is null
+        or not(unit.source_image_id=any(image_ids)) or unit.unit_type is null or not(unit.unit_type=any(visual_types)) then
+        raise exception 'invalid_maintenance_visual_identity' using errcode='22023'; end if;
+      if unit.source_chunk_id is not null and not exists(select 1 from public.document_chunks c where c.id=unit.source_chunk_id
+        and c.document_id=d.id and c.index_generation_id is not distinct from p_expected_generation_id) then
+        raise exception 'maintenance_source_generation_conflict' using errcode='40001'; end if;
+    end loop;
+    delete from public.document_index_units where document_id=d.id and index_generation_id is not distinct from p_expected_generation_id
+      and source_image_id=any(image_ids) and unit_type=any(visual_types);
+    for item in select value from jsonb_array_elements(p_payload->'units') loop
+      unit:=jsonb_populate_record(null::public.document_index_units,item);
+      insert into public.document_index_units(owner_id,document_id,unit_type,source_chunk_id,source_image_id,page_start,page_end,
+        heading_path,title,content,normalized_terms,source_span,quality_score,extraction_mode,index_generation_id,embedding,metadata)
+      values(d.owner_id,d.id,unit.unit_type,unit.source_chunk_id,unit.source_image_id,unit.page_start,unit.page_end,
+        coalesce(unit.heading_path,'{}'),unit.title,unit.content,coalesce(unit.normalized_terms,'{}'),unit.source_span,
+        coalesce(unit.quality_score,0.7),coalesce(unit.extraction_mode,'deterministic'),p_expected_generation_id,unit.embedding,coalesce(unit.metadata,'{}'));
+    end loop;
+  end if;
+
+  if p_operation in ('visual','images') then
+    if jsonb_typeof(p_payload->'image_patches') is distinct from 'array' or jsonb_array_length(p_payload->'image_patches')>1000 then
+      raise exception 'invalid_maintenance_image_population' using errcode='22023'; end if;
+    for item in select value from jsonb_array_elements(p_payload->'image_patches') loop
+      select * into image from public.document_images i where i.id=(item->>'id')::uuid and i.document_id=d.id
+        and i.index_generation_id is not distinct from p_expected_generation_id for update;
+      if not found or (p_operation='visual' and not(image.id=any(image_ids))) then
+        raise exception 'maintenance_source_generation_conflict' using errcode='40001'; end if;
+      if jsonb_typeof(item) is distinct from 'object' or exists(select 1 from jsonb_object_keys(item) k where k<>all(array[
+        'id','metadata','caption','image_type','searchable','clinical_relevance_score','skip_reason','image_hash','perceptual_hash','labels']))
+        or (item ? 'metadata' and jsonb_typeof(item->'metadata') is distinct from 'object') then
+        raise exception 'invalid_maintenance_image_patch' using errcode='22023'; end if;
+      image:=jsonb_populate_record(image,item-'id'-'metadata');
+      update public.document_images set caption=image.caption,image_type=image.image_type,searchable=image.searchable,
+        clinical_relevance_score=image.clinical_relevance_score,skip_reason=image.skip_reason,image_hash=image.image_hash,
+        perceptual_hash=image.perceptual_hash,labels=image.labels,metadata=coalesce(metadata,'{}')||coalesce(item->'metadata','{}')
+        where id=image.id;
+    end loop;
+  end if;
+  if p_operation='embedding-fields' then
+    if jsonb_typeof(p_payload->'fields') is distinct from 'array' or jsonb_array_length(p_payload->'fields')>1000 then
+      raise exception 'invalid_maintenance_embedding_fields' using errcode='22023'; end if;
+    for item in select value from jsonb_array_elements(p_payload->'fields') loop
+      field:=jsonb_populate_record(null::public.document_embedding_fields,item);
+      if field.document_id is distinct from d.id or field.owner_id is distinct from d.owner_id or field.source_chunk_id is null
+        or field.field_type not in ('document_title','document_summary') or not exists(select 1 from public.document_chunks c
+          where c.id=field.source_chunk_id and c.document_id=d.id and c.index_generation_id is not distinct from p_expected_generation_id) then
+        raise exception 'maintenance_source_generation_conflict' using errcode='40001'; end if;
+      insert into public.document_embedding_fields(owner_id,document_id,source_chunk_id,field_type,content,content_hash,embedding,index_generation_id,metadata)
+        values(d.owner_id,d.id,field.source_chunk_id,field.field_type,field.content,field.content_hash,field.embedding,p_expected_generation_id,
+          coalesce(field.metadata,'{}')||jsonb_build_object('index_generation_id',p_expected_generation_id));
+    end loop;
+  end if;
+
+  if p_operation='stamp' then
+    update public.document_summaries set metadata=coalesce(metadata,'{}')||patch where document_id=d.id;
+    update public.document_labels set metadata=coalesce(metadata,'{}')||patch where document_id=d.id and source='generated';
+  end if;
+  if p_operation='images' and (jsonb_typeof(p_payload->'image_count') is distinct from 'number'
+    or (p_payload->>'image_count')::numeric < 0 or (p_payload->>'image_count')::numeric<>trunc((p_payload->>'image_count')::numeric)) then
+    raise exception 'invalid_maintenance_image_count' using errcode='22023'; end if;
+  update public.documents set metadata=coalesce(metadata,'{}')||patch,
+    image_count=case when p_operation='images' then (p_payload->>'image_count')::integer else image_count end
+    where id=d.id returning * into d;
+  return jsonb_build_object('updated_at',d.updated_at,'metadata',d.metadata,'summary',to_jsonb(summary_row));
+end $$;
+alter function public.replace_document_maintenance_artifacts(uuid,uuid,timestamptz,uuid,text,jsonb) owner to postgres;
+revoke all on function public.replace_document_maintenance_artifacts(uuid,uuid,timestamptz,uuid,text,jsonb) from public,anon,authenticated,service_role;
+grant execute on function public.replace_document_maintenance_artifacts(uuid,uuid,timestamptz,uuid,text,jsonb) to service_role;
+
+
+-- supabase/migrations/20261107000900_audit_overlap_skip_malformed_booking_times.sql
+-- teaching_find_supervisor_overlap_v1 (20261107000500) cast each existing booking's
+-- startsAt/endsAt string straight to timestamptz, so one malformed stored timestamp aborted
+-- the whole overlap check with booking_database_error. The app check it replaced skipped a
+-- booking whose times Date.parse could not read. A string that is not a valid timestamptz
+-- now reads as null, so that booking is never an overlap. Valid strings compare as before,
+-- and non-string values keep their created_at/updated_at fallbacks. Body otherwise unchanged.
+-- Draft only. Applying/merging this migration requires the owner's own database approval.
+set local lock_timeout = '5s';
+set local statement_timeout = '60s';
+
+create or replace function public.teaching_find_supervisor_overlap_v1(
+  p_supervisor_id uuid, p_starts_at timestamptz, p_ends_at timestamptz, p_exclude_id uuid,
+  p_before_created_at timestamptz default null, p_before_id uuid default null
+) returns setof public.registrar_assessments
+language plpgsql security invoker set search_path = public, pg_catalog, pg_temp as $$
+begin
+  if p_supervisor_id is null or p_starts_at is null or p_ends_at is null or p_ends_at <= p_starts_at
+    or p_exclude_id is null or ((p_before_created_at is null) <> (p_before_id is null)) then
+    raise exception 'invalid_booking_window';
+  end if;
+  return query select r.* from public.registrar_assessments r
+  where r.assessor_id = p_supervisor_id and r.category = 'supervisor_review'
+    and r.ratings->>'kind' = 'supervisor_booking' and r.id <> p_exclude_id
+    and (case when r.ratings->>'bookingState' in ('open', 'booked', 'completed', 'cancelled')
+      then r.ratings->>'bookingState' when r.status = 'archived' then 'cancelled' else 'active' end) <> 'cancelled'
+    and (p_before_created_at is null or (r.created_at, r.id) < (p_before_created_at, p_before_id))
+    -- CASE also fences casts from unrelated assessment JSON if the planner reorders filters.
+    -- pg_input_is_valid keeps one malformed stored time from aborting the check.
+    and (case when r.assessor_id = p_supervisor_id and r.category = 'supervisor_review'
+      and r.ratings->>'kind' = 'supervisor_booking' then
+        case when jsonb_typeof(r.ratings->'startsAt') = 'string' then
+          case when pg_input_is_valid(r.ratings->>'startsAt', 'timestamptz')
+            then (r.ratings->>'startsAt')::timestamptz else null end
+        else r.created_at end
+      else null end) < p_ends_at
+    and (case when r.assessor_id = p_supervisor_id and r.category = 'supervisor_review'
+      and r.ratings->>'kind' = 'supervisor_booking' then
+        case when jsonb_typeof(r.ratings->'endsAt') = 'string' then
+          case when pg_input_is_valid(r.ratings->>'endsAt', 'timestamptz')
+            then (r.ratings->>'endsAt')::timestamptz else null end
+        else r.updated_at end
+      else null end) > p_starts_at
+  order by r.created_at, r.id limit 1;
+end $$;
+alter function public.teaching_find_supervisor_overlap_v1(uuid, timestamptz, timestamptz, uuid, timestamptz, uuid) owner to postgres;
+revoke all on function public.teaching_find_supervisor_overlap_v1(uuid, timestamptz, timestamptz, uuid, timestamptz, uuid)
+  from public, anon, authenticated;
+grant execute on function public.teaching_find_supervisor_overlap_v1(uuid, timestamptz, timestamptz, uuid, timestamptz, uuid)
+  to service_role;

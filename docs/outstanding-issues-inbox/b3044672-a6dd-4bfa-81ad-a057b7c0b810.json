@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "b3044672-a6dd-4bfa-81ad-a057b7c0b810",
+  "createdOn": "2026-11-05",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "task",
+    "summary": "Complete physical iPhone Safari and installed-PWA microphone/task acceptance",
+    "detail": "2026-11-05 backend audit (V10, L07), local source33f6478: No physical device/assistive-technology/installed-PWA acceptance occurred. Chromium viewport flows do not establish Safari microphone, software keyboard, offline lifecycle or assistive conformance. Next: Use synthetic inputs on an approved exact build; test actual iPhone Safari and installedPWA with permission/error/interruption/keyboard/overlay/focus/account-switch states. Acceptance: Record hardware/OS/build/config and user roles; microphone consent/interruption/cancellation and task recovery work with no sensitive data or downstream cost outside approved scope. Keep conformance claims proportional. Suggested owner: Product/device tester + clinical owner. No merge, deployment, live migration, provider spending or specialist approval is granted by logging this task.",
+    "source": "docs/backend-audit-remediation-2026-11-05.md; backend-audit-2026-11-05:PHYSICAL_DEVICE; source33f6478c63aedf9c2d79effd9890951035f552b2",
+    "issueUlid": "01M6PNKH2H93E7YJ2DDVK9PGSP"
+  }
+}

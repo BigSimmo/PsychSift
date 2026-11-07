@@ -12,7 +12,7 @@ import type {
   ClinicalAskFeedbackMetadata,
   ClinicalAskResponse,
 } from "@/lib/clinical-ask/contracts";
-import { clinicalAskModeProfile } from "@/lib/clinical-ask/mode-profiles";
+import { clinicalAskModeProfile, clinicalAskSectionTitle } from "@/lib/clinical-ask/mode-profiles";
 
 const verificationReminder = "Clinician Confirmation is required for clinically material suggestions.";
 const clinicalAskFeedbackChoices: ReadonlyArray<{ value: AnswerFeedbackType; label: string }> = [
@@ -52,7 +52,7 @@ export function clinicalAskExportText(
     claimExportText(response.lead, response.evidence),
     ...response.sections.flatMap((section) => [
       "",
-      section.title,
+      clinicalAskSectionTitle(response.mode, section.id),
       ...section.claims.map((claim) => claimExportText(claim, response.evidence)),
     ]),
     "",
@@ -236,7 +236,7 @@ export function ClinicalAskAnswerSurface({
       </header>
       {response.sections.map((section) => (
         <section key={section.id}>
-          <h3>{section.title}</h3>
+          <h3>{clinicalAskSectionTitle(response.mode, section.id)}</h3>
           {section.claims.map((claim) => (
             <p key={claim.id}>
               {claim.text}

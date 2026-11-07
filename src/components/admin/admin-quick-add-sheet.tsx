@@ -1,5 +1,9 @@
 "use client";
 
+import { OnCallEntrySessionBoundary } from "@/components/on-call/on-call-entry-session-boundary";
+
+import { peekOnCallEntrySessionEpoch } from "@/lib/on-call/entry-cache-keys";
+
 import { useState } from "react";
 
 import { focusRing } from "@/components/card-recipes";
@@ -47,7 +51,7 @@ function slugify(title: string): string {
  * recent" lead-time chips (fill only, never preselected), and Save grey until
  * both fields are filled. Creates a new, private compliance row.
  */
-export function AdminQuickAddSheet({
+function AdminQuickAddSheetSession({
   open,
   onClose,
   onSaved,
@@ -60,6 +64,7 @@ export function AdminQuickAddSheet({
    *  first — shown as extra "your recent" chips ahead of the two defaults. */
   recentLeadTimeDays?: readonly number[];
 }) {
+  const sessionEpoch = peekOnCallEntrySessionEpoch();
   const [name, setName] = useState("");
   const [date, setDate] = useState("");
   const [leadTimeDays, setLeadTimeDays] = useState<number | null>(null);
@@ -73,6 +78,7 @@ export function AdminQuickAddSheet({
   const chips = [...new Set([...recentLeadTimeDays, ...DEFAULT_LEAD_TIME_CHIPS])].slice(0, 3);
 
   async function save() {
+    if (sessionEpoch !== peekOnCallEntrySessionEpoch()) return;
     if (!canSave) return;
     const synthetic: OnCallEntry = {
       id: "",
@@ -112,6 +118,7 @@ export function AdminQuickAddSheet({
       const payload: unknown = await response.json();
       const parsed = onCallEntrySchema.safeParse((payload as { entry?: unknown } | null)?.entry);
       if (!parsed.success) throw new Error("Save response was invalid.");
+      if (sessionEpoch !== peekOnCallEntrySessionEpoch()) return;
       onSaved(parsed.data);
       // A completed save, not a dismissed draft — Addendum A keeps a
       // dismissed half-filled sheet in memory, but this transaction finished,
@@ -219,5 +226,13 @@ export function AdminQuickAddSheet({
         </div>
       </div>
     </AdminSheet>
+  );
+}
+
+export function AdminQuickAddSheet(props: Parameters<typeof AdminQuickAddSheetSession>[0]) {
+  return (
+    <OnCallEntrySessionBoundary open={props.open}>
+      <AdminQuickAddSheetSession {...props} />
+    </OnCallEntrySessionBoundary>
   );
 }

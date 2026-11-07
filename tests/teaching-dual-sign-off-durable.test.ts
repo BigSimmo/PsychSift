@@ -127,6 +127,41 @@ function createMockRegistrarAssessmentsDb(initialRows: RegistrarAssessmentRow[] 
     members,
     reviewers,
     rpc: vi.fn(async (fn: string, args: Record<string, unknown>) => {
+      if (fn === "teaching_find_supervisor_overlap_v1") {
+        const found = [...rows.values()]
+          .filter((row) => {
+            const ratings = row.ratings as Record<string, unknown> | null;
+            if (
+              row.assessor_id !== args.p_supervisor_id ||
+              row.category !== "supervisor_review" ||
+              ratings?.kind !== "supervisor_booking" ||
+              row.id === args.p_exclude_id
+            )
+              return false;
+            const state = ["open", "booked", "completed", "cancelled"].includes(String(ratings.bookingState))
+              ? ratings.bookingState
+              : row.status === "archived"
+                ? "cancelled"
+                : "active";
+            if (state === "cancelled") return false;
+            const created = Date.parse(row.created_at),
+              before = Date.parse(String(args.p_before_created_at));
+            if (
+              args.p_before_created_at &&
+              !(created < before || (created === before && row.id < String(args.p_before_id)))
+            )
+              return false;
+            return (
+              Date.parse(String(ratings.startsAt ?? row.created_at)) < Date.parse(String(args.p_ends_at)) &&
+              Date.parse(String(ratings.endsAt ?? row.updated_at)) > Date.parse(String(args.p_starts_at))
+            );
+          })
+          .sort(
+            (left, right) =>
+              Date.parse(left.created_at) - Date.parse(right.created_at) || left.id.localeCompare(right.id),
+          );
+        return { data: found.slice(0, 1).map((row) => structuredClone(row)), error: null } as never;
+      }
       if (fn !== "work_can" || args.p_capability !== "assessments.review") {
         return { data: null, error: { message: `Unexpected rpc: ${fn}` } };
       }

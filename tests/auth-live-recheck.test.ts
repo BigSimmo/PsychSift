@@ -16,6 +16,7 @@ import {
   requireAuthenticatedUser,
   resolveOptionalAuthentication,
 } from "@/lib/supabase/auth";
+import { publicAccessContext } from "@/lib/public-api-access";
 import { signProxyAuthPayload } from "@/lib/supabase/proxy-auth-crypto";
 
 const previousServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -83,6 +84,65 @@ describe("live account recheck on saves (PP-04)", () => {
     await expect(requireAuthenticatedUser(requestWithProxyClaims("POST"), client as never)).rejects.toBeInstanceOf(
       AuthenticationError,
     );
+  });
+
+  it.each(["/api/answer", "/api/answer/stream", "/api/clinical-ask/stream", "/api/speech/transcribe"])(
+    "refuses blocked optional generation context at %s",
+    async (path) => {
+      const client = authClient({
+        data: {
+          user: { id: "synthetic-user", app_metadata: {}, banned_until: new Date(Date.now() + 60_000).toISOString() },
+        },
+        error: null,
+      });
+      const request = new Request(`http://localhost${path}`, {
+        method: "POST",
+        headers: requestWithProxyClaims("POST").headers,
+      });
+      await expect(publicAccessContext(request, client as never)).rejects.toBeInstanceOf(AuthenticationError);
+      expect(client.auth.getUser).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it.each(["POST", "PUT", "PATCH", "DELETE"])("rechecks optional proxy authentication on %s", async (method) => {
+    const client = authClient({
+      data: {
+        user: { id: "synthetic-user", app_metadata: {}, banned_until: new Date(Date.now() + 60_000).toISOString() },
+      },
+      error: null,
+    });
+    await expect(resolveOptionalAuthentication(requestWithProxyClaims(method), client as never)).resolves.toEqual({
+      status: "invalid",
+    });
+    expect(client.auth.getUser).toHaveBeenCalledWith("synthetic-token");
+  });
+
+  it("rechecks a save on the current encoded session, never a leftover legacy token", async () => {
+    const client = authClient({ data: { user: { id: "synthetic-user", app_metadata: {} } }, error: null });
+    const encodedSession = `base64-${Buffer.from(JSON.stringify({ access_token: "synthetic-current" })).toString("base64")}`;
+    const request = new Request("http://localhost/api/account/favourites", {
+      method: "POST",
+      headers: {
+        [PROXY_AUTH_USER_HEADER]: proxyHeader(),
+        cookie: `sb-testprojectref123-auth-token=${encodedSession}; sb-access-token=synthetic-expired-legacy`,
+      },
+    });
+    await resolveOptionalAuthentication(request, client as never);
+    await requireAuthenticatedUser(request, client as never).catch(() => undefined);
+    expect(client.auth.getUser).not.toHaveBeenCalledWith("synthetic-expired-legacy");
+  });
+
+  it("keeps valid optional saves and absent anonymous requests working", async () => {
+    const client = authClient({ data: { user: { id: "synthetic-user", app_metadata: {} } }, error: null });
+    await expect(resolveOptionalAuthentication(requestWithProxyClaims("POST"), client as never)).resolves.toMatchObject(
+      { status: "valid", user: { id: "synthetic-user" } },
+    );
+    expect(client.auth.getUser).toHaveBeenCalledTimes(1);
+    client.auth.getUser.mockClear();
+    await expect(
+      resolveOptionalAuthentication(new Request("http://localhost/api/answer", { method: "POST" }), client as never),
+    ).resolves.toEqual({ status: "absent" });
+    expect(client.auth.getUser).not.toHaveBeenCalled();
   });
 
   it("refuses a blocked account presenting a bearer token, and accepts one whose ban has passed", async () => {

@@ -48,7 +48,7 @@ export function parseClinicalAskDisabledModes(value: unknown): string[] {
 
 const envSchema = z
   .object({
-    NEXT_PUBLIC_SUPABASE_URL: z.string().url().optional(),
+    NEXT_PUBLIC_SUPABASE_URL: z.preprocess(coerceBlankEnv, z.string().url().optional()),
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().optional(),
     NEXT_PUBLIC_SUPABASE_STAGING_PROJECT_REF: z.string().optional(),
     NEXT_PUBLIC_SUPABASE_STAGING_PROJECT_NAME: z.string().optional(),
@@ -72,7 +72,7 @@ const envSchema = z
         .regex(/^[0-9a-f]{64}$/)
         .optional(),
     ),
-    SUPABASE_DB_URL: z.string().url().optional(),
+    SUPABASE_DB_URL: z.preprocess(coerceBlankEnv, z.string().url().optional()),
     // Blank means unset (offline wrappers blank inherited secrets); an unset secret keeps the
     // deep probe closed, and a non-blank value must still be at least 16 characters.
     HEALTH_DEEP_PROBE_SECRET: z.preprocess(coerceBlankEnv, z.string().min(16).optional()),

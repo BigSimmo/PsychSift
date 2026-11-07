@@ -1,4 +1,5 @@
 "use client";
+import { peekOnCallEntrySessionEpoch } from "@/lib/on-call/entry-cache-keys";
 
 import { ChevronLeft, ChevronRight, Lock, TriangleAlert, type LucideIcon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
@@ -27,22 +28,31 @@ export const JUNIOR_UNDO_MS = 10_000;
 
 /* ------------------------------------------------------------ writes */
 
-async function entryFrom(response: Response): Promise<OnCallEntry> {
+async function entryFrom(response: Response, expectedId?: string): Promise<OnCallEntry> {
   if (!response.ok) throw await parseApiErrorResponse(response);
   const json: unknown = await response.json();
   const parsed = onCallEntrySchema.safeParse((json as { entry?: unknown } | null)?.entry);
-  if (!parsed.success) throw new Error("Save response was invalid.");
+  if (!parsed.success || (expectedId !== undefined && parsed.data.id !== expectedId))
+    throw new Error("Save response was invalid.");
   return parsed.data;
 }
 
-export async function createEntry(body: unknown): Promise<OnCallEntry> {
-  return entryFrom(
+function requireEntrySession(expectedEpoch: number): void {
+  if (expectedEpoch !== peekOnCallEntrySessionEpoch())
+    throw new Error("Your account changed. Reopen this page to continue.");
+}
+
+export async function createEntry(body: unknown, expectedEpoch = peekOnCallEntrySessionEpoch()): Promise<OnCallEntry> {
+  requireEntrySession(expectedEpoch);
+  const saved = await entryFrom(
     await fetch("/api/on-call/entries", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     }),
   );
+  requireEntrySession(expectedEpoch);
+  return saved;
 }
 
 /** Belt and braces: an example row is never written to the account. */
@@ -50,21 +60,31 @@ function refuseExampleWrite(id: string): void {
   if (isExampleRecord(id)) throw new Error("Example records can't be changed. Turn example data off to edit your own.");
 }
 
-export async function patchEntry(id: string, body: unknown): Promise<OnCallEntry> {
+export async function patchEntry(
+  id: string,
+  body: unknown,
+  expectedEpoch = peekOnCallEntrySessionEpoch(),
+): Promise<OnCallEntry> {
+  requireEntrySession(expectedEpoch);
   refuseExampleWrite(id);
-  return entryFrom(
+  const saved = await entryFrom(
     await fetch(`/api/on-call/entries/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     }),
+    id,
   );
+  requireEntrySession(expectedEpoch);
+  return saved;
 }
 
-export async function deleteEntry(id: string): Promise<void> {
+export async function deleteEntry(id: string, expectedEpoch = peekOnCallEntrySessionEpoch()): Promise<void> {
+  requireEntrySession(expectedEpoch);
   refuseExampleWrite(id);
   const response = await fetch(`/api/on-call/entries/${id}`, { method: "DELETE" });
   if (!response.ok) throw await parseApiErrorResponse(response);
+  requireEntrySession(expectedEpoch);
 }
 
 export function errorWords(error: unknown, fallback: string): string {

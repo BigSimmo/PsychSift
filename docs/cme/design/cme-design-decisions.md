@@ -381,15 +381,29 @@ Section 9's finalisation is now built in its smallest honest form. Closing is do
 annual summary, in the last fortnight of the year or at any time afterwards, and asks first.
 The database reads the year's confirmed targets, requirements and active activities under the
 owner lock and freezes them as a snapshot, with the app's requirement statuses beside it; it
-refuses the close if those statuses were computed from a different total or activity count.
+refuses the close if any target, requirement or active-activity evaluation input changed after
+those statuses were computed. This includes category allocations, formal peer-review credit,
+practice-domain buckets and task completion. Direct requirement and allocation writers take the
+same year lock as closing, so the comparison and snapshot describe one coherent record.
 An optional note explaining a shortfall is stored on the year and in the snapshot, and the
 screen says that it does not reduce any requirement. A closed year cannot be reopened.
 
 After closing, an activity is corrected with **Amend entry**, which takes the complete record
 and a reason. The database stores the previous version, the new one and the reason, dated,
 before applying the change, and refuses any other write to that year's activities,
-allocations or requirements. The snapshot never changes; the annual summary shows it, the note,
+allocations or requirements. Copying a closed activity's text remains available, but its recorded
+copied status cannot change through an ordinary update. The Log's copy sheet explains this and
+offers the next activity without a marking action. The snapshot never changes; the annual summary shows it, the note,
 and every amendment, while its totals and the CSV export follow the amended record.
+
+Full manual edits and amendments carry the stored content the editor read. The database
+compares that content under its owner and entry locks before replacing fields or recording an
+amendment, and asks the owner to reload if another writer changed it. Allocations and the
+current copied/archive flags participate in that comparison; evidence and goal links do not,
+because the full editor does not replace them. This is current-content equality: changes that
+return to identical content are equivalent, rather than a monotonic mutation-history version.
+Teaching's intentional create/restore writer remains separate and owner-locked. Versioned RPCs
+make a missing migration fail closed; the migrations must precede the application release.
 
 Not built: adding a new activity to a closed year, amending an archived activity, a separate
 "as closed" export, carrying unfinished plan goals forward, and the evidence ZIP. The schema is

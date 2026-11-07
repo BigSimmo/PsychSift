@@ -1,12 +1,13 @@
 /** @vitest-environment jsdom */
 
-import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useState } from "react";
 
 import { OnCallEntryEditor, OnCallVerifyButton } from "@/components/on-call/on-call-entry-editor";
 import { OnCallFreshnessBadge } from "@/components/on-call/on-call-freshness-badge";
+import { clearOnCallEntryCache } from "@/lib/on-call/entry-cache-keys";
 import { COMPLIANCE_KIND } from "@/lib/on-call/compliance";
 import { ON_CALL_RECURRENCE_FREQUENCIES, onCallEntryFreshness, type OnCallEntry } from "@/lib/on-call/entry-model";
 import { ROLE_EXPLAINER_KIND } from "@/lib/on-call/who-is-who";
@@ -42,6 +43,7 @@ const STALE_ANAESTHETIST: OnCallEntry = {
   id: "33333333-3333-4333-8333-333333333333",
   section: "contacts",
   slug: "on-call-anaesthetist",
+  updatedAt: "2026-11-05T00:00:00.123456+00:00",
   title: "On-call anaesthetist",
   subtitle: null,
   body: null,
@@ -53,6 +55,69 @@ const STALE_ANAESTHETIST: OnCallEntry = {
   sortOrder: 0,
   lastVerifiedAt: new Date("2020-01-01T00:00:00.000Z").toISOString(),
 };
+
+describe("On Call editor account transitions", () => {
+  it("closes a retained draft on a session change so it cannot be saved as the next account", async () => {
+    const user = userEvent.setup();
+    const request = vi.spyOn(globalThis, "fetch");
+    const props = { open: true, section: "contacts" as const, entry: null, onSaved: vi.fn(), onClose: vi.fn() };
+    const view = render(<OnCallEntryEditor {...props} />);
+    await user.type(screen.getByLabelText(/^Title/), "Synthetic account A private draft");
+    await user.type(screen.getByLabelText(/^Role/), "Synthetic role");
+    act(() => clearOnCallEntryCache());
+    view.rerender(<OnCallEntryEditor {...props} />);
+    expect(screen.queryByDisplayValue("Synthetic account A private draft")).toBeNull();
+    expect(screen.queryByTestId("on-call-entry-editor-save")).toBeNull();
+    expect(request).not.toHaveBeenCalled();
+    // Explicitly closing/reopening gives the new account a fresh draft.
+    view.rerender(<OnCallEntryEditor {...props} open={false} />);
+    view.rerender(<OnCallEntryEditor {...props} />);
+    expect(screen.getByLabelText(/^Title/)).toHaveValue("");
+  });
+
+  it.each(["save", "delete", "verify"])(
+    "suppresses a late %s callback and close after the account changes",
+    async (operation) => {
+      const user = userEvent.setup();
+      let release!: (response: Response) => void;
+      const request = vi.spyOn(globalThis, "fetch").mockReturnValue(
+        new Promise<Response>((resolve) => {
+          release = resolve;
+        }),
+      );
+      const onSaved = vi.fn();
+      const onDeleted = vi.fn();
+      const onClose = vi.fn();
+      render(
+        <OnCallEntryEditor
+          open
+          section="contacts"
+          entry={STALE_ANAESTHETIST}
+          onSaved={onSaved}
+          onDeleted={onDeleted}
+          onClose={onClose}
+        />,
+      );
+      if (operation === "save") {
+        await user.type(screen.getByLabelText("Subtitle"), "Synthetic update");
+        await user.click(screen.getByTestId("on-call-entry-editor-save"));
+      } else if (operation === "verify") {
+        await user.click(screen.getByTestId(`on-call-verify-${STALE_ANAESTHETIST.slug}`));
+      } else {
+        await user.click(screen.getByTestId("on-call-entry-editor-delete"));
+        await user.click(screen.getByRole("button", { name: `Delete ${STALE_ANAESTHETIST.title}` }));
+      }
+      expect(request).toHaveBeenCalledTimes(1);
+      clearOnCallEntryCache();
+      await act(async () => {
+        release(jsonResponse({ entry: STALE_ANAESTHETIST, deleted: true }));
+      });
+      expect(onSaved).not.toHaveBeenCalled();
+      expect(onDeleted).not.toHaveBeenCalled();
+      expect(onClose).not.toHaveBeenCalled();
+    },
+  );
+});
 
 describe("OnCallEntryEditor — creating", () => {
   it("posts a new entry with the fields entered and hands the saved entry back", async () => {
@@ -236,7 +301,11 @@ describe("OnCallVerifyButton — the one-tap 'still correct' action", () => {
 
     await user.click(screen.getByTestId(`on-call-verify-${STALE_ANAESTHETIST.slug}`));
 
-    expect(fetchMock).toHaveBeenCalledWith(`/api/on-call/entries/${STALE_ANAESTHETIST.id}/verify`, { method: "POST" });
+    expect(fetchMock).toHaveBeenCalledWith(`/api/on-call/entries/${STALE_ANAESTHETIST.id}/verify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ expectedUpdatedAt: STALE_ANAESTHETIST.updatedAt }),
+    });
 
     await waitFor(() =>
       expect(screen.getByTestId("on-call-freshness-badge")).toHaveAttribute("data-freshness-state", "fresh"),

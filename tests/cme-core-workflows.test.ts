@@ -18,6 +18,7 @@ import {
   saveCmeRoutine,
 } from "@/lib/cme/repository";
 import type { CmeEntry } from "@/lib/cme/types";
+import { cmeEntryVersion } from "@/lib/cme/entry-version";
 
 const entry: CmeEntry = {
   id: "11111111-1111-4111-8111-111111111111",
@@ -136,15 +137,18 @@ describe("CME transaction boundaries and owner scoping", () => {
         error: null,
       }),
     };
-    await saveCmeEntry(client as never, "owner", "year", entry);
+    await saveCmeEntry(client as never, "owner", "year", { ...entry, version: cmeEntryVersion(entry) });
     const args = client.rpc.mock.calls[0][1];
     expect(args.p_create).toBe(false);
     expect(args.p_entry).not.toHaveProperty("transcribed");
     expect(args.p_entry.formalPeerReviewHours).toBe(1.5);
+    expect(args.p_entry.expectedVersion).toEqual(cmeEntryVersion(entry));
   });
   it("safely reports closed-year rejection from the transaction", async () => {
     const client = { rpc: vi.fn().mockResolvedValue({ data: null, error: { message: "cme_year_closed" } }) };
-    await expect(saveCmeEntry(client as never, "owner", "year", entry)).rejects.toMatchObject({ status: 409 });
+    await expect(
+      saveCmeEntry(client as never, "owner", "year", { ...entry, version: cmeEntryVersion(entry) }),
+    ).rejects.toMatchObject({ status: 409, details: { code: "cme_year_closed" } });
   });
   it("looks up entry IDs with an owner predicate and returns the same missing result", async () => {
     const chain = {

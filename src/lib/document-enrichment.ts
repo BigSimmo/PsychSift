@@ -1,4 +1,9 @@
 import {
+  replaceMaintenanceArtifacts,
+  assertLegacyMaintenanceSnapshot,
+  type MaintenanceDocument,
+} from "@/lib/ingestion-maintenance";
+import {
   IngestionAttemptError,
   parseIngestionFence,
   runIngestionPersistence,
@@ -592,6 +597,7 @@ export async function upsertDocumentEnrichment(args: {
   supabase: SupabaseClient;
   document: Pick<ClinicalDocument, "id" | "owner_id" | "title" | "file_name" | "source_path"> & {
     metadata?: ClinicalDocument["metadata"];
+    updated_at?: string;
   };
   chunks: EnrichmentChunk[];
   images?: EnrichmentImage[];
@@ -617,10 +623,12 @@ async function upsertLegacyDocumentEnrichment(args: {
   supabase: SupabaseClient;
   document: Pick<ClinicalDocument, "id" | "owner_id" | "title" | "file_name" | "source_path"> & {
     metadata?: ClinicalDocument["metadata"];
+    updated_at?: string;
   };
   chunks: EnrichmentChunk[];
   images?: EnrichmentImage[];
 }) {
+  assertLegacyMaintenanceSnapshot(args.document as MaintenanceDocument);
   let enrichment: GeneratedSummary;
   try {
     enrichment = await generateDocumentEnrichment(args);
@@ -670,12 +678,12 @@ async function upsertLegacyDocumentEnrichment(args: {
     enrichment_prompt_chunk_ids: selectedPromptChunks.chunks.map((chunk) => chunk.id),
   };
 
-  const { data: summary, error: summaryError } = await args.supabase
-    .from("document_summaries")
-    .upsert(
-      {
-        document_id: args.document.id,
-        owner_id: args.document.owner_id ?? null,
+  const result = await replaceMaintenanceArtifacts({
+    supabase: args.supabase,
+    document: args.document as MaintenanceDocument,
+    operation: "enrichment",
+    payload: {
+      summary: {
         summary: enrichment.summary,
         clinical_specifics: enrichment.clinical_specifics,
         source_chunk_ids: sourceChunkIds,
@@ -685,32 +693,8 @@ async function upsertLegacyDocumentEnrichment(args: {
         generated_at: enrichedAt,
         updated_at: enrichedAt,
       },
-      { onConflict: "document_id" },
-    )
-    .select("*")
-    .single();
-
-  if (summaryError) throw new Error(summaryError.message);
-
-  await args.supabase.from("document_labels").delete().eq("document_id", args.document.id).eq("source", "generated");
-  if (enrichment.labels.length > 0) {
-    const { error: labelsError } = await args.supabase.from("document_labels").insert(
-      enrichment.labels.map((label) => ({
-        document_id: args.document.id,
-        owner_id: args.document.owner_id ?? null,
-        ...label,
-        source: "generated",
-        metadata: generatedMetadata,
-      })),
-    );
-    if (labelsError) throw new Error(labelsError.message);
-  }
-
-  const { error: documentMetadataError } = await args.supabase
-    .from("documents")
-    .update({
-      metadata: {
-        ...metadataRecord(args.document.metadata),
+      labels: enrichment.labels.map((label) => ({ ...label, metadata: generatedMetadata })),
+      metadata_patch: {
         rag_enrichment_version: ragEnrichmentVersion,
         rag_indexing_version: ragEnrichmentVersion,
         rag_memory_version: ragEnrichmentVersion,
@@ -719,13 +703,11 @@ async function upsertLegacyDocumentEnrichment(args: {
         ...organization.metadata,
         ...coverageMetadata,
       },
-    })
-    .eq("id", args.document.id);
-
-  if (documentMetadataError) throw new Error(documentMetadataError.message);
-
-  return { summary: summary as DocumentSummary, labels: enrichment.labels };
+    },
+  });
+  return { summary: result.summary as DocumentSummary, labels: enrichment.labels };
 }
+
 export function assertSourceAnchoredSummaryPreflight(args: {
   documentMetadata: unknown;
   indexGenerationId: unknown;
@@ -1067,6 +1049,7 @@ async function upsertFencedDocumentEnrichment(args: {
   signal?: AbortSignal;
   document: Pick<ClinicalDocument, "id" | "owner_id" | "title" | "file_name" | "source_path"> & {
     metadata?: ClinicalDocument["metadata"];
+    updated_at?: string;
   };
   indexGenerationId: string;
   chunks: EnrichmentChunk[];

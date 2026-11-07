@@ -936,6 +936,7 @@ export type Database = {
           height: number | null;
           id: string;
           image_hash: string | null;
+          index_generation_id: string | null;
           image_quality_score: number | null;
           image_type: string;
           labels: string[];
@@ -964,6 +965,7 @@ export type Database = {
           height?: number | null;
           id?: string;
           image_hash?: string | null;
+          index_generation_id?: string | null;
           image_quality_score?: number | null;
           image_type?: string;
           labels?: string[];
@@ -992,6 +994,7 @@ export type Database = {
           height?: number | null;
           id?: string;
           image_hash?: string | null;
+          index_generation_id?: string | null;
           image_quality_score?: number | null;
           image_type?: string;
           labels?: string[];
@@ -5234,6 +5237,25 @@ export type Database = {
       cme_guard_evidence_insert: { Args: never; Returns: unknown };
       cme_guard_archived_entry: { Args: never; Returns: unknown };
       on_call_service_command: { Args: { p_actor_id: string; p_service_id: string | null; p_action: string; p_payload: Json }; Returns: Json };
+      teaching_create_epa_magic_link_v1: {
+        Args: { p_registrar_id: string; p_link: Json };
+        Returns: Json;
+      };
+      teaching_find_supervisor_overlap_v1: {
+        Args: { p_supervisor_id: string; p_starts_at: string; p_ends_at: string; p_exclude_id: string; p_before_created_at?: string | null; p_before_id?: string | null };
+        Returns: {
+          id: string;
+          registrar_id: string;
+          assessor_id: string | null;
+          category: string;
+          title: string;
+          ratings: Json;
+          feedback: string | null;
+          status: string;
+          created_at: string;
+          updated_at: string;
+        }[];
+      };
       teaching_command: { Args: { p_actor_id: string; p_service_id: string | null; p_action: string; p_payload: Json }; Returns: Json };
       teaching_depth_command: { Args: { p_actor_id: string; p_service_id: string; p_action: string; p_payload: Json }; Returns: Json };
       teaching_whats_on_command: { Args: { p_actor_id: string; p_service_id: string | null; p_action: string; p_payload: Json }; Returns: Json };
@@ -5244,6 +5266,34 @@ export type Database = {
       cme_save_teaching_entry: { Args: { p_owner_id: string; p_occurrence_id: string; p_hours: number; p_request_id: string }; Returns: Json };
       cme_close_year: {
         Args: { p_owner_id: string; p_year_id: string; p_evaluation: Json; p_shortfall_note?: string | null };
+        Returns: Json;
+      };
+      cme_close_year_v2: {
+        Args: { p_owner_id: string; p_year_id: string; p_evaluation: Json; p_shortfall_note?: string | null };
+        Returns: Json;
+      };
+      enqueue_import_document: {
+        Args: { p_document_id: string; p_owner_id: string; p_content_hash: string; p_batch_id: string; p_force: boolean; p_max_attempts: number };
+        Returns: Json;
+      };
+      replace_document_maintenance_artifacts: {
+        Args: { p_document_id: string; p_owner_id: string | null; p_expected_updated_at: string; p_expected_generation_id: string | null; p_operation: string; p_payload: Json };
+        Returns: Json;
+      };
+      commit_document_maintenance_deep_memory: {
+        Args: { p_document_id: string; p_owner_id: string | null; p_expected_updated_at: string; p_expected_generation_id: string | null; p_chunk_patches: Json; p_aliases: Json; p_producer: string; p_artifact_generation_id: string; p_rag_memory_version: string; p_document_intelligence_version: string; p_section_count: number; p_memory_card_count: number; p_index_unit_counts_by_type: Json; p_repaired_anchor_count?: number };
+        Returns: Json;
+      };
+      cme_entry_edit_version: {
+        Args: { p_owner_id: string; p_entry_id: string };
+        Returns: Json;
+      };
+      cme_save_entry_v2: {
+        Args: { p_owner_id: string; p_year_id: string; p_entry_id: string; p_entry: Json; p_create: boolean; p_request_id?: string | null };
+        Returns: Json;
+      };
+      cme_amend_closed_entry_v2: {
+        Args: { p_owner_id: string; p_entry_id: string; p_entry: Json; p_reason: string };
         Returns: Json;
       };
       cme_amend_closed_entry: {
@@ -6347,10 +6397,6 @@ export type Database = {
           repaired: string[];
           status: string;
         }[];
-      };
-      reset_document_index: {
-        Args: { p_document_id: string };
-        Returns: undefined;
       };
       run_all_visual_eval_cases: { Args: { p_limit?: number }; Returns: Json };
       run_visual_eval_case: {

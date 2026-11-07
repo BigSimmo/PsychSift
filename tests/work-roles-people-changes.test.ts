@@ -75,12 +75,19 @@ const workforce: WorkRoleContext = {
   grants: [{ role: "workforce", hospitalId: H1, serviceIds: [TEAM, OTHER_TEAM] }],
 };
 
-async function refusal(promise: Promise<unknown>): Promise<{ status: number; code?: string; message: string }> {
+async function refusal(
+  promise: Promise<unknown>,
+): Promise<{ status: number; code?: string; causeName?: string | null; message: string }> {
   try {
     await promise;
   } catch (error) {
     if (error instanceof PublicApiError)
-      return { status: error.status, code: error.details?.code, message: error.message };
+      return {
+        status: error.status,
+        code: error.details?.code,
+        causeName: error.details?.causeName,
+        message: error.message,
+      };
     throw error;
   }
   throw new Error("expected a refusal");
@@ -276,7 +283,102 @@ describe("rename a hospital", () => {
   });
 });
 
+describe("link a hospital team from stale People selection", () => {
+  it("maps an atomic archived-destination refusal after a successful preflight", async () => {
+    const db = fakeDb(seed());
+    db.tables.work_hospital_teams = [];
+    const originalFrom = db.client.from.bind(db.client);
+    db.client.from = ((table: string) =>
+      table === "work_hospital_teams"
+        ? { insert: async () => ({ error: { code: "P0001", message: "work_hospital_unavailable" } }) }
+        : originalFrom(table as never)) as unknown as typeof db.client.from;
+    const answer = await refusal(
+      applyPeopleChange(db.client, admin, { action: "link-team", hospitalId: H2, serviceId: TEAM }),
+    );
+    expect(answer).toMatchObject({ status: 404, code: "work_people_not_found" });
+    expect(db.writes).toEqual([]);
+  });
+
+  it("reports a saved mutation separately from a failed People refresh", async () => {
+    const db = fakeDb(seed());
+    db.tables.work_hospital_teams = [];
+    const originalFrom = db.client.from.bind(db.client);
+    db.client.from = ((table: string) => {
+      if (table === "work_hospitals" && db.writes.length > 0) {
+        return {
+          select: () => ({
+            is: () => ({
+              order: () => ({
+                limit: async () => ({
+                  data: null,
+                  error: { code: "08006", message: "synthetic read failure" },
+                }),
+              }),
+            }),
+          }),
+        };
+      }
+      return originalFrom(table as never);
+    }) as unknown as typeof db.client.from;
+    const answer = await refusal(
+      applyPeopleChange(db.client, admin, {
+        action: "link-team",
+        hospitalId: H2,
+        serviceId: TEAM,
+      }),
+    );
+    expect(answer).toMatchObject({
+      status: 503,
+      code: "work_people_refresh_failed",
+      causeName: "work_people_unavailable",
+    });
+    expect(answer.message).toMatch(/change was saved/i);
+    expect(db.tables.work_hospital_teams).toContainEqual(
+      expect.objectContaining({ service_id: TEAM, hospital_id: H2 }),
+    );
+  });
+
+  it("refuses an archived destination with zero writes and keeps the team discoverable", async () => {
+    const db = fakeDb(seed());
+    db.tables.work_hospital_teams = [];
+    const answer = await refusal(
+      applyPeopleChange(db.client, admin, {
+        action: "link-team",
+        hospitalId: H3,
+        serviceId: TEAM,
+      }),
+    );
+    expect(answer).toMatchObject({ status: 404, code: "work_people_not_found" });
+    expect(db.writes).toEqual([]);
+    expect(db.tables.work_hospital_teams).toEqual([]);
+  });
+});
+
 describe("archive a hospital", () => {
+  it("maps a linked-team guard refusal after an empty-team preflight without claiming a save", async () => {
+    const db = fakeDb(seed());
+    const originalFrom = db.client.from.bind(db.client);
+    db.client.from = ((table: string) =>
+      table === "work_hospitals"
+        ? {
+            update: () => ({
+              eq: () => ({
+                is: () => ({
+                  select: async () => ({
+                    data: null,
+                    error: { code: "P0001", message: "work_hospital_has_teams" },
+                  }),
+                }),
+              }),
+            }),
+          }
+        : originalFrom(table as never)) as unknown as typeof db.client.from;
+    const answer = await refusal(applyPeopleChange(db.client, admin, { action: "archive-hospital", hospitalId: H2 }));
+    expect(answer).toMatchObject({ status: 409, code: "work_hospital_has_teams" });
+    expect(answer.message).toMatch(/^Move its teams first/);
+    expect(db.writes).toEqual([]);
+  });
+
   it("refuses while teams are linked, and says to move them first", async () => {
     const db = fakeDb(seed());
     const answer = await refusal(applyPeopleChange(db.client, admin, { action: "archive-hospital", hospitalId: H1 }));

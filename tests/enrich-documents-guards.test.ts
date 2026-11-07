@@ -53,7 +53,7 @@ describe("enrich:documents guards", () => {
     expect(projectCheck).toBeLessThan(adminClient);
 
     const dryRunGate = main.indexOf("if (!args.write)");
-    const firstWrite = main.indexOf(".update(");
+    const firstWrite = main.indexOf("patchMaintenanceDocument(");
     expect(dryRunGate, "the dry-run gate must exist in main").toBeGreaterThan(-1);
     expect(firstWrite).toBeGreaterThan(dryRunGate);
     expect(main.indexOf("upsertDocumentEnrichment(")).toBeGreaterThan(dryRunGate);

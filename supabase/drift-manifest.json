@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-11-05T02:55:57.204Z",
+  "generated_at": "2026-11-06T18:52:27.699Z",
   "generator": "scripts/generate-drift-manifest.ts",
   "postgres_image": "supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83",
-  "schema_sha256": "f36f7fac5757e214d4cbc2dd86388ff80e25ec1ccb30533070c0e98b61d75ac2",
-  "replay_seconds": 22,
+  "schema_sha256": "d08fa71922845310bb79ff35875f77aaa2f62580d7b607ca4154459148bb5045",
+  "replay_seconds": 16,
   "snapshot": {
     "views": [
       {
@@ -18791,6 +18791,11 @@
         "table": "documents"
       },
       {
+        "def": "CREATE TRIGGER purge_private_ingestion_evidence_after_document_delete AFTER DELETE ON public.documents FOR EACH ROW EXECUTE FUNCTION ingestion_generation_evidence.purge_deleted_document()",
+        "name": "purge_private_ingestion_evidence_after_document_delete",
+        "table": "documents"
+      },
+      {
         "def": "CREATE TRIGGER extra_time_records_updated_at BEFORE UPDATE ON public.extra_time_records FOR EACH ROW EXECUTE FUNCTION public.set_updated_at()",
         "name": "extra_time_records_updated_at",
         "table": "extra_time_records"
@@ -19026,6 +19031,11 @@
         "table": "teaching_epa_magic_links"
       },
       {
+        "def": "CREATE TRIGGER teaching_epa_pending_limit_guard BEFORE INSERT OR UPDATE OF registrar_id, status, expires_at ON public.teaching_epa_magic_links FOR EACH ROW EXECUTE FUNCTION public.teaching_guard_epa_pending_limit()",
+        "name": "teaching_epa_pending_limit_guard",
+        "table": "teaching_epa_magic_links"
+      },
+      {
         "def": "CREATE TRIGGER teaching_supervision_entry_locked BEFORE UPDATE ON public.teaching_supervision_entries FOR EACH ROW EXECUTE FUNCTION public.teaching_guard_supervision_entry()",
         "name": "teaching_supervision_entry_locked",
         "table": "teaching_supervision_entries"
@@ -19046,6 +19056,11 @@
         "table": "work_course_bookings"
       },
       {
+        "def": "CREATE TRIGGER work_hospital_team_live_guard BEFORE INSERT OR UPDATE OF hospital_id ON public.work_hospital_teams FOR EACH ROW EXECUTE FUNCTION public.work_guard_live_hospital_team()",
+        "name": "work_hospital_team_live_guard",
+        "table": "work_hospital_teams"
+      },
+      {
         "def": "CREATE TRIGGER work_team_move_revokes_supervisors AFTER UPDATE OF hospital_id ON public.work_hospital_teams FOR EACH ROW EXECUTE FUNCTION public.work_revoke_supervisors_on_team_move()",
         "name": "work_team_move_revokes_supervisors",
         "table": "work_hospital_teams"
@@ -19054,6 +19069,11 @@
         "def": "CREATE TRIGGER work_team_supervision_sync AFTER INSERT OR UPDATE OF hospital_id ON public.work_hospital_teams FOR EACH ROW EXECUTE FUNCTION public.work_team_supervision_sync()",
         "name": "work_team_supervision_sync",
         "table": "work_hospital_teams"
+      },
+      {
+        "def": "CREATE TRIGGER work_hospital_archive_guard BEFORE UPDATE OF archived_at ON public.work_hospitals FOR EACH ROW EXECUTE FUNCTION public.work_guard_hospital_archive()",
+        "name": "work_hospital_archive_guard",
+        "table": "work_hospitals"
       },
       {
         "def": "CREATE TRIGGER work_grant_supervision_sync AFTER INSERT OR UPDATE OF revoked_at ON public.work_role_grants FOR EACH ROW EXECUTE FUNCTION public.work_grant_supervision_sync()",
@@ -19328,7 +19348,15 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "75e6365d05e5254ed1ab7105bc7a5077",
+        "def_hash": "f92eb7f19e851854565ce471c3e5da6c",
+        "signature": "public.cme_amend_closed_entry_v2(uuid,uuid,jsonb,text)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "5441f74e90ac73cd54eacc3c74aeae3b",
         "signature": "public.cme_amend_closed_entry(uuid,uuid,jsonb,text)"
       },
       {
@@ -19352,7 +19380,15 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "bc871df2f59aba77fb9a0979da2f9d86",
+        "def_hash": "d44a8f5f7ec24127a53868d05209eaca",
+        "signature": "public.cme_close_year_v2(uuid,uuid,jsonb,text)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "66fb1271bb3f11bb7692292bde3f2a00",
         "signature": "public.cme_close_year(uuid,uuid,jsonb,text)"
       },
       {
@@ -19376,6 +19412,14 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
+        "def_hash": "bdf72d405484a5ba6404e5dfd47f1127",
+        "signature": "public.cme_entry_edit_version(uuid,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
         "def_hash": "4b9519d6501d08a3559daba6f993243a",
         "signature": "public.cme_evidence_counts(uuid,integer)"
       },
@@ -19391,7 +19435,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "2b65f251c7ffbb1865207e0ad2c6d314",
+        "def_hash": "f70d8c2c56e7a990ac4598054b86857b",
         "signature": "public.cme_guard_allocation()"
       },
       {
@@ -19447,7 +19491,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "997a20a5a425edd6bb7c3c25e0e8eff2",
+        "def_hash": "9dc21188c933cf36fc4fdbdda16185e2",
         "signature": "public.cme_guard_requirement()"
       },
       {
@@ -19479,7 +19523,15 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "cb723dadd2d13699cf4443a140368edb",
+        "def_hash": "e276a589f81e815c7e2c2bb5aa2945c6",
+        "signature": "public.cme_save_entry_v2(uuid,uuid,uuid,jsonb,boolean,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "a8ff4e9a90a7d404be21f218d29ea6ee",
         "signature": "public.cme_save_entry(uuid,uuid,uuid,jsonb,boolean,uuid)"
       },
       {
@@ -19532,8 +19584,7 @@
       },
       {
         "acl": [
-          "postgres=X/postgres",
-          "service_role=X/postgres"
+          "postgres=X/postgres"
         ],
         "def_hash": "927067ef3e76b8c072711845574a95b9",
         "signature": "public.commit_document_deep_memory_generation(uuid,text,uuid,text,text,integer,integer,jsonb,integer)"
@@ -19559,6 +19610,14 @@
         ],
         "def_hash": "594b1f715fbbfa1df1b1f1183a7fef5a",
         "signature": "public.commit_document_index_generation(uuid,uuid,text,integer,integer,integer,jsonb,jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "0f36fae87ec259f47ec2223d24ae1e55",
+        "signature": "public.commit_document_maintenance_deep_memory(uuid,uuid,timestamp with time zone,uuid,jsonb,jsonb,text,uuid,text,text,integer,integer,jsonb,integer)"
       },
       {
         "acl": [
@@ -19706,7 +19765,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "cf81c12782a5f977f4cddee4bd918b84",
+        "def_hash": "217ddfda304309af01e8a8a0dd6d9fd6",
         "signature": "public.delete_document_if_idle(uuid,uuid,text,text)"
       },
       {
@@ -19762,6 +19821,14 @@
         ],
         "def_hash": "2314085d7e21c5d54f3997e00fd8cdd9",
         "signature": "public.enforce_document_title_word_scope()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "7fe8a0c8be8d30accc3774e639debe9f",
+        "signature": "public.enqueue_import_document(uuid,uuid,text,uuid,boolean,integer)"
       },
       {
         "acl": [
@@ -20684,6 +20751,14 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
+        "def_hash": "d361332965588f8092efddf362b179c0",
+        "signature": "public.replace_document_maintenance_artifacts(uuid,uuid,timestamp with time zone,uuid,text,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
         "def_hash": "1520c6bbd33e559b378af3cd20b8029c",
         "signature": "public.replace_indexing_v3_core_embeddings(jsonb,jsonb)"
       },
@@ -20749,14 +20824,6 @@
         ],
         "def_hash": "f4e907986b31bb6b80e77c3a502d0afe",
         "signature": "public.reserve_public_source_version(jsonb)"
-      },
-      {
-        "acl": [
-          "postgres=X/postgres",
-          "service_role=X/postgres"
-        ],
-        "def_hash": "243f3960a32db0192d1cce2ebd050004",
-        "signature": "public.reset_document_index(uuid)"
       },
       {
         "acl": [
@@ -21141,7 +21208,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "d4604873b639ee7f2592c1013f9c5563",
+        "def_hash": "d8a2df2d9e40953ae14a5bf741e77cc7",
         "signature": "public.schema_drift_snapshot()"
       },
       {
@@ -21533,6 +21600,14 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
+        "def_hash": "c609ebebdc33b06378e96238892a1e2a",
+        "signature": "public.teaching_create_epa_magic_link_v1(uuid,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
         "def_hash": "843a49ffdd602456c060446b55b6969c",
         "signature": "public.teaching_date_arg(jsonb,text)"
       },
@@ -21567,6 +21642,22 @@
         ],
         "def_hash": "2c394b4d9809e679a339230af729a710",
         "signature": "public.teaching_feed_events(uuid,date,date)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "25cee7ef0a740501e534f65cba49b6f5",
+        "signature": "public.teaching_find_supervisor_overlap_v1(uuid,timestamp with time zone,timestamp with time zone,uuid,timestamp with time zone,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "ab5294b4d530b41d5c1eef89099aa131",
+        "signature": "public.teaching_guard_epa_pending_limit()"
       },
       {
         "acl": [
@@ -21916,6 +22007,22 @@
         ],
         "def_hash": "24cd1765a6cfade89f9d7f0adbebc869",
         "signature": "public.work_grant_supervision_sync()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "26ae27173cf2d18127fa602934df3eff",
+        "signature": "public.work_guard_hospital_archive()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "015aa25282ca7006ccf1d331afe75224",
+        "signature": "public.work_guard_live_hospital_team()"
       },
       {
         "acl": [
@@ -27049,6 +27156,3552 @@
         "def": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
         "name": "work_role_grants_user_id_fkey",
         "table": "work_role_grants"
+      }
+    ],
+    "private_objects": [
+      {
+        "state": {
+          "acl": [
+            "postgres=X/postgres"
+          ]
+        },
+        "identity": "default_acl:postgres:*:f"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "search_path=\"\""
+          ],
+          "def_hash": "4cf07554905c75081100dd4d49bc85c4",
+          "security_definer": false
+        },
+        "identity": "function:ingestion_generation_evidence.admin_pdf_blob(jsonb)"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "search_path=\"\""
+          ],
+          "def_hash": "67c7430d30fefe57bde4158c379a50c4",
+          "security_definer": false
+        },
+        "identity": "function:ingestion_generation_evidence.admin_pdf_commit_allowed(jsonb,uuid)"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "search_path=\"\""
+          ],
+          "def_hash": "d0fe57e7c9fba393590459d8c6a5c6bb",
+          "security_definer": false
+        },
+        "identity": "function:ingestion_generation_evidence.admin_pdf_evaluate(ingestion_generation_evidence.candidates,jsonb,jsonb)"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "search_path=\"\""
+          ],
+          "def_hash": "8d2adfa0429f72567f3496d9fb0be517",
+          "security_definer": false
+        },
+        "identity": "function:ingestion_generation_evidence.admin_pdf_fixed_evidence(ingestion_generation_evidence.candidates,jsonb)"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "search_path=\"\""
+          ],
+          "def_hash": "708b9441208963ff1dcda94d586f6ef4",
+          "security_definer": false
+        },
+        "identity": "function:ingestion_generation_evidence.admin_pdf_ref(bytea)"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "search_path=\"\""
+          ],
+          "def_hash": "d2f4a60616adb826943329753b0c7f52",
+          "security_definer": false
+        },
+        "identity": "function:ingestion_generation_evidence.admin_reference_context(uuid,uuid,text,jsonb)"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "search_path=\"\""
+          ],
+          "def_hash": "ba495364cdae83d01ad629852f8d2161",
+          "security_definer": true
+        },
+        "identity": "function:ingestion_generation_evidence.admin_reference_core(uuid,uuid,uuid[],text,jsonb)"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "search_path=\"\""
+          ],
+          "def_hash": "c2e27eca0fa3e74603a7360756303b6e",
+          "security_definer": false
+        },
+        "identity": "function:ingestion_generation_evidence.admin_reference_decode(text[])"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "search_path=\"\""
+          ],
+          "def_hash": "f41bbdab0531d0250d73f0e9bb3f08b8",
+          "security_definer": false
+        },
+        "identity": "function:ingestion_generation_evidence.admin_reference_digest(jsonb)"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "search_path=\"\""
+          ],
+          "def_hash": "171e3902fabfd1238830bf22e2def63b",
+          "security_definer": false
+        },
+        "identity": "function:ingestion_generation_evidence.admin_reference_evidence(jsonb)"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "search_path=\"\""
+          ],
+          "def_hash": "943239a3ef739554cb8c3dd441f00a01",
+          "security_definer": false
+        },
+        "identity": "function:ingestion_generation_evidence.admin_reference_receipt(jsonb,jsonb)"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "search_path=\"\""
+          ],
+          "def_hash": "70c4121e77df3d27fa0489071ebe8a59",
+          "security_definer": true
+        },
+        "identity": "function:ingestion_generation_evidence.admin_reference_reviewed_state(uuid,jsonb)"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "search_path=\"\""
+          ],
+          "def_hash": "4d40adfc21cf109255a880f04009dbdf",
+          "security_definer": false
+        },
+        "identity": "function:ingestion_generation_evidence.admin_text_commit_allowed(jsonb,uuid)"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "search_path=\"\""
+          ],
+          "def_hash": "861ed5afa7109c7d449f385654b89d83",
+          "security_definer": false
+        },
+        "identity": "function:ingestion_generation_evidence.admin_text_quality(ingestion_generation_evidence.candidates,integer)"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "search_path=\"\""
+          ],
+          "def_hash": "03d7799f0986f1c0c57971b2769e5558",
+          "security_definer": false
+        },
+        "identity": "function:ingestion_generation_evidence.admin_text_utf16_length(text)"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "search_path=\"\""
+          ],
+          "def_hash": "cadd91b6bb07312749c1fec1674aa611",
+          "security_definer": false
+        },
+        "identity": "function:ingestion_generation_evidence.assert_admin_reference_sections(ingestion_generation_evidence.candidates,jsonb,boolean,uuid)"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "search_path=\"\""
+          ],
+          "def_hash": "e20a35e2ab56a92f99a57fc4f4268bd1",
+          "security_definer": false
+        },
+        "identity": "function:ingestion_generation_evidence.assert_admin_text_quality_state(ingestion_generation_evidence.candidates,jsonb,text)"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "search_path=\"\""
+          ],
+          "def_hash": "d6855dd423f0c25850095fdb6632a6f0",
+          "security_definer": false
+        },
+        "identity": "function:ingestion_generation_evidence.assert_admin_text_sections(ingestion_generation_evidence.candidates,jsonb,boolean)"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "search_path=\"\""
+          ],
+          "def_hash": "366ce7915dc4176c28efa22388c83131",
+          "security_definer": true
+        },
+        "identity": "function:ingestion_generation_evidence.assert_admin_text_source_section_layout(ingestion_generation_evidence.candidates)"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "lock_timeout=10s",
+            "search_path=\"\""
+          ],
+          "def_hash": "39db1416a00e95af142f6bd024085ede",
+          "security_definer": true
+        },
+        "identity": "function:ingestion_generation_evidence.assert_deep_memory_staging_owner(jsonb,jsonb,uuid)"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "search_path=\"\""
+          ],
+          "def_hash": "b115e8ef202119cd0a8a9884845bcc62",
+          "security_definer": false
+        },
+        "identity": "function:ingestion_generation_evidence.candidate_enrichment_inputs(ingestion_generation_evidence.candidates,jsonb)"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "search_path=\"\""
+          ],
+          "def_hash": "268b0041b9e5f3b6442370a0165a44f4",
+          "security_definer": false
+        },
+        "identity": "function:ingestion_generation_evidence.checked_native_parent_closure(ingestion_generation_evidence.candidates,text)"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "search_path=\"\""
+          ],
+          "def_hash": "245ea7e7e493137dfdaf11f8259499fb",
+          "security_definer": false
+        },
+        "identity": "function:ingestion_generation_evidence.complete_admin_pdf(jsonb,uuid,jsonb,boolean)"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "search_path=\"\""
+          ],
+          "def_hash": "700a121370ab6e92a3f09957ddf768c4",
+          "security_definer": true
+        },
+        "identity": "function:ingestion_generation_evidence.declare_groups(ingestion_generation_evidence.candidates,jsonb)"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "search_path=\"\""
+          ],
+          "def_hash": "df0499de6586b6071910a97a32837c9d",
+          "security_definer": false
+        },
+        "identity": "function:ingestion_generation_evidence.guard_page_mode()"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "search_path=\"\""
+          ],
+          "def_hash": "422a70810deda2d9925dbe6b7fa3e7a1",
+          "security_definer": false
+        },
+        "identity": "function:ingestion_generation_evidence.immutable()"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "search_path=\"\""
+          ],
+          "def_hash": "fc2959ed8f714b12623b9685f118ab08",
+          "security_definer": true
+        },
+        "identity": "function:ingestion_generation_evidence.inventory(ingestion_generation_evidence.candidates)"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "search_path=\"\""
+          ],
+          "def_hash": "feee625e2b23dbbb5922c7a9f1599145",
+          "security_definer": false
+        },
+        "identity": "function:ingestion_generation_evidence.keys(jsonb,text[])"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "search_path=\"\""
+          ],
+          "def_hash": "e77e9d65ad8910e6a4226799f1cdeed1",
+          "security_definer": true
+        },
+        "identity": "function:ingestion_generation_evidence.lock_candidate(jsonb,uuid)"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "search_path=\"\""
+          ],
+          "def_hash": "f2e1bf60651b0f3da4011268278c3b1b",
+          "security_definer": false
+        },
+        "identity": "function:ingestion_generation_evidence.managed_vector_artifact(ingestion_generation_evidence.candidates,jsonb)"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "search_path=\"\""
+          ],
+          "def_hash": "7ca625fb19f15bcafa1639b19fadf71b",
+          "security_definer": false
+        },
+        "identity": "function:ingestion_generation_evidence.native_parent_closure_bundle(jsonb)"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "search_path=\"\""
+          ],
+          "def_hash": "a9208a88c4baf55301229c27964a59de",
+          "security_definer": false
+        },
+        "identity": "function:ingestion_generation_evidence.persist_candidate_chunks(jsonb,uuid,jsonb)"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "search_path=\"\""
+          ],
+          "def_hash": "c5db794a03818cd5c06dbd11fb8fc071",
+          "security_definer": true
+        },
+        "identity": "function:ingestion_generation_evidence.purge_deleted_document()"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "search_path=\"\""
+          ],
+          "def_hash": "82b0fc6daac469fc9de453a5fc553fc5",
+          "security_definer": false
+        },
+        "identity": "function:ingestion_generation_evidence.read_native_parent_closure(jsonb,uuid,text)"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "search_path=\"\""
+          ],
+          "def_hash": "f1b42dfb4cd49d70b8f095226b04142c",
+          "security_definer": true
+        },
+        "identity": "function:ingestion_generation_evidence.retain(ingestion_generation_evidence.candidates,jsonb)"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "search_path=\"\""
+          ],
+          "def_hash": "d3a7004f86e454f7b4f5e51ecfbe0275",
+          "security_definer": false
+        },
+        "identity": "function:ingestion_generation_evidence.schema_drift_inventory()"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "search_path=\"\""
+          ],
+          "def_hash": "e41f85022153b416a15d15331c38be71",
+          "security_definer": false
+        },
+        "identity": "function:ingestion_generation_evidence.slots()"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "search_path=\"\""
+          ],
+          "def_hash": "ecc05545862ffed3437d4584f834b663",
+          "security_definer": false
+        },
+        "identity": "function:ingestion_generation_evidence.stage_native_parent_closure(jsonb,uuid,jsonb)"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "search_path=\"\""
+          ],
+          "def_hash": "f32a7986f19e3d64329bd7a86c3b9a1b",
+          "security_definer": false
+        },
+        "identity": "function:ingestion_generation_evidence.validate_native_parent_closure(ingestion_generation_evidence.candidates,jsonb)"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "search_path=\"\""
+          ],
+          "def_hash": "97ef23dda00c015f21f6645db7c2ed8d",
+          "security_definer": false
+        },
+        "identity": "function:ingestion_generation_evidence.visual_unit_fence(jsonb)"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=arwdDxtm/postgres"
+          ],
+          "kind": "r",
+          "owner": "postgres",
+          "columns": [
+            {
+              "acl": null,
+              "name": "anchor_id",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": false,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "candidate_authority_digest",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "candidate_job_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "candidate_lease_token",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "candidate_owner_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": false,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "candidate_prepared_sha256",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "candidate_source_expectation_digest",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "candidate_source_sha256",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "chunk_index",
+              "type": "integer",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "content",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "content_hash",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": false,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "created_at",
+              "type": "timestamp with time zone",
+              "default": "now()",
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "document_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "embedding",
+              "type": "extensions.vector(1536)",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "heading_level",
+              "type": "integer",
+              "default": null,
+              "identity": "",
+              "not_null": false,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "id",
+              "type": "uuid",
+              "default": "gen_random_uuid()",
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "image_ids",
+              "type": "uuid[]",
+              "default": "'{}'::uuid[]",
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "index_generation_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": false,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "metadata",
+              "type": "jsonb",
+              "default": "'{}'::jsonb",
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "page_number",
+              "type": "integer",
+              "default": null,
+              "identity": "",
+              "not_null": false,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "parent_heading",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": false,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "retrieval_synopsis",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": false,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "search_tsv",
+              "type": "tsvector",
+              "default": "to_tsvector('english'::regconfig, ((((COALESCE(section_heading, ''::text) || ' '::text) || COALESCE(retrieval_synopsis, ''::text)) || ' '::text) || content))",
+              "identity": "",
+              "not_null": false,
+              "generated": "s"
+            },
+            {
+              "acl": null,
+              "name": "section_heading",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": false,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "section_path",
+              "type": "text[]",
+              "default": "'{}'::text[]",
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "token_estimate",
+              "type": "integer",
+              "default": "0",
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            }
+          ],
+          "indexes": [
+            {
+              "live": true,
+              "ready": true,
+              "valid": true,
+              "identity": "ingestion_generation_evidence.candidate_chunk_rows_document_id_index_generation_id_chunk__key",
+              "definition": "CREATE UNIQUE INDEX candidate_chunk_rows_document_id_index_generation_id_chunk__key ON ingestion_generation_evidence.candidate_chunk_rows USING btree (document_id, index_generation_id, chunk_index)"
+            },
+            {
+              "live": true,
+              "ready": true,
+              "valid": true,
+              "identity": "ingestion_generation_evidence.candidate_chunk_rows_pkey",
+              "definition": "CREATE UNIQUE INDEX candidate_chunk_rows_pkey ON ingestion_generation_evidence.candidate_chunk_rows USING btree (id)"
+            }
+          ],
+          "policies": null,
+          "sequence": null,
+          "triggers": [
+            {
+              "name": "evidence_immutable",
+              "enabled": "O",
+              "definition": "CREATE TRIGGER evidence_immutable BEFORE DELETE OR UPDATE ON ingestion_generation_evidence.candidate_chunk_rows FOR EACH ROW EXECUTE FUNCTION ingestion_generation_evidence.immutable()"
+            },
+            {
+              "name": "evidence_no_truncate",
+              "enabled": "O",
+              "definition": "CREATE TRIGGER evidence_no_truncate BEFORE TRUNCATE ON ingestion_generation_evidence.candidate_chunk_rows FOR EACH STATEMENT EXECUTE FUNCTION ingestion_generation_evidence.immutable()"
+            }
+          ],
+          "reloptions": null,
+          "rls_forced": false,
+          "constraints": [
+            {
+              "name": "candidate_chunk_rows_candidate_authority_digest_check",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "CHECK ((candidate_authority_digest ~ '^sha256:[0-9a-f]{64}$'::text))"
+            },
+            {
+              "name": "candidate_chunk_rows_candidate_prepared_sha256_check",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "CHECK ((candidate_prepared_sha256 ~ '^sha256:[0-9a-f]{64}$'::text))"
+            },
+            {
+              "name": "candidate_chunk_rows_candidate_source_expectation_digest_check",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "CHECK ((candidate_source_expectation_digest ~ '^sha256:[0-9a-f]{64}$'::text))"
+            },
+            {
+              "name": "candidate_chunk_rows_candidate_source_sha256_check",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "CHECK ((candidate_source_sha256 ~ '^sha256:[0-9a-f]{64}$'::text))"
+            },
+            {
+              "name": "candidate_chunk_rows_document_id_index_generation_id_chunk__key",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "UNIQUE (document_id, index_generation_id, chunk_index)"
+            },
+            {
+              "name": "candidate_chunk_rows_document_id_index_generation_id_fkey",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "FOREIGN KEY (document_id, index_generation_id) REFERENCES ingestion_generation_evidence.candidates(document_id, generation_id)"
+            },
+            {
+              "name": "candidate_chunk_rows_pkey",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "PRIMARY KEY (id)"
+            },
+            {
+              "name": "document_chunks_content_not_blank",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "CHECK ((length(btrim(content)) > 0))"
+            }
+          ],
+          "rls_enabled": true,
+          "view_definition": null
+        },
+        "identity": "relation:ingestion_generation_evidence.candidate_chunk_rows"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=arwdDxtm/postgres"
+          ],
+          "kind": "r",
+          "owner": "postgres",
+          "columns": [
+            {
+              "acl": null,
+              "name": "authority_digest",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "created_at",
+              "type": "timestamp with time zone",
+              "default": "clock_timestamp()",
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "document_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "expected_inventory_digest",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": false,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "first_lease_token",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "generation_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "job_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "predecessor_generation_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": false,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "profile_version",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "registration",
+              "type": "jsonb",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "source_byte_length",
+              "type": "bigint",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "source_expectation",
+              "type": "jsonb",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "source_expectation_bytes",
+              "type": "bytea",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "source_expectation_digest",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "source_section_layout",
+              "type": "jsonb",
+              "default": null,
+              "identity": "",
+              "not_null": false,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "source_section_layout_bytes",
+              "type": "bytea",
+              "default": null,
+              "identity": "",
+              "not_null": false,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "source_section_layout_digest",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": false,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "source_sha256",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "source_snapshot",
+              "type": "jsonb",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            }
+          ],
+          "indexes": [
+            {
+              "live": true,
+              "ready": true,
+              "valid": true,
+              "identity": "ingestion_generation_evidence.candidates_pkey",
+              "definition": "CREATE UNIQUE INDEX candidates_pkey ON ingestion_generation_evidence.candidates USING btree (document_id, generation_id)"
+            }
+          ],
+          "policies": null,
+          "sequence": null,
+          "triggers": [
+            {
+              "name": "evidence_immutable",
+              "enabled": "O",
+              "definition": "CREATE TRIGGER evidence_immutable BEFORE DELETE OR UPDATE ON ingestion_generation_evidence.candidates FOR EACH ROW EXECUTE FUNCTION ingestion_generation_evidence.immutable()"
+            },
+            {
+              "name": "evidence_no_truncate",
+              "enabled": "O",
+              "definition": "CREATE TRIGGER evidence_no_truncate BEFORE TRUNCATE ON ingestion_generation_evidence.candidates FOR EACH STATEMENT EXECUTE FUNCTION ingestion_generation_evidence.immutable()"
+            }
+          ],
+          "reloptions": null,
+          "rls_forced": false,
+          "constraints": [
+            {
+              "name": "admin_text_source_section_layout_complete",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "CHECK ((((source_section_layout IS NULL) AND (source_section_layout_bytes IS NULL) AND (source_section_layout_digest IS NULL)) OR ((source_section_layout IS NOT NULL) AND (source_section_layout_bytes IS NOT NULL) AND (source_section_layout_digest IS NOT NULL) AND (source_section_layout_digest ~ '^sha256:[0-9a-f]{64}$'::text) AND (source_section_layout_digest = ('sha256:'::text || encode(extensions.digest(source_section_layout_bytes, 'sha256'::text), 'hex'::text))))))"
+            },
+            {
+              "name": "candidates_pkey",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "PRIMARY KEY (document_id, generation_id)"
+            },
+            {
+              "name": "candidates_profile_version_check",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "CHECK ((profile_version = 'u10-u12-prerequisite-profile-v1'::text))"
+            },
+            {
+              "name": "candidates_source_byte_length_check",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "CHECK (((source_byte_length >= 1) AND (source_byte_length <= 157286400)))"
+            },
+            {
+              "name": "candidates_source_sha256_check",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "CHECK ((source_sha256 ~ '^sha256:[0-9a-f]{64}$'::text))"
+            }
+          ],
+          "rls_enabled": true,
+          "view_definition": null
+        },
+        "identity": "relation:ingestion_generation_evidence.candidates"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=arwdDxtm/postgres"
+          ],
+          "kind": "r",
+          "owner": "postgres",
+          "columns": [
+            {
+              "acl": null,
+              "name": "anchor_id",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": false,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "chunk_index",
+              "type": "integer",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "content",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "content_hash",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": false,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "created_at",
+              "type": "timestamp with time zone",
+              "default": "now()",
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "document_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "embedding",
+              "type": "extensions.vector(1536)",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "heading_level",
+              "type": "integer",
+              "default": null,
+              "identity": "",
+              "not_null": false,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "id",
+              "type": "uuid",
+              "default": "gen_random_uuid()",
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "image_ids",
+              "type": "uuid[]",
+              "default": "'{}'::uuid[]",
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "index_generation_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "metadata",
+              "type": "jsonb",
+              "default": "'{}'::jsonb",
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "packet_identity",
+              "type": "jsonb",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "page_number",
+              "type": "integer",
+              "default": null,
+              "identity": "",
+              "not_null": false,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "parent_heading",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": false,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "prepared_sha256",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "retrieval_synopsis",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": false,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "search_tsv",
+              "type": "tsvector",
+              "default": "to_tsvector('english'::regconfig, ((((COALESCE(section_heading, ''::text) || ' '::text) || COALESCE(retrieval_synopsis, ''::text)) || ' '::text) || content))",
+              "identity": "",
+              "not_null": false,
+              "generated": "s"
+            },
+            {
+              "acl": null,
+              "name": "section_heading",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": false,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "section_path",
+              "type": "text[]",
+              "default": "'{}'::text[]",
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "token_estimate",
+              "type": "integer",
+              "default": "0",
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            }
+          ],
+          "indexes": [
+            {
+              "live": true,
+              "ready": true,
+              "valid": true,
+              "identity": "ingestion_generation_evidence.managed_vector_chunk_rows_document_id_index_generation_id_c_key",
+              "definition": "CREATE UNIQUE INDEX managed_vector_chunk_rows_document_id_index_generation_id_c_key ON ingestion_generation_evidence.managed_vector_chunk_rows USING btree (document_id, index_generation_id, chunk_index)"
+            },
+            {
+              "live": true,
+              "ready": true,
+              "valid": true,
+              "identity": "ingestion_generation_evidence.managed_vector_chunk_rows_pkey",
+              "definition": "CREATE UNIQUE INDEX managed_vector_chunk_rows_pkey ON ingestion_generation_evidence.managed_vector_chunk_rows USING btree (id)"
+            }
+          ],
+          "policies": null,
+          "sequence": null,
+          "triggers": [
+            {
+              "name": "evidence_immutable",
+              "enabled": "O",
+              "definition": "CREATE TRIGGER evidence_immutable BEFORE DELETE OR UPDATE ON ingestion_generation_evidence.managed_vector_chunk_rows FOR EACH ROW EXECUTE FUNCTION ingestion_generation_evidence.immutable()"
+            },
+            {
+              "name": "evidence_no_truncate",
+              "enabled": "O",
+              "definition": "CREATE TRIGGER evidence_no_truncate BEFORE TRUNCATE ON ingestion_generation_evidence.managed_vector_chunk_rows FOR EACH STATEMENT EXECUTE FUNCTION ingestion_generation_evidence.immutable()"
+            }
+          ],
+          "reloptions": null,
+          "rls_forced": false,
+          "constraints": [
+            {
+              "name": "document_chunks_content_not_blank",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "CHECK ((length(btrim(content)) > 0))"
+            },
+            {
+              "name": "managed_vector_chunk_rows_document_id_index_generation_id_c_key",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "UNIQUE (document_id, index_generation_id, chunk_index)"
+            },
+            {
+              "name": "managed_vector_chunk_rows_document_id_index_generation_id_fkey",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "FOREIGN KEY (document_id, index_generation_id) REFERENCES ingestion_generation_evidence.managed_vector_packets(document_id, generation_id)"
+            },
+            {
+              "name": "managed_vector_chunk_rows_pkey",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "PRIMARY KEY (id)"
+            }
+          ],
+          "rls_enabled": true,
+          "view_definition": null
+        },
+        "identity": "relation:ingestion_generation_evidence.managed_vector_chunk_rows"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=arwdDxtm/postgres"
+          ],
+          "kind": "r",
+          "owner": "postgres",
+          "columns": [
+            {
+              "acl": null,
+              "name": "content",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "content_hash",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "created_at",
+              "type": "timestamp with time zone",
+              "default": "now()",
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "document_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "embedding",
+              "type": "extensions.vector(1536)",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "field_type",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "id",
+              "type": "uuid",
+              "default": "gen_random_uuid()",
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "index_generation_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "metadata",
+              "type": "jsonb",
+              "default": "'{}'::jsonb",
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "owner_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": false,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "packet_identity",
+              "type": "jsonb",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "prepared_sha256",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "search_tsv",
+              "type": "tsvector",
+              "default": "to_tsvector('english'::regconfig, content)",
+              "identity": "",
+              "not_null": false,
+              "generated": "s"
+            },
+            {
+              "acl": null,
+              "name": "source_chunk_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": false,
+              "generated": ""
+            }
+          ],
+          "indexes": [
+            {
+              "live": true,
+              "ready": true,
+              "valid": true,
+              "identity": "ingestion_generation_evidence.managed_vector_field_rows_pkey",
+              "definition": "CREATE UNIQUE INDEX managed_vector_field_rows_pkey ON ingestion_generation_evidence.managed_vector_field_rows USING btree (id)"
+            }
+          ],
+          "policies": null,
+          "sequence": null,
+          "triggers": [
+            {
+              "name": "evidence_immutable",
+              "enabled": "O",
+              "definition": "CREATE TRIGGER evidence_immutable BEFORE DELETE OR UPDATE ON ingestion_generation_evidence.managed_vector_field_rows FOR EACH ROW EXECUTE FUNCTION ingestion_generation_evidence.immutable()"
+            },
+            {
+              "name": "evidence_no_truncate",
+              "enabled": "O",
+              "definition": "CREATE TRIGGER evidence_no_truncate BEFORE TRUNCATE ON ingestion_generation_evidence.managed_vector_field_rows FOR EACH STATEMENT EXECUTE FUNCTION ingestion_generation_evidence.immutable()"
+            }
+          ],
+          "reloptions": null,
+          "rls_forced": false,
+          "constraints": [
+            {
+              "name": "document_embedding_fields_content_not_blank",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "CHECK ((length(btrim(content)) > 0))"
+            },
+            {
+              "name": "document_embedding_fields_field_type_check",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "CHECK ((field_type = ANY (ARRAY['document_title'::text, 'document_summary'::text, 'section_context'::text, 'memory_card'::text, 'chunk_high_yield'::text, 'table_row'::text, 'image_caption'::text, 'clinical_action'::text, 'threshold_fact'::text])))"
+            },
+            {
+              "name": "managed_vector_field_rows_document_id_index_generation_id_fkey",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "FOREIGN KEY (document_id, index_generation_id) REFERENCES ingestion_generation_evidence.managed_vector_packets(document_id, generation_id)"
+            },
+            {
+              "name": "managed_vector_field_rows_pkey",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "PRIMARY KEY (id)"
+            }
+          ],
+          "rls_enabled": true,
+          "view_definition": null
+        },
+        "identity": "relation:ingestion_generation_evidence.managed_vector_field_rows"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=arwdDxtm/postgres"
+          ],
+          "kind": "r",
+          "owner": "postgres",
+          "columns": [
+            {
+              "acl": null,
+              "name": "artifact_bytes",
+              "type": "bytea",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "byte_length",
+              "type": "bigint",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "document_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "family",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "generation_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "row_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "sha256",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            }
+          ],
+          "indexes": [
+            {
+              "live": true,
+              "ready": true,
+              "valid": true,
+              "identity": "ingestion_generation_evidence.managed_vector_final_receipts_pkey",
+              "definition": "CREATE UNIQUE INDEX managed_vector_final_receipts_pkey ON ingestion_generation_evidence.managed_vector_final_receipts USING btree (document_id, generation_id, family, row_id)"
+            }
+          ],
+          "policies": null,
+          "sequence": null,
+          "triggers": [
+            {
+              "name": "evidence_immutable",
+              "enabled": "O",
+              "definition": "CREATE TRIGGER evidence_immutable BEFORE DELETE OR UPDATE ON ingestion_generation_evidence.managed_vector_final_receipts FOR EACH ROW EXECUTE FUNCTION ingestion_generation_evidence.immutable()"
+            },
+            {
+              "name": "evidence_no_truncate",
+              "enabled": "O",
+              "definition": "CREATE TRIGGER evidence_no_truncate BEFORE TRUNCATE ON ingestion_generation_evidence.managed_vector_final_receipts FOR EACH STATEMENT EXECUTE FUNCTION ingestion_generation_evidence.immutable()"
+            }
+          ],
+          "reloptions": null,
+          "rls_forced": false,
+          "constraints": [
+            {
+              "name": "managed_vector_final_receipts_check",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "CHECK ((byte_length = octet_length(artifact_bytes)))"
+            },
+            {
+              "name": "managed_vector_final_receipts_check1",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "CHECK ((sha256 = ('sha256:'::text || encode(extensions.digest(artifact_bytes, 'sha256'::text), 'hex'::text))))"
+            },
+            {
+              "name": "managed_vector_final_receipts_document_id_generation_id_fkey",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "FOREIGN KEY (document_id, generation_id) REFERENCES ingestion_generation_evidence.managed_vector_packets(document_id, generation_id)"
+            },
+            {
+              "name": "managed_vector_final_receipts_family_check",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "CHECK ((family = ANY (ARRAY['chunks'::text, 'embedding_fields'::text, 'index_units'::text])))"
+            },
+            {
+              "name": "managed_vector_final_receipts_pkey",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "PRIMARY KEY (document_id, generation_id, family, row_id)"
+            }
+          ],
+          "rls_enabled": true,
+          "view_definition": null
+        },
+        "identity": "relation:ingestion_generation_evidence.managed_vector_final_receipts"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=arwdDxtm/postgres"
+          ],
+          "kind": "r",
+          "owner": "postgres",
+          "columns": [
+            {
+              "acl": null,
+              "name": "artifact_generation_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": false,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "content",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "created_at",
+              "type": "timestamp with time zone",
+              "default": "now()",
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "document_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "embedding",
+              "type": "extensions.vector(1536)",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "extraction_mode",
+              "type": "text",
+              "default": "'deterministic'::text",
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "heading_path",
+              "type": "text[]",
+              "default": "'{}'::text[]",
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "id",
+              "type": "uuid",
+              "default": "gen_random_uuid()",
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "index_generation_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "metadata",
+              "type": "jsonb",
+              "default": "'{}'::jsonb",
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "normalized_terms",
+              "type": "text[]",
+              "default": "'{}'::text[]",
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "owner_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": false,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "packet_identity",
+              "type": "jsonb",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "page_end",
+              "type": "integer",
+              "default": null,
+              "identity": "",
+              "not_null": false,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "page_start",
+              "type": "integer",
+              "default": null,
+              "identity": "",
+              "not_null": false,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "prepared_sha256",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "producer",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": false,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "quality_score",
+              "type": "real",
+              "default": "0.7",
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "search_tsv",
+              "type": "tsvector",
+              "default": "to_tsvector('english'::regconfig, ((((COALESCE(unit_type, ''::text) || ' '::text) || COALESCE(title, ''::text)) || ' '::text) || COALESCE(content, ''::text)))",
+              "identity": "",
+              "not_null": false,
+              "generated": "s"
+            },
+            {
+              "acl": null,
+              "name": "source_chunk_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": false,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "source_image_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": false,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "source_span",
+              "type": "jsonb",
+              "default": null,
+              "identity": "",
+              "not_null": false,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "title",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "unit_type",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "updated_at",
+              "type": "timestamp with time zone",
+              "default": "now()",
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            }
+          ],
+          "indexes": [
+            {
+              "live": true,
+              "ready": true,
+              "valid": true,
+              "identity": "ingestion_generation_evidence.managed_vector_index_rows_pkey",
+              "definition": "CREATE UNIQUE INDEX managed_vector_index_rows_pkey ON ingestion_generation_evidence.managed_vector_index_rows USING btree (id)"
+            }
+          ],
+          "policies": null,
+          "sequence": null,
+          "triggers": [
+            {
+              "name": "evidence_immutable",
+              "enabled": "O",
+              "definition": "CREATE TRIGGER evidence_immutable BEFORE DELETE OR UPDATE ON ingestion_generation_evidence.managed_vector_index_rows FOR EACH ROW EXECUTE FUNCTION ingestion_generation_evidence.immutable()"
+            },
+            {
+              "name": "evidence_no_truncate",
+              "enabled": "O",
+              "definition": "CREATE TRIGGER evidence_no_truncate BEFORE TRUNCATE ON ingestion_generation_evidence.managed_vector_index_rows FOR EACH STATEMENT EXECUTE FUNCTION ingestion_generation_evidence.immutable()"
+            }
+          ],
+          "reloptions": null,
+          "rls_forced": false,
+          "constraints": [
+            {
+              "name": "document_index_units_content_not_blank",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "CHECK ((length(btrim(content)) > 0))"
+            },
+            {
+              "name": "document_index_units_extraction_mode_check",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "CHECK ((extraction_mode = ANY (ARRAY['deterministic'::text, 'model_heavy'::text, 'hybrid'::text])))"
+            },
+            {
+              "name": "document_index_units_quality_score_check",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "CHECK (((quality_score >= (0)::double precision) AND (quality_score <= (1)::double precision)))"
+            },
+            {
+              "name": "document_index_units_unit_type_check",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "CHECK ((unit_type = ANY (ARRAY['document_profile'::text, 'section_summary'::text, 'page_text'::text, 'chunk_evidence'::text, 'table_fact'::text, 'askable_question'::text, 'clinical_fact'::text, 'threshold'::text, 'workflow_step'::text, 'medication_monitoring'::text, 'alias'::text, 'vocabulary_term'::text, 'visual_summary'::text, 'flowchart_step'::text, 'diagram_decision'::text, 'risk_matrix_cell'::text, 'medication_chart_row'::text, 'chart_finding'::text, 'visual_askable_question'::text, 'table_threshold'::text])))"
+            },
+            {
+              "name": "managed_vector_index_rows_document_id_index_generation_id_fkey",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "FOREIGN KEY (document_id, index_generation_id) REFERENCES ingestion_generation_evidence.managed_vector_packets(document_id, generation_id)"
+            },
+            {
+              "name": "managed_vector_index_rows_pkey",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "PRIMARY KEY (id)"
+            }
+          ],
+          "rls_enabled": true,
+          "view_definition": null
+        },
+        "identity": "relation:ingestion_generation_evidence.managed_vector_index_rows"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=arwdDxtm/postgres"
+          ],
+          "kind": "r",
+          "owner": "postgres",
+          "columns": [
+            {
+              "acl": null,
+              "name": "document_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "generation_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "identity",
+              "type": "jsonb",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "plan_digest",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "population_bytes",
+              "type": "bytea",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "population_sha256",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "request",
+              "type": "jsonb",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            }
+          ],
+          "indexes": [
+            {
+              "live": true,
+              "ready": true,
+              "valid": true,
+              "identity": "ingestion_generation_evidence.managed_vector_packets_pkey",
+              "definition": "CREATE UNIQUE INDEX managed_vector_packets_pkey ON ingestion_generation_evidence.managed_vector_packets USING btree (document_id, generation_id)"
+            }
+          ],
+          "policies": null,
+          "sequence": null,
+          "triggers": [
+            {
+              "name": "evidence_immutable",
+              "enabled": "O",
+              "definition": "CREATE TRIGGER evidence_immutable BEFORE DELETE OR UPDATE ON ingestion_generation_evidence.managed_vector_packets FOR EACH ROW EXECUTE FUNCTION ingestion_generation_evidence.immutable()"
+            },
+            {
+              "name": "evidence_no_truncate",
+              "enabled": "O",
+              "definition": "CREATE TRIGGER evidence_no_truncate BEFORE TRUNCATE ON ingestion_generation_evidence.managed_vector_packets FOR EACH STATEMENT EXECUTE FUNCTION ingestion_generation_evidence.immutable()"
+            }
+          ],
+          "reloptions": null,
+          "rls_forced": false,
+          "constraints": [
+            {
+              "name": "managed_vector_packets_check",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "CHECK ((population_sha256 = ('sha256:'::text || encode(extensions.digest(population_bytes, 'sha256'::text), 'hex'::text))))"
+            },
+            {
+              "name": "managed_vector_packets_document_id_generation_id_fkey",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "FOREIGN KEY (document_id, generation_id) REFERENCES ingestion_generation_evidence.candidates(document_id, generation_id)"
+            },
+            {
+              "name": "managed_vector_packets_pkey",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "PRIMARY KEY (document_id, generation_id)"
+            },
+            {
+              "name": "managed_vector_packets_plan_digest_check",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "CHECK ((plan_digest ~ '^sha256:[0-9a-f]{64}$'::text))"
+            }
+          ],
+          "rls_enabled": true,
+          "view_definition": null
+        },
+        "identity": "relation:ingestion_generation_evidence.managed_vector_packets"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=arwdDxtm/postgres"
+          ],
+          "kind": "r",
+          "owner": "postgres",
+          "columns": [
+            {
+              "acl": null,
+              "name": "document_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "family",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "generation_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "group_key",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "outcome",
+              "type": "jsonb",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "unit_key",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            }
+          ],
+          "indexes": [
+            {
+              "live": true,
+              "ready": true,
+              "valid": true,
+              "identity": "ingestion_generation_evidence.outcomes_pkey",
+              "definition": "CREATE UNIQUE INDEX outcomes_pkey ON ingestion_generation_evidence.outcomes USING btree (document_id, generation_id, family, unit_key)"
+            }
+          ],
+          "policies": null,
+          "sequence": null,
+          "triggers": [
+            {
+              "name": "evidence_immutable",
+              "enabled": "O",
+              "definition": "CREATE TRIGGER evidence_immutable BEFORE DELETE OR UPDATE ON ingestion_generation_evidence.outcomes FOR EACH ROW EXECUTE FUNCTION ingestion_generation_evidence.immutable()"
+            },
+            {
+              "name": "evidence_no_truncate",
+              "enabled": "O",
+              "definition": "CREATE TRIGGER evidence_no_truncate BEFORE TRUNCATE ON ingestion_generation_evidence.outcomes FOR EACH STATEMENT EXECUTE FUNCTION ingestion_generation_evidence.immutable()"
+            }
+          ],
+          "reloptions": null,
+          "rls_forced": false,
+          "constraints": [
+            {
+              "name": "outcomes_document_id_generation_id_family_unit_key_fkey",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "FOREIGN KEY (document_id, generation_id, family, unit_key) REFERENCES ingestion_generation_evidence.unit_declarations(document_id, generation_id, family, unit_key)"
+            },
+            {
+              "name": "outcomes_pkey",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "PRIMARY KEY (document_id, generation_id, family, unit_key)"
+            }
+          ],
+          "rls_enabled": true,
+          "view_definition": null
+        },
+        "identity": "relation:ingestion_generation_evidence.outcomes"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=arwdDxtm/postgres"
+          ],
+          "kind": "r",
+          "owner": "postgres",
+          "columns": [
+            {
+              "acl": null,
+              "name": "created_at",
+              "type": "timestamp with time zone",
+              "default": "clock_timestamp()",
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "document_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "generation_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "snapshot",
+              "type": "jsonb",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "snapshot_digest",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            }
+          ],
+          "indexes": [
+            {
+              "live": true,
+              "ready": true,
+              "valid": true,
+              "identity": "ingestion_generation_evidence.prerequisite_accounting_pkey",
+              "definition": "CREATE UNIQUE INDEX prerequisite_accounting_pkey ON ingestion_generation_evidence.prerequisite_accounting USING btree (document_id, generation_id, snapshot_digest)"
+            }
+          ],
+          "policies": null,
+          "sequence": null,
+          "triggers": [
+            {
+              "name": "evidence_immutable",
+              "enabled": "O",
+              "definition": "CREATE TRIGGER evidence_immutable BEFORE DELETE OR UPDATE ON ingestion_generation_evidence.prerequisite_accounting FOR EACH ROW EXECUTE FUNCTION ingestion_generation_evidence.immutable()"
+            },
+            {
+              "name": "evidence_no_truncate",
+              "enabled": "O",
+              "definition": "CREATE TRIGGER evidence_no_truncate BEFORE TRUNCATE ON ingestion_generation_evidence.prerequisite_accounting FOR EACH STATEMENT EXECUTE FUNCTION ingestion_generation_evidence.immutable()"
+            }
+          ],
+          "reloptions": null,
+          "rls_forced": false,
+          "constraints": [
+            {
+              "name": "prerequisite_accounting_document_id_generation_id_fkey",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "FOREIGN KEY (document_id, generation_id) REFERENCES ingestion_generation_evidence.candidates(document_id, generation_id)"
+            },
+            {
+              "name": "prerequisite_accounting_pkey",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "PRIMARY KEY (document_id, generation_id, snapshot_digest)"
+            }
+          ],
+          "rls_enabled": true,
+          "view_definition": null
+        },
+        "identity": "relation:ingestion_generation_evidence.prerequisite_accounting"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=arwdDxtm/postgres"
+          ],
+          "kind": "r",
+          "owner": "postgres",
+          "columns": [
+            {
+              "acl": null,
+              "name": "declaration",
+              "type": "jsonb",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "document_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "family",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "first_lease_token",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "generation_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "group_key",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            }
+          ],
+          "indexes": [
+            {
+              "live": true,
+              "ready": true,
+              "valid": true,
+              "identity": "ingestion_generation_evidence.producer_declarations_pkey",
+              "definition": "CREATE UNIQUE INDEX producer_declarations_pkey ON ingestion_generation_evidence.producer_declarations USING btree (document_id, generation_id, family, group_key)"
+            }
+          ],
+          "policies": null,
+          "sequence": null,
+          "triggers": [
+            {
+              "name": "evidence_immutable",
+              "enabled": "O",
+              "definition": "CREATE TRIGGER evidence_immutable BEFORE DELETE OR UPDATE ON ingestion_generation_evidence.producer_declarations FOR EACH ROW EXECUTE FUNCTION ingestion_generation_evidence.immutable()"
+            },
+            {
+              "name": "evidence_no_truncate",
+              "enabled": "O",
+              "definition": "CREATE TRIGGER evidence_no_truncate BEFORE TRUNCATE ON ingestion_generation_evidence.producer_declarations FOR EACH STATEMENT EXECUTE FUNCTION ingestion_generation_evidence.immutable()"
+            }
+          ],
+          "reloptions": null,
+          "rls_forced": false,
+          "constraints": [
+            {
+              "name": "producer_declarations_document_id_generation_id_fkey",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "FOREIGN KEY (document_id, generation_id) REFERENCES ingestion_generation_evidence.candidates(document_id, generation_id)"
+            },
+            {
+              "name": "producer_declarations_pkey",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "PRIMARY KEY (document_id, generation_id, family, group_key)"
+            }
+          ],
+          "rls_enabled": true,
+          "view_definition": null
+        },
+        "identity": "relation:ingestion_generation_evidence.producer_declarations"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=arwdDxtm/postgres"
+          ],
+          "kind": "r",
+          "owner": "postgres",
+          "columns": [
+            {
+              "acl": null,
+              "name": "artifact_bytes",
+              "type": "bytea",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "byte_length",
+              "type": "bigint",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "document_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "family",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "generation_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "group_key",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "locator",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "representation",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "sha256",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "source_sha256",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "unit_key",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            }
+          ],
+          "indexes": [
+            {
+              "live": true,
+              "ready": true,
+              "valid": true,
+              "identity": "ingestion_generation_evidence.retained_artifacts_pkey",
+              "definition": "CREATE UNIQUE INDEX retained_artifacts_pkey ON ingestion_generation_evidence.retained_artifacts USING btree (document_id, generation_id, family, unit_key)"
+            }
+          ],
+          "policies": null,
+          "sequence": null,
+          "triggers": [
+            {
+              "name": "evidence_immutable",
+              "enabled": "O",
+              "definition": "CREATE TRIGGER evidence_immutable BEFORE DELETE OR UPDATE ON ingestion_generation_evidence.retained_artifacts FOR EACH ROW EXECUTE FUNCTION ingestion_generation_evidence.immutable()"
+            },
+            {
+              "name": "evidence_no_truncate",
+              "enabled": "O",
+              "definition": "CREATE TRIGGER evidence_no_truncate BEFORE TRUNCATE ON ingestion_generation_evidence.retained_artifacts FOR EACH STATEMENT EXECUTE FUNCTION ingestion_generation_evidence.immutable()"
+            }
+          ],
+          "reloptions": null,
+          "rls_forced": false,
+          "constraints": [
+            {
+              "name": "retained_artifacts_check",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "CHECK ((byte_length = octet_length(artifact_bytes)))"
+            },
+            {
+              "name": "retained_artifacts_check1",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "CHECK ((sha256 = ('sha256:'::text || encode(extensions.digest(artifact_bytes, 'sha256'::text), 'hex'::text))))"
+            },
+            {
+              "name": "retained_artifacts_document_id_generation_id_family_unit_k_fkey",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "FOREIGN KEY (document_id, generation_id, family, unit_key) REFERENCES ingestion_generation_evidence.unit_declarations(document_id, generation_id, family, unit_key)"
+            },
+            {
+              "name": "retained_artifacts_pkey",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "PRIMARY KEY (document_id, generation_id, family, unit_key)"
+            }
+          ],
+          "rls_enabled": true,
+          "view_definition": null
+        },
+        "identity": "relation:ingestion_generation_evidence.retained_artifacts"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=arwdDxtm/postgres"
+          ],
+          "kind": "r",
+          "owner": "postgres",
+          "columns": [
+            {
+              "acl": null,
+              "name": "artifact_bytes",
+              "type": "bytea",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "byte_length",
+              "type": "bigint",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "document_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "family",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "generation_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "phase",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "projection_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "row_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "sha256",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            }
+          ],
+          "indexes": [
+            {
+              "live": true,
+              "ready": true,
+              "valid": true,
+              "identity": "ingestion_generation_evidence.scoped_projection_artifacts_pkey",
+              "definition": "CREATE UNIQUE INDEX scoped_projection_artifacts_pkey ON ingestion_generation_evidence.scoped_projection_artifacts USING btree (document_id, generation_id, projection_id, family, row_id, phase)"
+            }
+          ],
+          "policies": null,
+          "sequence": null,
+          "triggers": [
+            {
+              "name": "evidence_immutable",
+              "enabled": "O",
+              "definition": "CREATE TRIGGER evidence_immutable BEFORE DELETE OR UPDATE ON ingestion_generation_evidence.scoped_projection_artifacts FOR EACH ROW EXECUTE FUNCTION ingestion_generation_evidence.immutable()"
+            },
+            {
+              "name": "evidence_no_truncate",
+              "enabled": "O",
+              "definition": "CREATE TRIGGER evidence_no_truncate BEFORE TRUNCATE ON ingestion_generation_evidence.scoped_projection_artifacts FOR EACH STATEMENT EXECUTE FUNCTION ingestion_generation_evidence.immutable()"
+            }
+          ],
+          "reloptions": null,
+          "rls_forced": false,
+          "constraints": [
+            {
+              "name": "scoped_projection_artifacts_check",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "CHECK (((byte_length = octet_length(artifact_bytes)) AND ((byte_length >= 1) AND (byte_length <= 2097152))))"
+            },
+            {
+              "name": "scoped_projection_artifacts_check1",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "CHECK ((sha256 = ('sha256:'::text || encode(extensions.digest(artifact_bytes, 'sha256'::text), 'hex'::text))))"
+            },
+            {
+              "name": "scoped_projection_artifacts_document_id_generation_id_proj_fkey",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "FOREIGN KEY (document_id, generation_id, projection_id) REFERENCES ingestion_generation_evidence.scoped_projection_expectations(document_id, generation_id, projection_id)"
+            },
+            {
+              "name": "scoped_projection_artifacts_family_check",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "CHECK ((family = ANY (ARRAY['images'::text, 'chunks'::text, 'table_facts'::text])))"
+            },
+            {
+              "name": "scoped_projection_artifacts_phase_check",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "CHECK ((phase = ANY (ARRAY['prepared'::text, 'final'::text])))"
+            },
+            {
+              "name": "scoped_projection_artifacts_pkey",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "PRIMARY KEY (document_id, generation_id, projection_id, family, row_id, phase)"
+            }
+          ],
+          "rls_enabled": true,
+          "view_definition": null
+        },
+        "identity": "relation:ingestion_generation_evidence.scoped_projection_artifacts"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=arwdDxtm/postgres"
+          ],
+          "kind": "r",
+          "owner": "postgres",
+          "columns": [
+            {
+              "acl": null,
+              "name": "byte_length",
+              "type": "bigint",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "document_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "generation_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "manifest",
+              "type": "jsonb",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "manifest_bytes",
+              "type": "bytea",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "projection_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "sha256",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            }
+          ],
+          "indexes": [
+            {
+              "live": true,
+              "ready": true,
+              "valid": true,
+              "identity": "ingestion_generation_evidence.scoped_projection_expectations_pkey",
+              "definition": "CREATE UNIQUE INDEX scoped_projection_expectations_pkey ON ingestion_generation_evidence.scoped_projection_expectations USING btree (document_id, generation_id, projection_id)"
+            }
+          ],
+          "policies": null,
+          "sequence": null,
+          "triggers": [
+            {
+              "name": "evidence_immutable",
+              "enabled": "O",
+              "definition": "CREATE TRIGGER evidence_immutable BEFORE DELETE OR UPDATE ON ingestion_generation_evidence.scoped_projection_expectations FOR EACH ROW EXECUTE FUNCTION ingestion_generation_evidence.immutable()"
+            },
+            {
+              "name": "evidence_no_truncate",
+              "enabled": "O",
+              "definition": "CREATE TRIGGER evidence_no_truncate BEFORE TRUNCATE ON ingestion_generation_evidence.scoped_projection_expectations FOR EACH STATEMENT EXECUTE FUNCTION ingestion_generation_evidence.immutable()"
+            }
+          ],
+          "reloptions": null,
+          "rls_forced": false,
+          "constraints": [
+            {
+              "name": "scoped_projection_expectations_check",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "CHECK (((byte_length = octet_length(manifest_bytes)) AND ((byte_length >= 1) AND (byte_length <= 2097152))))"
+            },
+            {
+              "name": "scoped_projection_expectations_check1",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "CHECK ((sha256 = ('sha256:'::text || encode(extensions.digest(manifest_bytes, 'sha256'::text), 'hex'::text))))"
+            },
+            {
+              "name": "scoped_projection_expectations_document_id_generation_id_fkey",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "FOREIGN KEY (document_id, generation_id) REFERENCES ingestion_generation_evidence.candidates(document_id, generation_id)"
+            },
+            {
+              "name": "scoped_projection_expectations_pkey",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "PRIMARY KEY (document_id, generation_id, projection_id)"
+            }
+          ],
+          "rls_enabled": true,
+          "view_definition": null
+        },
+        "identity": "relation:ingestion_generation_evidence.scoped_projection_expectations"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=arwdDxtm/postgres"
+          ],
+          "kind": "r",
+          "owner": "postgres",
+          "columns": [
+            {
+              "acl": null,
+              "name": "document_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "family",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "generation_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "projection_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "row_data",
+              "type": "jsonb",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "row_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            }
+          ],
+          "indexes": [
+            {
+              "live": true,
+              "ready": true,
+              "valid": true,
+              "identity": "ingestion_generation_evidence.scoped_projection_rows_pkey",
+              "definition": "CREATE UNIQUE INDEX scoped_projection_rows_pkey ON ingestion_generation_evidence.scoped_projection_rows USING btree (document_id, generation_id, projection_id, family, row_id)"
+            }
+          ],
+          "policies": null,
+          "sequence": null,
+          "triggers": [
+            {
+              "name": "evidence_immutable",
+              "enabled": "O",
+              "definition": "CREATE TRIGGER evidence_immutable BEFORE DELETE OR UPDATE ON ingestion_generation_evidence.scoped_projection_rows FOR EACH ROW EXECUTE FUNCTION ingestion_generation_evidence.immutable()"
+            },
+            {
+              "name": "evidence_no_truncate",
+              "enabled": "O",
+              "definition": "CREATE TRIGGER evidence_no_truncate BEFORE TRUNCATE ON ingestion_generation_evidence.scoped_projection_rows FOR EACH STATEMENT EXECUTE FUNCTION ingestion_generation_evidence.immutable()"
+            }
+          ],
+          "reloptions": null,
+          "rls_forced": false,
+          "constraints": [
+            {
+              "name": "scoped_projection_rows_document_id_generation_id_projectio_fkey",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "FOREIGN KEY (document_id, generation_id, projection_id) REFERENCES ingestion_generation_evidence.scoped_projection_expectations(document_id, generation_id, projection_id)"
+            },
+            {
+              "name": "scoped_projection_rows_family_check",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "CHECK ((family = ANY (ARRAY['images'::text, 'chunks'::text, 'table_facts'::text])))"
+            },
+            {
+              "name": "scoped_projection_rows_pkey",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "PRIMARY KEY (document_id, generation_id, projection_id, family, row_id)"
+            }
+          ],
+          "rls_enabled": true,
+          "view_definition": null
+        },
+        "identity": "relation:ingestion_generation_evidence.scoped_projection_rows"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=arwdDxtm/postgres"
+          ],
+          "kind": "r",
+          "owner": "postgres",
+          "columns": [
+            {
+              "acl": null,
+              "name": "declaration",
+              "type": "jsonb",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "document_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "family",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "generation_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "group_key",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "unit_key",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            }
+          ],
+          "indexes": [
+            {
+              "live": true,
+              "ready": true,
+              "valid": true,
+              "identity": "ingestion_generation_evidence.unit_declarations_pkey",
+              "definition": "CREATE UNIQUE INDEX unit_declarations_pkey ON ingestion_generation_evidence.unit_declarations USING btree (document_id, generation_id, family, unit_key)"
+            }
+          ],
+          "policies": null,
+          "sequence": null,
+          "triggers": [
+            {
+              "name": "evidence_immutable",
+              "enabled": "O",
+              "definition": "CREATE TRIGGER evidence_immutable BEFORE DELETE OR UPDATE ON ingestion_generation_evidence.unit_declarations FOR EACH ROW EXECUTE FUNCTION ingestion_generation_evidence.immutable()"
+            },
+            {
+              "name": "evidence_no_truncate",
+              "enabled": "O",
+              "definition": "CREATE TRIGGER evidence_no_truncate BEFORE TRUNCATE ON ingestion_generation_evidence.unit_declarations FOR EACH STATEMENT EXECUTE FUNCTION ingestion_generation_evidence.immutable()"
+            }
+          ],
+          "reloptions": null,
+          "rls_forced": false,
+          "constraints": [
+            {
+              "name": "unit_declarations_document_id_generation_id_family_group_k_fkey",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "FOREIGN KEY (document_id, generation_id, family, group_key) REFERENCES ingestion_generation_evidence.producer_declarations(document_id, generation_id, family, group_key)"
+            },
+            {
+              "name": "unit_declarations_pkey",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "PRIMARY KEY (document_id, generation_id, family, unit_key)"
+            }
+          ],
+          "rls_enabled": true,
+          "view_definition": null
+        },
+        "identity": "relation:ingestion_generation_evidence.unit_declarations"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=arwdDxtm/postgres"
+          ],
+          "kind": "r",
+          "owner": "postgres",
+          "columns": [
+            {
+              "acl": null,
+              "name": "document_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "generation_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "issued_rows",
+              "type": "jsonb",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "manifest",
+              "type": "jsonb",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "manifest_bytes",
+              "type": "bytea",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "manifest_sha256",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "parent_bytes",
+              "type": "bytea",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "parent_projection_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "parent_sha256",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "projection_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "seed_bytes",
+              "type": "bytea",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "seed_sha256",
+              "type": "text",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            }
+          ],
+          "indexes": [
+            {
+              "live": true,
+              "ready": true,
+              "valid": true,
+              "identity": "ingestion_generation_evidence.visual_unit_expectations_pkey",
+              "definition": "CREATE UNIQUE INDEX visual_unit_expectations_pkey ON ingestion_generation_evidence.visual_unit_expectations USING btree (document_id, generation_id, projection_id)"
+            }
+          ],
+          "policies": null,
+          "sequence": null,
+          "triggers": [
+            {
+              "name": "evidence_immutable",
+              "enabled": "O",
+              "definition": "CREATE TRIGGER evidence_immutable BEFORE DELETE OR UPDATE ON ingestion_generation_evidence.visual_unit_expectations FOR EACH ROW EXECUTE FUNCTION ingestion_generation_evidence.immutable()"
+            },
+            {
+              "name": "evidence_no_truncate",
+              "enabled": "O",
+              "definition": "CREATE TRIGGER evidence_no_truncate BEFORE TRUNCATE ON ingestion_generation_evidence.visual_unit_expectations FOR EACH STATEMENT EXECUTE FUNCTION ingestion_generation_evidence.immutable()"
+            }
+          ],
+          "reloptions": null,
+          "rls_forced": false,
+          "constraints": [
+            {
+              "name": "visual_unit_expectations_check",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "CHECK ((((octet_length(seed_bytes) >= 1) AND (octet_length(seed_bytes) <= 2097152)) AND (seed_sha256 = ('sha256:'::text || encode(extensions.digest(seed_bytes, 'sha256'::text), 'hex'::text)))))"
+            },
+            {
+              "name": "visual_unit_expectations_check1",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "CHECK ((((octet_length(parent_bytes) >= 1) AND (octet_length(parent_bytes) <= 2097152)) AND (parent_sha256 = ('sha256:'::text || encode(extensions.digest(parent_bytes, 'sha256'::text), 'hex'::text)))))"
+            },
+            {
+              "name": "visual_unit_expectations_check2",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "CHECK ((((octet_length(manifest_bytes) >= 1) AND (octet_length(manifest_bytes) <= 2097152)) AND (manifest_sha256 = ('sha256:'::text || encode(extensions.digest(manifest_bytes, 'sha256'::text), 'hex'::text)))))"
+            },
+            {
+              "name": "visual_unit_expectations_document_id_generation_id_fkey",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "FOREIGN KEY (document_id, generation_id) REFERENCES ingestion_generation_evidence.candidates(document_id, generation_id)"
+            },
+            {
+              "name": "visual_unit_expectations_document_id_generation_id_parent__fkey",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "FOREIGN KEY (document_id, generation_id, parent_projection_id) REFERENCES ingestion_generation_evidence.scoped_projection_expectations(document_id, generation_id, projection_id)"
+            },
+            {
+              "name": "visual_unit_expectations_issued_rows_check",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "CHECK (((jsonb_typeof(issued_rows) = 'array'::text) AND (jsonb_array_length(issued_rows) = 4)))"
+            },
+            {
+              "name": "visual_unit_expectations_pkey",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "PRIMARY KEY (document_id, generation_id, projection_id)"
+            }
+          ],
+          "rls_enabled": true,
+          "view_definition": null
+        },
+        "identity": "relation:ingestion_generation_evidence.visual_unit_expectations"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=arwdDxtm/postgres"
+          ],
+          "kind": "r",
+          "owner": "postgres",
+          "columns": [
+            {
+              "acl": null,
+              "name": "document_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "generation_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "ordinal",
+              "type": "integer",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "projection_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "row_data",
+              "type": "jsonb",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            },
+            {
+              "acl": null,
+              "name": "row_id",
+              "type": "uuid",
+              "default": null,
+              "identity": "",
+              "not_null": true,
+              "generated": ""
+            }
+          ],
+          "indexes": [
+            {
+              "live": true,
+              "ready": true,
+              "valid": true,
+              "identity": "ingestion_generation_evidence.visual_unit_rows_document_id_generation_id_projection_id_ro_key",
+              "definition": "CREATE UNIQUE INDEX visual_unit_rows_document_id_generation_id_projection_id_ro_key ON ingestion_generation_evidence.visual_unit_rows USING btree (document_id, generation_id, projection_id, row_id)"
+            },
+            {
+              "live": true,
+              "ready": true,
+              "valid": true,
+              "identity": "ingestion_generation_evidence.visual_unit_rows_pkey",
+              "definition": "CREATE UNIQUE INDEX visual_unit_rows_pkey ON ingestion_generation_evidence.visual_unit_rows USING btree (document_id, generation_id, projection_id, ordinal)"
+            }
+          ],
+          "policies": null,
+          "sequence": null,
+          "triggers": [
+            {
+              "name": "evidence_immutable",
+              "enabled": "O",
+              "definition": "CREATE TRIGGER evidence_immutable BEFORE DELETE OR UPDATE ON ingestion_generation_evidence.visual_unit_rows FOR EACH ROW EXECUTE FUNCTION ingestion_generation_evidence.immutable()"
+            },
+            {
+              "name": "evidence_no_truncate",
+              "enabled": "O",
+              "definition": "CREATE TRIGGER evidence_no_truncate BEFORE TRUNCATE ON ingestion_generation_evidence.visual_unit_rows FOR EACH STATEMENT EXECUTE FUNCTION ingestion_generation_evidence.immutable()"
+            }
+          ],
+          "reloptions": null,
+          "rls_forced": false,
+          "constraints": [
+            {
+              "name": "visual_unit_rows_document_id_generation_id_projection_id_fkey",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "FOREIGN KEY (document_id, generation_id, projection_id) REFERENCES ingestion_generation_evidence.visual_unit_expectations(document_id, generation_id, projection_id)"
+            },
+            {
+              "name": "visual_unit_rows_document_id_generation_id_projection_id_ro_key",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "UNIQUE (document_id, generation_id, projection_id, row_id)"
+            },
+            {
+              "name": "visual_unit_rows_ordinal_check",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "CHECK (((ordinal >= 1) AND (ordinal <= 4)))"
+            },
+            {
+              "name": "visual_unit_rows_pkey",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "PRIMARY KEY (document_id, generation_id, projection_id, ordinal)"
+            },
+            {
+              "name": "visual_unit_rows_row_data_check",
+              "deferred": false,
+              "validated": true,
+              "deferrable": false,
+              "definition": "CHECK ((jsonb_typeof(row_data) = 'object'::text))"
+            }
+          ],
+          "rls_enabled": true,
+          "view_definition": null
+        },
+        "identity": "relation:ingestion_generation_evidence.visual_unit_rows"
+      },
+      {
+        "state": {
+          "acl": [
+            "postgres=UC/postgres"
+          ],
+          "owner": "postgres"
+        },
+        "identity": "schema:ingestion_generation_evidence"
       }
     ],
     "storage_buckets": [

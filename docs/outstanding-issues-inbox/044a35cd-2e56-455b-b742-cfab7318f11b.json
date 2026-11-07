@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "044a35cd-2e56-455b-b742-cfab7318f11b",
+  "createdOn": "2026-11-05",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "issue",
+    "summary": "Choose and enforce a trusted server decoded-audio duration limit",
+    "detail": "2026-11-05 backend audit (F08), local source33f6478: 120second synthetic WAV reaches mocked provider with absent/forged duration metadata. Byte/rate caps exist; no trusted duration cap across accepted compressed formats or declared decoder/runtime contract. Next: Choose supported duration/formats and bounded trusted decoder; verify package/image supply chain and time/memory limits before enforcing decoded duration. Acceptance: Actual synthetic accepted-format boundary, forged metadata, malformed/oversized/decompression/cancellation and decoder failure tests refuse safely before provider work. No WAV-only or client-metadata substitute. Suggested owner: API + Delivery + product owner. No merge, deployment, live migration, provider spending or specialist approval is granted by logging this task.",
+    "source": "docs/backend-audit-remediation-2026-11-05.md; backend-audit-2026-11-05:AUDIO; source33f6478c63aedf9c2d79effd9890951035f552b2",
+    "issueUlid": "01M6PNKGB96909Z0GDZ2WPW9NZ"
+  }
+}

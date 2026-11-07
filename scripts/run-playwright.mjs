@@ -9,6 +9,7 @@ import ts from "typescript";
 import { childProcessExitCode, childProcessFailureSummary } from "./child-process-result.mjs";
 import { assertPlaywrightBrowsersReady } from "./playwright-browser-preflight.mjs";
 import { removePathSync } from "./retryable-fs.mjs";
+import { nextBuildEnvironment } from "./run-next-build.mjs";
 import { offlineTestEnvironment } from "./test-environment.mjs";
 import { acquireHeavyRunLock } from "./test-run-lock.mjs";
 import {
@@ -424,7 +425,8 @@ try {
     )}\n`,
     "utf8",
   );
-  const offlineEnv = offlineTestEnvironment(lock.environment, {
+  // Next's TypeScript worker inherits NODE_OPTIONS, not the parent's CLI heap flag.
+  const offlineEnv = offlineTestEnvironment(nextBuildEnvironment(lock.environment), {
     PORT: String(port),
     PLAYWRIGHT_BASE_URL: baseUrl,
     NEXT_DIST_DIR: relativeDistDir,

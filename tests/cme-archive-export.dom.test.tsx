@@ -8,6 +8,7 @@ import { CmeNewEntryRoute } from "@/components/cme/cme-new-entry-route";
 import { CmeAnnualSummary } from "@/components/cme/cme-annual-summary";
 import { createAustralianRanzcpPreset } from "@/lib/cme/presets";
 import type { CmeEntry } from "@/lib/cme/types";
+import { cmeEntryVersion } from "@/lib/cme/entry-version";
 const nav = vi.hoisted(() => ({ push: vi.fn(), refresh: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => nav, usePathname: () => "/cme/log/entry" }));
 vi.mock("@/components/cme/cme-evidence-panel", () => ({
@@ -40,6 +41,98 @@ afterEach(() => {
   nav.refresh.mockReset();
 });
 describe("Archive, annual record and learning journeys", () => {
+  it.each([false, true])(
+    "keeps the draft and its original version together after refresh (closed year: %s)",
+    async (amend) => {
+      const user = userEvent.setup();
+      const yearSet = amend ? { ...set, closedAt: "2026-12-20T00:00:00Z" } : set;
+      const original = { ...entry, reflection: "Original saved reflection" };
+      const loaded = { ...original, version: cmeEntryVersion(original) };
+      const latest = { ...entry, reflection: "Later actor's saved reflection" };
+      const refreshed = { ...latest, version: cmeEntryVersion(latest) };
+      let stored = latest;
+      const fetcher = vi.spyOn(globalThis, "fetch").mockImplementation(async (_url, init) => {
+        const body = JSON.parse(String(init?.body));
+        if (JSON.stringify(body.expectedVersion) !== JSON.stringify(refreshed.version)) {
+          return Response.json(
+            { message: "This activity changed in another tab. Reload it before saving your changes." },
+            { status: 409 },
+          );
+        }
+        stored = { ...stored, title: body.title, reflection: body.reflection };
+        return Response.json({ entry: stored });
+      });
+      const { rerender } = render(<CmeEntryRouteClient entry={loaded} set={yearSet} edit demoMode={false} />);
+      const title = screen.getByRole("textbox", { name: /What was it/ });
+      await user.clear(title);
+      await user.type(title, "My unsaved correction");
+      if (amend) await user.type(screen.getByLabelText(/Reason for this amendment/), "Synthetic correction reason");
+      rerender(<CmeEntryRouteClient entry={refreshed} set={yearSet} edit demoMode={false} />);
+      expect(title).toHaveValue("My unsaved correction");
+      expect(screen.getByText(/Your draft is still here/)).toBeInTheDocument();
+      if (amend) expect(screen.getByLabelText(/Reason for this amendment/)).toHaveValue("Synthetic correction reason");
+      await user.click(screen.getByRole("button", { name: amend ? "Record amendment" : "Save changes" }));
+      const body = JSON.parse(String(fetcher.mock.calls[0]?.[1]?.body));
+      expect(body.expectedVersion).toEqual(loaded.version);
+      expect(body.reflection).toBe(original.reflection);
+      expect(await screen.findByText(/This activity changed in another tab/)).toBeInTheDocument();
+      expect(title).toHaveValue("My unsaved correction");
+      expect(stored.reflection).toBe(latest.reflection);
+      expect(nav.refresh).not.toHaveBeenCalled();
+    },
+  );
+
+  it("starts a fresh draft and version for another activity and after reopening edit from view", async () => {
+    const user = userEvent.setup();
+    const loaded = { ...entry, version: cmeEntryVersion(entry) };
+    const other = { ...entry, id: "22222222-2222-4222-8222-222222222222", title: "Another activity" };
+    const otherLoaded = { ...other, version: cmeEntryVersion(other) };
+    const latest = { ...other, title: "Latest saved activity", reflection: "Latest saved reflection" };
+    const latestLoaded = { ...latest, version: cmeEntryVersion(latest) };
+    const fetcher = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(Response.json({ message: "Synthetic refusal keeps the form open" }, { status: 409 }));
+    const { rerender } = render(<CmeEntryRouteClient entry={loaded} set={set} edit demoMode={false} />);
+    await user.type(screen.getByRole("textbox", { name: /What was it/ }), " unsaved first activity");
+    rerender(<CmeEntryRouteClient entry={otherLoaded} set={set} edit demoMode={false} />);
+    expect(screen.getByRole("textbox", { name: /What was it/ })).toHaveValue(other.title);
+    await user.type(screen.getByRole("textbox", { name: /What was it/ }), " unsaved second activity");
+    rerender(<CmeEntryRouteClient entry={latestLoaded} set={set} edit={false} demoMode={false} />);
+    rerender(<CmeEntryRouteClient entry={latestLoaded} set={set} edit demoMode={false} />);
+    expect(screen.getByRole("textbox", { name: /What was it/ })).toHaveValue(latest.title);
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(fetcher.mock.calls[0]?.[0]).toBe(`/api/cme/entries/${other.id}`);
+    expect(JSON.parse(String(fetcher.mock.calls[0]?.[1]?.body))).toMatchObject({
+      reflection: latest.reflection,
+      expectedVersion: latestLoaded.version,
+    });
+  });
+
+  it("submits the loaded version and preserves the draft when another editor has saved first", async () => {
+    const user = userEvent.setup();
+    const loaded = { ...entry, version: cmeEntryVersion(entry) };
+    const fetcher = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(
+        Response.json(
+          { message: "This activity changed in another tab. Reload it before saving your changes." },
+          { status: 409 },
+        ),
+      );
+    render(<CmeEntryRouteClient entry={loaded} set={set} edit demoMode={false} />);
+    const title = screen.getByRole("textbox", { name: /What was it/ });
+    await user.clear(title);
+    await user.type(title, "My unsaved correction");
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(await screen.findByText(/This activity changed in another tab/)).toBeInTheDocument();
+    expect(title).toHaveValue("My unsaved correction");
+    expect(JSON.parse(String(fetcher.mock.calls[0]?.[1]?.body))).toMatchObject({
+      title: "My unsaved correction",
+      expectedVersion: loaded.version,
+    });
+    expect(nav.refresh).not.toHaveBeenCalled();
+  });
+
   it("retains active controls after failed archive, then restores only after confirmed success", async () => {
     const user = userEvent.setup();
     const fetcher = vi

@@ -40,10 +40,18 @@ function textFiles(root) {
 }
 
 const publicRoot = join(projectRoot, "public");
-const clientBuildRoot = join(projectRoot, ".next", "static");
+const requestedDistDir = process.env.NEXT_DIST_DIR?.trim();
+// Match next.config.ts: a selected isolated build must never fall back to a different
+// successful .next build, or the marker check could inspect unrelated/stale artifacts.
+if (requestedDistDir && !/^\.next-playwright\/[a-z0-9-]+\/dist$/i.test(requestedDistDir)) {
+  console.error("NEXT_DIST_DIR must be an owned .next-playwright/<run-id>/dist directory.");
+  process.exit(1);
+}
+const distDir = requestedDistDir || ".next";
+const clientBuildRoot = join(projectRoot, distDir, "static");
 
 if (!existsSync(clientBuildRoot)) {
-  console.error("Client bundle secret surface check requires .next/static. Run it after next build.");
+  console.error(`Client bundle secret surface check requires ${distDir}/static. Run it after next build.`);
   process.exit(1);
 }
 

@@ -34,7 +34,8 @@ const document = {
   title: "Future Uploaded Clinical Protocol",
   file_name: "future-upload.pdf",
   source_path: "uploads/future-upload.pdf",
-  metadata: {},
+  metadata: { index_generation_id: "00000000-0000-4000-8000-000000000010" },
+  updated_at: "snapshot-A",
 };
 
 function chunk(overrides: Partial<SearchResult> & { chunk_index?: number; page_number?: number | null }) {
@@ -472,7 +473,10 @@ describe("deep RAG memory indexing", () => {
     const insertedMemoryRows: Record<string, unknown>[] = [];
     const insertedIndexUnits: Record<string, unknown>[] = [];
     const updatedRows = new Map<string, Record<string, unknown>[]>();
-    const rpc = vi.fn(async () => ({ data: { committed: true }, error: null }));
+    const rpc = vi.fn(async () => ({
+      data: { committed: true, updated_at: "snapshot-next", metadata: document.metadata },
+      error: null,
+    }));
     const supabase = {
       from: vi.fn((table: string) => ({
         insert: (payload: Record<string, unknown>[]) => {
@@ -572,13 +576,18 @@ describe("deep RAG memory indexing", () => {
       ).toBe(false);
     }
     expect(updatedRows.has("documents")).toBe(false);
-    expect(updatedRows.get("document_chunks")?.[0]?.metadata).toEqual(
-      expect.objectContaining({
-        rag_indexing_version: ragDeepMemoryVersion,
-        rag_memory_version: ragDeepMemoryVersion,
-      }),
-    );
-    expect(rpc).toHaveBeenCalledWith("commit_document_deep_memory_generation", {
+    expect(updatedRows.has("document_chunks")).toBe(false);
+    expect(rpc).toHaveBeenCalledWith("commit_document_maintenance_deep_memory", {
+      p_aliases: [],
+      p_owner_id: document.owner_id,
+      p_expected_updated_at: "snapshot-A",
+      p_expected_generation_id: document.metadata.index_generation_id,
+      p_chunk_patches: expect.arrayContaining([
+        expect.objectContaining({
+          id: "chunk-upsert",
+          metadata: expect.objectContaining({ rag_memory_version: ragDeepMemoryVersion }),
+        }),
+      ]),
       p_artifact_generation_id: artifactGeneration,
       p_document_id: document.id,
       p_document_intelligence_version: expect.any(String),
@@ -590,6 +599,51 @@ describe("deep RAG memory indexing", () => {
       p_section_count: insertedSections.length,
     });
   });
+
+  it("refuses unassigned legacy artifact lineage before provider work or staging", async () => {
+    generateModelIndexProfileMock.mockClear();
+    const supabase = {
+      from: vi.fn((table: string) => ({
+        select: () => ({
+          eq: async () => ({
+            data:
+              table === "document_sections"
+                ? [
+                    {
+                      producer: "local-worker",
+                      artifact_generation_id: null,
+                      index_generation_id: null,
+                      metadata: { generated_by: "local-worker" },
+                    },
+                  ]
+                : [],
+            error: null,
+          }),
+        }),
+      })),
+    };
+    await expect(
+      upsertDocumentDeepMemory({ supabase: supabase as never, document, chunks: [chunk({})] }),
+    ).rejects.toThrow("legacy_generation_lineage_requires_fenced_reindex");
+    expect(generateModelIndexProfileMock).not.toHaveBeenCalled();
+  });
+
+  it.each([{}, { index_generation_id: "" }, { index_generation_id: "not-a-uuid" }])(
+    "refuses a snapshot with no committed generation (%j) before provider work or staging",
+    async (metadata) => {
+      generateModelIndexProfileMock.mockClear();
+      const supabase = { from: vi.fn(() => ({ select: () => ({ eq: async () => ({ data: [], error: null }) }) })) };
+      await expect(
+        upsertDocumentDeepMemory({
+          supabase: supabase as never,
+          document: { ...document, metadata },
+          chunks: [chunk({})],
+        }),
+      ).rejects.toThrow("has no committed index generation");
+      expect(generateModelIndexProfileMock).not.toHaveBeenCalled();
+      expect(supabase.from).not.toHaveBeenCalled();
+    },
+  );
 
   it("rejects mixed local and agent artifacts before model generation, embeddings, or deletion", async () => {
     generateModelIndexProfileMock.mockClear();

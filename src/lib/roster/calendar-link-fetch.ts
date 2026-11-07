@@ -100,10 +100,22 @@ export function normaliseCalendarLink(raw: string): URL {
   return url;
 }
 
-async function checkedAddress(url: URL, resolve: LinkResolver): Promise<Address> {
-  const addresses = await resolve(url.hostname).catch(() => {
-    throw new CalendarLinkError("http_error");
+async function checkedAddress(url: URL, resolve: LinkResolver, signal: AbortSignal): Promise<Address> {
+  if (signal.aborted) throw new CalendarLinkError("timeout");
+  let rejectAbort: (reason: CalendarLinkError) => void = () => undefined;
+  const onAbort = () => rejectAbort(new CalendarLinkError("timeout"));
+  const aborted = new Promise<never>((_resolve, reject) => {
+    rejectAbort = reject;
+    signal.addEventListener("abort", onAbort, { once: true });
   });
+  let addresses: Address[];
+  try {
+    // DNS itself cannot be cancelled, but the caller's deadline must still
+    // settle. Promise.race owns a later resolver rejection as well.
+    addresses = await Promise.race([resolve(url.hostname), aborted]);
+  } finally {
+    signal.removeEventListener("abort", onAbort);
+  }
   if (addresses.length === 0 || !addresses.every((entry) => isGlobalPublicAddress(entry.address))) {
     throw new CalendarLinkError("private_address");
   }
@@ -121,7 +133,8 @@ export async function fetchCalendarLink(
   try {
     let url = normaliseCalendarLink(raw);
     for (let hop = 0; hop <= MAX_REDIRECTS; hop += 1) {
-      const address = await checkedAddress(url, resolve);
+      const address = await checkedAddress(url, resolve, controller.signal);
+      if (controller.signal.aborted) throw new CalendarLinkError("timeout");
       const response = await request({ url, address, signal: controller.signal });
       if (response.status >= 300 && response.status < 400 && response.location) {
         response.cancel();

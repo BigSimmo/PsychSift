@@ -37,11 +37,26 @@ export type CmeCloseEvaluation = {
   readonly totalHours: number;
   readonly entryCount: number;
   readonly requirements: readonly CmeClosedRequirementStatus[];
+  /** Canonical complete evaluator inputs, checked against locked database rows before closing. */
+  readonly inputs: {
+    readonly year: number;
+    readonly totalHours: number;
+    readonly confirmedOn: string;
+    readonly confirmedSource: string;
+    readonly requirements: CmeRequirementSet["requirements"];
+    readonly entries: readonly {
+      readonly id: string;
+      readonly buckets: readonly string[];
+      readonly formalPeerReviewHours: number;
+      readonly allocations: readonly CmeAllocation[];
+    }[];
+  };
 };
 
 /**
- * The app's reading of the year at closing. The database checks the total and the count
- * against its own rows before accepting it, so a stale screen cannot close a different record.
+ * The app's reading of the year at closing. Every evaluator input travels with the statuses.
+ * The database compares them to its locked rows before freezing the record; totals alone
+ * cannot detect a category, credit, bucket, task or target change.
  */
 export function buildCmeCloseEvaluation(set: CmeRequirementSet, entries: readonly CmeEntry[]): CmeCloseEvaluation {
   const active = entries.filter((entry) => !entry.archivedAt);
@@ -49,6 +64,29 @@ export function buildCmeCloseEvaluation(set: CmeRequirementSet, entries: readonl
   return {
     totalHours,
     entryCount: active.length,
+    inputs: {
+      year: set.year,
+      totalHours: set.totalHours,
+      confirmedOn: set.confirmedOn,
+      confirmedSource: set.confirmedSource,
+      requirements: [...set.requirements]
+        .sort((a, b) => a.id.localeCompare(b.id))
+        .map((requirement) => ({
+          id: requirement.id,
+          label: requirement.label,
+          source: requirement.source,
+          spec: requirement.spec,
+          completedOn: requirement.completedOn,
+        })),
+      entries: [...active]
+        .sort((a, b) => a.id.localeCompare(b.id))
+        .map((entry) => ({
+          id: entry.id,
+          buckets: [...entry.buckets],
+          formalPeerReviewHours: entry.formalPeerReviewHours ?? 0,
+          allocations: [...entry.allocations].sort((a, b) => a.category.localeCompare(b.category)),
+        })),
+    },
     requirements: statuses.map((status) => ({
       requirementId: status.requirementId,
       label: set.requirements.find((requirement) => requirement.id === status.requirementId)?.label ?? "",

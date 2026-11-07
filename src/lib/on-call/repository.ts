@@ -37,7 +37,7 @@ export async function assertValidLinkedDocumentIds(
 }
 
 const ROW_COLUMNS =
-  "id, section, slug, title, subtitle, body, details, linked_document_ids, tags, is_personal, include_on_card, sort_order, last_verified_at";
+  "id, section, slug, title, subtitle, body, details, linked_document_ids, tags, is_personal, include_on_card, sort_order, last_verified_at, updated_at";
 
 export function rowToOnCallEntry(
   row: Record<string, unknown>,
@@ -59,6 +59,8 @@ export function rowToOnCallEntry(
     includeOnCard: row.include_on_card ?? false,
     sortOrder: row.sort_order ?? 0,
     lastVerifiedAt: (row.last_verified_at as string | null) ?? null,
+    // Do not round through Date: PostgreSQL's microseconds are the write precondition.
+    ...(typeof row.updated_at === "string" ? { updatedAt: row.updated_at } : {}),
   });
   // A row whose details do not match its section is shown without them rather
   // than with a half-parsed shape a renderer would have to guess at.

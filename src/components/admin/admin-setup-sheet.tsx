@@ -1,5 +1,7 @@
 "use client";
 
+import { OnCallEntrySessionBoundary } from "@/components/on-call/on-call-entry-session-boundary";
+
 import { useState } from "react";
 
 import { InlineNotice } from "@/components/primitive-recipes/feedback";
@@ -15,6 +17,7 @@ import {
 } from "@/lib/admin/setup";
 import { parseApiErrorResponse } from "@/lib/api-client-error";
 import { onCallEntrySchema, type OnCallEntry } from "@/lib/on-call/entry-model";
+import { peekOnCallEntrySessionEpoch } from "@/lib/on-call/entry-cache-keys";
 
 const LABELS: Record<SetupRequirement, string> = {
   registration: "Registration expiry",
@@ -35,7 +38,8 @@ export interface AdminSetupSheetProps {
  * is written to the device — every save goes straight to the existing entry
  * API, through the same contract Renewals uses.
  */
-export function AdminSetupSheet({ open, onClose, existingEntries, onCreated }: AdminSetupSheetProps) {
+function AdminSetupSheetSession({ open, onClose, existingEntries, onCreated }: AdminSetupSheetProps) {
+  const sessionEpoch = peekOnCallEntrySessionEpoch();
   const [dates, setDates] = useState<Record<SetupRequirement, string>>({ registration: "", indemnity: "" });
   // Rows already created in this sheet, so a retry after a partial failure
   // never re-sends the one that already saved.
@@ -53,6 +57,10 @@ export function AdminSetupSheet({ open, onClose, existingEntries, onCreated }: A
     setError(null);
     const pending = setupRequirementsToCreate(existingEntries, dates).filter((kind) => !done.includes(kind));
     for (const kind of pending) {
+      if (sessionEpoch !== peekOnCallEntrySessionEpoch()) {
+        setBusy(false);
+        return;
+      }
       try {
         const response = await fetch("/api/on-call/entries", {
           method: "POST",
@@ -62,6 +70,10 @@ export function AdminSetupSheet({ open, onClose, existingEntries, onCreated }: A
         if (!response.ok) throw await parseApiErrorResponse(response);
         const parsed = onCallEntrySchema.safeParse(((await response.json()) as { entry?: unknown }).entry);
         if (!parsed.success) throw new Error("The saved row came back unreadable.");
+        if (sessionEpoch !== peekOnCallEntrySessionEpoch()) {
+          setBusy(false);
+          return;
+        }
         onCreated(parsed.data);
         setDone((previous) => [...previous, kind]);
       } catch (cause) {
@@ -118,5 +130,13 @@ export function AdminSetupSheet({ open, onClose, existingEntries, onCreated }: A
         {error ? <InlineNotice tone="neutral">{error}</InlineNotice> : null}
       </div>
     </Sheet>
+  );
+}
+
+export function AdminSetupSheet(props: Parameters<typeof AdminSetupSheetSession>[0]) {
+  return (
+    <OnCallEntrySessionBoundary open={props.open}>
+      <AdminSetupSheetSession {...props} />
+    </OnCallEntrySessionBoundary>
   );
 }

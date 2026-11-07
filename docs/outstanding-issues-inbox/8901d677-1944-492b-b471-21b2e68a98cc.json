@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "8901d677-1944-492b-b471-21b2e68a98cc",
+  "createdOn": "2026-11-05",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "task",
+    "summary": "Complete historic evidence retention and deletion across derived stores and replay paths",
+    "detail": "2026-11-05 backend audit (DATA-01, V06), local source33f6478: Prospective permanent deletion now purges17private SQL representations, but historic orphan/abandoned evidence, StorageHTTP removal, worker/queue replay, backups and legal-hold treatment are unverified. No live occupancy/sweep was performed. Next: Agree retention/legal holds and run read-only synthetic-target inventory; design owner-approved cleanup/reconciliation and deletion reapplication after restore. Acceptance: Actual isolated Auth/Storage/worker deletion removes only intended owner data and derivatives; delayed jobs/reindex/restore cannot resurrect or disclose deleted records; legitimate retention is explicit. No live sweep is authorized by task logging. Suggested owner: Data + privacy owner + operations. No merge, deployment, live migration, provider spending or specialist approval is granted by logging this task.",
+    "source": "docs/backend-audit-remediation-2026-11-05.md; backend-audit-2026-11-05:DATA_LIFECYCLE; source33f6478c63aedf9c2d79effd9890951035f552b2",
+    "issueUlid": "01M6PNKGFYYK1BX8HGJQYV5AC6"
+  }
+}

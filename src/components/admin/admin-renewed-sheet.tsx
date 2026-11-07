@@ -1,5 +1,9 @@
 "use client";
 
+import { OnCallEntrySessionBoundary } from "@/components/on-call/on-call-entry-session-boundary";
+
+import { peekOnCallEntrySessionEpoch } from "@/lib/on-call/entry-cache-keys";
+
 import { useState } from "react";
 
 import { focusRing } from "@/components/card-recipes";
@@ -45,7 +49,7 @@ const REASON_MESSAGE: Record<Exclude<ReturnType<typeof buildRenewedEntryBody>, {
  * catalogue item for the first time (POST), reusing the exact same body
  * builder and error wording as the renew path.
  */
-export function AdminRenewedSheet({
+function AdminRenewedSheetSession({
   open,
   entry,
   createItem,
@@ -68,6 +72,7 @@ export function AdminRenewedSheet({
   /** Undo of a first-time date ("Add date"): the row this sheet created was deleted. */
   onRemoved: (id: string) => void;
 }) {
+  const sessionEpoch = peekOnCallEntrySessionEpoch();
   const subjectTitle = entry?.title ?? createItem?.title ?? "";
   const [date, setDate] = useState("");
   const [note, setNote] = useState("");
@@ -94,6 +99,7 @@ export function AdminRenewedSheet({
   const previousExpiresOn = entry ? complianceExpiresOn(entry) : undefined;
 
   async function save() {
+    if (sessionEpoch !== peekOnCallEntrySessionEpoch()) return;
     // Belt and braces: an example row is never written to the account.
     if (entry && isOnCallExampleEntry(entry)) return;
     const subject = entry ?? (createItem ? catalogueItemDraftEntry(createItem) : null);
@@ -114,9 +120,11 @@ export function AdminRenewedSheet({
       if (!response.ok) throw await parseApiErrorResponse(response);
       const payload: unknown = await response.json();
       const parsed = onCallEntrySchema.safeParse((payload as { entry?: unknown } | null)?.entry);
-      if (!parsed.success) throw new Error("Save response was invalid.");
+      if (!parsed.success || (entry && parsed.data.id !== entry.id)) throw new Error("Save response was invalid.");
+      if (sessionEpoch !== peekOnCallEntrySessionEpoch()) return;
       setSaved(parsed.data);
       setEarlier(result.earlier);
+      if (sessionEpoch !== peekOnCallEntrySessionEpoch()) return;
       onSaved(parsed.data);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not save this.");
@@ -126,6 +134,7 @@ export function AdminRenewedSheet({
   }
 
   async function undo() {
+    if (sessionEpoch !== peekOnCallEntrySessionEpoch()) return;
     if (!saved) return;
     if (entry && isOnCallExampleEntry(entry)) return;
     setBusy(true);
@@ -134,6 +143,7 @@ export function AdminRenewedSheet({
         // A first-time date created this row, so taking it back deletes it.
         const removed = await fetch(`/api/on-call/entries/${saved.id}`, { method: "DELETE" });
         if (!removed.ok) throw await parseApiErrorResponse(removed);
+        if (sessionEpoch !== peekOnCallEntrySessionEpoch()) return;
         onRemoved(saved.id);
         setSaved(null);
         return;
@@ -146,7 +156,8 @@ export function AdminRenewedSheet({
       if (!response.ok) throw await parseApiErrorResponse(response);
       const payload: unknown = await response.json();
       const parsed = onCallEntrySchema.safeParse((payload as { entry?: unknown } | null)?.entry);
-      if (!parsed.success) throw new Error("Undo response was invalid.");
+      if (!parsed.success || parsed.data.id !== entry.id) throw new Error("Undo response was invalid.");
+      if (sessionEpoch !== peekOnCallEntrySessionEpoch()) return;
       onSaved(parsed.data);
       setSaved(null);
     } catch (caught) {
@@ -243,5 +254,13 @@ export function AdminRenewedSheet({
         </div>
       )}
     </AdminSheet>
+  );
+}
+
+export function AdminRenewedSheet(props: Parameters<typeof AdminRenewedSheetSession>[0]) {
+  return (
+    <OnCallEntrySessionBoundary open={props.open}>
+      <AdminRenewedSheetSession {...props} />
+    </OnCallEntrySessionBoundary>
   );
 }

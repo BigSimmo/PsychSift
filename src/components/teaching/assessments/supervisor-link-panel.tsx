@@ -1,16 +1,17 @@
 "use client";
 
 import { Copy } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { WorkButton, WorkTag } from "@/components/mode-kit/work";
 import { AssessNote, AssessTextField } from "@/components/teaching/assessments/assess-kit";
 import { ApiClientError } from "@/lib/api-client-error";
 import { useExampleData } from "@/lib/example-data/store";
+import { forgetSharedGets } from "@/lib/shared-get";
 import { teachingErrorMessage, teachingGet, teachingPost } from "@/lib/teaching/client";
 import type { EpaNumber } from "@/lib/teaching/assessments/content";
 import { checkEpaClinicianName, EPA_MAGIC_LINK_DEMO_TOKEN } from "@/lib/teaching/assessments/magic-link";
-import type { EpaMagicLinkSummary } from "@/lib/teaching/assessments/magic-link-repository";
+import type { EpaMagicLinkPage, EpaMagicLinkSummary } from "@/lib/teaching/assessments/magic-link-repository";
 import { GUEST_KINDS, type GuestKind } from "@/lib/teaching/assessments/model";
 
 /*
@@ -54,25 +55,60 @@ export function SupervisorLinkPanel({
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [links, setLinks] = useState<readonly EpaMagicLinkSummary[] | null>(null);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [olderBusy, setOlderBusy] = useState(false);
+  const [listError, setListError] = useState<string | null>(null);
+  const requestEpoch = useRef(0);
 
   // Bumped after each create or cancel, so the list reloads from the server.
   const [version, setVersion] = useState(0);
-  const refresh = useCallback(() => setVersion((value) => value + 1), []);
+  const refresh = useCallback(() => {
+    requestEpoch.current += 1;
+    setOlderBusy(false);
+    setListError(null);
+    setNextCursor(null);
+    setVersion((value) => value + 1);
+  }, []);
 
   useEffect(() => {
     let alive = true;
-    teachingGet<{ links: EpaMagicLinkSummary[] }>(API).then(
+    const epoch = ++requestEpoch.current;
+    teachingGet<EpaMagicLinkPage>(API).then(
       (data) => {
-        if (alive) setLinks(data.links);
+        if (alive && epoch === requestEpoch.current) {
+          setLinks(data.links);
+          setNextCursor(data.nextCursor ?? null);
+        }
       },
       () => {
-        if (alive) setLinks(null);
+        if (alive && epoch === requestEpoch.current) {
+          setLinks(null);
+          setListError("Your supervisor links could not be read. Reload to try again.");
+        }
       },
     );
     return () => {
       alive = false;
+      requestEpoch.current += 1;
     };
   }, [version]);
+
+  async function loadOlder() {
+    if (!nextCursor || olderBusy) return;
+    const epoch = requestEpoch.current;
+    setOlderBusy(true);
+    setListError(null);
+    try {
+      const page = await teachingGet<EpaMagicLinkPage>(`${API}?${new URLSearchParams({ cursor: nextCursor })}`);
+      if (epoch !== requestEpoch.current) return;
+      setLinks((current) => [...new Map([...(current ?? []), ...page.links].map((link) => [link.id, link])).values()]);
+      setNextCursor(page.nextCursor);
+    } catch {
+      if (epoch === requestEpoch.current) setListError("Older links could not be read. Try loading them again.");
+    } finally {
+      if (epoch === requestEpoch.current) setOlderBusy(false);
+    }
+  }
 
   const nameProblem = checkEpaClinicianName(supervisorName) ?? checkEpaClinicianName(traineeName);
 
@@ -129,6 +165,9 @@ export function SupervisorLinkPanel({
     } catch {
       setStatus("That link could not be cancelled.");
     }
+    // The DELETE bypasses teachingPost, so drop any in-flight list read here: the refresh
+    // below must not join a GET that started before this cancellation.
+    forgetSharedGets(API);
     refresh();
   }
 
@@ -175,6 +214,11 @@ export function SupervisorLinkPanel({
           <span>{status}</span>
         </p>
       ) : null}
+      {listError ? (
+        <p role="alert" className="assess-note">
+          {listError}
+        </p>
+      ) : null}
       {links && links.length > 0 ? (
         <section aria-labelledby="epa-sent-links-heading" className="grid gap-1.5">
           <h3 id="epa-sent-links-heading" className="work-label m-0">
@@ -205,7 +249,14 @@ export function SupervisorLinkPanel({
               </li>
             ))}
           </ul>
-          <p className="work-row__sub m-0">Only you see your links and what comes back.</p>
+          {nextCursor ? (
+            <WorkButton variant="secondary" disabled={olderBusy} onClick={() => void loadOlder()}>
+              {olderBusy ? "Loading older links…" : "Load older links"}
+            </WorkButton>
+          ) : null}
+          <p className="work-row__sub m-0">
+            Only you see your links and what comes back. Waiting links stay visible while you load older history.
+          </p>
         </section>
       ) : null}
     </section>

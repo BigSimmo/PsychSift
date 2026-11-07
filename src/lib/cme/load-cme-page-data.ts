@@ -128,20 +128,26 @@ async function loadAllYears(
       fetchOwnerCmeYears(admin, ownerId),
       fetchCmeCertificateEntryIds(admin, ownerId),
     ]);
-    const byYear = await Promise.all(
-      years.map(async ({ id, year }) => {
-        if (year === selectedYear) return selectedEntries;
-        const [entries, evidenceCounts] = await Promise.all([
-          fetchOwnerCmeEntries(admin, ownerId, id, options),
-          fetchCmeEvidenceCounts(admin, ownerId, year),
-        ]);
-        return entries.map((entry) => ({
-          ...entry,
-          evidenceCount: evidenceCounts[entry.id] ?? 0,
-          certificateCount: certificateEntryIds.has(entry.id) ? 1 : 0,
-        }));
-      }),
-    );
+    // Keep complete cross-year records, but do not start up to 200 independent reads at once.
+    // Four years per batch means at most eight entry/evidence reads while reusing selected data.
+    const byYear: (readonly CmeEntry[])[] = [];
+    for (let from = 0; from < years.length; from += 4) {
+      const batch = await Promise.all(
+        years.slice(from, from + 4).map(async ({ id, year }) => {
+          if (year === selectedYear) return selectedEntries;
+          const [entries, evidenceCounts] = await Promise.all([
+            fetchOwnerCmeEntries(admin, ownerId, id, options),
+            fetchCmeEvidenceCounts(admin, ownerId, year),
+          ]);
+          return entries.map((entry) => ({
+            ...entry,
+            evidenceCount: evidenceCounts[entry.id] ?? 0,
+            certificateCount: certificateEntryIds.has(entry.id) ? 1 : 0,
+          }));
+        }),
+      );
+      byYear.push(...batch);
+    }
     return {
       allEntries: byYear.flat(),
       availableYears: years.map(({ year }) => year),

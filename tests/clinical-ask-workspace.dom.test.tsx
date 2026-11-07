@@ -213,6 +213,47 @@ describe("ClinicalAskWorkspace", () => {
     HTMLElement.prototype.scrollIntoView = vi.fn();
   });
 
+  it("renders and copies canonical section labels even for a legacy model-authored heading", () => {
+    const title = "The service will accept the referral";
+    const claim = {
+      id: "c",
+      text: "The source indicates that clinician review may consider the example.",
+      evidenceIds: ["e1"],
+    };
+    const response: Extract<ClinicalAskResponse, { state: "answered" }> = {
+      state: "answered",
+      mode: "services",
+      lead: claim,
+      sections: [{ id: "potential_matches", title, claims: [claim] }],
+      evidence: [
+        {
+          id: "e1",
+          tier: "catalogue",
+          title: "Synthetic evidence",
+          publisher: "Synthetic publisher",
+          jurisdiction: null,
+          href: "/synthetic",
+          extract: "",
+          reviewState: "reviewed",
+          publishedAt: null,
+          updatedAt: null,
+          retrievedAt: null,
+        },
+      ],
+      conflicts: [],
+      missingInformation: [],
+      followUps: [],
+      handoffs: [],
+    };
+    render(<ClinicalAskAnswerSurface response={response} />);
+    expect(screen.getByRole("heading", { level: 3, name: "Potential matches" })).toBeInTheDocument();
+    expect(document.body.textContent).not.toContain(title);
+    const copied = clinicalAskExportText(response);
+    expect(copied).toContain("\nPotential matches\n");
+    expect(copied).not.toContain(title);
+    expect(copied).toContain(claim.text);
+  });
+
   // D26-10: a stalled Clinical Ask spun with no end.
   it("offers Keep waiting or Stop once an answer has stalled", () => {
     vi.useFakeTimers();

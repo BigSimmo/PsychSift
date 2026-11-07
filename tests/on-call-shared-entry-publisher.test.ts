@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   from: vi.fn(),
   writes: [] as Array<{ kind: string; values?: unknown; filters: Array<[string, string, unknown]> }>,
   storedIsPersonal: false as boolean | null,
+  storedUpdatedAt: "2026-11-05T12:00:00.123456+00:00",
   administrators: [] as string[],
   foreignDemoRows: [] as unknown[],
 }));
@@ -83,6 +84,7 @@ function storedRow(isPersonal: boolean) {
     include_on_card: false,
     sort_order: 0,
     last_verified_at: null,
+    updated_at: mocks.storedUpdatedAt,
   };
 }
 
@@ -98,6 +100,10 @@ function fakeTable() {
         data: mocks.storedIsPersonal === null ? null : { is_personal: mocks.storedIsPersonal },
         error: null,
       });
+    }
+    const versionFilter = pending.filters.find(([op, column]) => op === "eq" && column === "updated_at");
+    if (pending.kind === "verify" && versionFilter && versionFilter[2] !== mocks.storedUpdatedAt) {
+      return Promise.resolve({ data: null, error: null });
     }
     const personalFilter = pending.filters.find(([op, column]) => op === "in" && column === "is_personal");
     const isPersonal =
@@ -173,6 +179,7 @@ beforeEach(() => {
   mocks.from.mockImplementation(() => fakeTable());
   mocks.writes.length = 0;
   mocks.storedIsPersonal = false;
+  mocks.storedUpdatedAt = "2026-11-05T12:00:00.123456+00:00";
   signIn("ordinary");
 });
 
@@ -236,10 +243,60 @@ describe("editing an On Call entry", () => {
 });
 
 describe("verifying an On Call entry", () => {
+  it("refuses a versionless old-client verification before any write", async () => {
+    mocks.storedIsPersonal = true;
+    const response = await verifyEntry(
+      jsonRequest(`http://localhost/api/on-call/entries/${ENTRY_ID}/verify`, "POST"),
+      params,
+    );
+    expect(response.status).toBe(428);
+    expect(mocks.writes).toEqual([]);
+  });
+
+  it.each([
+    ["malformed timestamp", { expectedUpdatedAt: "yesterday" }, 400],
+    ["unknown input", { expectedUpdatedAt: "2026-11-05T12:00:00.123456+00:00", ownerId: OWNER }, 400],
+    ["oversized input", { expectedUpdatedAt: "x".repeat(1024) }, 413],
+  ])("rejects a %s before any write", async (_name, body, status) => {
+    mocks.storedIsPersonal = true;
+    const response = await verifyEntry(
+      jsonRequest(`http://localhost/api/on-call/entries/${ENTRY_ID}/verify`, "POST", body),
+      params,
+    );
+    expect(response.status).toBe(status);
+    expect(mocks.writes).toEqual([]);
+  });
+
+  it("atomically refuses an intervening edit instead of verifying unseen content", async () => {
+    mocks.storedIsPersonal = true;
+    const response = await verifyEntry(
+      jsonRequest(`http://localhost/api/on-call/entries/${ENTRY_ID}/verify`, "POST", {
+        expectedUpdatedAt: "2026-11-05T11:00:00.123456+00:00",
+      }),
+      params,
+    );
+    expect(response.status).toBe(409);
+    expect(mocks.writes[0]?.filters).toContainEqual(["eq", "updated_at", "2026-11-05T11:00:00.123456+00:00"]);
+  });
+
+  it("preserves the exact microsecond precondition on an accepted verification", async () => {
+    mocks.storedIsPersonal = true;
+    const response = await verifyEntry(
+      jsonRequest(`http://localhost/api/on-call/entries/${ENTRY_ID}/verify`, "POST", {
+        expectedUpdatedAt: mocks.storedUpdatedAt,
+      }),
+      params,
+    );
+    expect(response.status).toBe(200);
+    expect(mocks.writes[0]?.filters).toContainEqual(["eq", "updated_at", mocks.storedUpdatedAt]);
+  });
+
   it("lets an ordinary account verify only its private entries, and says why a shared one is refused", async () => {
     mocks.storedIsPersonal = false;
     const response = await verifyEntry(
-      jsonRequest(`http://localhost/api/on-call/entries/${ENTRY_ID}/verify`, "POST"),
+      jsonRequest(`http://localhost/api/on-call/entries/${ENTRY_ID}/verify`, "POST", {
+        expectedUpdatedAt: mocks.storedUpdatedAt,
+      }),
       params,
     );
     expect(response.status).toBe(403);
@@ -249,7 +306,9 @@ describe("verifying an On Call entry", () => {
   it("verifies an ordinary account's private entry", async () => {
     mocks.storedIsPersonal = true;
     const response = await verifyEntry(
-      jsonRequest(`http://localhost/api/on-call/entries/${ENTRY_ID}/verify`, "POST"),
+      jsonRequest(`http://localhost/api/on-call/entries/${ENTRY_ID}/verify`, "POST", {
+        expectedUpdatedAt: mocks.storedUpdatedAt,
+      }),
       params,
     );
     expect(response.status).toBe(200);
@@ -258,7 +317,9 @@ describe("verifying an On Call entry", () => {
   it("still answers not found for an id the caller does not own", async () => {
     mocks.storedIsPersonal = null;
     const response = await verifyEntry(
-      jsonRequest(`http://localhost/api/on-call/entries/${ENTRY_ID}/verify`, "POST"),
+      jsonRequest(`http://localhost/api/on-call/entries/${ENTRY_ID}/verify`, "POST", {
+        expectedUpdatedAt: mocks.storedUpdatedAt,
+      }),
       params,
     );
     expect(response.status).toBe(404);
@@ -268,7 +329,9 @@ describe("verifying an On Call entry", () => {
     signIn("administrator");
     mocks.storedIsPersonal = false;
     const response = await verifyEntry(
-      jsonRequest(`http://localhost/api/on-call/entries/${ENTRY_ID}/verify`, "POST"),
+      jsonRequest(`http://localhost/api/on-call/entries/${ENTRY_ID}/verify`, "POST", {
+        expectedUpdatedAt: mocks.storedUpdatedAt,
+      }),
       params,
     );
     expect(response.status).toBe(200);

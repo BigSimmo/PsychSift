@@ -152,6 +152,8 @@ export async function createClinicalAskWebSearchResponse(args: {
   const request = {
     model: env.OPENAI_ANSWER_MODEL,
     store: false,
+    max_output_tokens: env.OPENAI_MAX_OUTPUT_TOKENS,
+    max_tool_calls: 1,
     input: args.input,
     tools: [
       {

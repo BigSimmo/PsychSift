@@ -1,5 +1,9 @@
 "use client";
 
+import { OnCallEntrySessionBoundary } from "@/components/on-call/on-call-entry-session-boundary";
+
+import { peekOnCallEntrySessionEpoch } from "@/lib/on-call/entry-cache-keys";
+
 import dynamic from "next/dynamic";
 import { ClipboardList, Copy, FileText } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
@@ -76,7 +80,7 @@ async function patchEntry(id: string, body: unknown): Promise<OnCallEntry> {
   if (!response.ok) throw await parseApiErrorResponse(response);
   const json: unknown = await response.json();
   const parsed = onCallEntrySchema.safeParse((json as { entry?: unknown } | null)?.entry);
-  if (!parsed.success) throw new Error("Save response was invalid.");
+  if (!parsed.success || parsed.data.id !== id) throw new Error("Save response was invalid.");
   return parsed.data;
 }
 
@@ -230,7 +234,8 @@ function PaperworkSignpost({ overview }: { readonly overview: ComplianceOverview
  * "Your Admin records"). Order, not weeks, is what the page shows (owner
  * decision) — there is no week strip.
  */
-export function AdminNewJobPage({ now: nowProp }: { now?: Date } = {}) {
+function AdminNewJobPageSession({ now: nowProp }: { now?: Date } = {}) {
+  const sessionEpoch = peekOnCallEntrySessionEpoch();
   const { scope, isCurrent } = useAccountRequestScope();
   const [owner, setOwner] = useState(scope);
   const { isAuthenticated } = useAccountData();
@@ -288,6 +293,7 @@ export function AdminNewJobPage({ now: nowProp }: { now?: Date } = {}) {
         : null;
 
   function upsertCachedEntry(entry: OnCallEntry) {
+    if (sessionEpoch !== peekOnCallEntrySessionEpoch()) return;
     if (!isCurrent()) return;
     if (isOnCallExampleEntry(entry)) return;
     // The latest cache, not this render's list: two saves in flight would otherwise undo each other.
@@ -295,13 +301,17 @@ export function AdminNewJobPage({ now: nowProp }: { now?: Date } = {}) {
     const next = latest.some((existing) => existing.id === entry.id)
       ? latest.map((existing) => (existing.id === entry.id ? entry : existing))
       : [...latest, entry];
-    cacheOnCallEntries(next);
+    cacheOnCallEntries(next, sessionEpoch);
   }
 
   function removeCachedEntry(id: string) {
+    if (sessionEpoch !== peekOnCallEntrySessionEpoch()) return;
     if (!isCurrent()) return;
     const latest = readCachedOnCallEntries()?.entries ?? entries;
-    cacheOnCallEntries(latest.filter((existing) => existing.id !== id));
+    cacheOnCallEntries(
+      latest.filter((existing) => existing.id !== id),
+      sessionEpoch,
+    );
   }
 
   async function handleToggle(entry: OnCallEntry, done: boolean) {
@@ -559,5 +569,13 @@ export function AdminNewJobPage({ now: nowProp }: { now?: Date } = {}) {
         />
       ) : null}
     </>
+  );
+}
+
+export function AdminNewJobPage(props: Parameters<typeof AdminNewJobPageSession>[0] = {}) {
+  return (
+    <OnCallEntrySessionBoundary>
+      <AdminNewJobPageSession {...props} />
+    </OnCallEntrySessionBoundary>
   );
 }

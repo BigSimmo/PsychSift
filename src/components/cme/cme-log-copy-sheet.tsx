@@ -67,6 +67,9 @@ export function CmeLogCopySheet({
 
   const finished = index >= queue.length;
   const current = finished ? undefined : lookup(queue[index]!);
+  // Other years must be opened to establish their closed state before changing bookkeeping.
+  const currentYearKnown = current?.date.startsWith(`${set.year}-`) ?? false;
+  const trackingReadOnly = Boolean(set.closedAt) || !currentYearKnown;
   const text = current && !current.archivedAt ? formatEntryForCpdHome(current, entryYearSet(set, current)) : "";
   const fields = text ? cpdHomeFields(text) : [];
   const stillNotCopied = queue.filter((id) => {
@@ -98,7 +101,7 @@ export function CmeLogCopySheet({
   }
 
   async function markAndNext() {
-    if (!current || busy || demoMode) return;
+    if (!current || busy || demoMode || trackingReadOnly) return;
     setBusy(true);
     setError(null);
     try {
@@ -152,24 +155,35 @@ export function CmeLogCopySheet({
         type="button"
         className="work-button min-h-tap flex-1"
         data-variant="secondary"
-        onClick={() => moveTo(index + 1)}
+        onClick={() => (trackingReadOnly ? onClose() : moveTo(index + 1))}
         disabled={busy}
         data-testid="cme-log-copy-skip"
       >
-        Skip
+        {trackingReadOnly ? "Close" : "Skip"}
       </button>
-      <button
-        type="button"
-        className="work-button min-h-tap flex-[2]"
-        data-variant="primary"
-        aria-busy={busy || undefined}
-        disabled={busy || demoMode || !current}
-        onClick={() => void markAndNext()}
-        data-testid="cme-log-copy-mark"
-      >
-        <Check aria-hidden="true" strokeWidth={2.2} />
-        {busy ? "Saving…" : "Mark copied, next"}
-      </button>
+      {trackingReadOnly ? (
+        <button
+          type="button"
+          className="work-button min-h-tap flex-[2]"
+          data-variant="primary"
+          onClick={() => moveTo(index + 1)}
+        >
+          Next activity
+        </button>
+      ) : (
+        <button
+          type="button"
+          className="work-button min-h-tap flex-[2]"
+          data-variant="primary"
+          aria-busy={busy || undefined}
+          disabled={busy || demoMode || !current}
+          onClick={() => void markAndNext()}
+          data-testid="cme-log-copy-mark"
+        >
+          <Check aria-hidden="true" strokeWidth={2.2} />
+          {busy ? "Saving…" : "Mark copied, next"}
+        </button>
+      )}
     </div>
   );
 
@@ -196,7 +210,15 @@ export function CmeLogCopySheet({
           </div>
         ) : null}
 
-        {lastMarked && !demoMode ? (
+        {!finished && trackingReadOnly ? (
+          <InlineNotice tone="neutral">
+            {currentYearKnown && set.closedAt
+              ? "This year is closed. Copying is available; its recorded copied status stays unchanged."
+              : "Open this activity's year to change its copied status. Copying is still available here."}
+          </InlineNotice>
+        ) : null}
+
+        {lastMarked && !demoMode && !set.closedAt && lastMarked.date.startsWith(`${set.year}-`) ? (
           <div data-testid="cme-log-copy-last" className="cpd-ban">
             <Check aria-hidden="true" strokeWidth={2} />
             <span className={textMuted}>

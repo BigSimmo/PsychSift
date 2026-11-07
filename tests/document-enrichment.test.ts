@@ -108,6 +108,20 @@ function createSupabaseMock() {
 
   const supabase = {
     calls,
+    rpc: vi.fn(async (_name: string, payload: Record<string, unknown>) => {
+      const replacement = payload.p_payload as {
+        summary?: Record<string, unknown>;
+        metadata_patch?: Record<string, unknown>;
+      };
+      return {
+        data: {
+          updated_at: "snapshot-next",
+          metadata: { existing: true, ...replacement.metadata_patch },
+          summary: { id: "summary-1", ...replacement.summary },
+        },
+        error: null,
+      };
+    }),
     from: vi.fn((table: string) => {
       const call: QueryCall = { table, operation: "select", filters: [] };
       calls.push(call);
@@ -166,6 +180,39 @@ describe("document enrichment", () => {
     vi.restoreAllMocks();
   });
 
+  it("does not commit partial summary/label writes when atomic replacement rejects the snapshot", async () => {
+    const supabase = {
+      ...createSupabaseMock(),
+      rpc: vi.fn().mockResolvedValue({ data: null, error: { message: "maintenance_snapshot_conflict" } }),
+    };
+    await expect(
+      upsertDocumentEnrichment({
+        supabase: supabase as never,
+        document: {
+          id: "doc-stale",
+          owner_id: "owner",
+          title: "Synthetic protocol",
+          file_name: "synthetic.pdf",
+          source_path: null,
+          metadata: { index_generation_id: "generation-A" },
+          updated_at: "snapshot-A",
+        } as never,
+        chunks: [
+          {
+            id: "chunk-A",
+            page_number: 1,
+            chunk_index: 0,
+            section_heading: null,
+            content: "Synthetic source content.",
+          },
+        ],
+        images: [],
+      }),
+    ).rejects.toThrow("maintenance_snapshot_conflict");
+    expect(supabase.calls.filter((call) => call.operation !== "select")).toEqual([]);
+    expect(supabase.rpc).toHaveBeenCalledTimes(1);
+  });
+
   it("writes the current RAG enrichment version to summaries, labels, and document metadata", async () => {
     const supabase = createSupabaseMock();
 
@@ -178,6 +225,7 @@ describe("document enrichment", () => {
         file_name: "future-upload.pdf",
         source_path: null,
         metadata: { existing: true },
+        updated_at: "snapshot-A",
       },
       chunks: [
         {
@@ -191,35 +239,40 @@ describe("document enrichment", () => {
       images: [],
     });
 
-    const summaryUpsert = supabase.calls.find(
-      (call) => call.table === "document_summaries" && call.operation === "upsert",
-    );
-    const labelsInsert = supabase.calls.find((call) => call.table === "document_labels" && call.operation === "insert");
-    const documentUpdate = supabase.calls.find((call) => call.table === "documents" && call.operation === "update");
-
-    expect((summaryUpsert?.payload as { metadata: Record<string, unknown> }).metadata).toMatchObject({
+    const payload = supabase.rpc.mock.calls[0]?.[1];
+    const replacement = payload?.p_payload as {
+      summary: { metadata: Record<string, unknown> };
+      labels: unknown[];
+      metadata_patch: Record<string, unknown>;
+    };
+    expect(supabase.rpc.mock.calls[0]?.[0]).toBe("replace_document_maintenance_artifacts");
+    expect(payload).toMatchObject({
+      p_document_id: "doc-future",
+      p_owner_id: null,
+      p_expected_updated_at: "snapshot-A",
+      p_expected_generation_id: null,
+    });
+    expect(replacement.summary.metadata).toMatchObject({
       generated_by: "local-worker",
       rag_enrichment_version: ragEnrichmentVersion,
       clinical_profile_version: "clinical-document-profile-v1",
       label_count: expect.any(Number),
       coverage_profile: expect.objectContaining({ chunk_count: 1 }),
     });
-    expect(labelsInsert?.payload).toEqual(
+    expect(replacement.labels).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          document_id: "doc-future",
-          source: "generated",
           metadata: expect.objectContaining({ rag_enrichment_version: ragEnrichmentVersion }),
         }),
       ]),
     );
-    expect((documentUpdate?.payload as { metadata: Record<string, unknown> }).metadata).toMatchObject({
-      existing: true,
+    expect(replacement.metadata_patch).toMatchObject({
       rag_enrichment_version: ragEnrichmentVersion,
       generated_label_count: expect.any(Number),
       coverage_profile: expect.objectContaining({ chunk_count: 1 }),
     });
-    expect(documentUpdate?.filters).toContainEqual({ column: "id", value: "doc-future" });
+    expect(replacement.metadata_patch).not.toHaveProperty("index_generation_id");
+    expect(supabase.calls).toEqual([]);
   });
 
   it("cleans noisy generated labels before inserting document labels", async () => {
@@ -249,6 +302,7 @@ describe("document enrichment", () => {
         file_name: "clozapine-monitoring.pdf",
         source_path: null,
         metadata: {},
+        updated_at: "snapshot-A",
       },
       chunks: [
         {
@@ -262,8 +316,10 @@ describe("document enrichment", () => {
       images: [],
     });
 
-    const labelsInsert = supabase.calls.find((call) => call.table === "document_labels" && call.operation === "insert");
-    const labels = (labelsInsert?.payload as Array<{ label: string; label_type: string }>) ?? [];
+    const replacement = supabase.rpc.mock.calls[0]?.[1]?.p_payload as {
+      labels: Array<{ label: string; label_type: string }>;
+    };
+    const labels = replacement.labels;
 
     expect(labels).toEqual(
       expect.arrayContaining([

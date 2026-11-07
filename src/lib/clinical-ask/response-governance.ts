@@ -7,7 +7,11 @@ import type {
   ClinicalAskResponse,
   ClinicalAskSection,
 } from "@/lib/clinical-ask/contracts";
-import { clinicalAskModeProfile, type ClinicalAskModeProfile } from "@/lib/clinical-ask/mode-profiles";
+import {
+  clinicalAskModeProfile,
+  clinicalAskSectionTitle,
+  type ClinicalAskModeProfile,
+} from "@/lib/clinical-ask/mode-profiles";
 import { sourceDirectlySupportsAnswerText } from "@/lib/rag/rag-claim-support";
 import type { SearchResult } from "@/lib/types";
 
@@ -116,13 +120,18 @@ export function governClinicalAskDraft(
   evidence: readonly ClinicalAskEvidence[],
 ): ClinicalAskResponse {
   const evidenceById = new Map(evidence.map((item) => [item.id, item]));
-  if (draft.mode !== profile.id || draft.sections.map(({ id }) => id).join("|") !== profile.sectionOrder.join("|")) {
+  // Compare each section id on its own: a joined string would accept an id such as "a|b".
+  const sectionOrderMatches =
+    draft.sections.length === profile.sectionOrder.length &&
+    draft.sections.every(({ id }, index) => id === profile.sectionOrder[index]);
+  if (draft.mode !== profile.id || !sectionOrderMatches) {
     return evidenceGap(profile, evidence, [...draft.missingInformation, "The answer structure was invalid."]);
   }
 
   const lead = governedClaim(profile.id, draft.lead, evidenceById);
   const sections: ClinicalAskSection[] = draft.sections.map((section) => ({
     ...section,
+    title: clinicalAskSectionTitle(profile.id, section.id),
     claims: section.claims.flatMap((claim) => {
       const governed = governedClaim(profile.id, claim, evidenceById);
       return governed ? [governed] : [];

@@ -1,3 +1,4 @@
+import { replaceMaintenanceArtifacts } from "@/lib/ingestion-maintenance";
 import { loadEnvConfig } from "@next/env";
 import { normalizeDocumentLabelForStorage } from "@/lib/document-tags";
 import type { DocumentLabel, DocumentLabelType } from "@/lib/types";
@@ -21,6 +22,8 @@ type DocumentRow = {
   file_name: string;
   source_path?: string | null;
   status: string;
+  metadata: Record<string, unknown>;
+  updated_at: string;
 };
 
 type CleanGeneratedLabel = {
@@ -84,7 +87,7 @@ function parseArgs(argv: string[]): BackfillArgs {
 async function loadDocuments(supabase: Awaited<ReturnType<typeof loadAdminClient>>, args: BackfillArgs) {
   let query = supabase
     .from("documents")
-    .select("id,owner_id,title,file_name,source_path,status")
+    .select("id,owner_id,title,file_name,source_path,status,metadata,updated_at")
     .eq("status", "indexed")
     .order("created_at", { ascending: true })
     .limit(args.documentId ? 1 : args.limit);
@@ -186,32 +189,25 @@ async function writePlan(
   stampedAt: string,
   ragEnrichmentVersion: string,
 ) {
-  const { error: deleteError } = await supabase
-    .from("document_labels")
-    .delete()
-    .eq("document_id", plan.document.id)
-    .eq("source", "generated");
-  if (deleteError) throw new Error(deleteError.message);
-
-  if (plan.cleaned.length === 0) return;
-  const { error: insertError } = await supabase.from("document_labels").insert(
-    plan.cleaned.map((label) => ({
-      document_id: plan.document.id,
-      owner_id: plan.document.owner_id,
-      label: label.label,
-      label_type: label.label_type,
-      source: "generated",
-      confidence: label.confidence,
-      metadata: {
-        generated_by: "smart-tag-backfill",
-        source_label_ids: label.sourceLabelIds,
-        source_label_examples: label.examples,
-        rag_enrichment_version: ragEnrichmentVersion,
-        smart_tag_backfilled_at: stampedAt,
-      },
-    })),
-  );
-  if (insertError) throw new Error(insertError.message);
+  await replaceMaintenanceArtifacts({
+    supabase,
+    document: plan.document,
+    operation: "labels",
+    payload: {
+      labels: plan.cleaned.map((label) => ({
+        label: label.label,
+        label_type: label.label_type,
+        confidence: label.confidence,
+        metadata: {
+          generated_by: "smart-tag-backfill",
+          source_label_ids: label.sourceLabelIds,
+          source_label_examples: label.examples,
+          rag_enrichment_version: ragEnrichmentVersion,
+          smart_tag_backfilled_at: stampedAt,
+        },
+      })),
+    },
+  });
 }
 
 function printPlan(plans: Array<ReturnType<typeof planDocument>>, write: boolean) {

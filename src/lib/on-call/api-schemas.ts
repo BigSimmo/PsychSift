@@ -1,7 +1,7 @@
 import { onCallEntrySchema } from "@/lib/on-call/entry-model";
 
-/** Create bodies carry no `id` — the server generates it. `view` is virtual, never accepted from writes. */
-export const createOnCallEntrySchema = onCallEntrySchema.omit({ id: true, isOwn: true, view: true });
+/** Create bodies carry no `id` — the server generates it. `view` and `updatedAt` are server metadata, never accepted from writes. */
+export const createOnCallEntrySchema = onCallEntrySchema.omit({ id: true, isOwn: true, view: true, updatedAt: true });
 
 /**
  * Update bodies must be COMPLETE.

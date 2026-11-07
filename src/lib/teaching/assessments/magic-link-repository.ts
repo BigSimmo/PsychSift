@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { logger } from "@/lib/logger";
 import { PublicApiError } from "@/lib/http";
 import { EPAS, epa as getEpaContent, type EpaNumber } from "@/lib/teaching/assessments/content";
@@ -26,7 +27,7 @@ import {
 
 /** A doctor may have this many links waiting at once, so a loop cannot fill the table. */
 export const EPA_MAGIC_LINK_MAX_PENDING = 20;
-/** The most links a doctor's list returns, newest first. */
+/** One owner-history page; active waiting links are included separately so they remain cancellable. */
 const LIST_LIMIT = 50;
 
 export type EpaMagicLinkRow = {
@@ -53,6 +54,7 @@ type QueryResult<T> = PromiseLike<{ data: T | null; error: DbErrorLike | null; c
 type FilterBuilder<T> = QueryResult<T> & {
   eq(column: string, value: string): FilterBuilder<T>;
   gt(column: string, value: string): FilterBuilder<T>;
+  or(filter: string): FilterBuilder<T>;
   order(column: string, options?: { ascending?: boolean }): FilterBuilder<T>;
   limit(count: number): FilterBuilder<T>;
   select(columns?: string, options?: { count?: "exact"; head?: boolean }): FilterBuilder<T>;
@@ -61,6 +63,10 @@ type FilterBuilder<T> = QueryResult<T> & {
 };
 
 export type EpaMagicLinksTableClient = {
+  rpc(
+    name: "teaching_create_epa_magic_link_v1",
+    args: { p_registrar_id: string; p_link: Record<string, unknown> },
+  ): QueryResult<EpaMagicLinkRow>;
   from(table: "teaching_epa_magic_links"): {
     select(columns?: string, options?: { count?: "exact"; head?: boolean }): FilterBuilder<EpaMagicLinkRow[]>;
     insert(values: Omit<EpaMagicLinkRow, "id" | "created_at" | "completed_at" | "revoked_at" | "response">): {
@@ -86,6 +92,30 @@ export type EpaMagicLinkSummary = {
   readonly completedAt: string | null;
   readonly submission: EpaMagicLinkCompletedSubmission | null;
 };
+
+export type EpaMagicLinkPage = {
+  readonly links: readonly EpaMagicLinkSummary[];
+  readonly nextCursor: string | null;
+};
+
+const cursorSchema = z.object({ created_at: z.string().datetime({ offset: true }), id: z.string().uuid() }).strict();
+type LinkCursor = z.infer<typeof cursorSchema>;
+
+function parseCursor(value: string | null): LinkCursor | null {
+  if (value === null) return null;
+  try {
+    if (value.length > 256) throw new Error("cursor too large");
+    return cursorSchema.parse(JSON.parse(value));
+  } catch {
+    throw new PublicApiError("This link-history page is invalid. Reload your links.", 400, {
+      code: "invalid_link_cursor",
+    });
+  }
+}
+
+function cursorFor(row: EpaMagicLinkRow): string {
+  return JSON.stringify({ created_at: row.created_at, id: row.id });
+}
 
 /** What the supervisor's page receives. No ids, no hash, no account details. */
 export type EpaMagicLinkPublicRecord = Omit<EpaMagicLinkRecord, "id" | "tokenHash">;
@@ -189,10 +219,9 @@ export class DurableEpaMagicLinkRepository {
     const tokenHash = hashEpaMagicToken(token);
     // Builds the same record the in-memory story uses, so the patient-detail and EPA checks match.
     const record = buildMagicLinkRecord(tokenHash, { ...input, now, ttlDays: EPA_MAGIC_LINK_TTL_DAYS });
-    const { data, error } = await this.db
-      .from("teaching_epa_magic_links")
-      .insert({
-        registrar_id: registrarId,
+    const { data, error } = await this.db.rpc("teaching_create_epa_magic_link_v1", {
+      p_registrar_id: registrarId,
+      p_link: {
         token_hash: tokenHash,
         epa_number: record.epaNumber,
         trainee_name: record.traineeName,
@@ -202,23 +231,72 @@ export class DurableEpaMagicLinkRepository {
         status: "pending",
         expires_at: record.expiresAt,
         updated_at: now.toISOString(),
-      })
-      .select(COLUMNS)
-      .single();
+      },
+    });
+    if (error?.message === "magic_link_limit_reached") {
+      throw new EpaMagicLinkError(
+        `You have ${EPA_MAGIC_LINK_MAX_PENDING} links waiting. Cancel one before sending another.`,
+        "magic_link_limit_reached",
+        409,
+      );
+    }
     if (error || !data) throw databaseError(error);
     logger.info("epa_magic_link_created", { epaNumber: record.epaNumber, expiresAt: record.expiresAt });
     return { token, urlPath: `/teaching/assessments/respond/${token}`, link: rowToSummary(data, now) };
   }
 
-  async listForRegistrar(registrarId: string, now: Date = new Date()): Promise<EpaMagicLinkSummary[]> {
-    const { data, error } = await this.db
+  private async readPage(registrarId: string, cursor: LinkCursor | null, pendingAt?: Date): Promise<EpaMagicLinkRow[]> {
+    let query = this.db
       .from("teaching_epa_magic_links")
       .select(COLUMNS)
       .eq("registrar_id", registrarId)
       .order("created_at", { ascending: false })
-      .limit(LIST_LIMIT);
+      .order("id", { ascending: false })
+      .limit(LIST_LIMIT + 1);
+    if (pendingAt) query = query.eq("status", "pending").gt("expires_at", pendingAt.toISOString());
+    if (cursor)
+      query = query.or(`created_at.lt.${cursor.created_at},and(created_at.eq.${cursor.created_at},id.lt.${cursor.id})`);
+    const { data, error } = await query;
     if (error) throw databaseError(error);
-    return (data ?? []).map((row) => rowToSummary(row, now));
+    return data ?? [];
+  }
+
+  private async activePending(registrarId: string, now: Date): Promise<EpaMagicLinkRow[]> {
+    // Legacy data can exceed today's ceiling. Page it completely so every waiting link can be cancelled.
+    const result: EpaMagicLinkRow[] = [];
+    let cursor: LinkCursor | null = null;
+    for (;;) {
+      const page = await this.readPage(registrarId, cursor, now);
+      const included = page.slice(0, LIST_LIMIT);
+      result.push(...included);
+      if (page.length <= LIST_LIMIT) return result;
+      const last = included[included.length - 1]!;
+      cursor = { created_at: last.created_at, id: last.id };
+    }
+  }
+
+  async listForRegistrarPage(
+    registrarId: string,
+    now: Date = new Date(),
+    cursorValue: string | null = null,
+  ): Promise<EpaMagicLinkPage> {
+    if (!registrarId) throw databaseError(null);
+    const cursor = parseCursor(cursorValue);
+    const [page, pending] = await Promise.all([
+      this.readPage(registrarId, cursor),
+      this.activePending(registrarId, now),
+    ]);
+    const history = page.slice(0, LIST_LIMIT);
+    const rows = new Map([...pending, ...history].map((row) => [row.id, row]));
+    return {
+      links: [...rows.values()].map((row) => rowToSummary(row, now)),
+      nextCursor: page.length > LIST_LIMIT ? cursorFor(history[history.length - 1]!) : null,
+    };
+  }
+
+  /** Compatibility for callers needing the first history page plus every active waiting link. */
+  async listForRegistrar(registrarId: string, now: Date = new Date()): Promise<EpaMagicLinkSummary[]> {
+    return [...(await this.listForRegistrarPage(registrarId, now)).links];
   }
 
   /** Cancels one of the doctor's own waiting links. False when it is not theirs or no longer waiting. */

@@ -667,6 +667,11 @@ describe("onCallEntryToRow and compliance requirements", () => {
 });
 
 describe("rowToOnCallEntry", () => {
+  it("preserves raw PostgreSQL microseconds for conditional verification", () => {
+    const rawVersion = "2026-11-05T12:00:00.123456+00:00";
+    expect(rowToOnCallEntry({ ...SHARED_ROW, updated_at: rawVersion }).updatedAt).toBe(rawVersion);
+  });
+
   it("drops details that do not match the section's schema instead of trusting them", () => {
     const entry = rowToOnCallEntry({
       id: "11111111-1111-4111-8111-111111111111",

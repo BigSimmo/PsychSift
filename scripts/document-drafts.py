@@ -63,18 +63,24 @@ def check_root(path):
 
 
 def read_text(path):
-    data = path.read_bytes()
+    with path.open('rb') as stream:
+        data = stream.read(MAX_BYTES + 1)
     if len(data) > MAX_BYTES or b'\0' in data:
         raise ValueError('oversized or binary document')
     data.decode('utf-8')
     return data
 
 
+def write_new(path, data):
+    fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+    with os.fdopen(fd, 'wb') as stream:
+        stream.write(data)
+
+
 def write_json(path, value):
     metadata_path(path.parent, path.name)
     temporary = path.with_suffix('.tmp')
-    with temporary.open('x', encoding='utf-8') as stream:
-        json.dump(value, stream, indent=2)
+    write_new(temporary, json.dumps(value, indent=2).encode('utf-8'))
     os.replace(temporary, path)
 
 
@@ -93,8 +99,21 @@ def disjoint(source, workspace):
         raise ValueError('workspace must be outside source checkout')
 
 
+def check_workspace(workspace):
+    workspace = check_root(workspace)
+    info = workspace.stat()
+    if not stat.S_ISDIR(info.st_mode):
+        raise ValueError('workspace must be a directory')
+    # A setgid bit inherited from the parent grants no access; ignore it so a
+    # workspace created under a setgid directory still meets the 0700 contract.
+    if os.name == 'posix' and (info.st_uid != os.geteuid() or stat.S_IMODE(info.st_mode) & ~stat.S_ISGID != 0o700):
+        raise ValueError('workspace must be owned by the current user with mode 0700; preserve it and use a fresh private workspace')
+    return workspace
+
+
 @contextmanager
 def locked(workspace):
+    check_workspace(workspace)
     lock = workspace / '.draft-lock'
     fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
     try:
@@ -106,6 +125,7 @@ def locked(workspace):
 
 
 def load(workspace, expected_source=None):
+    check_workspace(workspace)
     manifest = json.loads(metadata_path(workspace, 'manifest.json').read_text(encoding='utf-8'))
     if manifest.get('version') != 1 or manifest['workspace'] != str(workspace):
         raise ValueError('workspace identity mismatch')
@@ -144,7 +164,7 @@ def prepare(source, workspace, task, names):
     contents = [(name, read_text(safe_path(source, name))) for name in names]
     if sum(len(data) for _, data in contents) > MAX_BYTES:
         raise ValueError('total byte limit exceeded')
-    destination.mkdir(parents=True, exist_ok=True)
+    destination.mkdir(parents=True, exist_ok=True, mode=0o700)
     with locked(destination):
         if (destination / 'manifest.json').exists():
             existing = load(destination, source)
@@ -158,8 +178,7 @@ def prepare(source, workspace, task, names):
             for folder in ('base', 'draft'):
                 target = safe_path(destination / folder, name)
                 target.parent.mkdir(parents=True, exist_ok=True)
-                with target.open('xb') as stream:
-                    stream.write(data)
+                write_new(target, data)
             entries.append({'path': name, 'original_sha256': digest(data)})
         manifest = dict(version=1, source=str(source), workspace=str(destination), task=task, files=entries)
         write_json(destination / 'manifest.json', manifest)
@@ -174,7 +193,7 @@ def merge_bytes(workspace, proposed, base, latest):
     with tempfile.TemporaryDirectory(dir=workspace) as temporary:
         paths = [Path(temporary) / n for n in ('draft', 'base', 'source')]
         for path, data in zip(paths, (proposed, base, latest)):
-            path.write_bytes(data)
+            write_new(path, data)
         result = subprocess.run(['git', 'merge-file', '-p', '-L', 'draft', '-L', 'base', '-L', 'latest', *map(str, paths)], capture_output=True, timeout=30)
         if result.returncode < 0 or result.returncode > 127:
             raise ValueError('git merge-file failed')
@@ -245,8 +264,7 @@ def reconcile(workspace, manifest, resolved):
             for folder, data in [('candidate', merged), ('source-input', source), ('draft-input', draft)]:
                 target = safe_path(generation / folder, name)
                 target.parent.mkdir(parents=True, exist_ok=True)
-                with target.open('xb') as stream:
-                    stream.write(data)
+                write_new(target, data)
                 snapshots[folder] = target.relative_to(workspace).as_posix()
             output.append(dict(path=name, before_sha256=digest(source), draft_sha256=digest(draft), candidate=snapshots['candidate'], candidate_sha256=digest(merged), source_snapshot=snapshots['source-input'], draft_snapshot=snapshots['draft-input'], conflict=conflict, review_reason=review_reason))
         except (OSError, ValueError, UnicodeError, subprocess.SubprocessError) as error:

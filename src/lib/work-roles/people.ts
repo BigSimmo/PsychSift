@@ -567,8 +567,36 @@ async function archiveHospital(
     .eq("id", change.hospitalId)
     .is("archived_at", null)
     .select("id");
+  if (error?.message?.includes("work_hospital_has_teams")) {
+    throw new PublicApiError("Move its teams first. A hospital with teams can't be archived.", 409, {
+      code: "work_hospital_has_teams",
+    });
+  }
   if (error) throw writeFailed(error);
   if (!data?.length) throw hospitalUnavailable();
+}
+
+/** A successful write must not be reported as rejected when only the following view read fails. */
+async function readPeopleAfterSavedChange(client: Client, context: WorkRoleContext, hospitalId: string | null) {
+  try {
+    return await readPeople(client, context, hospitalId);
+  } catch (error) {
+    // Keep a safe category for the API log (denied, not ready, unavailable...), never the message.
+    const causeName =
+      error instanceof PublicApiError && error.details?.code
+        ? error.details.code
+        : error instanceof Error
+          ? error.name
+          : "unknown";
+    throw new PublicApiError(
+      "The change was saved, but People and roles could not be refreshed. Reload to see its current state.",
+      503,
+      {
+        code: "work_people_refresh_failed",
+        causeName,
+      },
+    );
+  }
 }
 
 export async function applyPeopleChange(
@@ -585,16 +613,22 @@ export async function applyPeopleChange(
       return readPeople(client, context, await revoke(client, context, change.grantId));
     case "link-team": {
       if (!isAdministrator(context)) throw denied();
+      const target = check(
+        await client.from("work_hospitals").select("id").eq("id", change.hospitalId).is("archived_at", null).limit(1),
+      );
+      if (!target.length) throw hospitalUnavailable();
+      // A database guard repeats this check while locking the destination against archival.
       const { error } = await client
         .from("work_hospital_teams")
         .insert({ service_id: change.serviceId, hospital_id: change.hospitalId, linked_by: context.userId });
       if (error?.code === "23505") {
         throw new PublicApiError("That team already belongs to a hospital.", 409, { code: "work_team_linked" });
       }
+      if (error?.message?.includes("work_hospital_unavailable")) throw hospitalUnavailable();
       if (error?.code === "23503")
         throw new PublicApiError("That team or hospital is unavailable.", 404, { code: "work_people_not_found" });
       if (error) throw unavailable();
-      return readPeople(client, context, change.hospitalId);
+      return readPeopleAfterSavedChange(client, context, change.hospitalId);
     }
     case "create-hospital": {
       if (!isAdministrator(context)) throw denied();
@@ -613,7 +647,7 @@ export async function applyPeopleChange(
       return readPeople(client, context, data.id);
     }
     case "move-team":
-      return readPeople(client, context, await moveTeam(client, context, change));
+      return readPeopleAfterSavedChange(client, context, await moveTeam(client, context, change));
     case "rename-hospital":
       await renameHospital(client, context, change);
       return readPeople(client, context, change.hospitalId);
@@ -623,6 +657,6 @@ export async function applyPeopleChange(
     case "archive-hospital":
       await archiveHospital(client, context, change);
       // It drops out of the list, so show the first hospital left.
-      return readPeople(client, context, null);
+      return readPeopleAfterSavedChange(client, context, null);
   }
 }

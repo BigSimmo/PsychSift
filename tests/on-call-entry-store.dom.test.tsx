@@ -3,6 +3,7 @@
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { resetSharedGets } from "@/lib/shared-get";
 import type { OnCallEntry } from "@/lib/on-call/entry-model";
 import { setOnCallDemoPreviewActive } from "@/lib/on-call/entry-cache-keys";
 import {
@@ -10,6 +11,8 @@ import {
   cacheOnCallEntries,
   clearOnCallEntryCache,
   readCachedOnCallEntries,
+  updateCachedOnCallEntries,
+  peekOnCallEntrySessionEpoch,
   useStoredOnCallEntries as useOnCallEntries,
 } from "@/lib/on-call/entry-store";
 
@@ -35,15 +38,119 @@ function jsonResponse(body: unknown) {
 
 describe("useOnCallEntries", () => {
   beforeEach(() => {
+    resetSharedGets();
     clearOnCallEntryCache();
     vi.restoreAllMocks();
   });
 
   afterEach(() => {
     cleanup();
+    resetSharedGets();
     clearOnCallEntryCache();
     vi.restoreAllMocks();
   });
+
+  it("a new reader after a mutation starts a new GET instead of joining an older one", async () => {
+    cacheOnCallEntries([contact]);
+    let release!: (response: Response) => void;
+    const updated = { ...contact, title: "Synthetic updated contact" };
+    const request = vi
+      .spyOn(globalThis, "fetch")
+      .mockReturnValueOnce(
+        new Promise<Response>((resolve) => {
+          release = resolve;
+        }),
+      )
+      .mockResolvedValueOnce(jsonResponse({ entries: [updated], signedOut: false }));
+    const first = renderHook(() => useOnCallEntries());
+    act(() => {
+      cacheOnCallEntries([updated]);
+    });
+    const second = renderHook(() => useOnCallEntries());
+    expect(request).toHaveBeenCalledTimes(2);
+    await act(async () => {
+      release(jsonResponse({ entries: [contact], signedOut: false }));
+    });
+    await waitFor(() => expect(second.result.current.loading).toBe(false));
+    expect(readCachedOnCallEntries()?.entries).toEqual([updated]);
+    expect(first.result.current.entries).toEqual([updated]);
+  });
+
+  it("rejects a mixed malformed list as a failed refresh instead of publishing a partial list", async () => {
+    cacheOnCallEntries([contact]);
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      jsonResponse({
+        entries: [{ ...contact, title: "Synthetic replacement" }, { id: "invalid-row" }],
+        signedOut: false,
+      }),
+    );
+    const { result } = renderHook(() => useOnCallEntries());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.loadError).toBe("failed");
+    expect(result.current.entries).toEqual([contact]);
+    expect(readCachedOnCallEntries()?.entries).toEqual([contact]);
+  });
+
+  it("publishes shared read metadata to every mounted reader", async () => {
+    let release!: (response: Response) => void;
+    vi.spyOn(globalThis, "fetch").mockReturnValue(
+      new Promise<Response>((resolve) => {
+        release = resolve;
+      }),
+    );
+    const { result } = renderHook(() => [useOnCallEntries(), useOnCallEntries()]);
+    await act(async () => {
+      release(jsonResponse({ entries: [], signedOut: true, demoMode: true }));
+    });
+    await waitFor(() => expect(result.current.every((reader) => !reader.loading)).toBe(true));
+    expect(result.current.map((reader) => ({ signedOut: reader.signedOut, demoMode: reader.demoMode }))).toEqual([
+      { signedOut: true, demoMode: true },
+      { signedOut: true, demoMode: true },
+    ]);
+  });
+
+  it.each(["verify", "edit", "delete"])(
+    "keeps a successful %s when an older list response completes",
+    async (operation) => {
+      cacheOnCallEntries([contact]);
+      let releaseOlder!: (response: Response) => void;
+      let releaseRefetch!: (response: Response) => void;
+      const request = vi
+        .spyOn(globalThis, "fetch")
+        .mockReturnValueOnce(
+          new Promise<Response>((resolve) => {
+            releaseOlder = resolve;
+          }),
+        )
+        .mockReturnValueOnce(
+          new Promise<Response>((resolve) => {
+            releaseRefetch = resolve;
+          }),
+        );
+      const { result } = renderHook(() => useOnCallEntries());
+      const updated = { ...contact, title: "Synthetic updated contact", lastVerifiedAt: "2026-11-05T00:00:00.000Z" };
+      const expected = operation === "delete" ? [] : [updated];
+      act(() => {
+        updateCachedOnCallEntries([contact], () => expected, peekOnCallEntrySessionEpoch());
+      });
+      // The older list (read before the save) lands. It must not overwrite the
+      // save; the hook reads the list again and stays loading meanwhile.
+      await act(async () => {
+        releaseOlder(jsonResponse({ entries: [contact], signedOut: false }));
+      });
+      await waitFor(() => expect(request).toHaveBeenCalledTimes(2));
+      expect(result.current.loading).toBe(true);
+      expect(readCachedOnCallEntries()?.entries).toEqual(expected);
+      expect(result.current.entries).toEqual(expected);
+      // The fresh read reflects the server after the save.
+      await act(async () => {
+        releaseRefetch(jsonResponse({ entries: expected, signedOut: false }));
+      });
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      expect(readCachedOnCallEntries()?.entries).toEqual(expected);
+      expect(result.current.entries).toEqual(expected);
+    },
+  );
 
   it("leaves an active on-device preview alone when a NON-EMPTY shared response arrives", async () => {
     // The defect this exists for (Codex, 2026-09-22). The empty-response guard

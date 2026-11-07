@@ -1,3 +1,9 @@
+import {
+  patchMaintenanceDocument,
+  assertLegacyMaintenanceSnapshot,
+  replaceMaintenanceArtifacts,
+  maintenanceMetadata,
+} from "@/lib/ingestion-maintenance";
 import { createHash } from "node:crypto";
 import { loadEnvConfig } from "@next/env";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -32,6 +38,7 @@ type BackfillDocument = {
   file_name: string;
   source_path: string | null;
   metadata: Record<string, unknown> | null;
+  updated_at: string;
 };
 
 type BackfillChunk = {
@@ -97,12 +104,6 @@ function parseArgs(argv: string[]): BackfillArgs {
   return args;
 }
 
-function metadataRecord(metadata: unknown): Record<string, unknown> {
-  return metadata && typeof metadata === "object" && !Array.isArray(metadata)
-    ? { ...(metadata as Record<string, unknown>) }
-    : {};
-}
-
 function hashContent(content: string) {
   return createHash("md5").update(content).digest("hex");
 }
@@ -150,23 +151,21 @@ async function updateDocumentStage(
   stage: string,
   patch: Record<string, unknown> = {},
 ) {
+  assertLegacyMaintenanceSnapshot(document);
   const metadata = {
-    ...metadataRecord(document.metadata),
     ...patch,
     enrichment_status: patch.enrichment_status ?? (stage === "completed" ? "completed" : "processing"),
     enrichment_stage: stage,
     document_intelligence_version: documentIntelligenceVersion,
     document_intelligence_updated_at: new Date().toISOString(),
   };
-  document.metadata = metadata;
-  const { error } = await supabase.from("documents").update({ metadata }).eq("id", document.id);
-  if (error) throw new Error(supabaseErrorMessage(error));
+  await patchMaintenanceDocument({ supabase, document, patch: metadata });
 }
 
 async function loadDocuments(supabase: SupabaseAdmin, args: BackfillArgs) {
   let query = supabase
     .from("documents")
-    .select("id,owner_id,title,file_name,source_path,metadata")
+    .select("id,owner_id,title,file_name,source_path,metadata,updated_at")
     .eq("status", "indexed")
     .order("created_at", { ascending: true })
     .limit(args.documentId ? 1 : Math.max(args.limit * 8, args.limit));
@@ -183,12 +182,17 @@ async function selectRowsInPages<T>(
   supabase: SupabaseAdmin,
   table: "document_chunks" | "document_images",
   select: string,
-  documentId: string,
+  document: BackfillDocument,
   searchableOnly = false,
 ) {
   const rows: T[] = [];
   for (let offset = 0; ; offset += pageSize) {
-    let query = supabase.from(table).select(select).eq("document_id", documentId);
+    let query = supabase.from(table).select(select).eq("document_id", document.id);
+    const generation = maintenanceMetadata(document.metadata).index_generation_id;
+    query =
+      typeof generation === "string"
+        ? query.eq("index_generation_id", generation)
+        : query.is("index_generation_id", null);
     if (searchableOnly) query = query.eq("searchable", true);
     const { data, error } = await query.range(offset, offset + pageSize - 1);
     if (error) throw new Error(supabaseErrorMessage(error));
@@ -198,19 +202,19 @@ async function selectRowsInPages<T>(
   return rows;
 }
 
-async function loadEvidence(supabase: SupabaseAdmin, documentId: string) {
+async function loadEvidence(supabase: SupabaseAdmin, document: BackfillDocument) {
   const [chunks, images] = await Promise.all([
     selectRowsInPages<BackfillChunk>(
       supabase,
       "document_chunks",
       "id,document_id,page_number,chunk_index,section_heading,section_path,anchor_id,content,image_ids,metadata",
-      documentId,
+      document,
     ),
     selectRowsInPages<BackfillImage>(
       supabase,
       "document_images",
       "id,page_number,caption,image_type,labels,source_kind,clinical_relevance_score,metadata",
-      documentId,
+      document,
       true,
     ),
   ]);
@@ -237,7 +241,7 @@ async function insertDocumentLevelEmbeddingFields(args: {
       content: compactSearchText(`${args.document.title} ${args.summary ?? ""}`, 1200),
     },
   ].filter((input) => input.content);
-  const existing = await args.supabase
+  let existingQuery = args.supabase
     .from("document_embedding_fields")
     .select("field_type,content_hash")
     .eq("document_id", args.document.id)
@@ -245,6 +249,12 @@ async function insertDocumentLevelEmbeddingFields(args: {
       "field_type",
       inputs.map((input) => input.field_type),
     );
+  const generation = maintenanceMetadata(args.document.metadata).index_generation_id;
+  existingQuery =
+    typeof generation === "string"
+      ? existingQuery.eq("index_generation_id", generation)
+      : existingQuery.is("index_generation_id", null);
+  const existing = await existingQuery;
   if (existing.error) throw new Error(supabaseErrorMessage(existing.error));
   const existingKeys = new Set((existing.data ?? []).map((row) => `${row.field_type}:${row.content_hash}`));
   const missing = inputs.filter((input) => !existingKeys.has(`${input.field_type}:${hashContent(input.content)}`));
@@ -265,16 +275,24 @@ async function insertDocumentLevelEmbeddingFields(args: {
       document_intelligence_version: documentIntelligenceVersion,
     },
   }));
-  const { error } = await args.supabase.from("document_embedding_fields").insert(rows);
-  if (error) throw new Error(supabaseErrorMessage(error));
+  await replaceMaintenanceArtifacts({
+    supabase: args.supabase,
+    document: args.document,
+    operation: "embedding-fields",
+    payload: { fields: rows },
+  });
   return inputs.map((input) => input.field_type);
 }
 
-async function countRows(supabase: SupabaseAdmin, table: string, documentId: string) {
-  const query = supabase
-    .from(table)
-    .select("document_id", { count: "exact", head: true })
-    .eq("document_id", documentId);
+async function countRows(supabase: SupabaseAdmin, table: string, document: BackfillDocument) {
+  let query = supabase.from(table).select("document_id", { count: "exact", head: true }).eq("document_id", document.id);
+  if (!["document_summaries", "document_labels", "document_index_quality"].includes(table)) {
+    const generation = maintenanceMetadata(document.metadata).index_generation_id;
+    query =
+      typeof generation === "string"
+        ? query.eq("index_generation_id", generation)
+        : query.is("index_generation_id", null);
+  }
   const result = await query;
   if (result.error) throw new Error(supabaseErrorMessage(result.error));
   return result.count ?? 0;
@@ -290,15 +308,18 @@ type BackfillVerificationCounts = {
   qualityRows: number;
 };
 
-async function readBackfillCounts(supabase: SupabaseAdmin, documentId: string): Promise<BackfillVerificationCounts> {
+async function readBackfillCounts(
+  supabase: SupabaseAdmin,
+  document: BackfillDocument,
+): Promise<BackfillVerificationCounts> {
   const [summaries, labels, sections, memoryCards, indexUnits, embeddingFields, qualityRows] = await Promise.all([
-    countRows(supabase, "document_summaries", documentId),
-    countRows(supabase, "document_labels", documentId),
-    countRows(supabase, "document_sections", documentId),
-    countRows(supabase, "document_memory_cards", documentId),
-    countRows(supabase, "document_index_units", documentId),
-    countRows(supabase, "document_embedding_fields", documentId),
-    countRows(supabase, "document_index_quality", documentId),
+    countRows(supabase, "document_summaries", document),
+    countRows(supabase, "document_labels", document),
+    countRows(supabase, "document_sections", document),
+    countRows(supabase, "document_memory_cards", document),
+    countRows(supabase, "document_index_units", document),
+    countRows(supabase, "document_embedding_fields", document),
+    countRows(supabase, "document_index_quality", document),
   ]);
   return { summaries, labels, sections, memoryCards, indexUnits, embeddingFields, qualityRows };
 }
@@ -309,21 +330,23 @@ function missingBackfillCounts(counts: BackfillVerificationCounts) {
     .map(([key]) => key);
 }
 
-async function verifyBackfill(supabase: SupabaseAdmin, documentId: string) {
-  const counts = await readBackfillCounts(supabase, documentId);
+async function verifyBackfill(supabase: SupabaseAdmin, document: BackfillDocument) {
+  const counts = await readBackfillCounts(supabase, document);
   const missing = missingBackfillCounts(counts);
   if (missing.length) throw new Error(`Backfill verification failed; missing ${missing.join(", ")}.`);
   return counts;
 }
 
-async function countIndexUnitsByType(supabase: SupabaseAdmin, documentId: string) {
+async function countIndexUnitsByType(supabase: SupabaseAdmin, document: BackfillDocument) {
   const rows: { unit_type: string }[] = [];
   for (let offset = 0; ; offset += pageSize) {
-    const { data, error } = await supabase
-      .from("document_index_units")
-      .select("unit_type")
-      .eq("document_id", documentId)
-      .range(offset, offset + pageSize - 1);
+    let query = supabase.from("document_index_units").select("unit_type").eq("document_id", document.id);
+    const generation = maintenanceMetadata(document.metadata).index_generation_id;
+    query =
+      typeof generation === "string"
+        ? query.eq("index_generation_id", generation)
+        : query.is("index_generation_id", null);
+    const { data, error } = await query.range(offset, offset + pageSize - 1);
     if (error) throw new Error(supabaseErrorMessage(error));
     rows.push(...((data ?? []) as { unit_type: string }[]));
     if (!data || data.length < pageSize) break;
@@ -344,7 +367,7 @@ async function markBackfillCompleted(args: {
   indexUnitCount?: number;
   documentEmbeddingFieldTypes?: string[];
 }) {
-  const indexUnitCountsByType = await countIndexUnitsByType(args.supabase, args.document.id);
+  const indexUnitCountsByType = await countIndexUnitsByType(args.supabase, args.document);
   const patch: Record<string, unknown> = {
     enrichment_status: "completed",
     enrichment_error: null,
@@ -365,7 +388,7 @@ async function markBackfillCompleted(args: {
 }
 
 async function tryFinalizeExistingBackfill(supabase: SupabaseAdmin, document: BackfillDocument) {
-  const counts = await readBackfillCounts(supabase, document.id);
+  const counts = await readBackfillCounts(supabase, document);
   const missing = Object.entries(counts)
     .filter(([, count]) => count <= 0)
     .map(([key]) => key);
@@ -375,8 +398,9 @@ async function tryFinalizeExistingBackfill(supabase: SupabaseAdmin, document: Ba
 }
 
 async function processDocument(supabase: SupabaseAdmin, document: BackfillDocument) {
+  assertLegacyMaintenanceSnapshot(document);
   await updateDocumentStage(supabase, document, "loading_evidence");
-  const evidence = await loadEvidence(supabase, document.id);
+  const evidence = await loadEvidence(supabase, document);
   if (evidence.chunks.length === 0) throw new Error("Document has no indexed chunks to enrich.");
 
   const finalizedCounts = await tryFinalizeExistingBackfill(supabase, document);
@@ -421,7 +445,7 @@ async function processDocument(supabase: SupabaseAdmin, document: BackfillDocume
   });
 
   await updateDocumentStage(supabase, document, "verifying_backfill");
-  const counts = await verifyBackfill(supabase, document.id);
+  const counts = await verifyBackfill(supabase, document);
   await markBackfillCompleted({
     supabase,
     document,

@@ -2022,9 +2022,11 @@ export const UNTIERED_TABLE_DECLARATIONS = [
     file: "src/lib/work-roles/people.ts",
     table: "work_hospitals",
     fn: "applyPeopleChange",
-    queries: 1,
+    queries: 2,
     proof: PROOF_KINDS.UNTIERED_TABLE,
-    reason: WORK_HOSPITAL_STRUCTURE_REASON,
+    reason:
+      WORK_HOSPITAL_STRUCTURE_REASON +
+      " The second query is the administrator-only link-team preflight: exact destination hospital id and unarchived state, repeated under a shared row lock by work_guard_live_hospital_team before the link is written.",
   },
   {
     file: "src/lib/work-roles/server.ts",

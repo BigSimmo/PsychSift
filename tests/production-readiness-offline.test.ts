@@ -298,7 +298,7 @@ describe("production readiness provider policy", () => {
     ).toBe(false);
   });
 
-  it("reports the provider capability gap before generic CI readiness", () => {
+  it.each([undefined, ""])("reports provider capability gaps with offline URLs %s", (offlineUrl) => {
     const environment = { ...process.env };
     for (const name of providerEnvironmentKeys) delete environment[name];
     Object.assign(environment, {
@@ -308,6 +308,10 @@ describe("production readiness provider policy", () => {
       NEXT_PUBLIC_DEMO_MODE: "true",
       PLAYWRIGHT_OFFLINE_MODE: "true",
     });
+    if (offlineUrl !== undefined) {
+      environment.NEXT_PUBLIC_SUPABASE_URL = offlineUrl;
+      environment.SUPABASE_DB_URL = offlineUrl;
+    }
     const result = spawnSync(process.execPath, ["scripts/run-tsx.mjs", "scripts/production-readiness.ts", "--ci"], {
       cwd: path.resolve(import.meta.dirname, ".."),
       encoding: "utf8",

@@ -1,5 +1,9 @@
+import {
+  assertLegacyMaintenanceSnapshot,
+  maintenanceMetadata,
+  replaceMaintenanceArtifacts,
+} from "@/lib/ingestion-maintenance";
 import { loadEnvConfig } from "@next/env";
-import type { Json, TablesInsert } from "@/lib/supabase/database.types";
 import {
   buildVisualDocumentIndexUnitInputs,
   embeddingTextForDocumentIndexUnit,
@@ -34,6 +38,7 @@ type BackfillImageRow = {
   source_kind: string | null;
   labels: string[] | null;
   metadata: Record<string, unknown> | null;
+  index_generation_id: string | null;
 };
 
 type BackfillDocumentRow = {
@@ -41,6 +46,8 @@ type BackfillDocumentRow = {
   owner_id: string | null;
   title: string;
   file_name: string;
+  metadata: Record<string, unknown>;
+  updated_at: string;
 };
 
 function argValue(name: string, fallback: string) {
@@ -120,22 +127,61 @@ function imageToVisualInput(image: BackfillImageRow): IndexUnitVisualImage {
   };
 }
 
+function committedGeneration(metadata: unknown) {
+  const value = maintenanceMetadata(metadata).index_generation_id;
+  return typeof value === "string" ? value : null;
+}
+
+/**
+ * Candidates from each document's committed generation only. Retained images from an older
+ * generation can stay searchable with a stale version; backfillDocument would discard them, so
+ * filtering after a plain `.limit()` could fill every run with them and starve later candidates.
+ * Page past them until `limit` committed-generation candidates are found or the rows run out.
+ */
 async function loadCandidateImages() {
-  const { data, error } = await supabase
-    .from("document_images")
-    .select("id,document_id,page_number,caption,image_type,source_kind,labels,metadata")
-    .eq("searchable", true)
-    .or(
-      [
-        "metadata->>visual_intelligence_version.is.null",
-        `metadata->>visual_intelligence_version.neq.${visualIntelligenceVersion}`,
-        "metadata->>visual_backfill_status.eq.retry",
-      ].join(","),
-    )
-    .order("created_at", { ascending: true })
-    .limit(limit);
-  if (error) throw new Error(error.message);
-  return (data ?? []) as BackfillImageRow[];
+  const candidates: BackfillImageRow[] = [];
+  const generations = new Map<string, string | null>();
+  const looked = new Set<string>();
+  // Keep pages below the API's response cap (1,000 rows by default) and advance by the rows
+  // actually returned, so a capped page can never end the scan early.
+  const pageSize = 100;
+  for (let offset = 0; candidates.length < limit;) {
+    const { data, error } = await supabase
+      .from("document_images")
+      .select("id,document_id,page_number,caption,image_type,source_kind,labels,metadata,index_generation_id")
+      .eq("searchable", true)
+      .or(
+        [
+          "metadata->>visual_intelligence_version.is.null",
+          `metadata->>visual_intelligence_version.neq.${visualIntelligenceVersion}`,
+          "metadata->>visual_backfill_status.eq.retry",
+        ].join(","),
+      )
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true })
+      .range(offset, offset + pageSize - 1);
+    if (error) throw new Error(error.message);
+    const page = (data ?? []) as BackfillImageRow[];
+    const unknown = Array.from(new Set(page.map((image) => image.document_id))).filter((id) => !looked.has(id));
+    if (unknown.length) {
+      const { data: documents, error: documentError } = await supabase
+        .from("documents")
+        .select("id,metadata")
+        .in("id", unknown);
+      if (documentError) throw new Error(documentError.message);
+      for (const id of unknown) looked.add(id);
+      for (const document of documents ?? []) generations.set(document.id, committedGeneration(document.metadata));
+    }
+    for (const image of page) {
+      if (candidates.length >= limit) break;
+      // A document that no longer exists has no committed generation and yields no candidates.
+      if (generations.has(image.document_id) && generations.get(image.document_id) === image.index_generation_id)
+        candidates.push(image);
+    }
+    if (page.length === 0) break;
+    offset += page.length;
+  }
+  return candidates;
 }
 
 function statusForImage(image: BackfillImageRow) {
@@ -223,35 +269,32 @@ async function printCoverageReport(images: BackfillImageRow[]) {
 async function loadDocument(documentId: string) {
   const { data, error } = await supabase
     .from("documents")
-    .select("id,owner_id,title,file_name")
+    .select("id,owner_id,title,file_name,metadata,updated_at")
     .eq("id", documentId)
     .single();
   if (error) throw new Error(error.message);
   return data as BackfillDocumentRow;
 }
 
-async function loadChunks(documentId: string) {
-  const { data, error } = await supabase
+async function loadChunks(documentId: string, generation: string | null) {
+  let query = supabase
     .from("document_chunks")
     .select("id,document_id,page_number,chunk_index,section_heading,section_path,content,metadata,image_ids")
-    .eq("document_id", documentId)
-    .order("chunk_index", { ascending: true });
+    .eq("document_id", documentId);
+  query = generation ? query.eq("index_generation_id", generation) : query.is("index_generation_id", null);
+  const { data, error } = await query.order("chunk_index", { ascending: true });
   if (error) throw new Error(error.message);
   return (data ?? []) as IndexUnitChunk[];
 }
 
-async function markImage(image: BackfillImageRow, patch: Record<string, unknown>) {
-  const metadata = { ...(image.metadata ?? {}), ...patch };
-  const { error } = await supabase
-    .from("document_images")
-    .update({ metadata: metadata as Json })
-    .eq("id", image.id);
-  if (error) throw new Error(error.message);
-}
-
 async function backfillDocument(documentId: string, images: BackfillImageRow[]) {
   const document = await loadDocument(documentId);
-  const chunks = await loadChunks(documentId);
+  if (!dryRun) assertLegacyMaintenanceSnapshot(document);
+  const generation = committedGeneration(document.metadata);
+  // Recheck against the fresh snapshot: the committed generation can move after candidate selection.
+  images = images.filter((image) => image.index_generation_id === generation);
+  if (images.length === 0) return;
+  const chunks = await loadChunks(documentId, generation);
   const visualImages = images.map(imageToVisualInput);
   const units = buildVisualDocumentIndexUnitInputs({ document, chunks, images: visualImages });
   const counts = unitCounts(units);
@@ -260,55 +303,31 @@ async function backfillDocument(documentId: string, images: BackfillImageRow[]) 
   );
   if (dryRun) return;
 
-  const imageIds = images.map((image) => image.id);
-  for (const image of images) {
-    await markImage(image, {
-      visual_backfill_status: "processing",
-      visual_backfill_started_at: new Date().toISOString(),
-    });
-  }
-  const { error: deleteError } = await supabase
-    .from("document_index_units")
-    .delete()
-    .eq("document_id", documentId)
-    .in("source_image_id", imageIds)
-    .in("unit_type", [
-      "visual_summary",
-      "flowchart_step",
-      "diagram_decision",
-      "risk_matrix_cell",
-      "medication_chart_row",
-      "chart_finding",
-      "visual_askable_question",
-      "table_threshold",
-    ]);
-  // Inserting on top of rows that failed to delete would leave duplicate visual units.
-  if (deleteError) throw new Error(deleteError.message);
-
-  if (units.length > 0) {
-    const embeddings = await embedTexts(units.map(embeddingTextForDocumentIndexUnit));
-    for (let start = 0; start < units.length; start += 50) {
-      const batch = units.slice(start, start + 50).map((unit, index) => ({
-        ...unit,
-        embedding: embeddings[start + index],
-      }));
-      const { error } = await supabase
-        .from("document_index_units")
-        .insert(batch as unknown as TablesInsert<"document_index_units">[]);
-      if (error) throw new Error(error.message);
-    }
-  }
-
-  for (const image of images) {
-    const profile = imageToVisualInput(image).structuredVisualProfile;
-    await markImage(image, {
-      visual_intelligence_version: visualIntelligenceVersion,
-      structured_visual_profile: profile,
-      structured_extraction_confidence: profile?.confidence ?? null,
-      visual_backfill_status: "completed",
-      visual_backfill_completed_at: new Date().toISOString(),
-    });
-  }
+  // Prepare every embedding before replacing any searchable evidence.
+  const embeddings = units.length ? await embedTexts(units.map(embeddingTextForDocumentIndexUnit)) : [];
+  if (embeddings.length !== units.length) throw new Error("Visual embedding count mismatch.");
+  await replaceMaintenanceArtifacts({
+    supabase,
+    document,
+    operation: "visual",
+    payload: {
+      image_ids: images.map((image) => image.id),
+      units: units.map((unit, index) => ({ ...unit, index_generation_id: generation, embedding: embeddings[index] })),
+      image_patches: images.map((image) => {
+        const profile = imageToVisualInput(image).structuredVisualProfile;
+        return {
+          id: image.id,
+          metadata: {
+            visual_intelligence_version: visualIntelligenceVersion,
+            structured_visual_profile: profile,
+            structured_extraction_confidence: profile?.confidence ?? null,
+            visual_backfill_status: "completed",
+            visual_backfill_completed_at: new Date().toISOString(),
+          },
+        };
+      }),
+    },
+  });
 }
 
 async function main() {
@@ -339,14 +358,8 @@ async function main() {
       const message = error instanceof Error ? error.message : String(error);
       failedDocuments += 1;
       console.warn(`Visual backfill failed for document ${documentId}: ${message}`);
-      if (!dryRun) {
-        for (const image of documentImages) {
-          await markImage(image, {
-            visual_backfill_status: "retry",
-            visual_backfill_error: message.slice(0, 500),
-          });
-        }
-      }
+      // The original evidence and image metadata remain unchanged on failure.
+      // A later invocation recomputes from a fresh committed snapshot.
     }
   }
   if (failedDocuments > 0) {
