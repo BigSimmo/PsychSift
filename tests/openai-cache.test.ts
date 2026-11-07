@@ -204,6 +204,7 @@ describe("OpenAI query embedding cache", () => {
             return {
               withResponse: async () => ({
                 data: {
+                  model: "gpt-5.5-2026-10-27",
                   output_text: '{"answer":"ok"}',
                   usage: {
                     input_tokens: 100,
@@ -236,6 +237,8 @@ describe("OpenAI query embedding cache", () => {
     );
 
     expect(result.requestId).toBe("req_123");
+    expect(result.model).toBe("gpt-5.5");
+    expect(result.providerModel).toBe("gpt-5.5-2026-10-27");
     expect(result.usage).toMatchObject({
       input_tokens: 100,
       output_tokens: 20,
@@ -576,6 +579,46 @@ describe("OpenAI query embedding cache", () => {
     expect(capturedBodies[3]).not.toHaveProperty("reasoning");
     expect(capturedBodies[3].text as Record<string, unknown>).not.toHaveProperty("verbosity");
     expect(JSON.stringify(capturedBodies)).not.toContain("minimal");
+  });
+
+  it("sends supported Sol 6.1 effort and cache parameters without changing structured output", async () => {
+    const bodies: Record<string, unknown>[] = [];
+    vi.stubEnv("OPENAI_API_KEY", "test-key");
+    vi.stubEnv("OPENAI_STORE_RESPONSES", "false");
+    vi.stubEnv("OPENAI_PROMPT_CACHE_TTL", "30m");
+    vi.doMock("openai", () => ({
+      default: class MockOpenAI {
+        responses = {
+          create: vi.fn((body: Record<string, unknown>) => {
+            bodies.push(body);
+            return { withResponse: async () => ({ data: { status: "completed", output_text: '{"answer":"ok"}' } }) };
+          }),
+        };
+      },
+    }));
+    const { generateStructuredTextResult } = await import("../src/lib/openai");
+    for (const reasoningEffort of ["low", "medium", "none"] as const) {
+      await generateStructuredTextResult(
+        "Synthetic question",
+        { type: "object", properties: {}, required: [] },
+        {
+          model: "gpt-6.1-sol",
+          operation: "answer",
+          reasoningEffort,
+          maxRetries: 0,
+        },
+      );
+    }
+    expect(bodies.map((body) => body.reasoning)).toEqual([{ effort: "low" }, { effort: "medium" }, { effort: "low" }]);
+    for (const body of bodies) {
+      expect(body).toMatchObject({
+        store: false,
+        prompt_cache_options: { ttl: "30m" },
+        text: { format: expect.any(Object) },
+      });
+      expect(body).not.toHaveProperty("prompt_cache_retention");
+      expect(body).not.toHaveProperty("temperature");
+    }
   });
 
   it("floors max_output_tokens by reasoning effort but never lowers a larger budget", async () => {

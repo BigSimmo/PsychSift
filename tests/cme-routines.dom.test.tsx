@@ -73,6 +73,135 @@ function commandFilled(root: ParentNode): HTMLElement[] {
 }
 
 describe("Routines", () => {
+  it.each(["new", "edit", "cancel", "log now", "due form"] as const)(
+    "keeps an unsaved routine when %s is declined and performs the accepted action once",
+    async (action) => {
+      const user = userEvent.setup();
+      const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+      const fetchMock = vi.spyOn(globalThis, "fetch");
+      render(
+        <CmeRoutinesRoute
+          nowIso={NOW.toISOString()}
+          initialRoutines={[{ ...dueRoutine, usualAllocations: [] }, notYetDueRoutine]}
+          demoMode={false}
+        />,
+      );
+      await user.click(screen.getByRole("button", { name: /Supervision.*Edit/ }));
+      await user.clear(screen.getByLabelText(/routine name/i));
+      await user.type(screen.getByLabelText(/routine name/i), "Synthetic draft");
+      const target = () =>
+        screen.getByRole("button", {
+          name:
+            action === "new"
+              ? /new routine/i
+              : action === "edit"
+                ? /Journal club.*Edit/
+                : action === "cancel"
+                  ? /^Cancel$/
+                  : action === "log now"
+                    ? "Log now for Journal club"
+                    : /^log 1\.0 h for supervision$/i,
+        });
+
+      await user.click(target());
+      expect(confirm).toHaveBeenCalledTimes(1);
+      expect(screen.getByLabelText(/routine name/i)).toHaveValue("Synthetic draft");
+      expect(navigation.push).not.toHaveBeenCalled();
+      expect(fetchMock).not.toHaveBeenCalled();
+
+      confirm.mockReturnValue(true);
+      await user.click(target());
+      expect(confirm).toHaveBeenCalledTimes(2);
+      if (action === "new") expect(screen.getByLabelText(/routine name/i)).toHaveValue("");
+      else if (action === "edit") expect(screen.getByLabelText(/routine name/i)).toHaveValue("Journal club");
+      else if (action === "cancel") expect(screen.queryByTestId("cme-routine-form")).toBeNull();
+      else {
+        expect(navigation.push).toHaveBeenCalledTimes(1);
+        expect(navigation.push).toHaveBeenCalledWith(
+          action === "log now" ? "/cme/new?routine=r2" : "/cme/new?routine=r1",
+        );
+      }
+    },
+  );
+
+  it("protects a new routine with only its duration changed, while pristine replacement stays prompt-free", async () => {
+    const user = userEvent.setup();
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    render(<CmeRoutinesRoute nowIso={NOW.toISOString()} initialRoutines={[]} demoMode={false} />);
+    await user.click(screen.getByRole("button", { name: /new routine/i }));
+    await user.click(screen.getByRole("button", { name: /new routine/i }));
+    expect(confirm).not.toHaveBeenCalled();
+    await user.clear(screen.getByLabelText(/usual hours/i));
+    await user.type(screen.getByLabelText(/usual hours/i), "2");
+    await user.click(screen.getByRole("button", { name: /new routine/i }));
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(screen.getByLabelText(/usual hours/i)).toHaveValue(2);
+  });
+
+  it("protects a cleared category split after the duration is restored to its saved value", async () => {
+    const user = userEvent.setup();
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(
+        new Response(JSON.stringify({ routine: { ...dueRoutine, usualAllocations: [] } }), { status: 200 }),
+      );
+    render(<CmeRoutinesRoute nowIso={NOW.toISOString()} initialRoutines={[dueRoutine]} demoMode={false} />);
+    await user.click(screen.getByRole("button", { name: /Supervision.*Edit/ }));
+    const hours = screen.getByLabelText(/usual hours/i);
+    await user.clear(hours);
+    await user.type(hours, "2");
+    await user.clear(hours);
+    await user.type(hours, String(dueRoutine.usualHours));
+    await user.click(screen.getByRole("button", { name: /new routine/i }));
+
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(screen.getByLabelText(/routine name/i)).toHaveValue(dueRoutine.title);
+    expect(hours).toHaveValue(dueRoutine.usualHours);
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: /save routine/i }));
+    expect(fetchMock).toHaveBeenCalledWith("/api/cme/routines/r1", expect.objectContaining({ method: "PATCH" }));
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toMatchObject({
+      usualHours: dueRoutine.usualHours,
+      usualAllocations: [],
+    });
+  });
+
+  it("asks before a due one-tap log starts with an unsaved draft, and closes the draft once accepted", async () => {
+    const user = userEvent.setup();
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      if (String(input) === "/api/cme/entries" && init?.method === "POST") {
+        return new Response(JSON.stringify({ entry: { id: "entry-guarded" } }), {
+          status: 201,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      return new Response("unexpected", { status: 500 });
+    });
+    render(
+      <CmeRoutinesRoute nowIso={NOW.toISOString()} initialRoutines={[dueRoutine, notYetDueRoutine]} demoMode={false} />,
+    );
+    await user.click(screen.getByRole("button", { name: /Supervision.*Edit/ }));
+    await user.clear(screen.getByLabelText(/routine name/i));
+    await user.type(screen.getByLabelText(/routine name/i), "Synthetic draft");
+    const logDue = () => screen.getByRole("button", { name: /^log 1\.0 h for supervision$/i });
+
+    await user.click(logDue());
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(screen.getByLabelText(/routine name/i)).toHaveValue("Synthetic draft");
+
+    confirm.mockReturnValue(true);
+    await user.click(logDue());
+    expect(confirm).toHaveBeenCalledTimes(2);
+    await screen.findByTestId("cme-quick-log-saved");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId("cme-routine-form")).toBeNull();
+    expect(navigation.push).not.toHaveBeenCalled();
+  });
+
   it("saves a routine, then one-tap logs a due routine with Undo", async () => {
     const user = userEvent.setup();
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {

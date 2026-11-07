@@ -352,6 +352,12 @@
     "20261026085000_roster_swap_accept_team_rules.sql": "671be78b7ed16356ac7c0ef24005f558d8ce2b24b678f1f4ba02e0850d1c8aef",
     "20261026092000_drop_calendar_link_plain_url.sql": "8fc7ebc22c7221845b8fe4a337c47c81711410914883af369fc58af9c69d1b72",
     "20261027120000_one_supervisor_list.sql": "54465ba4059ff29c1292189971506aa8603896333ed99d5d89c6071a82695bcc",
+    "20261103000000_preserve_wa_admission_jurisdiction.sql": "ecb6b3b11d3e598e890389b8cab95dd211e27264ace63cf8c66893a7c96358cc",
+    "20261103000100_managed_general_native_pdf_text_terminal.sql": "930a5fc6974ea34b7ade7478073a44966c4bb140eb729671d573b78a973c599a",
+    "20261103000200_administrator_legacy_reindex_readmission.sql": "51cc05d68520c01f2c184e36ed9ef6cf43fe98c3c197b14b2843d22d0e0cc03e",
+    "20261103000300_managed_full_pdf_generation.sql": "1ba22b26e4b2af79fca31613a17cdeca06d1161d9f07b67d9d5d75e9ce885d07",
+    "20261104000000_managed_full_pdf_summary_projection.sql": "568613b9b33116bfe2ce6eff84e2eddb30d05a29b240c46305e51394c8d1e9c7",
+    "20261105000000_managed_reviewed_rendered_pdf.sql": "db78a109c166c2bce3f60b7cfacd945800a9556898b17035d46481ade347b0f5",
     "20261105144240_audit_private_evidence_lifecycle_and_drift.sql": "77d2f99c6c726d34bae7ca577368cd436ab3a59bcddfd5b69b36c87fde703fcf",
     "20261105144246_audit_cpd_close_coherence.sql": "e54733b939392249506f4e3629486ae3775a59b4422e0d77bc4ff139395d7906",
     "20261105144248_audit_hospital_lifecycle.sql": "dbc8646b61261b5bc3b1446f99d5449825ea2db9897da955ecf20d7740d1b223",
@@ -360,6 +366,8 @@
     "20261105150056_audit_cpd_entry_concurrency.sql": "7cef8755b872dd3cb24b4f0d4575c09d8f59c196726ad480288a8774854ee0b2",
     "20261105163543_audit_retire_unfenced_document_reset.sql": "8ce7681e3352d784d31cbefbf2ca285b725a7590aa47ce4ad84c56390d1213ef",
     "20261106164443_audit_fix_maintenance_snapshot_fence_aliases.sql": "42cd773c3db4fedf78590dba182ac17997b56cc5de789a68eef624308e460d37",
+    "20261106184724_defer_readmission_ranking_authority.sql": "8d5f352c2f9a9212090e03fd69beff0133f32a4ce75d2dc0274fbe41a5efa2ee",
+    "20261106223559_full_pdf_packet_parent_lookups.sql": "b1adaefb172f6e857f5dfaae7c432e7f004555f6395b545f7c85837b5bba4eb7",
     "20261106224403_audit_overlap_skip_malformed_booking_times.sql": "60cef458f23e955d86b232019fdafb9a3d2936aa853a046ffd6e15be536948bd"
   }
 }

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   answerProgressDisplayMessage,
   answerProgressPreviewMessage,
@@ -405,5 +405,60 @@ describe("answer progress events", () => {
     await expect(readAnswerStream(response, () => undefined)).rejects.toThrow(
       "Answer stream ended before a final answer was received.",
     );
+  });
+
+  it("cancels an open reader on caller abort and removes its listener and lock", async () => {
+    const cancelled = vi.fn();
+    const body = new ReadableStream<Uint8Array>({ cancel: cancelled });
+    const response = new Response(body);
+    const controller = new AbortController();
+    const removeListener = vi.spyOn(controller.signal, "removeEventListener");
+    const pending = readAnswerStream(
+      response,
+      () => undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      controller.signal,
+    );
+    controller.abort(new DOMException("Synthetic cancellation", "AbortError"));
+    await expect(pending).rejects.toMatchObject({ name: "AbortError" });
+    expect(cancelled).toHaveBeenCalledOnce();
+    expect(cancelled).toHaveBeenCalledWith(controller.signal.reason);
+    expect(removeListener).toHaveBeenCalledWith("abort", expect.any(Function));
+    expect(body.locked).toBe(false);
+  });
+
+  it("returns a valid terminal final even when source cancellation never settles", async () => {
+    const final = {
+      answer: "Synthetic terminal answer.",
+      grounded: true,
+      confidence: "medium",
+      citations: [],
+      sources: [],
+    };
+    const cancelled = vi.fn(() => new Promise<void>(() => undefined));
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode(`event: final\ndata: ${JSON.stringify(final)}\n\n`));
+      },
+      cancel: cancelled,
+    });
+    let received: Awaited<ReturnType<typeof readAnswerStream>> | undefined;
+    let error: unknown;
+    void readAnswerStream(new Response(body), () => undefined).then(
+      (value) => {
+        received = value;
+      },
+      (value: unknown) => {
+        error = value;
+      },
+    );
+    for (let turn = 0; turn < 12; turn += 1) await Promise.resolve();
+    expect(error).toBeUndefined();
+    expect(received?.answer).toBe(final.answer);
+    expect(cancelled).toHaveBeenCalledOnce();
+    expect(body.locked).toBe(false);
   });
 });

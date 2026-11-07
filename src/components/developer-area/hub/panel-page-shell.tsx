@@ -35,7 +35,10 @@ export function PanelPageShell({
   children: ReactNode;
 }) {
   return (
-    <main data-testid={testId} className="mx-auto grid w-full max-w-[64rem] gap-6 px-4 py-8 sm:px-6">
+    <main
+      data-testid={testId}
+      className="mx-auto grid w-full min-w-0 max-w-[64rem] grid-cols-[minmax(0,1fr)] gap-6 px-4 py-8 sm:px-6"
+    >
       <ContextualBackLink
         data-testid={`${testId}-back`}
         fallbackHref="/admin/developer-hub"

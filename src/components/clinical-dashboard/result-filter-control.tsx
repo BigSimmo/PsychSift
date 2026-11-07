@@ -898,8 +898,8 @@ function ResultFilterAnchoredPanel({
   const titleId = `${panelId}-title`;
   const [placement, setPlacement] = useState({ left: 0, top: 0, maxHeight: 0 });
   // Positioning needs the panel's own measured box, so the first paint would
-  // otherwise flash at (0, 0) before the frame that places it. Same gate as
-  // `Tooltip`: rendered and measurable, but not yet visible.
+  // otherwise flash at (0, 0) before the frame that places it. Keep it
+  // measurable but transparent and inert until that placement commits.
   const [positioned, setPositioned] = useState(false);
 
   const updatePlacement = useCallback(() => {
@@ -953,8 +953,9 @@ function ResultFilterAnchoredPanel({
   // inside it. The container itself, not the first control: the title and
   // description should be announced before the first option.
   useEffect(() => {
+    if (!positioned) return;
     panelRef.current?.focus({ preventScroll: true });
-  }, []);
+  }, [positioned]);
 
   const dismissRefs = useMemo(() => [panelRef, anchorRef], [anchorRef]);
   useDismissableLayer({ enabled: true, refs: dismissRefs, onDismiss: onClose, restoreFocusRef: anchorRef });
@@ -970,11 +971,14 @@ function ResultFilterAnchoredPanel({
         id={panelId}
         data-testid={testId}
         tabIndex={-1}
+        inert={!positioned}
         style={{ position: "fixed", left: placement.left, top: placement.top, maxHeight: placement.maxHeight }}
         className={cn(
           "pointer-events-auto flex w-[min(25rem,calc(100vw-1rem))] flex-col overflow-hidden rounded-xl border border-[color:var(--border-lux)] bg-[color:var(--surface-raised)] text-[color:var(--text)] shadow-[var(--e2)]",
-          "motion-safe:animate-pop-in motion-reduce:animate-none",
-          positioned ? "visible" : "invisible",
+          // Opacity is not inherited: children never transition visibility as
+          // the measured panel opens under the global reduced-motion duration.
+          "transition-none",
+          positioned ? "opacity-100 motion-safe:animate-pop-in motion-reduce:animate-none" : "opacity-0",
         )}
       >
         <div className="flex shrink-0 items-start justify-between gap-x-3 border-b border-[color:var(--border)] px-4 py-3">

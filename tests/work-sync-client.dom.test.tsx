@@ -1,3 +1,4 @@
+import { renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -10,8 +11,8 @@ import {
   WORK_ACCOUNT_SYNC_MARKER_KEY,
 } from "@/lib/account-scoped-browser-state";
 import { setSharedDevice } from "@/lib/alerts/shared-device";
-import { announceWorkSyncChange } from "@/lib/work-sync/sections";
-import { resetWorkSyncForTesting, startWorkSync } from "@/lib/work-sync/work-sync-client";
+import { announceWorkSyncChange, type WorkSyncSection } from "@/lib/work-sync/sections";
+import { resetWorkSyncForTesting, startWorkSync, useWorkSyncStatus } from "@/lib/work-sync/work-sync-client";
 
 type Sections = Record<string, { value: unknown; updatedAt: string }>;
 
@@ -41,6 +42,12 @@ const settle = async () => {
   await vi.dynamicImportSettled();
   for (let i = 0; i < 5; i += 1) await Promise.resolve();
   await vi.runAllTimersAsync();
+};
+const readStatus = (section: WorkSyncSection) => {
+  const { result, unmount } = renderHook(() => useWorkSyncStatus(section));
+  const status = result.current;
+  unmount();
+  return status;
 };
 
 beforeEach(() => {
@@ -99,6 +106,168 @@ describe("work sync client", () => {
     expect(heard).toHaveBeenCalled();
     expect(puts).toEqual([]);
     window.removeEventListener("storage", heard);
+  });
+
+  it.each([
+    { name: "edit", value: "Updated synthetic note" },
+    { name: "deletion", value: null },
+  ])("keeps a saved $name when an older account read arrives afterward", async ({ value }) => {
+    window.localStorage.setItem(WORK_ACCOUNT_SYNC_MARKER_KEY, MATCHED);
+    window.localStorage.setItem(MY_DAY_QUICK_NOTE_STORAGE_KEY, "Original synthetic note");
+    const sections: Sections = {
+      myDayQuickNote: { value: "Original synthetic note", updatedAt: AT },
+      myDayHiddenCards: { value: ["hours"], updatedAt: AT },
+    };
+    // Freeze the GET's snapshot before the later PUT changes the account.
+    const olderResponse = new Response(JSON.stringify({ sections }), { status: 200 });
+    let releaseRead: (response: Response) => void = () => {};
+    const pendingRead = new Promise<Response>((resolve) => (releaseRead = resolve));
+    let reads = 0;
+    const puts: { section: string; value: unknown }[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init?: RequestInit) => {
+        if (init?.method === "PUT") {
+          const body = JSON.parse(String(init.body)) as { section: string; value: unknown };
+          puts.push(body);
+          sections[body.section] = { value: body.value, updatedAt: AT };
+          return new Response("{}", { status: 200 });
+        }
+        reads += 1;
+        return reads === 1 ? pendingRead : new Response(JSON.stringify({ sections }), { status: 200 });
+      }),
+    );
+    start();
+    if (value === null) window.localStorage.removeItem(MY_DAY_QUICK_NOTE_STORAGE_KEY);
+    else window.localStorage.setItem(MY_DAY_QUICK_NOTE_STORAGE_KEY, value);
+    announceWorkSyncChange(MY_DAY_QUICK_NOTE_STORAGE_KEY);
+    await settle();
+    expect(puts).toEqual([{ section: "myDayQuickNote", value }]);
+    expect(sections.myDayQuickNote?.value).toBe(value);
+    expect(JSON.parse(window.localStorage.getItem(WORK_ACCOUNT_SYNC_MARKER_KEY) ?? "{}")).toMatchObject({ ahead: [] });
+
+    releaseRead(olderResponse);
+    await settle();
+    expect(window.localStorage.getItem(MY_DAY_QUICK_NOTE_STORAGE_KEY)).toBe(value);
+    // A section untouched since that GET still adopts the account update.
+    expect(window.localStorage.getItem(MY_DAY_HIDDEN_CARDS_STORAGE_KEY)).toBe(JSON.stringify(["hours"]));
+    expect(readStatus("myDayQuickNote")).toBe("account");
+
+    sections.myDayQuickNote = { value: "Fresh synthetic account note", updatedAt: AT };
+    vi.setSystemTime(Date.now() + 60_000);
+    window.dispatchEvent(new Event("online"));
+    await settle();
+    expect(reads).toBe(2);
+    expect(window.localStorage.getItem(MY_DAY_QUICK_NOTE_STORAGE_KEY)).toBe("Fresh synthetic account note");
+  });
+
+  it("keeps a carried change saved while its first account read is in flight", async () => {
+    window.localStorage.setItem(
+      WORK_ACCOUNT_SYNC_MARKER_KEY,
+      JSON.stringify({ matched: ["myDayQuickNote"], ahead: ["myDayQuickNote"] }),
+    );
+    window.localStorage.setItem(MY_DAY_QUICK_NOTE_STORAGE_KEY, "Carried synthetic note");
+    let releaseRead: (response: Response) => void = () => {};
+    const pendingRead = new Promise<Response>((resolve) => (releaseRead = resolve));
+    const puts: { section: string; value: unknown }[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init?: RequestInit) => {
+        if (init?.method !== "PUT") return pendingRead;
+        puts.push(JSON.parse(String(init.body)) as { section: string; value: unknown });
+        return new Response("{}", { status: 200 });
+      }),
+    );
+    start();
+    await settle();
+    expect(puts).toEqual([{ section: "myDayQuickNote", value: "Carried synthetic note" }]);
+    expect(JSON.parse(window.localStorage.getItem(WORK_ACCOUNT_SYNC_MARKER_KEY) ?? "{}")).toMatchObject({ ahead: [] });
+
+    releaseRead(
+      new Response(JSON.stringify({ sections: { myDayQuickNote: { value: "Older synthetic note", updatedAt: AT } } })),
+    );
+    await settle();
+    expect(window.localStorage.getItem(MY_DAY_QUICK_NOTE_STORAGE_KEY)).toBe("Carried synthetic note");
+    expect(readStatus("myDayQuickNote")).toBe("account");
+  });
+
+  it.each([
+    { name: "first match", matched: false, fullStorage: false, expected: ["hours", "cpd"] },
+    { name: "matched download", matched: true, fullStorage: false, expected: ["hours"] },
+    { name: "first match with full storage", matched: false, fullStorage: true, expected: ["hours", "cpd"] },
+  ])(
+    "retries a refused local write during $name without uploading the older device copy",
+    async ({ matched, fullStorage, expected }) => {
+      if (matched) window.localStorage.setItem(WORK_ACCOUNT_SYNC_MARKER_KEY, MATCHED);
+      window.localStorage.setItem(MY_DAY_HIDDEN_CARDS_STORAGE_KEY, JSON.stringify(["cpd"]));
+      const sections: Sections = { myDayHiddenCards: { value: ["hours"], updatedAt: AT } };
+      const { puts } = mockServer(sections);
+      const originalSetItem = Storage.prototype.setItem;
+      let blocked = true;
+      const refused = vi.fn();
+      vi.spyOn(Storage.prototype, "setItem").mockImplementation(function (this: Storage, key: string, next: string) {
+        if (blocked && (fullStorage || key === MY_DAY_HIDDEN_CARDS_STORAGE_KEY)) {
+          refused();
+          throw new DOMException("Synthetic full storage", "QuotaExceededError");
+        }
+        originalSetItem.call(this, key, next);
+      });
+      start();
+      await settle();
+      expect(refused).toHaveBeenCalled();
+      expect(puts).toEqual([]);
+      expect(sections.myDayHiddenCards?.value).toEqual(["hours"]);
+      expect(window.localStorage.getItem(MY_DAY_HIDDEN_CARDS_STORAGE_KEY)).toBe(JSON.stringify(["cpd"]));
+      expect(readStatus("myDayHiddenCards")).toBe("device");
+      if (!fullStorage) {
+        const marker = JSON.parse(window.localStorage.getItem(WORK_ACCOUNT_SYNC_MARKER_KEY) ?? "{}") as {
+          matched: string[];
+          ahead: string[];
+        };
+        expect(marker.matched.includes("myDayHiddenCards")).toBe(matched);
+        expect(marker.ahead).not.toContain("myDayHiddenCards");
+      }
+
+      blocked = false;
+      vi.setSystemTime(Date.now() + 60_000);
+      window.dispatchEvent(new Event("online"));
+      await settle();
+      expect(JSON.parse(window.localStorage.getItem(MY_DAY_HIDDEN_CARDS_STORAGE_KEY) ?? "null")).toEqual(expected);
+      expect(sections.myDayHiddenCards?.value).toEqual(expected);
+      expect(puts).toEqual(matched ? [] : [{ section: "myDayHiddenCards", value: expected }]);
+      expect(readStatus("myDayHiddenCards")).toBe("account");
+      expect(JSON.parse(window.localStorage.getItem(WORK_ACCOUNT_SYNC_MARKER_KEY) ?? "{}")).toMatchObject({
+        matched: expect.arrayContaining(["myDayHiddenCards"]) as unknown,
+        ahead: [],
+      });
+    },
+  );
+
+  it("retries a refused local removal instead of reporting an account deletion as applied", async () => {
+    window.localStorage.setItem(WORK_ACCOUNT_SYNC_MARKER_KEY, MATCHED);
+    window.localStorage.setItem(MY_DAY_QUICK_NOTE_STORAGE_KEY, "Original synthetic note");
+    const { puts } = mockServer({ myDayQuickNote: { value: null, updatedAt: AT } });
+    const originalRemoveItem = Storage.prototype.removeItem;
+    let blocked = true;
+    vi.spyOn(Storage.prototype, "removeItem").mockImplementation(function (this: Storage, key: string) {
+      if (blocked && key === MY_DAY_QUICK_NOTE_STORAGE_KEY) {
+        throw new DOMException("Synthetic storage refusal", "SecurityError");
+      }
+      originalRemoveItem.call(this, key);
+    });
+    start();
+    await settle();
+    expect(window.localStorage.getItem(MY_DAY_QUICK_NOTE_STORAGE_KEY)).toBe("Original synthetic note");
+    expect(readStatus("myDayQuickNote")).toBe("device");
+    expect(puts).toEqual([]);
+
+    blocked = false;
+    vi.setSystemTime(Date.now() + 60_000);
+    window.dispatchEvent(new Event("online"));
+    await settle();
+    expect(window.localStorage.getItem(MY_DAY_QUICK_NOTE_STORAGE_KEY)).toBeNull();
+    expect(readStatus("myDayQuickNote")).toBe("account");
+    expect(puts).toEqual([]);
   });
 
   it("merges a device's own choices with the account's on its first match, then saves the result", async () => {

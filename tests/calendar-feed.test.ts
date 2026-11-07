@@ -51,6 +51,7 @@ import {
 } from "@/lib/calendar/feed-token";
 import { calendarFeedEvents } from "@/lib/calendar/feed-repository";
 import { toIcs } from "@/lib/calendar/ics";
+import { calendarFeedEvents } from "@/lib/calendar/feed-repository";
 import { AuthenticationError } from "@/lib/supabase/auth";
 
 const ownerId = "11111111-1111-4111-8111-111111111111";
@@ -214,6 +215,9 @@ describe("GET /api/calendar/feed/<token>.ics (no session)", () => {
 
   it("adds the owner's booked courses without the organiser, and still serves when bookings can't be read", async () => {
     mocks.rpc.mockResolvedValue({ data: ownerId, error: null });
+    // A successful read with no preferences row intentionally uses Perth; an unavailable query is a different case.
+    const maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
+    mocks.from.mockReturnValue({ select: () => ({ eq: () => ({ maybeSingle }) }) });
     const course = {
       id: "c1",
       kind: "course",
@@ -243,6 +247,7 @@ describe("GET /api/calendar/feed/<token>.ics (no session)", () => {
     mocks.bookings.mockResolvedValueOnce({ status: "ready", state: { courses: [course], bookings: [booking] } });
     const body = await (await feedRequest(`${token}.ics`)).text();
     expect(body).toContain("SUMMARY:ALS refresher");
+    expect(body).toContain("DTSTART:20990304T010000Z");
     expect(body).toContain("LOCATION:Room 2");
     expect(body).not.toContain("Dr Organiser");
     expect(mocks.bookings).toHaveBeenCalledWith(expect.anything(), ownerId);
@@ -251,6 +256,135 @@ describe("GET /api/calendar/feed/<token>.ics (no session)", () => {
     const fallback = await feedRequest(`${token}.ics`);
     expect(fallback.status).toBe(200);
     expect(await fallback.text()).not.toContain("ALS refresher");
+  });
+
+  it.each([
+    { name: "Sydney", zone: "Australia/Sydney", expected: "20990114T220000Z" },
+    { name: "missing zone", zone: undefined, expected: "20990115T010000Z" },
+    { name: "invalid zone", zone: "synthetic/invalid", expected: "20990115T010000Z" },
+  ])("places booked courses on the feed using the owner's $name preference", async ({ zone, expected }) => {
+    mocks.rpc.mockResolvedValue({ data: ownerId, error: null });
+    const maybeSingle = vi.fn().mockResolvedValue({ data: { preferences: { timeZone: zone } }, error: null });
+    const eq = vi.fn<(column: string, value: string) => { maybeSingle: typeof maybeSingle }>(() => ({ maybeSingle }));
+    mocks.from.mockReturnValue({ select: vi.fn(() => ({ eq })) });
+    mocks.bookings.mockResolvedValue({
+      status: "ready",
+      state: {
+        courses: [
+          {
+            id: "synthetic-booked",
+            kind: "course",
+            title: "Synthetic course",
+            date: "2099-01-15",
+            startTime: "09:00",
+            endTime: "10:00",
+            location: "Synthetic room",
+            organiser: "Synthetic organiser",
+            status: "posted",
+          },
+        ],
+        bookings: [{ id: "synthetic-booking", courseId: "synthetic-booked", self: true, status: "booked" }],
+      },
+    });
+    const response = await feedRequest(`${token}.ics`);
+    expect(response.status).toBe(200);
+    const body = await response.text();
+    expect(body).toContain(`DTSTART:${expected}`);
+    expect(body).toContain("SUMMARY:Synthetic course");
+    expect(body).not.toContain("Synthetic organiser");
+    expect(eq.mock.calls.every(([column, value]) => column === "user_id" && value === ownerId)).toBe(true);
+  });
+
+  it("returns unavailable rather than publishing a silently shifted booking during a clock gap", async () => {
+    mocks.rpc.mockResolvedValue({ data: ownerId, error: null });
+    const maybeSingle = vi
+      .fn()
+      .mockResolvedValue({ data: { preferences: { timeZone: "Australia/Sydney" } }, error: null });
+    mocks.from.mockReturnValue({ select: () => ({ eq: () => ({ maybeSingle }) }) });
+    mocks.bookings.mockResolvedValue({
+      status: "ready",
+      state: {
+        courses: [
+          {
+            id: "clock-gap",
+            title: "Synthetic course",
+            kind: "course",
+            status: "posted",
+            date: "2027-10-03",
+            startTime: "02:30",
+            endTime: "03:30",
+          },
+        ],
+        bookings: [{ id: "synthetic-booking", courseId: "clock-gap", self: true, status: "booked" }],
+      },
+    });
+    const response = await feedRequest(`${token}.ics`);
+    expect(response.status).toBe(503);
+    expect(await response.text()).toBe("Calendar unavailable");
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+  });
+
+  it("returns unavailable when booked courses need a work zone but the owner's preferences cannot be read", async () => {
+    mocks.rpc.mockResolvedValue({ data: ownerId, error: null });
+    const maybeSingle = vi.fn().mockResolvedValue({ data: null, error: { message: "Synthetic preferences outage" } });
+    mocks.from.mockReturnValue({ select: () => ({ eq: () => ({ maybeSingle }) }) });
+    mocks.bookings.mockResolvedValue({
+      status: "ready",
+      state: {
+        courses: [
+          {
+            id: "synthetic-booked",
+            title: "Synthetic course",
+            kind: "course",
+            status: "posted",
+            date: "2099-01-15",
+            startTime: "09:00",
+            endTime: "10:00",
+          },
+        ],
+        bookings: [{ id: "synthetic-booking", courseId: "synthetic-booked", self: true, status: "booked" }],
+      },
+    });
+    const response = await feedRequest(`${token}.ics`);
+    expect(response.status).toBe(503);
+    expect(await response.text()).toBe("Calendar unavailable");
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+  });
+
+  it("ignores an old retained clock-gap course and keeps the Perth-day feed cutoff after work-zone conversion", async () => {
+    const now = new Date("2027-01-02T00:00:00Z");
+    const maybeSingle = vi
+      .fn()
+      .mockResolvedValue({ data: { preferences: { timeZone: "Australia/Sydney" } }, error: null });
+    mocks.from.mockReturnValue({ select: () => ({ eq: () => ({ maybeSingle }) }) });
+    const courses = [
+      // Ninety days old: still readable under the 365-day booking retention contract.
+      { id: "old-gap", title: "Synthetic old gap", date: "2026-10-04", startTime: "02:30", endTime: "03:30" },
+      { id: "future", title: "Synthetic future course", date: "2027-01-15", startTime: "13:00", endTime: "14:30" },
+      { id: "cutoff", title: "Synthetic cutoff course", date: "2026-12-04", startTime: "01:30", endTime: "03:30" },
+      { id: "excluded", title: "Synthetic excluded course", date: "2026-12-03", startTime: "01:30", endTime: "03:30" },
+    ].map((course) => ({ ...course, kind: "course", status: "posted" }));
+    mocks.bookings.mockResolvedValue({
+      status: "ready",
+      state: {
+        courses,
+        bookings: courses.map((course) => ({
+          id: `booking-${course.id}`,
+          courseId: course.id,
+          self: true,
+          status: "booked",
+        })),
+      },
+    });
+    const client = { rpc: mocks.rpc, from: mocks.from } as unknown as Parameters<typeof calendarFeedEvents>[0];
+    const body = toIcs(await calendarFeedEvents(client, ownerId, now), { now });
+    expect(body).toContain("SUMMARY:Synthetic future course");
+    expect(body).toContain("DTSTART:20270115T020000Z");
+    // Sydney's 4 Dec 01:30 is still 3 Dec in Perth, exactly the inclusive cutoff.
+    expect(body).toContain("SUMMARY:Synthetic cutoff course");
+    expect(body).toContain("DTSTART:20261203T143000Z");
+    expect(body).not.toContain("Synthetic old gap");
+    expect(body).not.toContain("Synthetic excluded course");
   });
 
   it("fails closed with a 503 and no detail when the database errors", async () => {

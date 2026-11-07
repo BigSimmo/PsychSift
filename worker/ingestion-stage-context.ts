@@ -53,5 +53,9 @@ export type IngestionStageContext = Readonly<{
     batchContext?: ManagedProviderEmbeddingBatchContext,
     expectedPlanDigest?: string,
   ) => Promise<Awaited<ReturnType<typeof embedTexts>>>;
+  workerGenerateSourceSummary?: (
+    job: JobRow,
+    context: import("./managed-pdf-summary").ManagedPdfSummaryContext,
+  ) => Promise<import("../src/lib/document-enrichment").SourceAnchoredSummaryGenerationResult>;
   writeBaseArtifacts: (job: JobRow, generation: string, rows: BaseArtifactRows) => Promise<void>;
 }>;

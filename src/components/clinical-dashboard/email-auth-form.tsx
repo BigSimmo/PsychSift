@@ -174,23 +174,29 @@ export function EmailAuthForm({
         required
         disabled={busy}
       />
-      <label
-        htmlFor={rememberId}
-        className="flex min-h-tap cursor-pointer items-center gap-3 text-sm font-medium text-[color:var(--text)]"
-      >
-        <input
-          id={rememberId}
-          type="checkbox"
-          checked={remember}
-          onChange={(event) => {
-            setRemember(event.target.checked);
-            if (!event.target.checked) forgetRememberedEmail();
-          }}
-          disabled={busy}
-          className="h-5 w-5 shrink-0 accent-[color:var(--clinical-accent)]"
-        />
-        Remember my email on this device
-      </label>
+      <div className="grid gap-1">
+        <label
+          htmlFor={rememberId}
+          className="flex min-h-tap cursor-pointer items-center gap-3 text-sm font-medium text-[color:var(--text)]"
+        >
+          <input
+            id={rememberId}
+            type="checkbox"
+            checked={remember}
+            onChange={(event) => {
+              setRemember(event.target.checked);
+              if (!event.target.checked) forgetRememberedEmail();
+            }}
+            aria-describedby={`${rememberId}-hint`}
+            disabled={busy}
+            className="h-5 w-5 shrink-0 accent-[color:var(--clinical-accent)]"
+          />
+          Remember my email until sign-out
+        </label>
+        <p id={`${rememberId}-hint`} className="text-xs leading-5 text-[color:var(--text-muted)]">
+          Stored only in this browser. Cleared at sign-out, session expiry or account change.
+        </p>
+      </div>
       {mode !== "link" && (
         <div className="grid gap-1">
           <TextField

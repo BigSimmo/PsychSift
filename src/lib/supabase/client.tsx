@@ -204,6 +204,22 @@ function browserSupabaseConfig(): BrowserSupabaseConfig | null {
  * first paint rather than with every page. Auth status stays "loading" until it
  * has loaded and verified the session, exactly as it did while getUser() ran.
  */
+/**
+ * Whether this browser holds a stored Supabase session cookie (`sb-<ref>-auth-token`,
+ * possibly chunked as `.0`, `.1`, …). Read before the library loads: when a stored
+ * session has expired, auth-js refreshes during its own initialisation, and a
+ * rejected refresh removes the session before `getSession()` can return it, so the
+ * boot path below would otherwise read an expired session as a guest's first visit.
+ */
+function hasStoredAuthSessionCookie(): boolean {
+  if (typeof document === "undefined") return false;
+  try {
+    return document.cookie.split(";").some((part) => /^\s*sb-[^=;]+-auth-token(?:\.\d+)?=./.test(part));
+  } catch {
+    return false;
+  }
+}
+
 function loadBrowserSupabaseClient(config: BrowserSupabaseConfig): Promise<SupabaseClient> {
   return import("@/lib/supabase/browser-client").then((module) =>
     module.browserSupabaseClientFor(config.url, config.publishableKey),
@@ -353,6 +369,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // True while this tab's own signOut() runs, so its SIGNED_OUT event is not
   // mistaken for a session that ended by itself (which says so, below).
   const userSignOutRef = useRef(false);
+  // Whether a stored session cookie existed before the library loaded (see
+  // `hasStoredAuthSessionCookie`), so an expired session auth-js removed during
+  // its own start-up still counts as a session that ended, not a guest boot.
+  const storedSessionAtBootRef = useRef(false);
   const [authEpoch, setAuthEpoch] = useState(0);
 
   const invalidateAuthRequests = useCallback(() => {
@@ -382,6 +402,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!config) return () => undefined;
     let active = true;
+    storedSessionAtBootRef.current = hasStoredAuthSessionCookie();
     ensureClient().then(
       (loaded) => {
         if (active) setClient(loaded);
@@ -464,7 +485,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // whose session lapsed may be gone, and until the next sign-in everything
           // they left (quick note, Remind me, On Call numbers, CPD applications)
           // would stay readable, including on the offline page. So clear it all now.
-          if (sessionResult.data.session && !resolved.session) {
+          // auth-js may already have removed an expired one while starting up, so
+          // `getSession()` returns null for it; the cookie seen before the library
+          // loaded still marks it as a session that ended, not a guest's boot.
+          if ((sessionResult.data.session || storedSessionAtBootRef.current) && !resolved.session) {
             clearAccountScopedBrowserState();
             // MHA clocks (form codes and times) also drop their in-memory copy.
             clearMhaClocks();

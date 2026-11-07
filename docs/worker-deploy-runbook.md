@@ -413,12 +413,89 @@ IDs and which file types are allowed, and any allowlist error), and the startup 
 
 **`WORKER_ADMIN_SOURCE_RUNTIME_MODULE`** (`loadAdminSourceRuntimeOptions` in `worker/admin-source-runtime.ts`).
 It names, by absolute local path, a server-mounted module that is deliberately kept outside this repository.
-That module supplies the approved-source record and the malware-scanner configuration
+That module supplies the approved-source record and the malware-scanner policy
 (`loadApprovedSource` and `loadScannerConfiguration`, or a `createAdminSourceRuntimeSuppliers` factory that
 returns them). The worker refuses a relative, `http(s):`, `data:` or `node:` path, and refuses if the module's
 bytes change while it runs. Never write its value into a document, log, PR or ticket; only whether it is set.
 
-Without it there is no scanner verdict, so every ingestion provider call is refused and each job ends as
+**Built-in internal-build alternative (3 November).** Instead of a mounted module, an explicitly
+configured `WORKER_INTERNAL_ADMIN_BUILD_POLICY_JSON` selects the native-text-only internal
+supplier. Its four strict keys are `allowedDocumentIds` (1–100 distinct UUIDs),
+`approvalReferenceSha256`, `issuedAt` and `expiresAt` (UTC; maximum 24 hours). The settings are
+server-owned execution scope, not document metadata or a public permission record. No policy
+means no activation; specifying both modes, malformed/expired scope, wrong owner/source or a
+non-administrator admission refuses. Configuration presence suppresses the missing-module
+warning but does not establish readiness; validation happens before claims.
+`WORKER_ALLOWED_DOCUMENT_IDS` must also be explicitly restricted to a nonempty subset of that
+policy's document IDs. A missing, malformed or wider claim scope refuses at startup, before
+unrelated queue jobs can have attempts consumed.
+
+This supplier actually reloads the admission event, current administrator identity, private
+original bytes and hashes. It runs a separate bounded native-PDF inspector, retains structural
+page obligations, and supplies the explicit source-scoped unscanned exception. For an
+owner-bound `uploaded_local` draft with unresolved legal review it records the
+[owner's legal deferral](decisions/2026-11-03-defer-legal-review-for-internal-build.md), never a
+public licence. It accepts only the no-visual native-text profile; raster/OCR, image/vector
+requirements and ambiguous/active/hidden content refuse. Extractor-generated fallback renders
+are retained privately and are not certified visual evidence.
+
+Deploying the additive general-PDF completion/jurisdiction migration and observing drift are
+separate from compiling this worker. Do not resume claims until that schema and the finite policy
+are verified. This documentation does not configure a policy, deploy code or run ingestion.
+
+**Inspected table/image/OCR alternative (3 November).**
+`WORKER_INTERNAL_RICH_PDF_BUILD_POLICY_JSON` uses the same four finite policy keys and explicit
+claim subset. It is mutually exclusive with the mounted runtime and native-text policy. It
+requires current administrator readmission, the full-PDF migration, and private original Storage.
+For an existing shared library document, its actual null owner and boolean `public_corpus` remain
+unchanged; a separately recorded current administrator takes responsibility for the re-index.
+The new admission establishes the current request, not a historical upload or publication grant.
+
+The separate original inspector inventories tables, raster images and vectors; production
+extraction and Tesseract supply actual text/OCR, table cells and captured images. Source hashes,
+provenance, native/OCR page partitions, derived rows and vectors are checked before atomic
+publication. Measured quality gates reject a degraded replacement. Retained image bytes use an
+authenticated active-generation endpoint; the `managed-pdf/…` locator is not a Storage object.
+Local sections, memory cards and index units are produced together. Source-anchored summaries
+can be enabled explicitly with `enableSourceAnchoredSummary: true`; their exact request bodies
+and separate purpose grants are checked, and their generation-bound projections commit atomically
+with the pointer. The default enables embedding only. Vision interpretation and clinical
+semantic sign-off remain separate. This is an internal build with deferred legal review, not public
+clearance. Keep the worker paused until actual schema, deployment and finite policy are verified.
+
+**Reviewed rendered evidence (5 November).** The rich-build policy can explicitly select
+`renderedReview: { enabled: true, reviewFilePath: <absolute private JSON file>,
+approvedReviewSha256: [<exact approved review digest>] }`, together with
+`enableSourceAnchoredSummary: true`. The mounted file is a single strict
+`administrator-rendered-pdf-inspection-v1` review record. The digest allowlist belongs to server
+configuration; document metadata and the record itself cannot approve it. The document claim
+allowlist, current administrator admission and original-byte checks still apply. Selecting this
+profile never follows automatically from a native-inspector refusal.
+
+The local producer first emits `rendered-pdf-source-v1` evidence held for review. An independent
+review must cover every exact page render, OCR region, table row/cell association and diagram
+connection, or explicitly establish absence. This contract supports rectangular reviewed tables;
+merged or irregular structures remain held. Approved review records bind source bytes, runtime
+scripts, pixels, OCR, geometry and relationships. They grant no ingestion, provider, publication
+or clinical approval. The runtime revalidates those identities and current authority at dispatch,
+pins review/profile selection for the attempt and refuses rotation during a running job.
+
+Only final page pixels and reviewed derivatives become searchable. Original native text, native
+table strings and original embedded images stay excluded. Their unresolved native-layer conflict
+is preserved; the rendered representation uses `hiddenText: not_applicable`, never a claim that
+the original layer is consistent. Private retention includes the exact review, raster container,
+original geometry and raw rendered OCR. The terminal emits a distinct rendered seal and keeps
+the existing generation, ownership, rollback, manual-label and atomic-summary protections.
+These source changes and their new migrations require their own release and owner merge gates.
+They do not create a real review record, configure a live policy or resume claims.
+
+The owner selected an explicit source-scoped administrator-only unscanned exception for local
+implementation on 1 November. Its evidence, expiry, revocation and commissioning requirements
+live in [the exception contract](reindex-unlock-plan.md#administrator-unscanned-exception-contract).
+It is a separate explicit policy mode, never automatic fallback when a scanner fails. This code
+change does not configure a mounted module, resume the worker or authorize processing.
+
+Without either configured runtime mode there is no scanner verdict, so every ingestion provider call is refused and each job ends as
 `blocked by ingress safety checks` with `scanner_unavailable` (fail closed; pinned by
 `tests/edge-provider-egress.test.ts`). A worker started without it logs one warning saying so
 (`adminSourceRuntimeStartupWarning`). See [the current ingestion model](ingestion-state-machine.md#current-model-october-2026).

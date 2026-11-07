@@ -255,7 +255,12 @@ function isRecoverableFallbackPdfImageError(error: unknown) {
   return /^Image object .+(?:: (?:data field is empty or invalid|data buffer is empty)| not found)/.test(error.message);
 }
 
-export async function terminateProcessTree(child: ChildProcess) {
+export async function terminateProcessTree(child: ChildProcess, options: { taskkillTimeoutMs?: number } = {}) {
+  if (
+    options.taskkillTimeoutMs !== undefined &&
+    (!Number.isInteger(options.taskkillTimeoutMs) || options.taskkillTimeoutMs < 1 || options.taskkillTimeoutMs > 10000)
+  )
+    throw new Error("process_tree_timeout_invalid");
   const pid = child.pid;
   if (!pid) return;
 
@@ -264,6 +269,9 @@ export async function terminateProcessTree(child: ChildProcess) {
       const killer = spawn("taskkill", ["/pid", String(pid), "/t", "/f"], {
         stdio: "ignore",
         windowsHide: true,
+        ...(options.taskkillTimeoutMs === undefined
+          ? {}
+          : { timeout: options.taskkillTimeoutMs, killSignal: "SIGKILL" as const }),
       });
       killer.once("error", () => {
         if (child.exitCode === null) child.kill("SIGKILL");

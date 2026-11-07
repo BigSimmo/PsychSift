@@ -55,6 +55,8 @@ type TextGenerationOptions = IngestionOpenAIOptions & {
   signal?: AbortSignal;
   safetyIdentifier?: string;
   store?: boolean;
+  /** Finite evaluation may pin Standard pricing without changing runtime defaults. */
+  serviceTier?: "default";
 };
 
 type ResolvedTextGenerationOptions = Required<Pick<TextGenerationOptions, "model" | "maxOutputTokens">> &
@@ -66,7 +68,10 @@ type APIPromiseLike<T> = Promise<T> & {
 
 export type OpenAITextResult = {
   text: string;
+  /** Requested model selector; retained independently of provider execution evidence. */
   model: string;
+  /** Model reported by the provider response; absent means execution identity is unverified. */
+  providerModel?: string;
   operation: OpenAIOperation;
   latencyMs: number;
   requestId?: string | null;
@@ -307,14 +312,16 @@ const reasoningEfforts = new Set<OpenAIReasoningEffort>(["low", "medium", "high"
 function openAIModelCapabilities(model: string) {
   const normalized = model.toLowerCase();
   const isGpt5 = /^gpt-5(?:[.-]|$)/.test(normalized);
+  const isSol61 = /^gpt-6\.1-sol(?:-|$)/.test(normalized);
   const gptVersionMatch = normalized.match(/^gpt-(\d+)(?:\.(\d+))?(?:[.-]|$)/);
   const gptMajorVersion = Number(gptVersionMatch?.[1] ?? 0);
   const gptMinorVersion = Number(gptVersionMatch?.[2] ?? 0);
   const usesPromptCacheOptions = gptMajorVersion > 5 || (gptMajorVersion === 5 && gptMinorVersion >= 6);
-  const isReasoningModel = isGpt5 || /^o\d(?:[.-]|$)/.test(normalized);
+  const isReasoningModel = isGpt5 || isSol61 || /^o\d(?:[.-]|$)/.test(normalized);
 
   return {
     supportsReasoning: isReasoningModel,
+    requiresReasoning: isSol61,
     supportsTextVerbosity: isGpt5,
     usesPromptCacheOptions,
     requiredPromptCacheRetention: /^gpt-5\.5(?:[.-]|$)/.test(normalized) ? "24h" : undefined,
@@ -341,6 +348,7 @@ function defaultReasoningEffort(operation: OpenAIOperation, model: string): Open
 
 function resolveReasoningEffort(model: string, effort: OpenAIReasoningEffort) {
   const capabilities = openAIModelCapabilities(model);
+  if (capabilities.requiresReasoning && effort === "none") return "low";
   if (!capabilities.supportsReasoning || effort === "none") return "none";
   return capabilities.allowedReasoningEfforts.has(effort) ? effort : "low";
 }
@@ -399,7 +407,7 @@ function responseBody(
     input,
     ...(resolved.instructions ? { instructions: resolved.instructions } : {}),
     max_output_tokens: Math.max(resolved.maxOutputTokens, reasoningHeadroomFloor(resolvedReasoningEffort)),
-    ...(isAnswerPilotBudgetActive() ? { service_tier: "default" as const } : {}),
+    ...(isAnswerPilotBudgetActive() || resolved.serviceTier ? { service_tier: "default" as const } : {}),
     store: isAnswerPilotBudgetActive() ? false : (resolved.store ?? env.OPENAI_STORE_RESPONSES),
     prompt_cache_key: resolved.promptCacheKey ?? promptCacheKeyFor(operation),
     ...(capabilities.usesPromptCacheOptions
@@ -593,6 +601,7 @@ async function createTextResult(
   options: ResolvedTextGenerationOptions,
   format?: Record<string, unknown>,
   parseResponse = false,
+  preparedBody?: ReturnType<typeof responseBody>,
 ): Promise<OpenAITextResult & { parsed?: unknown }> {
   const operation = options.operation ?? "text_generation";
   const startedAt = Date.now();
@@ -601,7 +610,7 @@ async function createTextResult(
   // Buffered (non-streaming) request — the baseline behaviour. The `responses.create` overloads are
   // incompatible with our generic call-site; the double-cast works around the SDK type mismatch.
   async function requestBuffered(client: ReturnType<typeof createOpenAIClient>): Promise<unknown> {
-    const body = responseBody(input, options, format) as never;
+    const body = (preparedBody ?? responseBody(input, options, format)) as never;
     const request = parseResponse
       ? client.responses.parse(body, requestOptions(options))
       : client.responses.create(body, requestOptions(options));
@@ -646,9 +655,11 @@ async function createTextResult(
       });
     }
 
+    const reportedModel = (data as { model?: unknown }).model;
     return {
       text: outputText,
       model: options.model,
+      providerModel: typeof reportedModel === "string" && reportedModel.trim() ? reportedModel.trim() : undefined,
       operation,
       latencyMs: Date.now() - startedAt,
       requestId,
@@ -961,17 +972,28 @@ export async function generateStructuredTextResponse(
   return result.text;
 }
 
+/** Build the same SDK body used by parsed generation, without creating a client or dispatching. */
+export function prepareParsedTextRequestBody<T>(
+  input: OpenAIResponseInput,
+  schema: ZodType<T>,
+  options: string | TextGenerationOptions = env.OPENAI_ANSWER_MODEL,
+) {
+  const resolved = resolveTextGenerationOptions(options, env.OPENAI_ANSWER_MODEL);
+  const format = zodTextFormat(schema, resolved.schemaName ?? "structured_output") as unknown as Record<
+    string,
+    unknown
+  >;
+  return responseBody(input, resolved, format);
+}
+
 export async function generateParsedTextResult<T>(
   input: OpenAIResponseInput,
   schema: ZodType<T>,
   options: string | TextGenerationOptions = env.OPENAI_ANSWER_MODEL,
 ): Promise<OpenAIParsedTextResult<T>> {
   const resolved = resolveTextGenerationOptions(options, env.OPENAI_ANSWER_MODEL);
-  const format = zodTextFormat(schema, resolved.schemaName ?? "structured_output") as unknown as Record<
-    string,
-    unknown
-  >;
-  const result = await createTextResult(input, resolved, format, true);
+  const body = prepareParsedTextRequestBody(input, schema, options);
+  const result = await createTextResult(input, resolved, undefined, true, body);
   const parsed = schema.safeParse(result.parsed);
   if (!parsed.success) {
     throw new PublicApiError("OpenAI returned invalid structured output.", 502, {

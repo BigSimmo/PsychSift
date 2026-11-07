@@ -1,14 +1,28 @@
 import { createHash } from "node:crypto";
+import {
+  ADMIN_UNSCANNED_EXCEPTION_POLICY,
+  readAdminUnscannedExceptionReceipt,
+  type AdminUnscannedExceptionReceipt,
+} from "./admin-unscanned-exception.ts";
+import {
+  RICH_ADMIN_UNSCANNED_POLICY,
+  readRichAdminUnscannedReceipt,
+  type RichAdminUnscannedReceipt,
+} from "./rich-admin-unscanned-exception.ts";
 
 export const PROVIDER_EGRESS_PURPOSES = ["caption", "embedding", "summary", "deep_memory"] as const;
 
 export type ProviderEgressPurpose = (typeof PROVIDER_EGRESS_PURPOSES)[number];
 export type ContentSha256 = `sha256:${string}`;
 
+/** Owner decision: internal build only; never a legal clearance or public licence. */
+export const INTERNAL_BUILD_LEGAL_REVIEW_DEFERRAL = "owner-internal-build-2026-11-03" as const;
+
 export type IngressHardGateCode =
   | "admission_missing"
   | "binding_invalid"
   | "scanner_unavailable"
+  | "unscanned_exception_invalid"
   | "malware_detected"
   | "active_content_detected"
   | "identifier_detected"
@@ -57,19 +71,22 @@ export type DocumentIngressSafetyObservations = Readonly<{
   purpose: ProviderEgressPurpose;
   admission: "current" | "missing" | "revoked" | "stale";
   ownerScope: "permitted" | "denied";
-  rights: "permitted" | "denied";
+  rights: "permitted" | "denied" | "review_deferred";
+  legalReviewDeferral?: typeof INTERNAL_BUILD_LEGAL_REVIEW_DEFERRAL;
+  processingScope?: "owner_internal_build" | "existing_shared_library_reindex";
   purposeClearance: "permitted" | "denied";
   scanner: Readonly<{
-    verdict: "clean" | "malware" | "unavailable";
+    verdict: "clean" | "malware" | "unavailable" | "unscanned";
     scannerVersion: string;
     contentSha256: ContentSha256;
+    exceptionReceipt?: AdminUnscannedExceptionReceipt | RichAdminUnscannedReceipt;
   }>;
   activeContent: "absent" | "detected";
   identifiers: "absent" | "detected";
   hiddenText: "consistent" | "not_applicable" | "conflict";
   encryption: "not_encrypted" | "supported" | "unsupported";
   source: "eligible" | "excluded" | "link_only";
-  indexLicence: "permitted" | "not_permitted";
+  indexLicence: "permitted" | "not_permitted" | "review_deferred";
   sourcePolicy: "matched" | "mismatch";
 }>;
 
@@ -81,6 +98,7 @@ export type DocumentIngressSafetyResult =
       policyVersion: string;
       checks: readonly string[];
       evidenceDigest: ContentSha256;
+      validUntilMs?: number;
     }>
   | Readonly<{
       verdict: "quarantine";
@@ -96,6 +114,18 @@ const contentSha256Pattern = /^sha256:[a-f0-9]{64}$/;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/** Trusted supplier evidence only; callers also bind the actual document scope. */
+export function hasInternalBuildLegalReviewDeferral(value: unknown, corpusScope: unknown): boolean {
+  return (
+    corpusScope === "uploaded_local" &&
+    isRecord(value) &&
+    value.legalReviewDeferral === INTERNAL_BUILD_LEGAL_REVIEW_DEFERRAL &&
+    value.processingScope === "owner_internal_build" &&
+    value.rights === "review_deferred" &&
+    value.indexLicence === "review_deferred"
+  );
 }
 
 function isNonEmptyString(value: unknown): value is string {
@@ -206,7 +236,24 @@ export function evaluateDocumentIngressSafety(input: unknown): DocumentIngressSa
   if (admission !== "current") reasons.set("admission_missing", "obtain_current_admission");
 
   const ownerScope = normalizedStatus(record.ownerScope, ["permitted", "denied"] as const);
-  const rights = normalizedStatus(record.rights, ["permitted", "denied"] as const);
+  const rights = normalizedStatus(record.rights, ["permitted", "denied", "review_deferred"] as const);
+  const richScanner = isRecord(record.scanner) ? record.scanner : {};
+  const richException =
+    binding && purpose ? readRichAdminUnscannedReceipt(richScanner.exceptionReceipt, binding, purpose) : null;
+  const richLegalDeferral =
+    richException !== null &&
+    record.legalReviewDeferral === INTERNAL_BUILD_LEGAL_REVIEW_DEFERRAL &&
+    record.rights === "review_deferred" &&
+    record.indexLicence === "review_deferred" &&
+    record.processingScope ===
+      (richException.scope === "existing_shared_library_stewardship"
+        ? "existing_shared_library_reindex"
+        : "owner_internal_build");
+  const legalReviewDeferred = richException
+    ? richLegalDeferral
+    : hasInternalBuildLegalReviewDeferral(record, "uploaded_local");
+  if (record.legalReviewDeferral !== undefined && !legalReviewDeferred) addInvalidObservation(reasons);
+  if (rights === "review_deferred" && !legalReviewDeferred) addInvalidObservation(reasons);
   const purposeClearance = normalizedStatus(record.purposeClearance, ["permitted", "denied"] as const);
   if (ownerScope === "denied" || purposeClearance === "denied") {
     reasons.set("source_policy_mismatch", "refresh_source_policy");
@@ -217,7 +264,7 @@ export function evaluateDocumentIngressSafety(input: unknown): DocumentIngressSa
   }
 
   const scanner = isRecord(record.scanner) ? record.scanner : {};
-  const scannerVerdict = normalizedStatus(scanner.verdict, ["clean", "malware", "unavailable"] as const);
+  const scannerVerdict = normalizedStatus(scanner.verdict, ["clean", "malware", "unavailable", "unscanned"] as const);
   const scannerVersion = isNonEmptyString(scanner.scannerVersion) ? scanner.scannerVersion.trim() : "invalid";
   const scannerContentSha256 = isContentSha256(scanner.contentSha256) ? scanner.contentSha256 : "invalid";
   if (
@@ -230,13 +277,28 @@ export function evaluateDocumentIngressSafety(input: unknown): DocumentIngressSa
     reasons.set("scanner_unavailable", "repeat_safety_checks");
   }
   if (scannerVerdict === "malware") reasons.set("malware_detected", "remove_or_quarantine_unsafe_content");
+  const exception =
+    scannerVerdict === "unscanned" && binding && purpose
+      ? (readAdminUnscannedExceptionReceipt(scanner.exceptionReceipt, binding, purpose) ?? richException)
+      : null;
+  if (
+    scannerVerdict === "unscanned" &&
+    (!exception || scannerVersion !== (richException ? RICH_ADMIN_UNSCANNED_POLICY : ADMIN_UNSCANNED_EXCEPTION_POLICY))
+  ) {
+    reasons.set("unscanned_exception_invalid", "repeat_safety_checks");
+  }
 
   const activeContent = normalizedStatus(record.activeContent, ["absent", "detected"] as const);
   const identifiers = normalizedStatus(record.identifiers, ["absent", "detected"] as const);
   const hiddenText = normalizedStatus(record.hiddenText, ["consistent", "not_applicable", "conflict"] as const);
   const encryption = normalizedStatus(record.encryption, ["not_encrypted", "supported", "unsupported"] as const);
   const source = normalizedStatus(record.source, ["eligible", "excluded", "link_only"] as const);
-  const indexLicence = normalizedStatus(record.indexLicence, ["permitted", "not_permitted"] as const);
+  const indexLicence = normalizedStatus(record.indexLicence, [
+    "permitted",
+    "not_permitted",
+    "review_deferred",
+  ] as const);
+  if (indexLicence === "review_deferred" && !legalReviewDeferred) addInvalidObservation(reasons);
   const sourcePolicy = normalizedStatus(record.sourcePolicy, ["matched", "mismatch"] as const);
 
   if (activeContent === "detected") {
@@ -273,11 +335,18 @@ export function evaluateDocumentIngressSafety(input: unknown): DocumentIngressSa
     admission,
     ownerScope,
     rights,
+    ...(legalReviewDeferred
+      ? {
+          legalReviewDeferral: INTERNAL_BUILD_LEGAL_REVIEW_DEFERRAL,
+          processingScope: richLegalDeferral ? record.processingScope : "owner_internal_build",
+        }
+      : {}),
     purposeClearance,
     scanner: {
       verdict: scannerVerdict,
       version: scannerVersion,
       contentSha256: scannerContentSha256,
+      ...(exception ? { exceptionDigest: exception.grantDigest, expiresAtMs: exception.expiresAtMs } : {}),
     },
     activeContent,
     identifiers,
@@ -308,18 +377,29 @@ export function evaluateDocumentIngressSafety(input: unknown): DocumentIngressSa
   const checks = Object.freeze([
     "admission:current",
     "owner_scope:permitted",
-    "rights:permitted",
+    `rights:${rights}`,
+    ...(legalReviewDeferred ? ["legal_review:owner_deferred:internal_build"] : []),
     `purpose:${purpose}:permitted`,
-    `scanner:clean:${scannerVersion}`,
+    ...(exception
+      ? [`scanner:unscanned:${scannerVersion}:${exception.grantDigest}`]
+      : [`scanner:clean:${scannerVersion}`]),
     "active_content:absent",
     "identifiers:absent",
     `hidden_text:${hiddenText}`,
     `encryption:${encryption}`,
     "source:eligible",
-    "index_licence:permitted",
+    `index_licence:${indexLicence}`,
     "source_policy:matched",
   ]);
-  return Object.freeze({ verdict: "pass", binding, purpose, policyVersion, checks, evidenceDigest });
+  return Object.freeze({
+    verdict: "pass",
+    binding,
+    purpose,
+    policyVersion,
+    checks,
+    evidenceDigest,
+    ...(exception ? { validUntilMs: exception.expiresAtMs } : {}),
+  });
 }
 
 declare const providerEgressPermitType: unique symbol;
@@ -430,8 +510,8 @@ export function createDocumentIngressSafetyAuthority(options: AuthorityOptions):
     if (result.purpose !== purpose) throw new ProviderEgressDeniedError("provider_egress_purpose_mismatch");
 
     const issuedAt = now();
-    const expiresAt = issuedAt + options.permitTtlMs;
-    if (!Number.isSafeInteger(issuedAt) || !Number.isSafeInteger(expiresAt)) {
+    const expiresAt = Math.min(issuedAt + options.permitTtlMs, result.validUntilMs ?? Number.POSITIVE_INFINITY);
+    if (!Number.isSafeInteger(issuedAt) || !Number.isSafeInteger(expiresAt) || issuedAt >= expiresAt) {
       throw new ProviderEgressDeniedError("provider_egress_permit_stale");
     }
     const permit = Object.freeze(Object.create(null)) as ProviderEgressPermit;

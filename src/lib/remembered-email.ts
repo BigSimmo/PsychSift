@@ -1,8 +1,9 @@
 /**
  * The email address the sign-in form fills in for you, kept in this browser only.
  *
- * Only the address is kept, and only while "Remember my email on this device" is
- * ticked; unticking it removes the address at once. Passwords are never written
+ * Only the address is kept, and only while "Remember my email until sign-out" is
+ * ticked; unticking it removes the address at once. The account-transition sweep
+ * also removes it at sign-out, session expiry or account change. Passwords are never written
  * here: the browser's own password manager is the place for those. Nothing in this
  * key reaches PsychSift's servers.
  */

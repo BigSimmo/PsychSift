@@ -101,20 +101,21 @@ function readLocal(section: WorkSyncSection): unknown {
   }
 }
 
-/** Writes the account's value into the device key and tells the store, which re-reads it. */
-function writeLocal(section: WorkSyncSection, value: unknown): void {
+/** Writes the account's value into the device key and tells the store only when it succeeded. */
+function writeLocal(section: WorkSyncSection, value: unknown): boolean {
   const key = WORK_SYNC_STORAGE_KEYS[section];
   const next = isEmptyWorkSyncValue(value) ? null : isTextSection(section) ? String(value) : JSON.stringify(value);
   try {
     const current = window.localStorage.getItem(key);
-    if (current === next) return;
+    if (current === next) return true;
     if (next === null) window.localStorage.removeItem(key);
     else window.localStorage.setItem(key, next);
   } catch {
     // Storage refused: the page keeps what it has in memory, and the account copy is unchanged.
-    return;
+    return false;
   }
   window.dispatchEvent(new StorageEvent("storage", { key }));
+  return true;
 }
 
 /**
@@ -264,6 +265,8 @@ async function loadMerge(): Promise<Merge | null> {
 
 async function pull(active: Session): Promise<void> {
   active.lastPull = Date.now();
+  const generations = new Map(active.generations);
+  const pending = new Set(active.dirty);
   let payload: unknown;
   try {
     const response = await fetch(SYNC_URL, { cache: "no-store", headers: active.headers() });
@@ -282,9 +285,16 @@ async function pull(active: Session): Promise<void> {
   if (active.stopped || !active.isCurrent()) return;
 
   for (const section of WORK_SYNC_SECTIONS) {
-    // A change made on this device while the read was in flight is newer than what came back.
-    // So is one the account refused: its older account copy must not replace it.
-    if (active.dirty.has(section) || active.refused.has(section) || heldOffDevice(section)) continue;
+    // A save pending when this read began, or a later change, can finish before this response arrives.
+    // Its successful save must not let this older account copy replace the device's newer value.
+    if (
+      pending.has(section) ||
+      (active.generations.get(section) ?? 0) !== (generations.get(section) ?? 0) ||
+      active.dirty.has(section) ||
+      active.refused.has(section) ||
+      heldOffDevice(section)
+    )
+      continue;
     const entry = sections[section];
     const local = readLocal(section);
     const firstMatch = !active.matched.has(section);
@@ -295,16 +305,22 @@ async function pull(active: Session): Promise<void> {
       continue;
     }
     if (!firstMatch || isEmptyWorkSyncValue(local)) {
+      if (!writeLocal(section, entry.value)) {
+        setStatus(section, "device");
+        continue;
+      }
       active.matched.add(section);
-      writeLocal(section, entry.value);
       setStatus(section, "account");
       continue;
     }
     // A first match that cannot be joined here waits for the next read, so neither side is lost.
     if (!merge) continue;
     // This device's first match with the account for this section: keep both sides, then save the result.
+    if (!writeLocal(section, merge(section, local, entry.value))) {
+      setStatus(section, "device");
+      continue;
+    }
     active.matched.add(section);
-    writeLocal(section, merge(section, local, entry.value));
     schedulePush(active, section);
   }
   writeMarker(active);
@@ -391,8 +407,8 @@ function subscribeStatus(listener: () => void): () => void {
 /**
  * Where a section's choices are kept right now: "account" once it matches the
  * account copy, "device" when the account refused it (the quick note read as a
- * patient detail, or the account is full), "off" when signed out, in the demo
- * build or before the first read.
+ * patient detail, or the account is full) or the device could not store the
+ * account copy, "off" when signed out, in the demo build or before the first read.
  */
 export function useWorkSyncStatus(section: WorkSyncSection): WorkSyncStatus {
   return useSyncExternalStore(

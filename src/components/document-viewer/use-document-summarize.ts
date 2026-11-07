@@ -3,7 +3,12 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 
 import type { TimedAnswerProgressUpdate } from "@/components/clinical-dashboard/answer-progress";
-import { readAnswerStream } from "@/components/clinical-dashboard/search-utils";
+import {
+  answerRequestMaxDurationMs,
+  answerStallTimeoutMs,
+  readAnswerStream,
+} from "@/components/clinical-dashboard/search-utils";
+import { createClientRequestBudget } from "@/components/clinical-dashboard/client-request-budget";
 import { documentSummaryQuestion } from "@/lib/answer-contract";
 import { resolveScrollBehavior } from "@/lib/scroll-behavior";
 import type { AnswerPayload } from "@/components/clinical-dashboard/search-utils";
@@ -78,6 +83,10 @@ export function useDocumentSummarize({
     }
     const query = documentSummaryQuestion;
     const controller = new AbortController();
+    const budget = createClientRequestBudget(controller, {
+      stallMs: answerStallTimeoutMs,
+      maxDurationMs: answerRequestMaxDurationMs,
+    });
     summaryAbortRef.current?.abort();
     summaryAbortRef.current = controller;
     const authRequest = registerAuthRequest(controller);
@@ -98,33 +107,45 @@ export function useDocumentSummarize({
       if (!isAuthEpochCurrent(authRequest.epoch)) {
         throw new DOMException("Stale authentication epoch", "AbortError");
       }
-      const response = await fetch("/api/answer/stream", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(clientDemoMode ? {} : authorizationHeader),
-        },
-        body: JSON.stringify({ query, documentId, summaryMode: true }),
-        signal: controller.signal,
-      });
+      const response = await budget.wait(
+        fetch("/api/answer/stream", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(clientDemoMode ? {} : authorizationHeader),
+          },
+          body: JSON.stringify({ query, documentId, summaryMode: true }),
+          signal: controller.signal,
+        }),
+      );
       if (response.status === 401) markSessionExpired();
       if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as { error?: unknown } | null;
+        const payload = (await budget.wait(response.json().catch(() => null))) as { error?: unknown } | null;
         throw new Error(
           typeof payload?.error === "string" && payload.error.trim()
             ? payload.error
             : "Answer could not be generated from this document.",
         );
       }
-      const payload = await readAnswerStream(response, (progress) => {
-        if (
-          controller.signal.aborted ||
-          summaryAbortRef.current !== controller ||
-          !isAuthEpochCurrent(authRequest.epoch)
-        )
-          return;
-        setSummaryProgressEvents((events) => [...events, { ...progress, receivedAt: Date.now() }].slice(-20));
-      });
+      const payload = await budget.wait(
+        readAnswerStream(
+          response,
+          (progress) => {
+            if (
+              controller.signal.aborted ||
+              summaryAbortRef.current !== controller ||
+              !isAuthEpochCurrent(authRequest.epoch)
+            )
+              return;
+            setSummaryProgressEvents((events) => [...events, { ...progress, receivedAt: Date.now() }].slice(-20));
+          },
+          undefined,
+          undefined,
+          budget.touch,
+          undefined,
+          controller.signal,
+        ),
+      );
       if (controller.signal.aborted || summaryAbortRef.current !== controller || !isAuthEpochCurrent(authRequest.epoch))
         return;
       setSummary(payload);
@@ -132,13 +153,23 @@ export function useDocumentSummarize({
         generatedSummaryRef.current?.scrollIntoView({ block: "start", behavior: resolveScrollBehavior() });
       });
     } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") return;
-      if (controller.signal.aborted || summaryAbortRef.current !== controller || !isAuthEpochCurrent(authRequest.epoch))
+      if (summaryAbortRef.current !== controller || !isAuthEpochCurrent(authRequest.epoch)) return;
+      if (
+        !budget.timedOut &&
+        (controller.signal.aborted || (error instanceof DOMException && error.name === "AbortError"))
+      )
         return;
       setSummaryProgressEvents([]);
       setSummaryProgressStartedAt(null);
-      setSummaryError(error instanceof Error ? error.message : "Answer could not be generated from this document.");
+      setSummaryError(
+        budget.timedOut
+          ? "Answer generation timed out. Please try again."
+          : error instanceof Error
+            ? error.message
+            : "Answer could not be generated from this document.",
+      );
     } finally {
+      budget.cancel();
       authRequest.release();
       if (summaryAbortRef.current === controller) {
         summaryAbortRef.current = null;

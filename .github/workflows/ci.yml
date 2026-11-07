@@ -766,8 +766,19 @@ jobs:
           npm install --prefix "$bootstrap_npm_home/npm" --ignore-scripts --no-save --package-lock=false --no-audit --no-fund "npm@$bootstrap_npm_version"
           echo "home=$bootstrap_npm_home" >> "$GITHUB_OUTPUT"
 
-      - name: Install deterministic Python PDF test prerequisite
-        run: python3 -m pip install --disable-pip-version-check "PyMuPDF==1.28.0"
+      - name: Install deterministic Python PDF and OCR test prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends python3-venv tesseract-ocr tesseract-ocr-eng
+          # The held renderer intentionally sets PYTHONNOUSERSITE=1. A runner's
+          # implicit --user install is therefore invisible to its subprocess.
+          pdf_python_home="$RUNNER_TEMP/unit-pdf-python"
+          python3 -m venv "$pdf_python_home"
+          "$pdf_python_home/bin/python" -m pip install --no-user --disable-pip-version-check "PyMuPDF==1.28.0" "Pillow==13.0.0" "pytesseract==0.3.13"
+          echo "PYTHON_BIN=$pdf_python_home/bin/python" >> "$GITHUB_ENV"
+          echo "$pdf_python_home/bin" >> "$GITHUB_PATH"
+          PYTHONNOUSERSITE=1 "$pdf_python_home/bin/python" -c "import pymupdf, PIL, pytesseract"
+          tesseract --version
 
       - name: Start coverage diagnostic timing
         run: >-

@@ -4,13 +4,13 @@ import { calendarFeedPath, generateCalendarFeedToken, hashCalendarFeedToken } fr
 import { cmeDeadlineEvents, cmeRoutineEvents, cmeReportingWindowClose } from "@/lib/cme/calendar-events";
 import { cpdYearOf, perthCalendarDate } from "@/lib/cme/cpd-year";
 import { fetchOwnerCmeRoutines, fetchOwnerCmeYear } from "@/lib/cme/repository";
-import type { CalendarEvent } from "@/lib/calendar/calendar-event";
+import { addDays, type CalendarEvent } from "@/lib/calendar/calendar-event";
 import { onCallTeachingEvents } from "@/lib/on-call/calendar-events";
 import { fetchVisibleOnCallEntries } from "@/lib/on-call/repository";
 import { teachingCalendarEvents } from "@/lib/teaching/calendar-events";
 import { fetchTeachingFeedSessions } from "@/lib/teaching/feed-repository";
 import { fetchRotationFeedEvents } from "@/lib/calendar/rotation-feed-source";
-import { bookingCalendarEvents } from "@/lib/work-screens/admin/bookings-calendar";
+import { BookingCalendarTimeError, bookingCalendarEvents } from "@/lib/work-screens/admin/bookings-calendar";
 import { readSavedBookings } from "@/lib/work-screens/admin/bookings-repository";
 import { ADMIN_WORK_SCREEN_HREFS } from "@/lib/work-screens/admin/hrefs";
 import { logger } from "@/lib/logger";
@@ -26,6 +26,7 @@ import { calendarRosterShifts } from "@/lib/roster/team/calendar-shifts";
 import { perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 import { fetchOwnerShifts } from "@/lib/roster/shifts/repository";
 import { DEFAULT_ROSTER_SETTINGS, fetchRosterSettings, type RosterSettings } from "@/lib/roster/settings";
+import { DEFAULT_WORK_TIME_ZONE, isWorkTimeZone } from "@/lib/work-time/zones";
 
 type AdminClient = ReturnType<typeof import("@/lib/supabase/admin").createAdminClient>;
 
@@ -56,11 +57,17 @@ type AdminClient = ReturnType<typeof import("@/lib/supabase/admin").createAdminC
  */
 
 /**
- * The feed owner's reminder settings, from their own preferences row only.
- * A failed read returns the defaults (no alarms) rather than failing the feed:
- * a missing alarm is the conservative way for this to go wrong.
+ * The feed owner's calendar preferences, from their own row only. A failed
+ * read keeps alarms off and leaves the work zone unknown; booked courses
+ * cannot be placed safely until that zone can be read.
  */
-export async function fetchOwnerReminderSettings(supabase: AdminClient, ownerId: string): Promise<ReminderSettings> {
+async function fetchOwnerCalendarPreferences(
+  supabase: AdminClient,
+  ownerId: string,
+): Promise<{
+  reminders: ReminderSettings;
+  zone: string | null;
+}> {
   if (!ownerId) throw new Error("Missing calendar feed owner.");
   try {
     const { data, error } = await supabase
@@ -69,14 +76,21 @@ export async function fetchOwnerReminderSettings(supabase: AdminClient, ownerId:
       .eq("user_id", ownerId)
       .maybeSingle();
     if (error) throw new Error(error.message);
-    const preferences = data?.preferences as { reminders?: unknown } | null | undefined;
-    return normalizeReminderSettings(preferences?.reminders);
+    const preferences = data?.preferences as { reminders?: unknown; timeZone?: unknown } | null | undefined;
+    return {
+      reminders: normalizeReminderSettings(preferences?.reminders),
+      zone: isWorkTimeZone(preferences?.timeZone) ? preferences.timeZone : DEFAULT_WORK_TIME_ZONE,
+    };
   } catch (error) {
     logger.warn("calendar feed reminder settings unavailable", {
       error: error instanceof Error ? error.message : String(error),
     });
-    return DEFAULT_REMINDER_SETTINGS;
+    return { reminders: DEFAULT_REMINDER_SETTINGS, zone: null };
   }
+}
+
+export async function fetchOwnerReminderSettings(supabase: AdminClient, ownerId: string): Promise<ReminderSettings> {
+  return (await fetchOwnerCalendarPreferences(supabase, ownerId)).reminders;
 }
 
 /**
@@ -166,15 +180,32 @@ const BOOKING_FEED_PAST_DAYS = 30;
  * above. Notes are dropped: they name the organiser, and anyone holding the
  * link can read the feed.
  */
-async function fetchOwnerBookingEvents(supabase: AdminClient, ownerId: string, now: Date): Promise<CalendarEvent[]> {
+async function fetchOwnerBookingEvents(
+  supabase: AdminClient,
+  ownerId: string,
+  now: Date,
+  zone: string | null,
+): Promise<CalendarEvent[]> {
   try {
     const read = await readSavedBookings(supabase, ownerId);
     if (read.status !== "ready") return [];
     const from = perthCalendarDate(new Date(now.getTime() - BOOKING_FEED_PAST_DAYS * 24 * 60 * 60 * 1000));
-    return bookingCalendarEvents(read.state, (courseId) => ADMIN_WORK_SCREEN_HREFS.bookingCourse(courseId))
+    // A work-clock day can cross Perth midnight. Trim older history before projection,
+    // keeping one extra day until the exact Perth-date cutoff can be applied below.
+    const earliestWallDate = addDays(from, -1);
+    const state = { ...read.state, courses: read.state.courses.filter((course) => course.date >= earliestWallDate) };
+    if (zone === null) {
+      const eligible = bookingCalendarEvents(state, (courseId) => ADMIN_WORK_SCREEN_HREFS.bookingCourse(courseId));
+      if (eligible.some((event) => event.date >= from)) {
+        throw new BookingCalendarTimeError("The work time zone could not be read. Try again before exporting.");
+      }
+      return [];
+    }
+    return bookingCalendarEvents(state, (courseId) => ADMIN_WORK_SCREEN_HREFS.bookingCourse(courseId), zone)
       .filter((event) => event.date >= from)
       .map((event): CalendarEvent => ({ ...event, notes: undefined }));
   } catch (error) {
+    if (error instanceof BookingCalendarTimeError) throw error;
     logger.warn("calendar feed bookings unavailable", {
       error: error instanceof Error ? error.message : String(error),
     });
@@ -185,6 +216,7 @@ async function fetchOwnerBookingEvents(supabase: AdminClient, ownerId: string, n
 export async function calendarFeedEvents(supabase: AdminClient, ownerId: string, now: Date): Promise<CalendarEvent[]> {
   const year = cpdYearOf(now);
   const today = perthCalendarDate(now);
+  const calendarPreferences = fetchOwnerCalendarPreferences(supabase, ownerId);
   const [
     previousYear,
     thisYear,
@@ -192,7 +224,7 @@ export async function calendarFeedEvents(supabase: AdminClient, ownerId: string,
     routines,
     teaching,
     teachingSessions,
-    reminders,
+    preferences,
     rosterSettings,
     rotations,
     bookings,
@@ -203,10 +235,10 @@ export async function calendarFeedEvents(supabase: AdminClient, ownerId: string,
     fetchOwnerCmeRoutines(supabase, ownerId),
     fetchVisibleOnCallEntries(supabase, ownerId, { section: "education" }),
     fetchTeachingFeedSessions(supabase, ownerId, now),
-    fetchOwnerReminderSettings(supabase, ownerId),
+    calendarPreferences,
     fetchOwnerRosterSettingsForFeed(supabase, ownerId),
     fetchRotationFeedEvents(supabase, ownerId, now),
-    fetchOwnerBookingEvents(supabase, ownerId, now),
+    calendarPreferences.then(({ zone }) => fetchOwnerBookingEvents(supabase, ownerId, now, zone)),
   ]);
   let rosterShifts: CalendarEvent[] = [];
   if (rosterSettings.calendarShifts) {
@@ -230,5 +262,5 @@ export async function calendarFeedEvents(supabase: AdminClient, ownerId: string,
     ...rotations,
     ...bookings,
   ];
-  return applyReminderAlarms(events, reminders, now);
+  return applyReminderAlarms(events, preferences.reminders, now);
 }

@@ -840,7 +840,130 @@ function verbatimTokens(value: string) {
 // lithium clearance and therefore increase lithium levels and the risk of toxicity"). The match must
 // start and end at a source sentence or list-item boundary, so a claim that drops a leading "do not",
 // a leading condition or a trailing qualifier never matches.
+// Abbreviations whose full stop does not end a sentence. Treating them as a sentence
+// boundary would leak the tail of a withdrawn instruction ("Give lithium e.g. 400 mg").
+const WITHDRAWAL_SENTENCE_BOUNDARY =
+  /(?<=[.!?])(?<!\b(?:e\.g|i\.e|approx|ca|cf|dr|mr|mrs|ms|prof|st|vs|etc|incl|max|min|no|fig|ref|resp)\.)\s+/i;
+const WITHDRAWAL_SUBJECT = String.raw`(?:recommendation|instruction|advice|statement)`;
+const WITHDRAWAL_STATUS = String.raw`\b(?:withdrawn|retracted|superseded)\b`;
+const NEGATED_WITHDRAWAL = /\b(?:not|never)\s+(?:yet\s+)?(?:been\s+)?(?:withdrawn|retracted|superseded)\b/i;
+const FOLLOWING_WITHDRAWAL = new RegExp(
+  String.raw`\b(?:(?:following|next)\s+${WITHDRAWAL_SUBJECT}|${WITHDRAWAL_SUBJECT}\s+below)\b[^.!?;]*?${WITHDRAWAL_STATUS}`,
+  "i",
+);
+const PRECEDING_WITHDRAWAL = new RegExp(
+  String.raw`\b(?:this|the\s+(?:above|preceding|previous))\s+${WITHDRAWAL_SUBJECT}\b[^.!?;]*?${WITHDRAWAL_STATUS}`,
+  "i",
+);
+// A completed correction sentence can govern the next recommendation even though
+// punctuation makes it look like an independent verbatim match. Remove only that
+// bounded passage from proof; unrelated discussion of withdrawal remains usable.
+function withoutWithdrawnRecommendation(text: string) {
+  // A new list item is a boundary even without sentence punctuation. Keep other
+  // single line breaks inside the passage so wrapped instructions stay governed.
+  const parts = text.split(
+    new RegExp(
+      String.raw`(${WITHDRAWAL_SENTENCE_BOUNDARY.source}|\n\s*\n|\n(?=[ \t]*(?:\d+[.)]|[a-z][.)]|[•*-])(?:[ \t]|\r?\n|$)))`,
+      "i",
+    ),
+  );
+  let withdrawNext = false;
+  // Indent of the withdrawn list item; deeper-indented items are its children and stay withheld
+  // until a sibling (or shallower) item or a blank line ends the recommendation.
+  let withdrawnIndent: number | null = null;
+  const listItem = /^([ \t]*)(?:\d+[.)]|[a-z][.)]|[•*-])(?:[ \t]|\r?\n|$)/i;
+  // Stop at this subject's first withdrawal status; a later subject's
+  // negated status must not cancel it (or vice versa).
+  const governs = (text: string, pattern: RegExp) =>
+    text.split(";").some((clause) => {
+      const directive = clause.match(pattern)?.[0];
+      return !!directive && !NEGATED_WITHDRAWAL.test(directive);
+    });
+  // A trailing status ("This recommendation has been withdrawn.") governs the text before it:
+  // its own unit when the status follows other text there, otherwise the preceding unit.
+  const precedingStatusStartsUnit = (text: string) => {
+    const clause = text.split(";").find((item) => {
+      const directive = item.match(PRECEDING_WITHDRAWAL)?.[0];
+      return !!directive && !NEGATED_WITHDRAWAL.test(directive);
+    });
+    return (
+      clause !== undefined && text.indexOf(clause) === 0 && clause.search(PRECEDING_WITHDRAWAL) === clause.search(/\S/)
+    );
+  };
+  const sourceLine = (index: number) => {
+    const separator = parts[index - 1] ?? "";
+    // A sentence separator can consume the next source line's indentation.
+    // Reconstruct it for scope checks without changing the retained source text.
+    const lineBreak = separator.lastIndexOf("\n");
+    return (lineBreak < 0 ? "" : separator.slice(lineBreak + 1)) + parts[index];
+  };
+  const out = parts.slice();
+  for (let index = 0; index < parts.length; index += 2) {
+    const part = parts[index];
+    if (governs(part, FOLLOWING_WITHDRAWAL)) {
+      withdrawNext = true;
+      withdrawnIndent = null;
+      out[index] = "";
+      continue;
+    }
+    if (governs(part, PRECEDING_WITHDRAWAL)) {
+      out[index] = "";
+      if (precedingStatusStartsUnit(part)) {
+        // Withhold the preceding sentence; inside a list item, withhold back to that item's start.
+        const preceding: number[] = [];
+        let itemStart = false;
+        for (let back = index - 2; back >= 0; back -= 2) {
+          if (/\n\s*\n/.test(parts[back + 1] ?? "")) break;
+          if (!/\S/.test(parts[back])) continue;
+          preceding.push(back);
+          if (listItem.test(sourceLine(back))) {
+            itemStart = true;
+            break;
+          }
+        }
+        for (const back of itemStart ? preceding : preceding.slice(0, 1)) out[back] = "";
+      }
+      continue;
+    }
+    const separator = parts[index - 1] ?? "";
+    const sourceLinePart = sourceLine(index);
+    const item = sourceLinePart.match(listItem);
+    if (!withdrawNext && withdrawnIndent !== null) {
+      const indent = sourceLinePart.match(/^[ \t]*/)?.[0].length ?? 0;
+      const nested = item ? item[1].length > withdrawnIndent : !/\n/.test(separator) || indent > withdrawnIndent;
+      if (nested && !/\n\s*\n/.test(separator)) {
+        out[index] = "";
+        continue;
+      }
+      withdrawnIndent = null;
+    }
+    if (!withdrawNext) continue;
+    if (item) withdrawnIndent ??= item[1].length;
+    // A pure list marker does not consume the withdrawn recommendation.
+    if (!/^\s*(?:\d+[.)]|[a-z][.)]|[•*-])?\s*$/i.test(part)) withdrawNext = false;
+    out[index] = "";
+  }
+  return out.join("");
+}
+
+export function claimProofWithoutGeneratedNarrative(source: SearchResult): SearchResult {
+  return {
+    ...source,
+    content: withoutWithdrawnRecommendation(source.content ?? ""),
+    adjacent_context:
+      source.adjacent_context == null
+        ? source.adjacent_context
+        : withoutWithdrawnRecommendation(source.adjacent_context),
+    retrieval_synopsis: undefined,
+    index_unit: undefined,
+    memory_cards: [],
+  };
+}
 export function claimRestatesSourceVerbatim(claim: string, source: SearchResult) {
+  return claimRestatesFilteredProof(claim, claimProofWithoutGeneratedNarrative(source));
+}
+
+function claimRestatesFilteredProof(claim: string, source: SearchResult) {
   const wanted = verbatimTokens(claim).filter((token) => token !== "|");
   if (wanted.length < 6) return false;
   const blocks = reflowBoundedSourceLines(source.content ?? "", { requireContinuationStart: true });
@@ -864,7 +987,8 @@ export function claimRestatesSourceVerbatim(claim: string, source: SearchResult)
 }
 
 function sourceSupportsClaim(claim: string, source: SearchResult, allowValueOnly = false) {
-  if (claimRestatesSourceVerbatim(claim, source)) return true;
+  source = claimProofWithoutGeneratedNarrative(source);
+  if (claimRestatesFilteredProof(claim, source)) return true;
   return sourceEvidenceClaimSegmentGroups(source, claim).some((group) =>
     group.some(({ evidence, passage, antecedent }, index) => {
       // S1c R3: lend only the immediately adjacent segments' topic tokens, and only

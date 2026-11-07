@@ -11,6 +11,7 @@ import { AuthenticationError, unauthorizedResponse } from "@/lib/supabase/auth";
 import { requireSignedInClinicalAccess } from "@/lib/clinical-access";
 import { enforceDocumentReadRateLimit, withOwnerReadScope } from "@/lib/public-api-access";
 import { parseJsonBody } from "@/lib/validation/body";
+import { managedPdfImageReference } from "@/lib/managed-pdf-image";
 
 export const runtime = "nodejs";
 
@@ -99,7 +100,25 @@ export async function POST(request: Request) {
     const urls: Record<string, { url: string; mimeType: string | null; caption: string | null; expiresAt: string }> =
       {};
 
-    const storagePaths = validImages.map((img) => img.storage_path);
+    const storedImages = validImages.filter((img) => {
+      const doc = documentMap.get(img.document_id)!;
+      const managed = managedPdfImageReference(
+        img.metadata,
+        doc.id,
+        committedIndexGeneration(doc.metadata),
+        img.storage_path,
+      );
+      if (!managed) return true;
+      urls[img.id] = {
+        url: `/api/images/${img.id}/content`,
+        mimeType: img.mime_type,
+        caption: img.caption,
+        expiresAt: new Date(Date.now() + signedUrlTtlSeconds * 1000).toISOString(),
+      };
+      return false;
+    });
+    if (!storedImages.length) return NextResponse.json({ urls }, { headers: { "Cache-Control": "private, no-store" } });
+    const storagePaths = storedImages.map((img) => img.storage_path);
     const signed = await supabase.storage
       .from(env.SUPABASE_IMAGE_BUCKET)
       .createSignedUrls(storagePaths, signedUrlTtlSeconds);
@@ -116,7 +135,7 @@ export async function POST(request: Request) {
 
     const signedUrlMap = new Map(signed.data.map((res) => [res.path, res.signedUrl]));
 
-    for (const img of validImages) {
+    for (const img of storedImages) {
       const signedUrl = signedUrlMap.get(img.storage_path);
       if (signedUrl) {
         urls[img.id] = {

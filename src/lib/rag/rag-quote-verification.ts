@@ -3,6 +3,7 @@ import { adjacentLabelledNumericBandConflicts, textReferencesAdjacentBandConflic
 import { safeRecord, sanitizeStructuredText } from "@/lib/rag/rag-answer-text";
 import {
   sourceDirectlySupportsAnswerText,
+  claimProofWithoutGeneratedNarrative,
   sourceLabelledNumericBandConflictsAffectingText,
 } from "@/lib/rag/rag-claim-support";
 import { appendRoutingReason } from "@/lib/rag/rag-routing";
@@ -41,14 +42,14 @@ export function tableFactQuoteText(fact: NonNullable<SearchResult["table_facts"]
 }
 
 export function sourceTextForQuoteVerification(source: SearchResult) {
+  source = claimProofWithoutGeneratedNarrative(source);
   const parts = [
     source.content,
     source.adjacent_context,
     source.section_heading,
-    source.retrieval_synopsis,
+
     source.table_facts?.map(tableFactQuoteText).join(" "),
-    source.memory_cards?.map((card) => card.content).join(" "),
-    source.index_unit ? [source.index_unit.title, source.index_unit.content].filter(Boolean).join(" ") : "",
+
     source.images
       ?.map((image) =>
         [image.tableLabel, image.tableTitle, image.caption, image.tableTextSnippet, image.accessibleTableMarkdown]

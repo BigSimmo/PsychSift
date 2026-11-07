@@ -50,11 +50,15 @@ export function CalculatorSheet({
 }: CalculatorSheetProps) {
   // Signed out (or a session that just expired), no score from earlier answers may show, and the
   // answers are cleared so the next person at a shared workstation cannot see them.
-  const scoringLocked = clinicalToolLocked(useClinicalToolAccess());
+  const access = useClinicalToolAccess();
+  const scoringLocked = access !== "allowed";
+  const accessDenied = clinicalToolLocked(access);
   const hasAnswers = Object.keys(answers).length > 0;
   useEffect(() => {
-    if (scoringLocked && hasAnswers) onAnswersChange({});
-  }, [scoringLocked, hasAnswers, onAnswersChange]);
+    // A pending verification hides the draft but must not erase it. Clear it only
+    // when sign-in or the health professional declaration is actually denied.
+    if (accessDenied && hasAnswers) onAnswersChange({});
+  }, [accessDenied, hasAnswers, onAnswersChange]);
   const derived = deriveCalculator(calc, scoringLocked ? {} : answers);
   // The pinned strip below changes after every answer but is only visible. Say
   // the same score, band and progress through the shared announcer instead, once
@@ -97,6 +101,7 @@ export function CalculatorSheet({
     setDialogNode(node);
   };
   const scrollRef = useRef<HTMLDivElement>(null);
+  const answerScrollRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const Icon = calc.icon;
 
@@ -173,6 +178,7 @@ export function CalculatorSheet({
   // (e.g. partway down the related-content rows) instead of its indication.
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: 0 });
+    answerScrollRef.current?.scrollTo({ top: 0 });
   }, [calc.id]);
 
   // Trap Tab / Shift+Tab within the dialog so focus can't reach the page behind.
@@ -259,7 +265,7 @@ export function CalculatorSheet({
               </p>
             </div>
             {derived.started ? (
-              <span className="hidden items-center gap-2 sm:inline-flex">
+              <span className="hidden items-center gap-2 sm:inline-flex [@media(max-height:30rem)]:hidden!">
                 <span className="font-mono text-base font-extrabold tabular-nums text-[color:var(--text-heading)]">
                   {derived.score}
                 </span>
@@ -282,58 +288,66 @@ export function CalculatorSheet({
             </button>
           </header>
 
-          {/* Live strip pinned under the header while items scroll */}
-          <div className="modal-landscape-container grid shrink-0 gap-1.5 border-b border-[color:var(--border)] bg-[color:var(--surface-glass)] py-2.5 backdrop-blur-md">
-            <div className="flex items-center justify-between gap-2">
-              {/* Unstarted is not a missing score: no score exists yet, so the fraction has no numerator. The scale's own
+          <div
+            ref={scrollRef}
+            data-testid="calculator-sheet-content"
+            className="flex min-h-0 flex-1 flex-col overscroll-contain [@media(max-height:30rem)]:overflow-y-auto"
+          >
+            {/* Keep the score and its caveat together. In short viewports the strip
+              scrolls with the questions so enlarged text cannot consume the entire
+              answer area; taller viewports retain the pinned running summary. */}
+            <div className="modal-landscape-container grid shrink-0 gap-1.5 border-b border-[color:var(--border)] bg-[color:var(--surface-glass)] py-2.5 backdrop-blur-md">
+              <div className="flex items-center justify-between gap-2">
+                {/* Unstarted is not a missing score: no score exists yet, so the fraction has no numerator. The scale's own
                   endpoints stay visible in the ScoreBandBar directly below. */}
-              {derived.started ? (
-                <span className="font-mono text-lg font-extrabold tabular-nums text-[color:var(--text-heading)]">
-                  {derived.score}
-                  <span className="text-sm-minus font-bold text-[color:var(--text-muted)]"> / {calc.maxScore}</span>
+                {derived.started ? (
+                  <span className="font-mono text-lg font-extrabold tabular-nums text-[color:var(--text-heading)]">
+                    {derived.score}
+                    <span className="text-sm-minus font-bold text-[color:var(--text-muted)]"> / {calc.maxScore}</span>
+                  </span>
+                ) : (
+                  <MissingValue reason="not_yet_calculated" />
+                )}
+                <span className="flex items-center gap-2">
+                  <span className="text-2xs font-semibold text-[color:var(--text-muted)]">
+                    {progressLabel(derived)}
+                  </span>
+                  <SeverityPill
+                    tone={derived.result.tone}
+                    label={derived.started ? derived.result.label : "Not started"}
+                  />
                 </span>
-              ) : (
-                <MissingValue reason="not_yet_calculated" />
-              )}
-              <span className="flex items-center gap-2">
-                <span className="text-2xs font-semibold text-[color:var(--text-muted)]">{progressLabel(derived)}</span>
-                <SeverityPill
-                  tone={derived.result.tone}
-                  label={derived.started ? derived.result.label : "Not started"}
-                />
-              </span>
-            </div>
-            <ScoreBandBar calc={calc} score={derived.score} started={derived.started} />
-            {/* The scope line belongs HERE, not in ScorePanel at the foot of the
-                scroll body: this strip is pinned, so the score and its severity are
-                readable throughout a long instrument while anything below the fold is
-                not. `caution` is set on one of the five released instruments, and the
+              </div>
+              <ScoreBandBar calc={calc} score={derived.score} started={derived.started} />
+              {/* The scope line belongs with the score, rather than only in ScorePanel
+                at the foot of the questions. `caution` is set on one of the five released instruments, and the
                 catalogue's "Scores support clinical judgement" note is on the page
                 behind this modal, so without this the number and its label are the
                 only things in view at the moment they are read. */}
-            <p className="text-2xs font-medium leading-4 text-[color:var(--text-muted)]">
-              Clinical reference — not validated decision support. Confirm scoring and interpretation against the source
-              instrument.
-            </p>
-          </div>
+              <p className="text-2xs font-medium leading-4 text-[color:var(--text-muted)]">
+                Clinical reference — not validated decision support. Confirm scoring and interpretation against the
+                source instrument.
+              </p>
+            </div>
 
-          <div
-            ref={scrollRef}
-            className="modal-landscape-container grid min-h-0 flex-1 content-start gap-4 overflow-y-auto overscroll-contain py-4"
-          >
-            <p className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-2 rounded-lg border border-[color:var(--info-border)] bg-[color:var(--info-soft)] p-2.5 text-sm-minus font-semibold leading-5 text-[color:var(--info)]">
-              <Info className="mt-0.5 size-icon-md shrink-0" aria-hidden="true" />
-              {calc.indication}
-            </p>
-            {calc.caution ? (
-              <p className="text-2xs font-semibold leading-4 text-[color:var(--warning)]">{calc.caution}</p>
-            ) : null}
+            <div
+              ref={answerScrollRef}
+              className="modal-landscape-container grid min-h-0 flex-1 content-start gap-4 overflow-y-auto overscroll-contain py-4 [@media(max-height:30rem)]:flex-none [@media(max-height:30rem)]:overflow-visible"
+            >
+              <p className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-2 rounded-lg border border-[color:var(--info-border)] bg-[color:var(--info-soft)] p-2.5 text-sm-minus font-semibold leading-5 text-[color:var(--info)]">
+                <Info className="mt-0.5 size-icon-md shrink-0" aria-hidden="true" />
+                {calc.indication}
+              </p>
+              {calc.caution ? (
+                <p className="text-2xs font-semibold leading-4 text-[color:var(--warning)]">{calc.caution}</p>
+              ) : null}
 
-            <CalculatorItems calc={calc} answers={answers} onAnswersChange={onAnswersChange} />
+              <CalculatorItems calc={calc} answers={answers} onAnswersChange={onAnswersChange} />
 
-            <NextActionsPanel calc={calc} derived={derived} />
+              <NextActionsPanel calc={calc} derived={derived} />
 
-            <ScorePanel calc={calc} derived={derived} onReset={() => onAnswersChange({})} />
+              <ScorePanel calc={calc} derived={derived} onReset={() => onAnswersChange({})} />
+            </div>
           </div>
         </div>
       </div>

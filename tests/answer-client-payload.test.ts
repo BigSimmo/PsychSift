@@ -254,6 +254,7 @@ describe("toClientAnswerPayload", () => {
     const input = {
       ...answerWith([]),
       ragDiagnostics: { query: "PRIVATE_CONTEXT_CANARY", required_part_count: 2, represented_part_count: 1 },
+      openAIUsageAttempts: [{ model: "SERVER_MODEL_CANARY", usage: { input_tokens: 100 } }],
     };
     for (const strict of [true, false]) {
       const projected = projectClientAnswerPayload(
@@ -262,6 +263,8 @@ describe("toClientAnswerPayload", () => {
       );
       expect(projected).not.toBeNull();
       expect(projected).not.toHaveProperty("ragDiagnostics");
+      expect(projected).not.toHaveProperty("openAIUsageAttempts");
+      expect(JSON.stringify(projected)).not.toContain("SERVER_MODEL_CANARY");
       expect(JSON.stringify(projected)).not.toContain("PRIVATE_CONTEXT_CANARY");
       expect(projectClientAnswerPayload(input, true)).toBeNull();
     }

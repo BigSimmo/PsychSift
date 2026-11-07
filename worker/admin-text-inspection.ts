@@ -13,13 +13,30 @@ import type {
   DocumentIngressSafetyObservations,
   ProviderEgressBinding,
 } from "../src/lib/document-ingress-safety";
+import { hasInternalBuildLegalReviewDeferral } from "../src/lib/document-ingress-safety";
+import { matchesIngestionJurisdiction } from "../src/lib/ingestion-jurisdiction";
 import type { IngestionProviderEgressRequest } from "../src/lib/ingestion-provider-egress";
 import { IngestionAttempt, parseIngestionFence } from "../supabase/functions/_shared/ingestion-attempt";
 import { forbiddenPublicSourceIdentity } from "../supabase/functions/_shared/public-source-policy";
 import { scanWindowsDefenderBytes, type WindowsMalwareInspectionConfiguration } from "./malware-inspection";
 import { scanClamAvBytes, type ClamAvInspectionConfiguration } from "./clamav-inspection";
 import { parseWorkerProviderAuthorityFacts, type WorkerProviderAuthorityFacts } from "./provider-egress";
+import { effectiveReindexAuthorityMetadata } from "./pending-reindex-authority";
 import type { ManagedProviderEmbeddingRequestContext } from "./managed-provider-vectors";
+import {
+  GENERAL_PDF_INSPECTION_VERSION,
+  GENERAL_PDF_MAX_SOURCE_BYTES,
+  inspectGeneralPdfSource,
+  assertGeneralPdfEmbeddingInputs,
+  type GeneralPdfInspectionReview,
+} from "./general-pdf-inspection";
+import {
+  ADMIN_UNSCANNED_EXCEPTION_POLICY,
+  issueAdminUnscannedExceptionReceipt,
+  snapshotAdminUnscannedExceptionEvidence,
+  type AdminUnscannedExceptionEvidence,
+  type AdminUnscannedExceptionScope,
+} from "../supabase/functions/_shared/admin-unscanned-exception";
 
 /** A deliberately bounded first adapter, not a PDF or general document inspector. */
 export const ADMIN_TEXT_INSPECTION_MAX_BYTES = 2 * 1024 * 1024;
@@ -98,7 +115,7 @@ function assertInertText(text: string): void {
   )
     refuse("source_not_inert_plain_text");
 }
-function bibliographicIdentifierAssessment(text: string): string {
+export function bibliographicIdentifierAssessment(text: string): string {
   // Only this public-reference adapter exempts explicitly labelled ISBN-13s.
   // Keep exact character offsets for source slices; never alter inspected bytes.
   return text.replace(
@@ -112,7 +129,7 @@ function bibliographicIdentifierAssessment(text: string): string {
     },
   );
 }
-function inspectIdentifiers(text: string, assessment = bibliographicIdentifierAssessment(text)): void {
+export function inspectIdentifiers(text: string, assessment = bibliographicIdentifierAssessment(text)): void {
   // A negative result means only that these existing identifier shapes were not
   // detected in the entire bounded text. It is not proof of perfect PHI absence.
   if (identifierShapeWarning(assessment)) refuse("identifier_shape_detected");
@@ -146,12 +163,16 @@ export type AdminTextCurrentFacts = Readonly<{
     | "admission"
     | "ownerScope"
     | "rights"
+    | "legalReviewDeferral"
+    | "processingScope"
     | "purposeClearance"
     | "source"
     | "indexLicence"
     | "sourcePolicy"
   >;
   sourceBytes: Uint8Array;
+  /** Dynamic text-only PDF review, independently supplied by the trusted inspector. */
+  generalPdf?: GeneralPdfInspectionReview;
   /** Server-owned exact-pilot review; no document metadata or caller booleans. */
   nativePdf?: Readonly<{
     recordSha256: string;
@@ -162,6 +183,10 @@ export type AdminTextCurrentFacts = Readonly<{
 export type AdminTextScannerConfiguration =
   | WindowsMalwareInspectionConfiguration
   | Readonly<{
+      backend: "admin_unscanned_exception";
+      evidence: AdminUnscannedExceptionEvidence;
+    }>
+  | Readonly<{
       backend: "clamav";
       configuration: ClamAvInspectionConfiguration;
     }>;
@@ -169,6 +194,12 @@ export type AdminTextScannerConfiguration =
 function snapshotScanner(supplied: AdminTextScannerConfiguration, contentSha256: ContentSha256) {
   if (!supplied || typeof supplied !== "object") return refuse("scanner_configuration_invalid");
   if ("backend" in supplied) {
+    if (supplied.backend === "admin_unscanned_exception") {
+      return Object.freeze({
+        backend: "admin_unscanned_exception" as const,
+        evidence: snapshotAdminUnscannedExceptionEvidence(supplied.evidence),
+      });
+    }
     if (supplied.backend !== "clamav") return refuse("scanner_configuration_invalid");
     const value = supplied.configuration;
     if (
@@ -306,6 +337,8 @@ export function createAdminTextInspectionLoader(options: AdminTextInspectionOpti
       let scannerPins: string | undefined;
       let currentPolicy: AdminTextCurrentFacts["policyObservations"] | undefined;
       let policyVersion: string | undefined;
+      let inspectedSourceIsPdf = false;
+      let exceptionScope: AdminUnscannedExceptionScope | undefined;
       const current = async () => {
         active();
         if (JSON.stringify(attempt.fence) !== JSON.stringify(fence)) refuse("fence_changed");
@@ -320,12 +353,17 @@ export function createAdminTextInspectionLoader(options: AdminTextInspectionOpti
           binding,
         );
         const declared = facts.declaredAuthority;
+        const internalLegalDeferral = hasInternalBuildLegalReviewDeferral(
+          value.policyObservations,
+          value.sourceMetadata?.corpus_scope,
+        );
         if (
           typeof ownerId !== "string" ||
           !ownerId ||
           facts.ownerId !== ownerId ||
           declared.authorityBasis !== "administrator_template" ||
-          declared.licencePolicy !== "public_index_permitted" ||
+          (declared.licencePolicy !== "public_index_permitted" &&
+            !(internalLegalDeferral && declared.licencePolicy === "review_required")) ||
           declared.providerProcessing !== "permitted" ||
           declared.currentness !== "current" ||
           declared.supportedFeatures.join() !== "text"
@@ -339,7 +377,11 @@ export function createAdminTextInspectionLoader(options: AdminTextInspectionOpti
         )
           refuse("authority_not_current");
         const nativePdf = facts.mimeType === "application/pdf";
-        if (nativePdf) {
+        inspectedSourceIsPdf = nativePdf;
+        const generalPdf = nativePdf && value.generalPdf !== undefined;
+        if (value.generalPdf !== undefined && (!nativePdf || value.nativePdf !== undefined))
+          refuse("source_format_unsupported");
+        if (nativePdf && !generalPdf) {
           const review = value.nativePdf;
           const record = review?.record;
           if (
@@ -371,7 +413,7 @@ export function createAdminTextInspectionLoader(options: AdminTextInspectionOpti
             JSON.stringify(nativeBatch) !== JSON.stringify(options.nativePdfBatch)
           )
             refuse("current_native_pdf_inspection_unavailable");
-        } else if (facts.mimeType !== "text/plain" || nativeBatch !== undefined) {
+        } else if (!nativePdf && (facts.mimeType !== "text/plain" || nativeBatch !== undefined)) {
           refuse("source_format_unsupported");
         }
         const entry = australianSourceByKey(value.catalogueKey);
@@ -380,12 +422,15 @@ export function createAdminTextInspectionLoader(options: AdminTextInspectionOpti
         } catch {
           return refuse("catalogue_not_eligible");
         }
-        // The first supported subset is national. A declaration whose jurisdiction
-        // is only Australia cannot prove state-specific catalogue compatibility.
-        const metadata = value.sourceMetadata;
+        // Country-level admission does not establish WA authority: catalogue and
+        // admitted jurisdiction must match exactly for either supported scope.
+        // A readmission keeps its declared ranking fields pending until the terminal applies them.
+        const metadata =
+          (value.sourceMetadata ? effectiveReindexAuthorityMetadata(value.sourceMetadata) : null) ??
+          refuse("catalogue_authority_mismatch");
         const draft = metadata?.corpus_scope === "uploaded_local";
         if (
-          entry.jurisdiction !== "Australia" ||
+          !matchesIngestionJurisdiction(declared.jurisdiction, entry.jurisdiction) ||
           !metadata ||
           metadata.publisher !== declared.publisher ||
           metadata.jurisdiction !== declared.jurisdiction ||
@@ -452,20 +497,31 @@ export function createAdminTextInspectionLoader(options: AdminTextInspectionOpti
           policy.policyVersion.trim() === "unverified" ||
           policy.admission !== "current" ||
           policy.ownerScope !== "permitted" ||
-          policy.rights !== "permitted" ||
+          (policy.rights !== "permitted" && !internalLegalDeferral) ||
           policy.purposeClearance !== "permitted" ||
           policy.source !== "eligible" ||
-          policy.indexLicence !== "permitted" ||
+          (policy.indexLicence !== "permitted" && !internalLegalDeferral) ||
           policy.sourcePolicy !== "matched"
         )
           refuse("current_processing_policy_unavailable");
-        const bytes = copyBytes(value.sourceBytes, nativePdf ? 2211561 : ADMIN_TEXT_INSPECTION_MAX_BYTES);
+        const bytes = copyBytes(
+          value.sourceBytes,
+          generalPdf ? GENERAL_PDF_MAX_SOURCE_BYTES : nativePdf ? 2211561 : ADMIN_TEXT_INSPECTION_MAX_BYTES,
+        );
         if (facts.sourceByteLength !== bytes.length || hash(bytes) !== binding.contentSha256)
           refuse("source_binding_mismatch");
-        const texts = nativePdf ? [...value.nativePdf!.pageTexts] : [utf8(bytes)];
+        const texts = generalPdf
+          ? inspectGeneralPdfSource(value.generalPdf, bytes, binding)
+          : nativePdf
+            ? [...value.nativePdf!.pageTexts]
+            : [utf8(bytes)];
+        if (generalPdf) assertGeneralPdfEmbeddingInputs(value.generalPdf, body.input, nativeBatch);
         if (nativePdf && !Buffer.from(bytes.subarray(0, 5)).equals(Buffer.from("%PDF-")))
           refuse("source_format_unsupported");
         for (const text of texts) {
+          // Blank inspected pages stay in the complete inventory; they never
+          // become an embedding input or disappear from coverage accounting.
+          if (generalPdf && !text.trim()) continue;
           assertInertText(text);
           inspectIdentifiers(text, bibliographicIdentifierAssessment(text));
         }
@@ -475,7 +531,7 @@ export function createAdminTextInspectionLoader(options: AdminTextInspectionOpti
           inspectIdentifiers(joined, bibliographicIdentifierAssessment(joined));
         }
         const assessedInputs = body.input.map((input) => {
-          const text = texts.find((text) => (nativePdf ? text === input : text.includes(input)));
+          const text = texts.find((text) => (nativePdf && !generalPdf ? text === input : text.includes(input)));
           if (text === undefined) {
             inspectIdentifiers(input);
             return refuse("payload_not_source_derived");
@@ -496,19 +552,32 @@ export function createAdminTextInspectionLoader(options: AdminTextInspectionOpti
           entry,
           metadata,
           policy,
-          ...(nativePdf ? { nativePdf: value.nativePdf, nativeBatch } : {}),
+          ...(generalPdf
+            ? { generalPdf: value.generalPdf, nativeBatch }
+            : nativePdf
+              ? { nativePdf: value.nativePdf, nativeBatch }
+              : {}),
         });
         if (identity !== undefined && identity !== observed) refuse("current_authority_changed");
         identity = observed;
         currentPolicy = Object.freeze({ ...policy, binding: Object.freeze({ ...policy.binding }) });
+        exceptionScope = Object.freeze({
+          binding,
+          ownerId,
+          admissionDigest: facts.admissionDigest,
+          catalogueKey: value.catalogueKey,
+          mimeType: facts.mimeType,
+          sourceByteLength: facts.sourceByteLength,
+        });
         // Binds the trusted current grant verdict and declared rightsEvidenceRef to
         // exact current owner/document/source/admission/fence/catalogue provenance.
         // Source permits bind the full current review and plan, while each SDK batch
         // retains its separate full mutation, page/input/unit and payload scan checks.
-        const sourcePolicyEvidence = nativePdf
-          ? JSON.stringify({ ...JSON.parse(observed), nativeBatch: { planDigest: nativeBatch!.planDigest } })
-          : observed;
-        policyVersion = `${nativePdf ? ADMIN_NATIVE_PDF_INSPECTION_POLICY_VERSION : ADMIN_TEXT_INSPECTION_POLICY_VERSION}:${hash(sourcePolicyEvidence)}`;
+        const sourcePolicyEvidence =
+          nativePdf && nativeBatch
+            ? JSON.stringify({ ...JSON.parse(observed), nativeBatch: { planDigest: nativeBatch.planDigest } })
+            : observed;
+        policyVersion = `${generalPdf ? GENERAL_PDF_INSPECTION_VERSION : nativePdf ? ADMIN_NATIVE_PDF_INSPECTION_POLICY_VERSION : ADMIN_TEXT_INSPECTION_POLICY_VERSION}:${hash(sourcePolicyEvidence)}`;
         source ??= bytes;
         active();
         return bytes;
@@ -523,7 +592,7 @@ export function createAdminTextInspectionLoader(options: AdminTextInspectionOpti
         // Cross-phase pins include every backend setting. Windows' exact-byte cloud
         // grant necessarily differs between source/payload; each phase checks it in full.
         const pins = JSON.stringify(
-          scanner.backend === "clamav"
+          scanner.backend !== "windows-defender"
             ? scanner
             : {
                 ...scanner,
@@ -533,6 +602,22 @@ export function createAdminTextInspectionLoader(options: AdminTextInspectionOpti
         if (scannerPins !== undefined && scannerPins !== pins) refuse("scanner_configuration_changed");
         scannerPins = pins;
         await current();
+        if (scanner.backend === "admin_unscanned_exception") {
+          // This is an explicit exception, never fallback from a scanner error.
+          // current() has already checked rights, original bytes and source-derived payload.
+          const receipt = issueAdminUnscannedExceptionReceipt(scanner.evidence, exceptionScope!, contentSha256);
+          const after = await abortable(loadScannerConfiguration(args), signal);
+          active();
+          if (JSON.stringify(snapshotScanner(after, contentSha256)) !== JSON.stringify(scanner))
+            refuse("scanner_configuration_changed");
+          await current();
+          return Object.freeze({
+            verdict: "unscanned" as const,
+            scannerVersion: ADMIN_UNSCANNED_EXCEPTION_POLICY,
+            contentSha256,
+            exceptionReceipt: receipt,
+          });
+        }
         const inspected = new Uint8Array(bytes);
         const result =
           scanner.backend === "clamav"
@@ -579,11 +664,17 @@ export function createAdminTextInspectionLoader(options: AdminTextInspectionOpti
           admission: currentPolicy!.admission,
           ownerScope: currentPolicy!.ownerScope,
           rights: currentPolicy!.rights,
+          ...(currentPolicy!.legalReviewDeferral
+            ? {
+                legalReviewDeferral: currentPolicy!.legalReviewDeferral,
+                processingScope: currentPolicy!.processingScope,
+              }
+            : {}),
           purposeClearance: currentPolicy!.purposeClearance,
           scanner,
           activeContent: "absent",
           identifiers: "absent",
-          hiddenText: originalSource && nativeBatch !== undefined ? "consistent" : "not_applicable",
+          hiddenText: originalSource && inspectedSourceIsPdf ? "consistent" : "not_applicable",
           encryption: "not_encrypted",
           source: currentPolicy!.source,
           indexLicence: currentPolicy!.indexLicence,

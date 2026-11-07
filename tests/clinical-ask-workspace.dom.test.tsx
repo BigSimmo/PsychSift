@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const navigation = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => navigation }));
@@ -18,6 +18,75 @@ import {
   CLINICAL_ASK_STALL_PROMPT_MS,
   ClinicalAskWorkspace,
 } from "@/components/clinical-dashboard/clinical-ask-workspace";
+
+describe("Clinical Ask claim evidence mapping", () => {
+  function mappedAnswer(): Extract<ClinicalAskResponse, { state: "answered" }> {
+    return {
+      state: "answered",
+      mode: "services",
+      lead: { id: "lead", text: "Synthetic lead from the second source.", evidenceIds: ["second"] },
+      sections: [
+        {
+          id: "options",
+          title: "Options",
+          claims: [{ id: "option", text: "Synthetic option from the first source.", evidenceIds: ["first"] }],
+        },
+      ],
+      conflicts: [{ id: "conflict", text: "Synthetic source disagreement.", evidenceIds: ["second", "first"] }],
+      missingInformation: ["Synthetic missing information"],
+      followUps: [],
+      handoffs: [],
+      evidence: ["first", "second"].map((id) => ({
+        id,
+        tier: "external",
+        title: `Synthetic ${id} source`,
+        publisher: "Synthetic publisher",
+        jurisdiction: null,
+        href: `https://example.test/${id}`,
+        extract: "Synthetic extract.",
+        reviewState: id === "first" ? "reviewed" : "unknown",
+        publishedAt: null,
+        updatedAt: null,
+        retrievedAt: null,
+      })),
+    };
+  }
+
+  it("keeps lead, section and conflict citations linked to their exact evidence rows", () => {
+    const response = mappedAnswer();
+    render(<ClinicalAskAnswerSurface response={response} />);
+    const lead = screen.getByRole("heading", { name: /Synthetic lead from the second source/ });
+    const leadCitation = within(lead).getByRole("link", { name: "Source 2" });
+    const targetId = leadCitation.getAttribute("href")!.slice(1);
+    expect(document.getElementById(targetId)).toHaveTextContent("Synthetic second source");
+    fireEvent.click(leadCitation);
+    expect(document.getElementById(targetId)?.closest("details")).toHaveAttribute("open");
+
+    const option = screen.getByText(/Synthetic option from the first source/).closest("p")!;
+    const firstCitation = within(option).getByRole("link", { name: "Source 1" });
+    expect(document.getElementById(firstCitation.getAttribute("href")!.slice(1))).toHaveTextContent(
+      "Synthetic first source",
+    );
+    const conflict = screen.getByText(/Synthetic source disagreement/).closest("p")!;
+    expect(
+      within(conflict)
+        .getAllByRole("link", { hidden: true })
+        .map((link) => link.textContent),
+    ).toEqual(["[2]", "[1]"]);
+    expect(screen.getByText(/Synthetic publisher.*unknown/)).toBeInTheDocument();
+  });
+
+  it("preserves each claim's citation mapping in copied and printed answer text", () => {
+    const exported = clinicalAskExportText(mappedAnswer());
+    expect(exported).toContain("Synthetic lead from the second source. [2]");
+    expect(exported).toContain("Synthetic option from the first source. [1]");
+    expect(exported).toContain("Synthetic source disagreement. [2] [1]");
+    expect(exported).toContain(
+      "[2] Synthetic second source — Synthetic publisher; https://example.test/second; review: unknown",
+    );
+    expect(exported).toContain("Clinician Confirmation is required for clinically material suggestions.");
+  });
+});
 
 function Harness({
   onDraftChange,

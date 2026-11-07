@@ -6,6 +6,7 @@ import { authorizationIdentity } from "@/lib/authorization-header";
 import { isRetryableApiStatus, parseRetryAfterMs } from "@/lib/api-client-error";
 import { clearCachedSignedUrl, getCachedSignedUrl, setCachedSignedUrl } from "@/lib/signed-url-cache";
 import { useAuthSession } from "@/lib/supabase/client";
+import { createClientRequestBudget } from "@/components/clinical-dashboard/client-request-budget";
 
 type SignedUrlResponse = { status: number; data: { url?: string } | null; retryAfterMs: number | null };
 
@@ -37,20 +38,25 @@ function beginSignedUrlRequest(key: string, endpoint: string, headers: Record<st
   // map is keyed by endpoint+identity: a superseded response that landed after
   // an account switch would repopulate the cleared cache with the prior user's
   // signed URL. Active consumers write the cache after their own identity check.
-  const request = fetch(endpoint, { headers })
+  const controller = new AbortController();
+  const budget = createClientRequestBudget(controller);
+  const request = budget
+    .wait(fetch(endpoint, { headers, signal: controller.signal }))
     .then(async (response): Promise<SignedUrlResponse> => {
-      const data = response.ok ? await response.json() : null;
+      const data = response.ok ? await budget.wait(response.json()) : null;
       return { status: response.status, data, retryAfterMs: parseRetryAfterMs(response) };
     })
     .finally(() => {
-      inFlightSignedUrlRequests.delete(key);
+      budget.cancel();
+      if (inFlightSignedUrlRequests.get(key) === request) inFlightSignedUrlRequests.delete(key);
     });
   inFlightSignedUrlRequests.set(key, request);
   return request;
 }
 
 // In-flight requests are removed automatically in .finally when they settle.
-// Active in-flight requests are preserved during retries so sibling consumers share them.
+// Pending retries share the same bounded request; once it expires, eviction
+// lets the next retry issue afresh without cancelling a sibling on unmount.
 
 /**
  * Resolve a private image's signed URL through its `/signed-url` endpoint, with

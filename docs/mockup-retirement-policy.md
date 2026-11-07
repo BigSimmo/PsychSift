@@ -1,5 +1,7 @@
 # Mockup retirement policy
 
+_Updated 2026-11-05 — distinguish historical prototypes from the active developer hub; Prototypes owns._
+
 When a mockup may be deleted, who decides, where it goes, and what evidence is required.
 
 Enforced by `npm run check:mockups` (`scripts/check-mockup-retirement.mjs`), which runs in
@@ -36,22 +38,26 @@ least five families, deleting "the older generation" breaks the newer one.
 
 A `-v2`, `-final`, `-refined` or `-perfected` suffix is not evidence of anything.
 
-### 3. A third of the surface is not design scratch
+### 3. A prototype path does not prove design scratch
 
-`/mockups/development` and `/mockups/care-plan` are **live in production** behind an
-administrator gate (`shouldBlockProductionMockups` in `src/proxy.ts` exempts them so
-`DeveloperAreaGate` runs instead of a 404), and `/mockups/development` is linked from production
-Settings. When this policy was written, `/mockups/caring-contacts` and `/mockups/ward-flow` were
-gated the same way; with their implementation modules the four came to ~199 files and ~45,000
-lines — and 82 of those modules had no "mockup" anywhere in their name, so every glob in the repo
-missed them. Caring Contacts and Ward Flow were retired on 2026-09-26.
+When this policy was written, the developer hub, Care Plan, Caring Contacts and Ward Flow were
+production applications behind a developer gate. With their implementation modules they came to
+~199 files and ~45,000 lines — and 82 modules had no "mockup" in their name, so path globs missed
+them. Caring Contacts and Ward Flow were retired on 2026-09-26. The owner retired
+[Care Plan on 2026-10-21 and the `/mockups/development` Owner panel copy on 2026-10-22](decisions/2026-10-21-retire-care-plan-and-design-studies.md).
+
+The active developer hub is `/admin/developer-hub`, protected by `DeveloperAreaGate`; the former
+`/mockups/development` addresses redirect there. No developer-gated prefix remains under
+`/mockups`, and the production proxy blocks every mockup request it receives. The earlier
+applications still demonstrate why retirement authority follows actual consumers and owner
+decisions rather than filenames.
 
 ## Tiers — decided by evidence of a consumer, never by path
 
 | Tier                                | What it is                                                                                                                                         | Retirable?                                        |
 | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
 | **A — Design scratch**              | A design study whose only consumer is its own mockup route                                                                                         | Yes, on the evidence bar below                    |
-| **B — Developer-gated application** | The four prototypes above and their implementation modules                                                                                         | **Only on a recorded owner decision** — see below |
+| **B — Developer-gated application** | Developer-gated applications and their implementation modules                                                                                      | **Only on a recorded owner decision** — see below |
 | **C — Fixture / infrastructure**    | Test fixtures, compatibility redirects, the shared `/mockups` shell, boundary-test subjects, and modules whose real consumers are scripts or tests | **Never alone** — only alongside its consumer     |
 
 Tier B membership is read at runtime from `DEVELOPER_GATED_PATH_PREFIXES` in

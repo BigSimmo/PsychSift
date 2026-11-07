@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const generateStructuredTextResponse = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/openai", () => ({ generateStructuredTextResponse }));
@@ -6,6 +6,7 @@ vi.mock("@/lib/openai", () => ({ generateStructuredTextResponse }));
 import type { ClinicalAskEvidence, ClinicalAskRequest } from "@/lib/clinical-ask/contracts";
 import { clinicalAskModeProfile } from "@/lib/clinical-ask/mode-profiles";
 import { synthesizeClinicalAskDraft } from "@/lib/clinical-ask/synthesis";
+import { env } from "@/lib/env";
 
 const request: ClinicalAskRequest = {
   mode: "services",
@@ -39,6 +40,10 @@ const evidence: ClinicalAskEvidence = {
 describe("Clinical Ask structured synthesis", () => {
   beforeEach(() => {
     generateStructuredTextResponse.mockReset();
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
   });
 
   it("uses the shared reasoning-aware output budget and an OpenAI-compatible strict schema", async () => {
@@ -78,10 +83,47 @@ describe("Clinical Ask structured synthesis", () => {
     expect(options).toMatchObject({
       operation: "answer",
       schemaName: "clinical_ask_draft",
+      reasoningEffort: env.OPENAI_STRONG_REASONING_EFFORT,
       maxRetries: 0,
       store: false,
     });
     expect(options).not.toHaveProperty("maxOutputTokens");
+  });
+
+  it("keeps low/medium efforts distinct when both answer routes share Sol 6.1", async () => {
+    vi.resetModules();
+    vi.stubEnv("OPENAI_FAST_ANSWER_MODEL", "gpt-6.1-sol");
+    vi.stubEnv("OPENAI_STRONG_ANSWER_MODEL", "gpt-6.1-sol");
+    vi.stubEnv("OPENAI_FAST_REASONING_EFFORT", "low");
+    vi.stubEnv("OPENAI_STRONG_REASONING_EFFORT", "medium");
+    const candidate = await import("@/lib/clinical-ask/synthesis");
+    const claim = { id: "lead", text: "The source indicates an example service pathway.", evidenceIds: [evidence.id] };
+    generateStructuredTextResponse.mockResolvedValueOnce('{"suggestions":[]}').mockResolvedValueOnce(
+      JSON.stringify({
+        mode: "services",
+        lead: claim,
+        sections: [],
+        conflicts: [],
+        missingInformation: [],
+        followUps: [],
+        handoffs: [],
+      }),
+    );
+    await candidate.suggestClinicalAskContext(request, new AbortController().signal);
+    await candidate.synthesizeClinicalAskDraft(request, [evidence], new AbortController().signal);
+    expect(generateStructuredTextResponse).toHaveBeenCalledTimes(2);
+    expect(generateStructuredTextResponse.mock.calls[0]?.[2]).toMatchObject({
+      model: "gpt-6.1-sol",
+      reasoningEffort: "low",
+      maxRetries: 0,
+      store: false,
+    });
+    expect(generateStructuredTextResponse.mock.calls[1]?.[2]).toMatchObject({
+      model: "gpt-6.1-sol",
+      reasoningEffort: "medium",
+      maxRetries: 0,
+      store: false,
+    });
   });
 
   // Audit SEC-N3: sources and context answers never ride in the system message.

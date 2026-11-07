@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -275,6 +275,35 @@ describe("presentation: rail versus anchored panel (docs/filter-contract.md §5b
     // change of container.
     expect(panel).toHaveAttribute("id", "anchored-panel");
     expect(within(panel).getByRole("radio", { name: "All (8)" })).toBeInTheDocument();
+  });
+
+  it("keeps the unplaced filter inert and unfocused, then makes its controls reachable after placement", async () => {
+    const frames: FrameRequestCallback[] = [];
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+      frames.push(callback);
+      return frames.length;
+    });
+    // jsdom does not implement the browser's inert focus exclusion.
+    const focus = HTMLElement.prototype.focus;
+    const focusSpy = vi.spyOn(HTMLElement.prototype, "focus").mockImplementation(function (this: HTMLElement, options) {
+      if (!this.closest("[inert]")) focus.call(this, options);
+    });
+    renderWithAnchor();
+    const panel = screen.getByTestId("anchored-panel");
+    expect(panel).toHaveAttribute("inert");
+    expect(panel).not.toHaveFocus();
+    expect(focusSpy).not.toHaveBeenCalled();
+    within(panel).getByRole("radio", { name: "All (8)", hidden: true }).focus();
+    expect(panel).not.toContainElement(document.activeElement as HTMLElement);
+
+    act(() => {
+      for (const callback of frames.splice(0)) callback(0);
+    });
+    expect(panel).not.toHaveAttribute("inert");
+    expect(panel).toHaveFocus();
+    await userEvent.setup().tab();
+    expect(panel).toContainElement(document.activeElement as HTMLElement);
+    expect(panel).not.toHaveAttribute("aria-modal");
   });
 
   it("falls back to the bottom sheet on a phone even when an anchor is supplied", () => {

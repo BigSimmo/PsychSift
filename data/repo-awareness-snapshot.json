@@ -1,7 +1,7 @@
 {
   "version": "repo-awareness-snapshot-v3",
   "captured_revision": {
-    "committed_at": "2026-11-05"
+    "committed_at": "2026-11-06"
   },
   "routes": {
     "modes": [
@@ -1698,6 +1698,10 @@
         "file": "src/app/api/differentials/presentations/[slug]/route.ts"
       },
       {
+        "path": "/api/images/[id]/content",
+        "file": "src/app/api/images/[id]/content/route.ts"
+      },
+      {
         "path": "/api/roster/rotations/[roundId]",
         "file": "src/app/api/roster/rotations/[roundId]/route.ts"
       },
@@ -2123,6 +2127,11 @@
       {
         "path": "docs/superpowers/rag-upgrade/local/plans/2026-08-20-rag-adaptive-answer.md",
         "section": "superpowers",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-11-05-remembered-email-clearing-and-label.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -2592,6 +2601,11 @@
       },
       {
         "path": "docs/decisions/2026-08-17-document-summary-rows-get-their-own-provenance.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-11-01-ingestion-preparation-only.md",
         "section": "decisions",
         "catalogued": true
       },
@@ -3976,6 +3990,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-11-03-defer-legal-review-for-internal-build.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/prompts/codex-documentation-ownership-ultra-review.md",
         "section": "prompts",
         "catalogued": true
@@ -4411,6 +4430,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/reindex-unlock-plan.md",
+        "section": "root",
+        "catalogued": true
+      },
+      {
         "path": "docs/specifier-definition-worklist-2026-09-18.md",
         "section": "root",
         "catalogued": true
@@ -4633,6 +4657,11 @@
       {
         "path": "docs/superpowers/rag-upgrade/execution-receipts/rag-answer-quality-and-repository-coverage-v1/README.md",
         "section": "superpowers",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-27-sol61-answer-candidate.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -4886,6 +4915,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-11-06-defer-form-clock-detail-suppression.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/archive/search-rag-phase-5.5b-retrieval-follow-up.md",
         "section": "archive",
         "catalogued": true
@@ -5032,6 +5066,11 @@
       },
       {
         "path": "docs/decisions/2026-10-26-crisis-routing-under-18-youth-and-000.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-11-01-administrator-source-unscanned-exception.md",
         "section": "decisions",
         "catalogued": true
       },

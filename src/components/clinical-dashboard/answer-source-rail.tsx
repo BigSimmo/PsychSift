@@ -437,30 +437,29 @@ function AnswerSourceCard({
       >
         {sourceBadgeDisplay(source, index)}
       </span>{" "}
-      <span className="grid min-w-0 gap-0.5 text-left">
+      <span className="flex min-w-0 items-center gap-1.5 text-left">
         <span
           className={cn(
-            "block text-xs font-semibold leading-tight text-[color:var(--text-heading)]",
+            "min-w-0 flex-1 text-xs font-semibold leading-tight text-[color:var(--text-heading)]",
             solo ? "line-clamp-2" : "truncate",
           )}
         >
           {cleanDisplayTitle(source.title)}
         </span>{" "}
-        <span className={cn("flex items-center gap-1.5 truncate text-2xs leading-tight", textMuted)}>
-          {/* Tabular figures keep page numbers aligned between cards; the mono
-              face the old list row used opened a visible gap after "p." at this
-              size. */}
-          <span className="shrink-0 tabular-nums">p. {source.pageNumber ?? "n/a"}</span>
-          <span aria-hidden className={sourceStatusDotClass(source.metadata)} />{" "}
-          <span className={cn("truncate", stale && "font-semibold text-[color:var(--warning)]")}>
-            {sourceStatusShortLabel(source.metadata)}
-          </span>
-          {source.hasTable ? (
-            <Table2 className="h-3 w-3 shrink-0 text-[color:var(--clinical-accent)]" aria-hidden />
-          ) : null}
-          {source.hasImage ? (
-            <ImageIcon className="h-3 w-3 shrink-0 text-[color:var(--clinical-accent)]" aria-hidden />
-          ) : null}
+        {source.hasTable ? (
+          <Table2 className="h-3 w-3 shrink-0 text-[color:var(--clinical-accent)]" aria-hidden />
+        ) : null}
+        {source.hasImage ? (
+          <ImageIcon className="h-3 w-3 shrink-0 text-[color:var(--clinical-accent)]" aria-hidden />
+        ) : null}
+      </span>
+      <span className={cn("col-span-2 flex min-w-0 items-center gap-1.5 text-2xs leading-tight", textMuted)}>
+        {/* Currency gets the full card width: keeping it under the title's
+            narrow column clipped the distinction between unknown and current. */}
+        <span className="shrink-0 tabular-nums">p. {source.pageNumber ?? "n/a"}</span>
+        <span aria-hidden className={sourceStatusDotClass(source.metadata)} />{" "}
+        <span className={cn("min-w-0 break-words", stale && "font-semibold text-[color:var(--warning)]")}>
+          {sourceStatusShortLabel(source.metadata)}
         </span>
       </span>
     </>
@@ -533,7 +532,7 @@ function cardLabel(source: AnswerSourceRow, index: number, searchOnly = false) {
 }
 
 const cardClass =
-  "flex min-h-12 min-w-0 items-center gap-2 rounded-[var(--radius-lg)] border bg-[color:var(--surface-raised)] py-1.5 pl-2 pr-2.5 text-left shadow-[var(--e1)] transition-[border-color,box-shadow] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]";
+  "grid min-h-12 min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2 gap-y-0.5 rounded-[var(--radius-lg)] border bg-[color:var(--surface-raised)] py-1.5 pl-2 pr-2.5 text-left shadow-[var(--e1)] transition-[border-color,box-shadow] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]";
 // Fixed so every card in a row is the same size and snapping settles whole cards.
 const cardFixedWidth = "w-[156px]";
 const cardSoloWidth = "w-full max-w-full";

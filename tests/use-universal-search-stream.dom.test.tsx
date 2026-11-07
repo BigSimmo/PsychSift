@@ -9,6 +9,7 @@ import {
 } from "@/components/clinical-dashboard/use-universal-search";
 import type { UniversalSearchGroup, UniversalSearchResponse } from "@/lib/universal-search";
 import type { UniversalSearchStreamEvent } from "@/lib/universal-search-stream";
+import { searchRequestTimeoutMs } from "@/components/clinical-dashboard/search-utils";
 
 const authSession = vi.hoisted(() => ({
   authorizationHeader: { Authorization: "Bearer universal-search-test" },
@@ -98,6 +99,142 @@ afterEach(() => {
 });
 
 describe("useUniversalSearch NDJSON integration", () => {
+  it("bounds stalled headers even when fetch ignores abort, and refetches the same query after reopening", async () => {
+    const query = "synthetic bounded header search";
+    fetchMock.mockReturnValueOnce(new Promise<Response>(() => undefined));
+    const { result, rerender } = renderHook(
+      ({ enabled }) => useUniversalSearch({ query, enabled, contextMode: "answer" }),
+      { initialProps: { enabled: true } },
+    );
+    await startDebouncedRequest();
+    const signal = fetchMock.mock.calls[0][1]?.signal;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(searchRequestTimeoutMs);
+    });
+    expect(signal?.aborted).toBe(true);
+    expect(result.current).toMatchObject({ loading: false, query, groups: [] });
+    expect(result.current.error).toMatch(/timed out|took longer/i);
+
+    const group = searchGroup("tools", "Recovered reference");
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        `${JSON.stringify({
+          type: "complete",
+          response: { query, groups: [group], tookMs: 2 },
+        })}\n`,
+      ),
+    );
+    rerender({ enabled: false });
+    rerender({ enabled: true });
+    await startDebouncedRequest();
+    await flushStream();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(result.current).toMatchObject({ loading: false, groups: [group] });
+    expect(result.current.error).toBeUndefined();
+  });
+
+  it("does not show an expired completed result beside a timeout on refetch", async () => {
+    const query = "synthetic expired cache timeout search";
+    const staleGroup = searchGroup("tools", "Expired reference");
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        `${JSON.stringify({
+          type: "complete",
+          response: { query, groups: [staleGroup], tookMs: 2 },
+        })}\n`,
+      ),
+    );
+    const { result, rerender } = renderHook(
+      ({ enabled }) => useUniversalSearch({ query, enabled, contextMode: "answer" }),
+      { initialProps: { enabled: true } },
+    );
+    await startDebouncedRequest();
+    await flushStream();
+    expect(result.current).toMatchObject({ loading: false, groups: [staleGroup] });
+
+    rerender({ enabled: false });
+    // Let the five-minute cache entry expire, then reopen with a refetch that stalls.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5 * 60 * 1000 + 1);
+    });
+    fetchMock.mockReturnValueOnce(new Promise<Response>(() => undefined));
+    rerender({ enabled: true });
+    await startDebouncedRequest();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(searchRequestTimeoutMs);
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(result.current).toMatchObject({ loading: false, query, groups: [] });
+    expect(result.current.error).toMatch(/timed out|took longer/i);
+  });
+
+  it("keeps useful partial groups when the streamed body stalls and does not cache the failure", async () => {
+    const query = "synthetic partial timeout search";
+    const stream = controlledNdjsonResponse();
+    const group = searchGroup("tools", "Partial reference");
+    fetchMock.mockResolvedValueOnce(stream.response);
+    const { result, rerender } = renderHook(
+      ({ enabled }) => useUniversalSearch({ query, enabled, contextMode: "answer" }),
+      { initialProps: { enabled: true } },
+    );
+    await startDebouncedRequest();
+    stream.write({ type: "group", query, group });
+    await flushStream();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(searchRequestTimeoutMs);
+    });
+    expect(result.current).toMatchObject({ loading: false, groups: [group], query });
+    expect(result.current.error).toMatch(/timed out|took longer/i);
+    expect(stream.cancelled).toHaveBeenCalledOnce();
+    fetchMock.mockReturnValueOnce(new Promise<Response>(() => undefined));
+    rerender({ enabled: false });
+    rerender({ enabled: true });
+    await startDebouncedRequest();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(result.current.loading).toBe(true);
+  });
+
+  it("enforces the request ceiling even when partial groups continue arriving", async () => {
+    const query = "synthetic active runaway search";
+    const stream = controlledNdjsonResponse();
+    const group = searchGroup("tools", "Live reference");
+    fetchMock.mockResolvedValueOnce(stream.response);
+    const { result } = renderHook(() => useUniversalSearch({ query, enabled: true, contextMode: "answer" }));
+    await startDebouncedRequest();
+    for (let elapsed = 0; elapsed < 42_000; elapsed += 14_000) {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(14_000);
+      });
+      stream.write({ type: "group", query, group });
+      await flushStream();
+      expect(result.current.loading).toBe(true);
+    }
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(searchRequestTimeoutMs - 42_000);
+    });
+    expect(result.current).toMatchObject({ loading: false, groups: [group] });
+    expect(result.current.error).toMatch(/timed out|took longer/i);
+    expect(stream.cancelled).toHaveBeenCalledOnce();
+  });
+
+  it("commits a complete frame without waiting for EOF and clears its deadline", async () => {
+    const query = "synthetic terminal frame search";
+    const stream = controlledNdjsonResponse();
+    const group = searchGroup("tools", "Final reference");
+    fetchMock.mockResolvedValueOnce(stream.response);
+    const { result } = renderHook(() => useUniversalSearch({ query, enabled: true, contextMode: "answer" }));
+    await startDebouncedRequest();
+    stream.write({ type: "complete", response: { query, groups: [group], tookMs: 2 } });
+    await flushStream();
+    expect(result.current).toMatchObject({ loading: false, groups: [group] });
+    expect(stream.cancelled).toHaveBeenCalledOnce();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(searchRequestTimeoutMs);
+    });
+    expect(fetchMock.mock.calls[0][1]?.signal?.aborted).toBe(false);
+    expect(result.current.error).toBeUndefined();
+  });
+
   it("renders each ready group before committing the canonical final response", async () => {
     const query = "progressive parity query";
     const stream = controlledNdjsonResponse();

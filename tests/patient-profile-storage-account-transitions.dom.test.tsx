@@ -562,6 +562,51 @@ describe("the boot-time SIGNED_IN replay is not an account transition (M4, L2, L
     expect(window.localStorage.getItem("psychsift:work-search-coach-seen")).toBe("1");
   });
 
+  // auth-js refreshes an expired stored session while it starts up and, when the
+  // refresh is rejected, removes it before getSession() returns, so the provider
+  // sees `session: null`. The cookie that was there before the library loaded
+  // still marks it as a session that ended: the remembered email and the rest go.
+  // A guest's first boot, with no such cookie, keeps them.
+  it.each([
+    { name: "an expired session auth-js already removed", cookie: true, cleared: true },
+    { name: "a guest boot with no stored session", cookie: false, cleared: false },
+  ])("handles $name on boot", async ({ cookie, cleared }) => {
+    const cookieName = "sb-sjrfecxgysukkwxsowpy-auth-token";
+    if (cookie) document.cookie = `${cookieName}=base64-synthetic; Path=/`;
+    window.localStorage.setItem("psychsift:remembered-email", "synthetic.clinician@example.test");
+    window.localStorage.setItem("psychsift:my-day:quick-note-v1", "Ring the registrar");
+    authApi.getSession.mockImplementationOnce(
+      async () =>
+        ({ data: { session: null }, error: null }) as unknown as Awaited<ReturnType<typeof authApi.getSession>>,
+    );
+    authApi.getUser.mockImplementationOnce(
+      async () =>
+        ({
+          data: { user: null },
+          error: { name: "AuthSessionMissingError", status: 400, message: "Auth session missing!" },
+        }) as unknown as Awaited<ReturnType<typeof authApi.getUser>>,
+    );
+
+    try {
+      render(
+        <AuthProvider>
+          <AuthActions />
+        </AuthProvider>,
+      );
+      await waitFor(() => expect(screen.getByTestId("status")).toHaveTextContent("signed_out"));
+
+      if (cleared) {
+        expect(window.localStorage.getItem("psychsift:remembered-email")).toBeNull();
+        expect(window.localStorage.getItem("psychsift:my-day:quick-note-v1")).toBeNull();
+      } else {
+        expect(window.localStorage.getItem("psychsift:remembered-email")).toBe("synthetic.clinician@example.test");
+        expect(window.localStorage.getItem("psychsift:my-day:quick-note-v1")).toBe("Ring the registrar");
+      }
+    } finally {
+      document.cookie = `${cookieName}=; Path=/; Max-Age=0`;
+    }
+  });
+
   it("still clears when the boot could not be verified and someone then signs in", async () => {
     seedEveryRefreshSurvivingStore();
 

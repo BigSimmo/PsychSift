@@ -225,6 +225,45 @@ function fixture() {
 }
 
 describe("approved admin source normal runtime composition", () => {
+  it("constructs the built-in internal-build runtime only from a finite explicit server policy", async () => {
+    const f = fixture();
+    const policy = JSON.stringify({
+      allowedDocumentIds: [f.job.document_id],
+      approvalReferenceSha256: `sha256:${"a".repeat(64)}`,
+      issuedAt: new Date(Date.now() - 1000).toISOString(),
+      expiresAt: new Date(Date.now() + 60000).toISOString(),
+    });
+    const hooks = await loadAdminSourceRuntimeOptions(f.client, "synthetic-bucket", "", policy, {
+      WORKER_ALLOWED_DOCUMENT_IDS: f.job.document_id,
+    });
+    expect(hooks.loadManagedGeneralPdfInspection).toBeTypeOf("function");
+    expect(hooks.loadObservationsForJob).toBeTypeOf("function");
+    await expect(loadAdminSourceRuntimeOptions(f.client, "synthetic-bucket", "", policy, {})).rejects.toThrow();
+    await expect(
+      loadAdminSourceRuntimeOptions(f.client, "synthetic-bucket", "", policy, {
+        WORKER_ALLOWED_DOCUMENT_IDS: "00000000-0000-4000-8000-000000000099",
+      }),
+    ).rejects.toThrow();
+    await expect(loadAdminSourceRuntimeOptions(f.client, "synthetic-bucket", "", "{}")).rejects.toThrow();
+    await expect(
+      loadAdminSourceRuntimeOptions(f.client, "synthetic-bucket", "/synthetic/module", policy),
+    ).rejects.toThrow();
+  });
+  it("accepts the owner-deferred legal review only for an internal draft", async () => {
+    const f = fixture();
+    Object.assign(f.job.documents.metadata!, { corpus_scope: "uploaded_local" });
+    Object.assign(f.source.policyObservations, {
+      rights: "review_deferred",
+      indexLicence: "review_deferred",
+      legalReviewDeferral: "owner-internal-build-2026-11-03",
+      processingScope: "owner_internal_build",
+    });
+    await expect(f.hooks.loadManagedAdminTextSectionLayout!(f.job, f.source.sourceSha256)).resolves.toBeDefined();
+    Object.assign(f.job.documents.metadata!, { corpus_scope: "australian_public" });
+    await expect(f.hooks.loadManagedAdminTextSectionLayout!(f.job, f.source.sourceSha256)).rejects.toThrow(
+      "current_input_required",
+    );
+  });
   it("accepts optional TXT layout absence through registration and interrupted-retention recovery", async () => {
     const f = fixture();
     const { sourceSectionLayout: _layout, ...withoutLayout } = f.source;
@@ -391,6 +430,73 @@ describe("approved admin source normal runtime composition", () => {
 
 // Audit 2026-10-20 CH-04: without the scanner module every ingestion provider call is refused,
 // so a worker started without it must say so at start-up instead of failing job by job.
+describe("early rich extraction ownership", () => {
+  it.each(["validation", "cancellation"])("adopts before post-load %s can fail", async (reason) => {
+    const f = fixture(),
+      original = { pages: [{ pageNumber: 1, text: "synthetic" }], images: [] },
+      adopt = vi.fn();
+    const source = {
+      ...f.source,
+      sourceFamily: "rich_pdf",
+      richPdf: { extracted: original, capturedImages: [], review: {} },
+    } as unknown as ApprovedAdminSource;
+    f.loadApprovedSource.mockImplementationOnce(async () => {
+      if (reason === "cancellation") f.attempt.cancel();
+      return source;
+    });
+    Object.assign(f.context, { adoptPreparedExtraction: adopt });
+    await expect(f.hooks.initializeManagedAdminTextGeneration!(f.job, f.attempt, f.context)).rejects.toThrow();
+    expect(adopt).toHaveBeenCalledExactlyOnceWith(original);
+  });
+});
+describe("finite rich PDF runtime selection", () => {
+  const documentId = "00000000-0000-4000-8000-000000000001";
+  const policy = () =>
+    JSON.stringify({
+      allowedDocumentIds: [documentId],
+      approvalReferenceSha256: `sha256:${"a".repeat(64)}`,
+      issuedAt: new Date(Date.now() - 1000).toISOString(),
+      expiresAt: new Date(Date.now() + 60000).toISOString(),
+    });
+  it("constructs rich hooks without source reads and only with an explicit claim subset", async () => {
+    const f = fixture();
+    const hooks = await loadAdminSourceRuntimeOptions(
+      f.client,
+      "synthetic-bucket",
+      "",
+      "",
+      { WORKER_ALLOWED_DOCUMENT_IDS: documentId },
+      policy(),
+    );
+    expect(hooks.loadManagedRichPdfInspection).toBeTypeOf("function");
+    expect(f.loadApprovedSource).not.toHaveBeenCalled();
+    await expect(loadAdminSourceRuntimeOptions(f.client, "synthetic-bucket", "", "", {}, policy())).rejects.toThrow();
+  });
+  it("refuses conflicting modes before importing a mounted module", async () => {
+    const f = fixture();
+    await expect(
+      loadAdminSourceRuntimeOptions(
+        f.client,
+        "synthetic-bucket",
+        "/missing/runtime.mjs",
+        "",
+        { WORKER_ALLOWED_DOCUMENT_IDS: documentId },
+        policy(),
+      ),
+    ).rejects.toThrow("current_input_required");
+    await expect(
+      loadAdminSourceRuntimeOptions(
+        f.client,
+        "synthetic-bucket",
+        "",
+        policy(),
+        { WORKER_ALLOWED_DOCUMENT_IDS: documentId },
+        policy(),
+      ),
+    ).rejects.toThrow("current_input_required");
+    expect(adminSourceRuntimeStartupWarning("", "", policy())).toBeNull();
+  });
+});
 describe("scanner module start-up warning (CH-04)", () => {
   it("warns when the scanner module setting is absent or empty", () => {
     for (const value of [undefined, ""]) {

@@ -34,6 +34,10 @@ const baseline: AnswerGenerationFingerprintInput = {
 describe("RAG answer generation fingerprints", () => {
   it.each([
     ["fast model", { fastModel: "gpt-5.6-luna" }],
+    [
+      "Sol 6.1 answer replacement",
+      { answerModel: "gpt-6.1-sol", fastModel: "gpt-6.1-sol", strongModel: "gpt-6.1-sol" },
+    ],
     ["classifier model", { classifierModel: "gpt-5.6-terra" }],
     ["indexing model", { indexingModel: "gpt-5.6-sol" }],
     ["embedding model", { embeddingModel: "text-embedding-3-large" }],

@@ -306,6 +306,7 @@ Every remaining tracked document in this category (process, plus the `agents/` r
 
 ## Plans and workstreams (living)
 
+- [reindex-unlock-plan.md](reindex-unlock-plan.md) — current ingestion unlock and controlled rollout checkpoint
 - [maturity-backlog-workorders.md](maturity-backlog-workorders.md) — actionable work orders tracking the repository-maturity audit backlog
 - [no-unchecked-indexed-access-migration-plan.md](no-unchecked-indexed-access-migration-plan.md) — staged multi-PR rollout for the `noUncheckedIndexedAccess` TypeScript flag (ledger `#211`)
 - [pr-handoff-stop-cross-agent-gap.md](pr-handoff-stop-cross-agent-gap.md) — why the PR-babysit budget is hook-enforced for Claude Code but prose-only for Codex and Cursor, and what parity would require (ledger `#258`)

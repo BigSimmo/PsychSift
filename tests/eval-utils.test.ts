@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   DEFAULT_EVAL_OWNER_ID,
+  estimateAnswerCost,
+  estimateProviderAttemptsCost,
+  estimateProviderAttemptsCostUsd,
   expectedFileCoverage,
   isProviderQuotaError,
   isProviderRateLimitError,
@@ -13,6 +16,115 @@ import {
 } from "../scripts/eval-utils";
 import { ragEvalCases, type RagEvalCase } from "../src/lib/rag/rag-eval-cases";
 import type { RagAnswer } from "../src/lib/types";
+
+describe("model and attempt cost estimates", () => {
+  afterEach(() => vi.unstubAllEnvs());
+  const prices = {
+    fast: { input: 2, cachedInput: 0.2, output: 10 },
+    strong: { input: 4, cachedInput: 0.4, output: 20, cacheWrite: 5 },
+  };
+
+  it("adds mixed-model and replaced attempts without counting reasoning twice", () => {
+    const attempts = [
+      {
+        model: "fast",
+        usage: { input_tokens: 1_000, cached_input_tokens: 100, output_tokens: 200, reasoning_output_tokens: 150 },
+      },
+      {
+        model: "strong",
+        usage: { input_tokens: 2_000, cached_input_tokens: 500, cache_write_tokens: 500, output_tokens: 100 },
+      },
+    ];
+    expect(estimateProviderAttemptsCostUsd(attempts, prices)).toBeCloseTo(0.01252);
+    expect(estimateProviderAttemptsCost(attempts, prices).pricingBasis).toBe("usage_estimate");
+  });
+
+  it("labels unmeasured cache-write premium as a conservative upper estimate", () => {
+    expect(
+      estimateProviderAttemptsCost(
+        [{ model: "strong", usage: { input_tokens: 1_000, cached_input_tokens: 200, output_tokens: 100 } }],
+        prices,
+      ),
+    ).toEqual({ estimatedCostUsd: 0.00608, pricingBasis: "cache_write_upper_bound" });
+  });
+
+  it("never reports zero for a failed, unpriced or incomplete attempt", () => {
+    for (const attempts of [
+      [{ model: "fast" }],
+      [{ model: "unknown", usage: { input_tokens: 1, output_tokens: 1 } }],
+      [{ model: "fast", usage: { input_tokens: 1 } }],
+      [{ model: "fast", usage: { input_tokens: 1, cached_input_tokens: 2, output_tokens: 1 } }],
+      [{ model: "fast", usage: { input_tokens: 1, output_tokens: -1 } }],
+      [{ model: "fast", usage: { input_tokens: 1, output_tokens: 1 } }, { model: "strong" }],
+    ])
+      expect(estimateProviderAttemptsCost(attempts, prices)).toEqual({
+        estimatedCostUsd: null,
+        pricingBasis: "unknown",
+      });
+    expect(estimateProviderAttemptsCostUsd([], prices)).toBe(0);
+  });
+
+  it("refuses invalid configured prices rather than using a cheaper fallback", () => {
+    const attempts = [{ model: "fast", usage: { input_tokens: 1, output_tokens: 1 } }];
+    expect(estimateProviderAttemptsCostUsd(attempts, { fast: { input: -1, output: 1 } })).toBeNull();
+    expect(estimateProviderAttemptsCostUsd(attempts, { fast: { input: 1, output: Infinity } })).toBeNull();
+    vi.stubEnv("RAG_EVAL_MODEL_PRICES_JSON", "invalid-json");
+    expect(estimateAnswerCost({ openAIUsageAttempts: attempts }, true).estimatedCostUsd).toBeNull();
+  });
+
+  it("requires attempt attribution in model-priced mode, with no-call cases still zero", () => {
+    vi.stubEnv("RAG_EVAL_MODEL_PRICES_JSON", JSON.stringify(prices));
+    expect(estimateAnswerCost({ openAIUsage: { input_tokens: 1_000, output_tokens: 200 } }, true)).toEqual({
+      estimatedCostUsd: null,
+      pricingBasis: "unknown",
+    });
+    expect(estimateAnswerCost({}, false)).toEqual({ estimatedCostUsd: 0, pricingBasis: "provider_free" });
+    expect(
+      estimateAnswerCost(
+        { openAIUsageAttempts: [{ model: "fast", usage: { input_tokens: 1_000, output_tokens: 200 } }] },
+        true,
+      ),
+    ).toEqual({ estimatedCostUsd: 0.004, pricingBasis: "usage_estimate" });
+  });
+
+  it("preserves legacy aggregate rate overrides while retaining unknown failed attempts", () => {
+    vi.stubEnv("RAG_EVAL_MODEL_PRICES_JSON", undefined);
+    vi.stubEnv("RAG_EVAL_INPUT_USD_PER_MILLION", "2");
+    vi.stubEnv("RAG_EVAL_CACHED_INPUT_USD_PER_MILLION", "0.2");
+    vi.stubEnv("RAG_EVAL_OUTPUT_USD_PER_MILLION", "10");
+    const answer = { openAIUsage: { input_tokens: 1_000, cached_input_tokens: 100, output_tokens: 200 } };
+    expect(estimateAnswerCost(answer, true)).toEqual({
+      estimatedCostUsd: 0.00382,
+      pricingBasis: "legacy_rate_estimate",
+    });
+    expect(
+      estimateAnswerCost({ ...answer, openAIUsageAttempts: [{ model: "fast" }] }, true).estimatedCostUsd,
+    ).toBeNull();
+    for (const usage of [{}, { input_tokens: 10 }, { input_tokens: 10, output_tokens: 1, cached_input_tokens: 11 }]) {
+      expect(estimateAnswerCost({ ...answer, openAIUsageAttempts: [{ model: "fast", usage }] }, true)).toEqual({
+        estimatedCostUsd: null,
+        pricingBasis: "unknown",
+      });
+    }
+    expect(estimateAnswerCost(answer, true, 1)).toEqual({ estimatedCostUsd: null, pricingBasis: "unknown" });
+  });
+
+  it("counts an outer failed attempt even when its retry succeeds", async () => {
+    const failed = vi.fn();
+    let count = 0;
+    const result = await withProviderBackoff(
+      "synthetic-cost-case",
+      async () => {
+        count += 1;
+        if (count === 1) throw new Error("429 rate limit");
+        return "completed";
+      },
+      { maxAttempts: 2, initialDelayMs: 1, maxDelayMs: 1, onFailedAttempt: failed },
+    );
+    expect(result).toBe("completed");
+    expect(failed).toHaveBeenCalledTimes(1);
+  });
+});
 
 describe("RAG eval source identity matching", () => {
   it("matches legacy expected shorthand against current indexed document-family titles", () => {

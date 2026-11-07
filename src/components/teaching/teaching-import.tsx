@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, FileSpreadsheet, TriangleAlert, Upload } from "lucide-react";
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { focusRing } from "@/components/card-recipes";
 import { WorkButton } from "@/components/mode-kit/work";
 import { REPEAT_LABELS } from "@/components/teaching/organise-sheets";
@@ -82,6 +82,12 @@ function ImportPage({ demoMode }: { demoMode: boolean }) {
   const [fileName, setFileName] = useState<string | null>(null);
   const fileId = useId();
   const sequence = useRef(0);
+  useEffect(
+    () => () => {
+      sequence.current++;
+    },
+    [],
+  );
   return (
     <TeachingDepthPage
       title="Import a timetable"
@@ -149,6 +155,9 @@ function ImportPage({ demoMode }: { demoMode: boolean }) {
                       : /\.csv$/i.test(file.name)
                         ? parseCsv(await file.text())
                         : null;
+                    // A file read can outlive this page or the account-bound mount. Do not
+                    // start the next request for an operation that no longer belongs to it.
+                    if (current !== sequence.current) return;
                     if (!rows) throw new Error("Choose a CSV or XLSX file.");
                     const next = demoMode
                       ? previewRows(rows, [])

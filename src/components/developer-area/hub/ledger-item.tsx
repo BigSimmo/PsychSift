@@ -27,7 +27,7 @@ export const LEDGER_DISCLOSURE_CLASS =
   "flex min-h-12 cursor-pointer items-center text-xs font-bold text-[color:var(--text-muted)]";
 
 /** Detail cells carry unbroken tokens — file paths, CLI flags, registry keys. */
-export const LEDGER_DETAIL_CLASS = "text-xs leading-6 break-words text-[color:var(--text-muted)]";
+export const LEDGER_DETAIL_CLASS = "text-xs leading-6 [overflow-wrap:anywhere] text-[color:var(--text-muted)]";
 
 /**
  * Progressive detail. Native `<details>` keeps this a Server Component with no
@@ -44,7 +44,7 @@ export function LedgerItem({ item }: { item: LedgerOpenItem }) {
   return (
     <li
       data-testid={`developer-ledger-item-${item.id.replace("#", "")}`}
-      className="grid gap-2 rounded-xl border border-[color:var(--border)] p-4"
+      className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2 rounded-xl border border-[color:var(--border)] p-4"
     >
       <div className="flex flex-wrap items-baseline gap-2">
         <span className="font-mono text-xs text-[color:var(--text-muted)]">{item.id}</span>
@@ -64,11 +64,11 @@ export function LedgerItem({ item }: { item: LedgerOpenItem }) {
           {item.type}
         </span>
       </div>
-      <p className="text-sm leading-6 text-[color:var(--text-heading)]">{item.summary}</p>
+      <p className="text-sm leading-6 [overflow-wrap:anywhere] text-[color:var(--text-heading)]">{item.summary}</p>
       <details>
         <summary className={LEDGER_DISCLOSURE_CLASS}>Detail and source</summary>
         <p className={`mt-2 ${LEDGER_DETAIL_CLASS}`}>{item.detail}</p>
-        <p className="mt-1 text-xs text-[color:var(--text-muted)]">
+        <p className="mt-1 text-xs [overflow-wrap:anywhere] text-[color:var(--text-muted)]">
           Source: {item.source} · added {item.added}
         </p>
       </details>
