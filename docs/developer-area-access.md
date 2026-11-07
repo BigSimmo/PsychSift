@@ -1,12 +1,16 @@
 # Developer area access
 
-How the two developer-gated subtrees under `/mockups` (`/mockups/development`
-and `/mockups/care-plan`) are protected, and how to open them without signing in.
+_Updated 2026-11-05 — reconcile the developer hub with the recorded prototype retirements; Prototypes owns._
+
+How `/admin/developer-hub` and its panel routes are protected, and how to open them
+without signing in.
 
 The gated path prefixes are listed once, in `src/lib/developer-area/headers.ts`
-(`DEVELOPER_GATED_PATH_PREFIXES`): `/mockups/development` (Development hub and
-panel sub-routes) and `/mockups/care-plan` (Care Plan prototype). Every other
-`/mockups/**` path 404s in production and is not covered here.
+(`DEVELOPER_GATED_PATH_PREFIXES`): only `/admin/developer-hub`. The retired
+`/mockups/development` addresses permanently redirect here. The Care Plan prototype
+was retired on 2026-10-21; `/mockups/care-plan` has no access exemption. All
+`/mockups/**` routes that reach the proxy return 404 in production. See the
+[retirement record](decisions/2026-10-21-retire-care-plan-and-design-studies.md).
 
 ## Two credentials, either of which opens the area
 
@@ -23,8 +27,7 @@ admits a request holding **either**:
 The cookie is checked first, because it is the expected case on the owner's own
 devices and it needs no provider round trip to answer.
 
-Outside production the gate is a no-op, matching every other `/mockups/**`
-route. In production it bypasses only under the exact double-flag pairing the
+Outside production the gate is a no-op. In production it bypasses only under the exact double-flag pairing the
 isolated Playwright production build uses; `NEXT_PUBLIC_MOCKUPS_ENABLED=true`
 alone must never open it, which was incident `#L30`.
 
@@ -51,7 +54,7 @@ inlines those into the client bundle, and `check:production-readiness` fails the
 release if it finds that name.
 
 **Setup, once per device — by typing it.** Open
-`https://psychiatry.tools/mockups/development`, put the secret in the
+`https://psychiatry.tools/admin/developer-hub`, put the secret in the
 **Developer key** field and press Unlock. The field is shown only when the
 deployment actually has a key configured at sufficient strength, and only a
 boolean crosses to the browser, never the key. A refused key says so, because
@@ -63,7 +66,7 @@ one.
 sending yourself access from another machine:
 
 ```
-https://psychiatry.tools/mockups/development?devkey=<the secret>
+https://psychiatry.tools/admin/developer-hub?devkey=<the secret>
 ```
 
 Either way `src/proxy.ts` verifies the secret, sets a signed cookie, and
@@ -73,10 +76,12 @@ sent onward. The field submits with `location.replace`, so the URL that briefly
 carries the secret is not left as a history entry either. From then on that
 browser opens the developer area with no sign-in at all.
 
-The response carries separate `Set-Cookie` headers for `/admin/developer-hub`,
-`/mockups/development`, and `/mockups/care-plan`. They share the developer cookie
-name; each header is appended separately so Next.js does not overwrite the
-other paths. Renewal uses the same path scopes.
+The response scopes the developer cookie to `/admin/developer-hub`, the only
+entry in `DEVELOPER_ACCESS_COOKIE_PATHS` (`link-access.ts`). Renewal uses the
+same path scope, so retired mockup paths receive no newly issued or renewed
+developer cookie. A cookie issued before the retired paths were removed from
+that list may still be sent to those paths by the browser until it expires or
+is cleared; nothing re-issues it there.
 
 **The key travels in a URL either way, so rotate it after exporting logs.**
 Typed or bookmarked, the secret is presented as `?devkey=…` on one request. The
@@ -101,18 +106,18 @@ again.
 ## What the link does not grant
 
 Reaching the page is all it grants. The panels in `src/lib/developer-area/hub-panels.ts`
-(`HUB_PANELS`) span 10 operational panels under `/mockups/development/*` —
-`roster-teams` (`/mockups/development/roster-teams`), `task-ledger`
-(`/mockups/development/ledger`), `clinical-trust`
-(`/mockups/development/clinical-trust`), `on-call-freshness`
-(`/mockups/development/on-call-freshness`), `clinical-answer-failures`
-(`/mockups/development/clinical-answer-failures`), `hazard-register`
-(`/mockups/development/hazards`), `clinical-sign-off`
-(`/mockups/development/clinical-sign-off`), `ingestion`
-(`/mockups/development/ingestion`), `corpus-health`
-(`/mockups/development/corpus-health`), and `settings-check`
-(`/mockups/development/settings`) — plus the 2 reference entries (`brand` at
-`/brand/preview.html` and `care-plan` at `/mockups/care-plan`). The panels that
+(`HUB_PANELS`) span 10 operational panels under `/admin/developer-hub/*` —
+`roster-teams` (`/admin/developer-hub/roster-teams`), `task-ledger`
+(`/admin/developer-hub/ledger`), `clinical-trust`
+(`/admin/developer-hub/clinical-trust`), `on-call-freshness`
+(`/admin/developer-hub/on-call-freshness`), `clinical-answer-failures`
+(`/admin/developer-hub/clinical-answer-failures`), `hazard-register`
+(`/admin/developer-hub/hazards`), `clinical-sign-off`
+(`/admin/developer-hub/clinical-sign-off`), `ingestion`
+(`/admin/developer-hub/ingestion`), `corpus-health`
+(`/admin/developer-hub/corpus-health`), and `settings-check`
+(`/admin/developer-hub/settings`) — plus the reference entry `brand` at
+`/brand/preview.html`. The retired Care Plan prototype is no longer a hub entry. The panels that
 read live server or Supabase data retain their own authorization rules. The guarded readers
 `resolveHubEnvironmentFacts` (`environment-facts.ts`), corpus health, and settings check call
 `isAdministratorUser` independently of the developer gate and degrade to unavailable or
@@ -126,16 +131,20 @@ forwarded in a message or copied off a screen; the corpus is the clinical
 library. Do not "simplify" those panels by having them trust the cookie.
 
 What a link holder _can_ read is the prototype content and the repository-derived
-panels (such as `task-ledger`, `hazard-register`, `clinical-sign-off`, `brand`,
-and the `care-plan` prototype). Treat the
-link accordingly — it is roughly as sensitive as the internal notes themselves.
+panels (such as `task-ledger`, `hazard-register`, `clinical-sign-off`, and `brand`).
+Treat the link accordingly — it is roughly as sensitive as the internal notes themselves.
 
 ## Revoking access
 
-Rotate `DEVELOPER_AREA_ACCESS_KEY` in Railway. Every existing cookie was signed
-under the old key, so all of them stop verifying at once, on every device. There
-is no per-device revocation, and none is planned for a single-operator
-deployment.
+For immediate revocation, rotate `DEVELOPER_AREA_ACCESS_KEY` in Railway and leave
+`DEVELOPER_AREA_ACCESS_KEY_PREVIOUS` unset. Cookies signed under the old key then
+stop verifying on every device. There is no per-device revocation.
+
+For a planned rotation, the optional previous-key variable accepts old keys and
+cookies while the proxy renews cookies under the current key. A device renewed
+during that overlap retains access afterwards, so this overlap must not be used
+when revoking a leaked key or cookie (`resolvePreviousDeveloperAccessKey` in
+`link-access.ts`).
 
 To turn the passwordless route off entirely, unset the variable. The
 administrator sign-in is then the only way in, exactly as before this existed.

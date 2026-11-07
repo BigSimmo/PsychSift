@@ -153,6 +153,12 @@ export async function consumeUniversalSearchNdjson(
         const line = buffer.slice(0, newline);
         buffer = buffer.slice(newline + 1);
         await acceptLine(line);
+        if (complete) {
+          // The protocol's complete frame is authoritative. A server/proxy
+          // leaving the connection open must not keep useful results pending.
+          void reader.cancel().catch(() => undefined);
+          return complete;
+        }
         newline = buffer.indexOf("\n");
       }
     }

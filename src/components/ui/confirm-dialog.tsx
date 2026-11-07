@@ -63,6 +63,7 @@ export function ConfirmDialog({
     <Sheet
       open={open}
       onClose={onCancel}
+      dismissDisabled={busy}
       title={title}
       mobilePlacement="bottom"
       portal

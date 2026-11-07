@@ -54,6 +54,7 @@ import type { ClientQuoteCard, ClientSearchResult } from "@/lib/answer-client-pa
 import type { SourceLink } from "@/lib/answer-render-policy";
 import { normalizeSourceMetadata } from "@/lib/source-metadata";
 import type { VisualEvidenceCard } from "@/lib/types";
+import * as clipboard from "@/lib/copy-to-clipboard";
 
 /**
  * The rail and the drawer replaced four separate source surfaces (the "Sources"
@@ -540,6 +541,64 @@ describe("source drawer overflow menu", () => {
     await user.click(screen.getByTestId("answer-source-drawer-menu-trigger"));
     return screen.getByTestId("answer-source-drawer-menu");
   }
+
+  it("copies source identity, review state and shortened uncited qualifiers with the passage", async () => {
+    const user = userEvent.setup();
+    const copy = vi.spyOn(clipboard, "copyTextToClipboard").mockResolvedValue();
+    const source = row({
+      id: "uncited-copy",
+      title: "Example superseded source",
+      pageNumber: 9,
+      cited: false,
+      metadata: normalizeSourceMetadata({ document_status: "outdated" }),
+      snippet: "Synthetic captured passage.",
+    });
+    const quoteCards: ClientQuoteCard[] = [
+      {
+        chunk_id: source.id,
+        document_id: source.documentId,
+        title: source.title,
+        page_number: source.pageNumber,
+        quote: source.snippet!,
+        isTruncated: true,
+      } as ClientQuoteCard,
+    ];
+    const menu = await openMenu(user, { sources: [source], quoteCards });
+    await user.click(within(menu).getByRole("button", { name: "Copy passage" }));
+
+    expect(copy).toHaveBeenCalledOnce();
+    const copied = copy.mock.calls[0][0];
+    expect(copied).toContain(source.snippet);
+    expect(copied).toContain(source.title);
+    expect(copied).toContain("p. 9");
+    expect(copied).toContain(source.href);
+    expect(copied).toContain("Outdated");
+    expect(copied).toContain("Searched, not cited in the answer.");
+    expect(copied).toContain("Quote shortened. Open the source for the full passage.");
+    expect(copied).toContain("Confirm the passage against a current source before acting on it.");
+  });
+
+  it("copies the selected claim's support qualifier rather than document-level strength", async () => {
+    const user = userEvent.setup();
+    const copy = vi.spyOn(clipboard, "copyTextToClipboard").mockResolvedValue();
+    render(
+      <AnswerSourceDrawer
+        sources={[SOURCES[0]]}
+        openIndex={0}
+        activeSupportIndex={0}
+        activeClaimSupport="unsupported"
+        onOpenIndexChange={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+    await user.click(screen.getByTestId("answer-source-drawer-menu-trigger"));
+    await user.click(screen.getByRole("button", { name: "Copy passage" }));
+
+    const copied = copy.mock.calls[0][0];
+    expect(copied).toContain("Status unknown");
+    expect(copied).toContain("Related to the question — this page does not state the claim.");
+    expect(copied).not.toContain("This page states the claim directly.");
+  });
 
   it("keeps the secondary actions behind a menu so the passage stays the panel's subject", async () => {
     const user = userEvent.setup();

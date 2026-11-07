@@ -47,6 +47,7 @@ import {
 import { useBookings } from "@/components/work-screens/admin/use-bookings";
 import { useCourseOrganiser } from "@/components/work-screens/admin/use-course-organiser";
 import { downloadTextFile } from "@/lib/admin/download-file";
+import { BookingCalendarTimeError } from "@/lib/work-screens/admin/bookings-calendar";
 import { icsFileName, toIcs } from "@/lib/calendar/ics";
 import { guardExampleAction } from "@/lib/example-data/guards";
 import {
@@ -438,7 +439,7 @@ function CourseDetail({
   readonly courseId: string;
   readonly bookings: ReturnType<typeof useBookings>;
 }) {
-  const { today, examples, online } = bookings;
+  const { today, examples, online, zone } = bookings;
   const [sheet, setSheet] = useState<SheetKind>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -520,10 +521,21 @@ function CourseDetail({
 
   const addToPhone = () => {
     if (!guardExampleAction(examples, "export")) return;
-    const events = bookingCalendarEvents(state, (id) => ADMIN_WORK_SCREEN_HREFS.bookingCourse(id)).filter(
-      (event) => event.id === bookingCalendarId(course.id),
-    );
-    downloadTextFile(toIcs(events, { name: course.title }), icsFileName(course.title), "text/calendar;charset=utf-8");
+    setNotice(null);
+    try {
+      const events = bookingCalendarEvents(
+        { ...state, courses: [course] },
+        (id) => ADMIN_WORK_SCREEN_HREFS.bookingCourse(id),
+        zone,
+      ).filter((event) => event.id === bookingCalendarId(course.id));
+      downloadTextFile(toIcs(events, { name: course.title }), icsFileName(course.title), "text/calendar;charset=utf-8");
+    } catch (error) {
+      if (error instanceof BookingCalendarTimeError) {
+        setNotice(error.message);
+        return;
+      }
+      throw error;
+    }
   };
 
   const inCalendar = availability === "booked" || availability === "attended";

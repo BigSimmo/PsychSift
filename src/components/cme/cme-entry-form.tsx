@@ -405,11 +405,18 @@ export function CmeEntryForm({
   useEffect(() => {
     onDirtyChange?.(dirty);
     const guardLink = (event: MouseEvent) => {
-      if (!dirty || saving || !(event.target instanceof Element)) return;
+      if (!dirty || saving || event.defaultPrevented || event.button !== 0 || !(event.target instanceof Element))
+        return;
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
       const link = event.target.closest("a[href]");
       // A link marked to keep the draft (the quick-log sheet's "Open the full
       // page") carries the unsaved entry with it, so there is nothing to discard.
       if (!link || (draftStorageKey && link.hasAttribute("data-cme-keeps-draft"))) return;
+      if (link.getAttribute("target") && link.getAttribute("target") !== "_self") return;
+      if (link.hasAttribute("download")) return;
+      // Work links consult our registered dirty guard during Next's same-tab
+      // navigation event. Asking here as well would prompt twice on Leave.
+      if (link.hasAttribute("data-navigation-guarded")) return;
       if (window.confirm("Discard your unsaved changes?")) return;
       event.preventDefault();
       event.stopPropagation();

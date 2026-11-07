@@ -17,6 +17,35 @@ function responseFromChunks(chunks: string[]) {
 }
 
 describe("consumeUniversalSearchNdjson", () => {
+  it("treats a complete frame as terminal and cancels an open body without waiting for EOF", async () => {
+    const { consumeUniversalSearchNdjson } = await import("../src/lib/universal-search-stream");
+    const final: UniversalSearchResponse = { query: "synthetic terminal frame", groups: [], tookMs: 1 };
+    const cancelled = vi.fn();
+    let controller!: ReadableStreamDefaultController<Uint8Array>;
+    const response = new Response(
+      new ReadableStream<Uint8Array>({
+        start(value) {
+          controller = value;
+          controller.enqueue(encoder.encode(`${JSON.stringify({ type: "complete", response: final })}\n`));
+        },
+        cancel: cancelled,
+      }),
+    );
+    let settled = false;
+    const result = consumeUniversalSearchNdjson(response).then((value) => {
+      settled = true;
+      return value;
+    });
+    for (let turn = 0; turn < 10; turn += 1) await Promise.resolve();
+    try {
+      expect(settled).toBe(true);
+      expect(cancelled).toHaveBeenCalledOnce();
+    } finally {
+      if (!cancelled.mock.calls.length) controller.close();
+    }
+    await expect(result).resolves.toEqual(final);
+  });
+
   it("emits progressive groups and returns the canonical final response across split chunks", async () => {
     const { consumeUniversalSearchNdjson } = await import("../src/lib/universal-search-stream");
     const group: UniversalSearchGroup = {

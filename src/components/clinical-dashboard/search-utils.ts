@@ -7,6 +7,15 @@ import { projectClientAnswerPayload, type ClientRagAnswerPayload } from "@/lib/a
 import type { RagAnswer } from "@/lib/types";
 import { ANSWER_DAILY_LIMIT_CODE, answerBurstLimitMessage, answerDailyLimitMessage } from "@/lib/answer-limit-copy";
 import type { ApiClientError } from "@/lib/api-client-error";
+import { searchRequestTimeoutMs } from "@/components/clinical-dashboard/request-watchdog";
+
+export {
+  answerRequestMaxDurationMs,
+  answerStallTimeoutMs,
+  createAnswerRequestWatchdog,
+  searchRequestTimeoutMs,
+  type AnswerRequestWatchdog,
+} from "@/components/clinical-dashboard/request-watchdog";
 
 export { keywordQueryFromNaturalLanguage } from "@/lib/keyword-query";
 
@@ -88,10 +97,18 @@ export async function readAnswerStream(
   onRevising?: () => void,
   onActivity?: () => void,
   onEvidencePreview?: (preview: VerifiedEvidencePreviewUnit | null) => void,
+  signal?: AbortSignal,
 ): Promise<AnswerPayload> {
+  const abortReason = () =>
+    signal?.reason instanceof Error ? signal.reason : new DOMException("The operation was aborted.", "AbortError");
+  if (signal?.aborted) throw abortReason();
   if (!response.body) throw makeSearchError("Answer stream could not be opened.", undefined, true);
 
   const reader = response.body.getReader();
+  const cancelReader = () => {
+    void reader.cancel(signal?.reason).catch(() => undefined);
+  };
+  signal?.addEventListener("abort", cancelReader, { once: true });
   const decoder = new TextDecoder();
   let buffer = "";
   let pendingCompletion: AnswerProgressUpdate | null = null;
@@ -194,7 +211,9 @@ export async function readAnswerStream(
 
   try {
     while (true) {
+      if (signal?.aborted) throw abortReason();
       const { value, done } = await reader.read();
+      if (signal?.aborted) throw abortReason();
       if (value && value.length > 0) onActivity?.();
       buffer += decoder.decode(value, { stream: !done });
 
@@ -204,7 +223,9 @@ export async function readAnswerStream(
         buffer = buffer.slice(separator.index + separator.length);
         const finalPayload = block ? processEvent(block) : null;
         if (finalPayload) {
-          await reader.cancel().catch(() => undefined);
+          // A valid final is terminal. Releasing the transport must not hold
+          // the answer hostage to a stalled source cancellation promise.
+          void reader.cancel().catch(() => undefined);
           return finalPayload;
         }
         separator = findSseSeparator(buffer);
@@ -221,6 +242,9 @@ export async function readAnswerStream(
   } catch (error) {
     clearEvidencePreview();
     throw error;
+  } finally {
+    signal?.removeEventListener("abort", cancelReader);
+    reader.releaseLock();
   }
 }
 
@@ -297,65 +321,6 @@ export function answerPayloadIsUsable(payload: AnswerPayload) {
 export function progressForRetry(attempt: number) {
   if (attempt <= 1) return "Retrying…";
   return `Retrying… (${Math.min(attempt, searchRetryCount)}/${searchRetryCount})`;
-}
-
-// Inactivity window for an in-flight search/answer request. The answer stream
-// keeps delivering progress events, token deltas, and periodic server
-// heartbeats while generation is running, so a healthy request — even one that
-// escalates fast -> strong and runs well past a minute — keeps resetting this
-// window. Only a stream with no bytes for this long is treated as a stall.
-export const answerStallTimeoutMs = 60_000;
-
-// Hard ceiling on a single request regardless of stream activity, sized above
-// the server's worst-case pipeline (retrieval + fast generation + strong
-// escalation + strong quality repair, each generation capped at
-// OPENAI_ANSWER_TIMEOUT_MS) so it only fires on a genuinely runaway stream.
-export const answerRequestMaxDurationMs = 180_000;
-
-export type AnswerRequestWatchdog = {
-  /** Reset the inactivity window — the stream showed signs of life. */
-  touch: () => void;
-  /** True once the watchdog fired (stall or max-duration). */
-  readonly timedOut: boolean;
-  /** Disarm both timers; safe to call more than once. */
-  cancel: () => void;
-};
-
-/**
- * Watchdog for a streaming answer request. Fires `onTimeout` once when either
- * the stream goes silent for `stallMs` or the request exceeds `maxDurationMs`
- * in total. `touch()` on every received chunk keeps a live-but-slow generation
- * (fast -> strong escalation) from being aborted mid-stream, which previously
- * surfaced as "Answer generation timed out" while tokens were still arriving.
- */
-export function createAnswerRequestWatchdog(
-  onTimeout: () => void,
-  { stallMs = answerStallTimeoutMs, maxDurationMs = answerRequestMaxDurationMs } = {},
-): AnswerRequestWatchdog {
-  let cancelled = false;
-  let fired = false;
-  const fire = () => {
-    if (cancelled || fired) return;
-    fired = true;
-    onTimeout();
-  };
-  let stallTimer = setTimeout(fire, stallMs);
-  const maxDurationTimer = setTimeout(fire, maxDurationMs);
-  return {
-    touch() {
-      if (cancelled || fired) return;
-      clearTimeout(stallTimer);
-      stallTimer = setTimeout(fire, stallMs);
-    },
-    get timedOut() {
-      return fired;
-    },
-    cancel() {
-      cancelled = true;
-      clearTimeout(stallTimer);
-      clearTimeout(maxDurationTimer);
-    },
-  };
 }
 
 export type AnswerErrorKind = "no-results" | "session-expired" | "daily-limit" | "failure";
@@ -462,7 +427,7 @@ export function generateQuerySuggestions(query: string): string[] {
 // federated ceiling (registry domains bail at 2.5 s, a focused documents domain at 6 s) plus
 // retrieval and transfer, so it fires on a genuinely stuck request rather than a slow one.
 export const searchSlowNoticeMs = 15_000;
-export const searchRequestTimeoutMs = 45_000;
+// `searchRequestTimeoutMs` lives in request-watchdog.ts and is re-exported above.
 
 export type SearchRequestDeadline = {
   /** Pass to fetch. Aborts when the caller aborts, or when the timeout fires. */

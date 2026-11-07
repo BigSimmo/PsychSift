@@ -735,21 +735,21 @@ function renderModePageIndex() {
       home: appModeHomeHref("dictionary"),
       search: appModeHomeHref("dictionary", { query: "MSE", focus: true, run: true }),
       detail:
-        "`/dictionary/search` is one catalogue for both searching and browsing; `/dictionary/browse` redirects to it. Also `/topics`, `/topics/[slug]`, `/compare` and `/dictionary/[slug]` records; `/dictionary/sources` redirects to Sources.",
+        "`/dictionary/search` is one catalogue for both searching and browsing; `/dictionary/browse` redirects to it. Also `/dictionary/topics`, `/dictionary/topics/[slug]`, `/dictionary/compare` and `/dictionary/[slug]` records; `/dictionary/sources` redirects to Sources.",
     },
     {
       mode: "Sources",
       home: appModeHomeHref("sources"),
       search: appModeHomeHref("sources", { query: "RANZCP", focus: true, run: true }),
       detail:
-        "`/sources` redirects to the shared home, which carries a `Browse catalogue` chip; `/sources/search` is the filterable catalogue, and a submitted or filter-carrying deep link to `/sources` forwards there. Also `/sources/topics`, `/sources/publishers`, `/sources/currency`, `/sources/method`, and `/sources/[sourceId]` traceability records.",
+        "`/sources` redirects to the shared home, which carries a `Show all` chip; `/sources/search` is the filterable catalogue, and a submitted or filter-carrying deep link to `/sources` forwards there. Also `/sources/topics`, `/sources/publishers`, `/sources/currency`, `/sources/method`, and `/sources/[sourceId]` traceability records.",
     },
     {
       mode: "Therapy Compass",
       home: appModeHomeHref("therapy-compass"),
       search: appModeHomeHref("therapy-compass", { query: "CBT", focus: true, run: true }),
       detail:
-        "`/therapy-compass` redirects to the shared home; `/search` is a query-free browse. Also `/recommend`, `/compare`, `/pathways`, `/review`, and `/[slug]` records with `/brief` and `/sheet` outputs.",
+        "`/therapy-compass` redirects to the shared home; `/therapy-compass/search` is a query-free browse. Also `/therapy-compass/recommend`, `/therapy-compass/compare`, `/therapy-compass/pathways`, `/therapy-compass/review`, and `/therapy-compass/[slug]` records with `/therapy-compass/[slug]/brief` and `/therapy-compass/[slug]/sheet` outputs.",
     },
     {
       mode: "On Call",

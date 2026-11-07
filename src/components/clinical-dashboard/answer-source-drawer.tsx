@@ -189,6 +189,19 @@ export function AnswerSourceDrawer({
   const stale = source ? sourceRowIsStale(source) : false;
   // Null unless a claim opened the drawer; see `sourceSupportSentence`.
   const supportSentence = sourceSupportSentence(source, activeSupportIndex, activeClaimSupport);
+  const passageAttribution = source
+    ? [
+        `${cleanDisplayTitle(source.title)} · p. ${source.pageNumber ?? "n/a"}`,
+        source.href,
+        // A stale source's warning line below already leads with this label.
+        stale ? null : sourceStatusShortLabel(source.metadata),
+        supportSentence ?? (source.cited === false ? sourceSupportSentence(source, 0) : null),
+        stale
+          ? `${sourceStatusShortLabel(source.metadata)} — this document is past its review date. Confirm the passage against a current source before acting on it.`
+          : null,
+        passageShortened ? "Quote shortened. Open the source for the full passage." : null,
+      ].filter((line): line is string => line !== null)
+    : [];
   const numbered = sources.length <= NUMBERED_PAGER_LIMIT;
   // From 1024px the source docks beside the answer; phones and upright tablets keep the Sheet.
   const docked = useDesktopSourceDock();
@@ -232,6 +245,7 @@ export function AnswerSourceDrawer({
               key={source.id}
               source={source}
               passage={passage}
+              passageAttribution={passageAttribution}
               quoteCard={quoteCard}
               onFollowUpQuote={onFollowUpQuote}
               onScopeDocument={onScopeDocument}
@@ -453,6 +467,7 @@ const menuItemClass =
 function SourceOverflowMenu({
   source,
   passage,
+  passageAttribution,
   quoteCard,
   onFollowUpQuote,
   onScopeDocument,
@@ -461,6 +476,7 @@ function SourceOverflowMenu({
 }: {
   source: AnswerSourceRow;
   passage: string;
+  passageAttribution: string[];
   quoteCard: QuoteCard | null;
   onFollowUpQuote?: (quote: QuoteCard) => void;
   onScopeDocument?: (documentId: string) => void;
@@ -557,7 +573,7 @@ function SourceOverflowMenu({
       label: "Copy passage",
       icon: Copy,
       onActivate: () => {
-        void copyTextToClipboard(passage)
+        void copyTextToClipboard([passage, "", ...passageAttribution].join("\n"))
           .then(() => setStatus("Passage copied."))
           .catch(() => setStatus("Copy failed — select the passage and copy it manually."));
         dismissMenu();

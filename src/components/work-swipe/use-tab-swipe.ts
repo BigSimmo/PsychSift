@@ -3,6 +3,8 @@
 import { type RefObject, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
+import { confirmShellNavigation } from "@/lib/navigation-guards";
+
 /**
  * Side swipe along a work area's tab row as it is drawn: the tabs that fit
  * this screen, then the More page that is open (work-mode redesign; Work mode
@@ -267,6 +269,7 @@ export function useTabSwipe(navRef: RefObject<HTMLElement | null>, currentHref: 
       if (!outcome) return;
       const next = g.hrefs[g.current + (outcome === "next" ? 1 : -1)];
       if (!next) return;
+      if (!confirmShellNavigation()) return;
       if (!g.armed) tick();
       pendingCue.current = { direction: outcome, at: performance.now() };
       router.push(next);

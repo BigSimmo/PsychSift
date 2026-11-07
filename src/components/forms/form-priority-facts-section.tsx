@@ -90,7 +90,7 @@ function GlanceFact({ card, body }: { card: ServiceSummaryCard; body: string | n
   const label = hasText(card.label) ? card.label.trim() : "Priority fact";
   const title = hasText(card.title) ? card.title.trim() : "";
   return (
-    <div className={cn("flex min-w-0 flex-col gap-0.5", body && "@[15rem]:col-span-2")}>
+    <div className="flex min-w-0 flex-col gap-0.5 @[15rem]:col-span-2">
       <dt className="text-xs text-[color:var(--text-muted)]">{label}</dt>
       <dd className="m-0 min-w-0 break-words">
         <h3 className="m-0 text-sm font-semibold leading-6 text-[color:var(--text-heading)]">{title}</h3>

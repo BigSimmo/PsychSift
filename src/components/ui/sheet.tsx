@@ -38,6 +38,8 @@ type SheetAccessibleName =
 type SheetBaseProps = {
   open: boolean;
   onClose: () => void;
+  /** Hold user dismissal during a pending operation; the parent still controls `open`. */
+  dismissDisabled?: boolean;
   /** When true, registers a history entry so browser/phone Back dismisses the sheet instead of leaving the page. */
   dismissOnBack?: boolean;
   description?: string;
@@ -117,6 +119,7 @@ export type SheetProps = SheetBaseProps & SheetAccessibleName;
 export function Sheet({
   open,
   onClose,
+  dismissDisabled = false,
   dismissOnBack = false,
   title,
   description,
@@ -188,6 +191,7 @@ export function Sheet({
   const resolveReturnFocusRefTarget = useCallback(() => returnFocusRef?.current ?? null, [returnFocusRef]);
 
   const requestClose = useCallback(() => {
+    if (dismissDisabled) return;
     const stateKey = `ps_sheet_${sheetId}`;
     if (dismissOnBack && typeof window !== "undefined" && window.history.state?.[stateKey]) {
       try {
@@ -198,16 +202,18 @@ export function Sheet({
       }
     }
     onClose();
-  }, [dismissOnBack, onClose, sheetId]);
+  }, [dismissDisabled, dismissOnBack, onClose, sheetId]);
 
   // Layout effect, not a passive one: the Close button, swipe and back handlers
   // read these refs, and a click that lands after a commit but before passive
   // effects flush would otherwise call the previous render's onClose (a stale
   // closure — e.g. a sheet that had just saved would skip its own reset).
   useIsomorphicLayoutEffect(() => {
-    onCloseRef.current = onClose;
+    onCloseRef.current = () => {
+      if (!dismissDisabled) onClose();
+    };
     requestCloseRef.current = requestClose;
-  }, [onClose, requestClose]);
+  }, [dismissDisabled, onClose, requestClose]);
 
   useEffect(() => {
     unmountingRef.current = false;
@@ -269,7 +275,7 @@ export function Sheet({
   // dismissal is unaffected.
   function handleGripPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
     const panel = panelRef.current;
-    if (!panel) return;
+    if (!panel || dismissDisabled) return;
     dragRef.current = { startY: event.clientY, dragging: true };
     panel.style.transition = "none";
     // Release the entry animation's `both` fill so the inline drag transform is
@@ -324,7 +330,7 @@ export function Sheet({
       resolveTarget: () =>
         initialFocusRef?.current ??
         panelRef.current?.querySelector<HTMLElement>('[data-sheet-autofocus="true"]') ??
-        closeRef.current,
+        (closeRef.current?.disabled ? panelRef.current : closeRef.current),
     });
 
     function onKeyDown(event: KeyboardEvent) {
@@ -355,7 +361,16 @@ export function Sheet({
           !element.closest('[aria-hidden="true"], [inert]') &&
           element.getClientRects().length > 0,
       );
-      if (focusable.length === 0) return;
+      if (focusable.length === 0) {
+        // A busy confirmation can have no enabled controls. Keep its focus in
+        // the panel, while preserving ordinary native tabbing for other sheets
+        // when no measurable targets are available (including jsdom renders).
+        if (closeRef.current?.disabled) {
+          event.preventDefault();
+          panelRef.current?.focus({ preventScroll: true });
+        }
+        return;
+      }
 
       const activeElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
       const currentIndex = activeElement ? focusable.indexOf(activeElement) : -1;
@@ -490,6 +505,7 @@ export function Sheet({
         data-testid={testId}
         data-mobile-header-safe-area={resolvedMobileHeaderSafeArea}
         role="dialog"
+        tabIndex={-1}
         aria-modal="true"
         aria-labelledby={resolvedLabelledBy}
         aria-label={resolvedAriaLabel}
@@ -599,6 +615,7 @@ export function Sheet({
                 type="button"
                 onClick={() => requestCloseRef.current()}
                 aria-label={closeLabel}
+                disabled={dismissDisabled}
                 className={closeButtonClassName ?? toolbarButton}
               >
                 <X aria-hidden="true" className="h-4 w-4" />

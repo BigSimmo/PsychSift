@@ -4,7 +4,7 @@ import { AlertTriangle, Check, CheckCheck, ClipboardCopy, RotateCcw, type Lucide
 import { useId, useState } from "react";
 
 import { ClinicalSignInNotice } from "@/components/mode-kit/clinical-sign-in-notice";
-import { clinicalToolLocked, useClinicalToolAccess } from "@/components/mode-kit/use-clinical-tool-access";
+import { useClinicalToolAccess } from "@/components/mode-kit/use-clinical-tool-access";
 import { cn, controlDisabled, ignoreUnavailableActivation } from "@/components/ui-primitives";
 import { announce } from "@/components/ui/live-announcer";
 import { useCopyToast } from "@/components/ui/toast";
@@ -576,13 +576,19 @@ export function CopyResultButton({
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "failed">("idle");
   const showToast = useCopyToast();
   const copyUnavailableId = useId();
-  const isComplete = state.complete;
+  const access = useClinicalToolAccess();
+  const canCopy = state.complete && access === "allowed";
   const answeredCount = state.answeredCount + state.checkboxAnsweredCount;
   const totalItems = calc.items.length;
-  const unavailableReason = `Answer all items to copy result summary (${answeredCount}/${totalItems} complete)`;
+  const unavailableReason =
+    access === "checking"
+      ? "Checking sign-in before copying results."
+      : access !== "allowed"
+        ? "Sign in and confirm your health professional declaration to copy results."
+        : `Answer all items to copy result summary (${answeredCount}/${totalItems} complete)`;
 
   const copy = async (event: React.MouseEvent<HTMLElement>) => {
-    if (!isComplete) {
+    if (!canCopy) {
       ignoreUnavailableActivation(event);
       return;
     }
@@ -605,9 +611,9 @@ export function CopyResultButton({
       <button
         type="button"
         onClick={copy}
-        aria-disabled={!isComplete ? true : undefined}
-        aria-describedby={!isComplete ? copyUnavailableId : undefined}
-        title={!isComplete ? unavailableReason : undefined}
+        aria-disabled={!canCopy ? true : undefined}
+        aria-describedby={!canCopy ? copyUnavailableId : undefined}
+        title={!canCopy ? unavailableReason : undefined}
         className={cn(
           "inline-flex min-h-tap items-center gap-1.5 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-2.5 text-2xs font-bold text-[color:var(--text-muted)] transition hover:border-[color:var(--border-strong)] hover:text-[color:var(--text)]",
           controlDisabled,
@@ -622,7 +628,7 @@ export function CopyResultButton({
         )}
         {copyStatus === "copied" ? "Copied" : copyStatus === "failed" ? "Not copied" : label}
       </button>
-      {!isComplete ? (
+      {!canCopy ? (
         <span id={copyUnavailableId} className="sr-only">
           {unavailableReason}
         </span>
@@ -711,11 +717,17 @@ export function CalculatorItems({
   // useClinicalToolAccess). Signed out, the questions stay readable with no way to
   // answer them; the score panel beside them keeps the bands, scoring note and sources.
   // A signed-in account without the declaration (D26-07) gets the same read-only view.
-  const locked = clinicalToolLocked(useClinicalToolAccess());
-  if (locked) {
+  const access = useClinicalToolAccess();
+  if (access !== "allowed") {
     return (
       <section aria-label={`${calc.abbrev} items`} className="grid min-w-0 content-start gap-2">
-        <ClinicalSignInNotice copy={CLINICAL_SIGN_IN_COPY.scoring} testId="calculator-scoring-sign-in" />
+        {access === "checking" ? (
+          <p role="status" className="text-sm-minus font-semibold leading-5 text-[color:var(--text-muted)]">
+            Checking sign-in before scoring…
+          </p>
+        ) : (
+          <ClinicalSignInNotice copy={CLINICAL_SIGN_IN_COPY.scoring} testId="calculator-scoring-sign-in" />
+        )}
         {calc.stem ? (
           <p className="text-sm-minus font-bold leading-5 text-[color:var(--text-muted)]">{calc.stem}</p>
         ) : null}

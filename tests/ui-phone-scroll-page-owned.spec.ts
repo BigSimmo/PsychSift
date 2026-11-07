@@ -976,3 +976,74 @@ test("calculator results stay usable across the responsive and accessibility mat
     await expect(visibleByTestId(page, "calculators-filter-trigger-phone")).toBeVisible();
   }
 });
+
+test("calculator answers remain reachable by ordinary scrolling in short landscape with enlarged text", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 844, height: 390 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await gotoPhoneSurface(page, "/calculators/search?calculator=phq9", 112);
+  const dialog = page.getByRole("dialog", { name: "PHQ-9 calculator" });
+  await expect(dialog).toBeVisible();
+
+  // This is author-root CSS enlargement, not browser zoom or a physical-device claim.
+  await page.locator("html").evaluate((element) => {
+    element.style.fontSize = "200%";
+  });
+  try {
+    const scroller = dialog.getByTestId("calculator-sheet-content");
+    await expect(scroller).toHaveCSS("overflow-y", "auto");
+    const geometry = await scroller.evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      const panel = element.parentElement!.getBoundingClientRect();
+      return {
+        visibleTop: Math.max(rect.top, panel.top, 0),
+        visibleBottom: Math.min(rect.bottom, panel.bottom, innerHeight),
+        x: rect.left + rect.width / 2,
+      };
+    });
+    expect(
+      geometry.visibleBottom - geometry.visibleTop,
+      "the answer scrollport must have usable visible height",
+    ).toBeGreaterThanOrEqual(48);
+
+    const answer = dialog.getByRole("button", { name: "Not at all (0 points)", exact: true }).first();
+    let target: { x: number; y: number } | null = null;
+    for (let step = 0; step < 40; step += 1) {
+      target = await answer.evaluate((element) => {
+        const rect = element.getBoundingClientRect();
+        const x = rect.left + rect.width / 2;
+        const y = rect.top + rect.height / 2;
+        const hit = document.elementFromPoint(x, y);
+        return hit && element.contains(hit) ? { x, y } : null;
+      });
+      if (target) break;
+      await page.mouse.move(geometry.x, (geometry.visibleTop + geometry.visibleBottom) / 2);
+      await page.mouse.wheel(0, 64);
+      await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
+    }
+    expect(target, "ordinary scrolling must reveal a response without locator auto-scroll").not.toBeNull();
+    await page.mouse.click(target!.x, target!.y);
+    await expect(answer).toHaveAttribute("aria-pressed", "true");
+
+    // In the short layout the summary and its caveat scroll together; the fixed
+    // header must not keep a duplicate partial score visible without its caveat.
+    const headerScore = dialog.locator("header").getByText("0", { exact: true });
+    await expect(headerScore).toBeHidden();
+    const caveat = dialog.getByText(/Clinical reference — not validated decision support/);
+    await page.mouse.move(geometry.x, (geometry.visibleTop + geometry.visibleBottom) / 2);
+    await page.mouse.wheel(0, 400);
+    await expect(caveat).not.toBeInViewport();
+    await expect(headerScore).toBeHidden();
+
+    // The clinical caveat remains part of the same readable scroll content.
+    await page.mouse.move(geometry.x, (geometry.visibleTop + geometry.visibleBottom) / 2);
+    await page.mouse.wheel(0, -5000);
+    await expect(caveat).toBeInViewport();
+    await expect(dialog.getByRole("button", { name: "Close", exact: true })).toBeInViewport();
+  } finally {
+    await page.locator("html").evaluate((element) => {
+      element.style.fontSize = "";
+    });
+  }
+});

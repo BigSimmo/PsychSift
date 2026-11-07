@@ -25,6 +25,15 @@ beforeEach(() => {
 });
 
 describe("email authentication form", () => {
+  it("describes the remembered email lifetime and account-transition clearing", () => {
+    render(<EmailAuthForm />);
+    const remember = screen.getByRole("checkbox", { name: "Remember my email until sign-out" });
+    expect(remember).toBeChecked();
+    expect(remember).toHaveAccessibleDescription(
+      "Stored only in this browser. Cleared at sign-out, session expiry or account change.",
+    );
+  });
+
   it("signs in with a password and clears the password afterwards", async () => {
     const user = userEvent.setup();
     render(<EmailAuthForm />);
@@ -138,7 +147,7 @@ describe("email authentication form", () => {
   it("remembers only the email address on this device, and forgets it when unticked", async () => {
     const user = userEvent.setup();
     const { unmount } = render(<EmailAuthForm />);
-    expect(screen.getByRole("checkbox", { name: "Remember my email on this device" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Remember my email until sign-out" })).toBeChecked();
     await user.type(screen.getByLabelText(/Email address/), "person@example.com");
     await user.type(screen.getByLabelText(/^Password/), "existing-passphrase");
     await user.click(screen.getByRole("button", { name: "Sign in" }));
@@ -148,7 +157,7 @@ describe("email authentication form", () => {
 
     render(<EmailAuthForm />);
     expect(await screen.findByDisplayValue("person@example.com")).toBeVisible();
-    await user.click(screen.getByRole("checkbox", { name: "Remember my email on this device" }));
+    await user.click(screen.getByRole("checkbox", { name: "Remember my email until sign-out" }));
     expect(window.localStorage.getItem(REMEMBERED_EMAIL_KEY)).toBeNull();
   });
 });

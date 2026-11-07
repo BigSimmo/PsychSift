@@ -6,6 +6,38 @@ import { CmeEntryForm } from "@/components/cme/cme-entry-form";
 import { formatCalendarDateLong, perthCalendarDate } from "@/lib/cme/cpd-year";
 
 describe("New entry", () => {
+  it("preserves draft-carrying links and modified navigation while guarding ordinary same-tab links", async () => {
+    const user = userEvent.setup();
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    render(
+      <>
+        <CmeEntryForm onSubmit={vi.fn()} draftStorageKey="cme-navigation-draft" />
+        <a href="/cme/new" data-cme-keeps-draft>
+          Open the full page
+        </a>
+        <a href="/cme" target="_blank">
+          Open another tab
+        </a>
+        <a href="/cme">Leave entry</a>
+      </>,
+    );
+    await user.type(screen.getByLabelText(/what was it/i), "Synthetic unsaved learning");
+    // Observe cancellation directly without asking jsdom to perform document navigation.
+    const activate = (link: HTMLElement, options: MouseEventInit = {}) => {
+      const event = new MouseEvent("click", { bubbles: true, cancelable: true, ...options });
+      link.addEventListener("click", (click) => click.preventDefault(), { once: true });
+      link.dispatchEvent(event);
+    };
+    activate(screen.getByRole("link", { name: "Open the full page" }));
+    activate(screen.getByRole("link", { name: "Open another tab" }));
+    activate(screen.getByRole("link", { name: "Leave entry" }), { metaKey: true });
+    expect(confirm).not.toHaveBeenCalled();
+    activate(screen.getByRole("link", { name: "Leave entry" }));
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(screen.getByLabelText(/what was it/i)).toHaveValue("Synthetic unsaved learning");
+    window.sessionStorage.removeItem("cme-navigation-draft");
+  });
+
   const knownEntry = {
     id: "smart-default-source",
     date: "2026-01-04",
