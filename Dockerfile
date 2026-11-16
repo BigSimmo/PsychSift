@@ -20,15 +20,15 @@
 # NEVER baked into the image — inject them at run time from the host's
 # secret store.
 
-FROM node:24-bookworm-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205 AS node-base
-FROM node:24-trixie-slim@sha256:43b9ba1142b8dcf33fa8f922ca1be85714adc444e0586c7cf7726daaeabc1bea AS app-node-runtime-base
+FROM node:24-bookworm-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54 AS node-base
+FROM node:24-trixie-slim@sha256:af02d57b57719b9657a45199a79264a9437940cd55b3c7b3fc99615654f124a0 AS app-node-runtime-base
 # Keep the command-string shell used by Railway pre-deploy hooks, without
 # inheriting the donor's package manager or unrelated operating-system tools.
 RUN test "$(id -u node)" = 1000 && test "$(id -g node)" = 1000 \
   && mkdir -p /tmp/app-runtime-home \
   && chown 1000:1000 /tmp/app-runtime-home \
   && dpkg-query --status dash > /tmp/app-runtime-dash.status
-FROM gcr.io/distroless/cc-debian13:nonroot@sha256:3ee00291cf386ec52a552e6a858d555debd74776eb4bfa53fa3df2cd6677515e AS app-runtime-base
+FROM gcr.io/distroless/cc-debian13:nonroot@sha256:cb87acc574abe719b6e5c547384defa2f7b1f24af9605d3f618cf852495d8be2 AS app-runtime-base
 
 FROM node-base AS deps
 WORKDIR /app
