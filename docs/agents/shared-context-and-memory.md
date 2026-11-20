@@ -84,7 +84,7 @@ Cloud without official MCP reports memory unavailable and continues from reposit
 
 ## Name publication targets explicitly
 
-Every publication command names its own repository: Git uses one verified literal absolute `git -C` checkout path; GitHub CLI PR publication uses one literal `--repo github.com/OWNER/REPO` or its HTTPS URL, matched to a verified local GitHub origin. Verify actual destination and branch/base/head or PR identity before execution. Refuse missing, duplicate, dynamic or conflicting repository/configuration/environment selectors even in a known session. A preceding command, session directory or approval assertion supplies neither the target nor permission. Bounded guard checks do not prove remote existence or universal wrapper coverage.
+Before publication, verify the exact checkout, remote repository and visibility, and the branch, base/head or PR identity as applicable. Bind the action to those targets using the current tool’s supported fields or flags. For Git, use a verified absolute `git -C` path or the execution tool’s verified checkout directory, and name the remote and feature ref. For GitHub CLI PR publication, pass `--repo` for the verified GitHub repository. Resolve ambiguous or conflicting selectors before acting. The verified target and permission are separate checks. Follow any stricter repository or tool rules.
 
 ## Check the actual host
 
