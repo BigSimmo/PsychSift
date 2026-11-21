@@ -317,7 +317,13 @@ describe("OpenAI query embedding cache", () => {
     }
   });
 
-  it("uses Responses parse for static Zod schemas and forwards a pseudonymous safety identifier", async () => {
+  it.each([
+    { model: "gpt-5.6-luna", reasoningEffort: "none", sentEffort: "none" },
+    { model: "gpt-5.6-terra", reasoningEffort: "none", sentEffort: "none" },
+    { model: "gpt-5.6-sol", reasoningEffort: "none", sentEffort: "none" },
+    { model: "gpt-5.6-luna", reasoningEffort: undefined, sentEffort: undefined },
+    { model: "gpt-4.1-mini", reasoningEffort: "none", sentEffort: undefined },
+  ] as const)("sets reasoning for $model ($reasoningEffort)", async ({ model, reasoningEffort, sentEffort }) => {
     let capturedBody: Record<string, unknown> = {};
 
     vi.stubEnv("OPENAI_API_KEY", "test-key");
@@ -348,20 +354,29 @@ describe("OpenAI query embedding cache", () => {
       "Question",
       z.object({ queryClass: z.string(), confidence: z.number() }).strict(),
       {
-        model: "gpt-5.6-luna",
+        model,
         operation: "text_generation",
         schemaName: "clinical_query_classifier",
         safetyIdentifier: "a".repeat(64),
+        reasoningEffort,
+        maxOutputTokens: 400,
       },
     );
 
     expect(result.parsed).toEqual({ queryClass: "broad_summary", confidence: 0.9 });
     expect(capturedBody).toMatchObject({
+      model,
+      max_output_tokens: 400,
       safety_identifier: "a".repeat(64),
       text: {
         format: expect.objectContaining({ type: "json_schema", name: "clinical_query_classifier", strict: true }),
       },
     });
+    if (sentEffort === undefined) {
+      expect(capturedBody).not.toHaveProperty("reasoning");
+    } else {
+      expect(capturedBody.reasoning).toEqual({ effort: sentEffort });
+    }
   });
 
   it.each([
