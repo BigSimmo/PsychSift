@@ -18,9 +18,9 @@
 
 ## Standing decisions
 
-- **Merging:** an agent may merge only in the owner's designated rules and plugins repositories, after checks pass and a second agent has reviewed; a change to a guard still needs the owner's approval. Every other merge is the owner's.
+- **Merging:** an agent may merge its own pull requests after checks pass and a second agent approved the exact commit; never a merge that deploys; accepting a change to a guard stays the owner's.
 - **Money:** spend only within the owner's standing monthly or weekly allowances for each service; one named paid model fallback exists and no other. Never change billing.
-- **Roles and tasks:** one coordinator agent directs the others; the rest are workers. One task ledger holds long-running work and one short-term board holds the rest.
+- **Roles and tasks:** one coordinator agent directs the others, with a backup coordinator; the rest are workers or link to the core. One task ledger holds long-running work and one short-term board holds the rest.
 
 In temporary, incognito or explicitly off-the-record chats, skip all Supermemory calls, including profile, search and save. Keep opted-out content out of later captures. In regular chats, remove private content before search or save. For a missing fact, search the verified project by subject or topic key. Check current decisions against dates, scope, replacements and the owning source. Look for the source document when a reference is missing.
 
