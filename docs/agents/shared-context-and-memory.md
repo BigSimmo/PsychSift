@@ -78,7 +78,7 @@ Budget (the owner's decision, 26 October 2026 15:25-16:13 UTC; supersedes the 15
 
 For explicit curated saves, preserve the non-monetary bounds: at most 4,096 UTF-8 bytes per note, one create and three same-source reads per save, duplicate refusal, and no retry of a blocked or uncertain operation. Explicit scoped recall retains at most three results/6,000 characters as described above. Native-plugin automatic recall/capture follows the commissioned native contract and current private machine policy; these curated-save bounds and adapter reservations do not describe its automatic turn capture. Keep one existing writer; add no writer, accounting route or migration.
 
-Credit exhaustion and auto top-up are not verified as a no-overage hard stop; never claim zero additional charges. Do not change billing or top-up settings. Routine memory recall, saves and bounded memory checks need no separate spending approval. Other paid services and model charges follow the bounded-task spending gate.
+Credit exhaustion and auto top-up are not verified as a no-overage hard stop; never claim zero additional charges. Do not change billing or top-up settings. Routine memory recall, saves and bounded memory checks need no separate spending approval (Supermemory Pro confirmed active on 20 Nov 2026). Other paid services and model charges follow the bounded-task spending gate.
 
 Cloud without official MCP reports memory unavailable and continues from repository docs and task receipts (`docs/task-receipts.md`). Never silently select another backend or project. Report actual host/tools, recall count only, and a stored-and-checked test save's namespace/accepted ID if performed. Identity metadata, accepted source, processing, extracted memory, fresh semantic retrieval, local generation, repository adoption and actual native loading are separate proof states. Legacy unscoped Basic Memory and former local SQLite checkpoint hooks remain retired; Git and approved docs/receipts hold task state.
 
@@ -94,7 +94,7 @@ To verify behaviour, use a small read-only synthetic task on the intended revisi
 
 ## Spending approval for a bounded task
 
-Routine Supermemory operations keep their existing standing credits-only approval and bounds. Ordinary work demonstrably covered by an existing subscription, prepaid allowance or included service, with no additional charge, needs no separate spending approval; do not assume inclusion, remaining allowance or no-overage behavior without evidence.
+Routine Supermemory operations keep their existing standing Supermemory Pro and billing bounds. Ordinary work demonstrably covered by an existing subscription, prepaid allowance or included service, with no additional charge, needs no separate spending approval; do not assume inclusion, remaining allowance or no-overage behavior without evidence.
 
 For other billable work, obtain the owner's approval once for the named task or evaluation batch, services/models, estimated TOTAL cost and currency, and a maximum spend. Include foreseeable retries, retrieval/embedding/judge calls and downstream CI/cloud charges. Use a practical call or runtime bound where needed to keep the total within that maximum. Give the pricing basis and material uncertainty; exact token forecasts and a separate approval record are unnecessary when a defensible bound is already clear. Record the approval in the existing conversation/checkpoint, not a new budget registry.
 
