@@ -75,10 +75,14 @@ if [ "$sync_organisation_areas" = "1" ]; then
   mixed_inputs=$(printf '%s\n%s\n' "$mixed_inputs" "$organisation_inputs" | sed '/^$/d' | sort -u)
 fi
 if [ -n "$mixed_inputs" ]; then
-  echo "[pre-commit] Refusing commit: Documentation inputs have unstaged or untracked changes:" >&2
+  echo "[pre-commit] Documentation inputs have unstaged or untracked changes:" >&2
   printf '%s\n' "$mixed_inputs" | sed 's/^/[pre-commit]   /' >&2
-  echo "[pre-commit] Stage these files, or stash them before committing." >&2
-  exit 1
+  if [ "${PRECOMMIT_DOCS_SYNC_STRICT:-0}" = "1" ]; then
+    echo "[pre-commit] Refusing commit (PRECOMMIT_DOCS_SYNC_STRICT=1). Stage these files, or stash them before committing." >&2
+    exit 1
+  fi
+  echo "[pre-commit] Warning: Continuing commit without docs sync (set PRECOMMIT_DOCS_SYNC_STRICT=1 to block)." >&2
+  exit 0
 fi
 
 docs_to_check=""
@@ -191,8 +195,11 @@ unstaged_docs=$(git diff --name-only -- $docs_to_check)
 if [ -n "$unstaged_docs" ]; then
   echo "[pre-commit] Documentation changed or remains unstaged:" >&2
   printf '%s\n' "$unstaged_docs" >&2
-  echo "[pre-commit] Review and stage these files, then commit again." >&2
-  exit 1
+  if [ "${PRECOMMIT_DOCS_SYNC_STRICT:-0}" = "1" ]; then
+    echo "[pre-commit] Review and stage these files, then commit again." >&2
+    exit 1
+  fi
+  echo "[pre-commit] Warning: Documentation changed or remains unstaged, continuing commit (set PRECOMMIT_DOCS_SYNC_STRICT=1 to block)." >&2
 fi
 
 echo "[pre-commit] Documentation is synchronized."

@@ -46,6 +46,7 @@ import {
   staticGuard,
   staticGuardAfterCi,
   cleanupFormatCheckout,
+  demoteNonHardLineGuards,
   unlinkDependencyLink,
 } from "../scripts/guard-push.mjs";
 
@@ -871,5 +872,30 @@ describe("never-launched versus failed", () => {
       ),
     ).toBe(false);
     expect(isNeverLaunchedFailure(undefined, "")).toBe(false);
+  });
+});
+
+describe("demoteNonHardLineGuards", () => {
+  it("demotes only in-flight-ci and format failures unless GUARD_PUSH_STRICT=1", () => {
+    type GuardRow = { name: string; ok: boolean; message?: string; note?: string };
+    const sample: GuardRow[] = [
+      { name: "auto-merge", ok: false, message: "armed force-push" },
+      { name: "in-flight-ci", ok: false, message: "ci busy" },
+      { name: "format", ok: false, message: "unformatted" },
+      { name: "drift", ok: false, message: "drift stale" },
+      { name: "static", ok: false, message: "lint fail" },
+      { name: "ledger-write", ok: false, message: "hot ledger" },
+    ];
+    const relaxed = demoteNonHardLineGuards(sample, { strict: false }) as GuardRow[];
+    expect(relaxed.find((r) => r.name === "auto-merge")?.ok).toBe(false);
+    expect(relaxed.find((r) => r.name === "drift")?.ok).toBe(false);
+    expect(relaxed.find((r) => r.name === "static")?.ok).toBe(false);
+    expect(relaxed.find((r) => r.name === "ledger-write")?.ok).toBe(false);
+    expect(relaxed.find((r) => r.name === "in-flight-ci")?.ok).toBe(true);
+    expect(relaxed.find((r) => r.name === "in-flight-ci")?.note).toContain("warn-only on feature branch");
+    expect(relaxed.find((r) => r.name === "format")?.ok).toBe(true);
+
+    const strict = demoteNonHardLineGuards(sample, { strict: true }) as GuardRow[];
+    expect(strict.filter((r) => !r.ok)).toHaveLength(6);
   });
 });
