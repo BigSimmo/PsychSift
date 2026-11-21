@@ -319,6 +319,7 @@ function openAIModelCapabilities(model: string) {
 
   return {
     supportsReasoning: isReasoningModel,
+    supportsNoReasoning: gptMajorVersion === 5 && gptMinorVersion === 6,
     requiresReasoning: isSol61,
     supportsTextVerbosity: isGpt5,
     usesPromptCacheOptions,
@@ -384,6 +385,9 @@ function responseBody(
   const reasoningEffort = resolved.reasoningEffort ?? defaultReasoningEffort(operation, resolved.model);
   const resolvedReasoningEffort = resolveReasoningEffort(resolved.model, reasoningEffort);
   const capabilities = openAIModelCapabilities(resolved.model);
+  // GPT-5.6 defaults to medium effort when the field is omitted.
+  const sendReasoning =
+    resolvedReasoningEffort !== "none" || (resolved.reasoningEffort === "none" && capabilities.supportsNoReasoning);
   const textConfig: Record<string, unknown> = {};
   const configuredPromptCacheRetention =
     env.OPENAI_PROMPT_CACHE_RETENTION === "off" ? undefined : env.OPENAI_PROMPT_CACHE_RETENTION;
@@ -417,7 +421,7 @@ function responseBody(
         : {}),
     ...(resolved.safetyIdentifier ? { safety_identifier: resolved.safetyIdentifier } : {}),
     metadata: { operation },
-    ...(resolvedReasoningEffort !== "none" ? { reasoning: { effort: resolvedReasoningEffort } } : {}),
+    ...(sendReasoning ? { reasoning: { effort: resolvedReasoningEffort } } : {}),
     ...(Object.keys(textConfig).length > 0 ? { text: textConfig } : {}),
   };
 }
