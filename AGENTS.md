@@ -16,6 +16,12 @@
 11. Apply memory according to the actual host in every coding-agent chat. Installed automatic clients reuse their commissioned plugin recall/capture without duplicate manual completion saves or one-fact limits. Cloud/dot and unverified automatic routes use authenticated scoped MCP: recall verified preferences plus verified project once at session start (at most two calls, three retained results); confirmed projectless work uses `codex_continuity`, unknown projects use preferences only. Save at most one eligible dated durable fact per finished task, or five after a long conversation, using the existing single route. Verify hints against source and filter before transmission; never send secrets, logs or bulk transcripts. Preserve existing Supermemory Pro/billing bounds, namespaces and no uncertain retries. Missing memory capability does not block ordinary work. See docs/agents/shared-context-and-memory.md for host-specific detail.
 12. Report the usable result, decisive evidence, remaining uncertainty and necessary next action in ordinary language. Stop at the stage requested. Load only relevant skills/references, reuse task authority and valid evidence, and do not add duplicate plans, approvals or checks solely for process. Mandatory host/project confirmations and gates still apply.
 
+## Standing decisions
+
+- **Merging:** an agent may merge only in the owner's designated rules and plugins repositories, after checks pass and a second agent has reviewed; a change to a guard still needs the owner's approval. Every other merge is the owner's.
+- **Money:** spend only within the owner's standing monthly or weekly allowances for each service; one named paid model fallback exists and no other. Never change billing.
+- **Roles and tasks:** one coordinator agent directs the others; the rest are workers. One task ledger holds long-running work and one short-term board holds the rest.
+
 In temporary, incognito or explicitly off-the-record chats, skip all Supermemory calls, including profile, search and save. Keep opted-out content out of later captures. In regular chats, remove private content before search or save. For a missing fact, search the verified project by subject or topic key. Check current decisions against dates, scope, replacements and the owning source. Look for the source document when a reference is missing.
 
 For context transfer or memory setup/use, read `docs/agents/shared-context-and-memory.md` when relevant. These rules configure behaviour, not tools, account access or a guarantee of compliance.
