@@ -113,4 +113,6 @@ Follow [the current Cloud policy](codex-cloud-environment.md); preserve applicab
 
 Use [the portable document draft workflow](document-drafts.md) on local or cloud hosts. The helper preserves originals and exports a hash-pinned proposal for the existing integrator. No new service or access grant is required.
 
+In temporary, incognito or explicitly off-the-record chats, skip all Supermemory calls, including profile, search and save. Keep opted-out content out of later captures. In regular chats, remove private content before search or save. For a missing fact, search the verified project by subject or topic key. Check current decisions against dates, scope, replacements and the owning source. Look for the source document when a reference is missing.
+
 <!-- END:project-context-and-memory -->
