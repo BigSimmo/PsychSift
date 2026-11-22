@@ -18,7 +18,7 @@
 
 ## Standing decisions
 
-- **Merging:** an agent may merge its own pull requests after checks pass and a second agent approved the exact commit; never a merge that deploys; accepting a change to a guard stays the owner's.
+- **Merging:** an agent may merge its own pull requests after checks pass and a second agent approved the exact commit. Exceptions stay the owner's: a deploying merge, and accepting a change to a guard.
 - **Money:** spend only within the owner's standing monthly or weekly allowances for each service; one named paid model fallback exists and no other. Never change billing.
 - **Roles and tasks:** one coordinator agent directs the others, with a backup coordinator; the rest are workers or link to the core. One task ledger holds long-running work and one short-term board holds the rest.
 
