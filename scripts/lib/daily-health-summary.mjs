@@ -66,7 +66,7 @@ export const SUMMARY_SOURCES = [
     recentHours: 24,
     onTrouble: "amber",
     trouble: "new error types in the last 24 hours",
-    maxAgeHours: 2,
+    maxAgeHours: 3,
   },
   {
     key: "data-separation",
