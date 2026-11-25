@@ -146,7 +146,7 @@ RUN printf '%s\n' \
     'Pin-Priority: -1' \
     > /etc/apt/preferences.d/worker-native-backports \
   && apt-get update \
-  && apt-get install -y --no-install-recommends --no-remove perl-base tesseract-ocr ca-certificates libgl1 libglib2.0-0t64 \
+  && apt-get install -y --no-install-recommends --no-remove perl-base zlib1g tesseract-ocr ca-certificates libgl1 libglib2.0-0t64 \
     libcurl4t64=8.21.0-2~bpo13+1 libnghttp3-9=1.15.0-1~bpo13+1 \
     libngtcp2-16=1.22.1-1~bpo13+1 libngtcp2-crypto-ossl0=1.22.1-1~bpo13+1 \
     /tmp/worker-native-debs/*.deb \
