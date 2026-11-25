@@ -1,7 +1,7 @@
 name: Sentry production alerts
 
 # #TN512M: Sentry was the last of the three production-failure detectors that reported to
-# nobody. Every 15 minutes this workflow asks Sentry for production issues first seen recently
+# nobody. Every hour this workflow asks Sentry for production issues first seen recently
 # and posts any it has not reported before to one rolling GitHub issue. Since the owner decision
 # of 2026-10-21 (docs/decisions/2026-10-21-one-daily-health-summary.md) it no longer mentions or
 # assigns the owner: the 7 am daily health summary counts its new reports and links the issue.
@@ -21,8 +21,9 @@ name: Sentry production alerts
 on:
   workflow_dispatch:
   schedule:
-    # Every 15 minutes, off the top of the hour when GitHub cron is most congested.
-    - cron: "7,22,37,52 * * * *"
+    # Hourly at minute 22 UTC (:22 past each hour AWST), off the top of the hour when GitHub cron
+    # is most congested. Was every 15 minutes until the 2026-11-25 automation clean-up.
+    - cron: "22 * * * *"
 
 concurrency:
   group: sentry-production-alerts
@@ -63,7 +64,7 @@ jobs:
             const FAILURE_MARKER = "<!-- sentry-alerts-unreadable -->";
             const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
             const environment = process.env.SENTRY_ALERT_ENVIRONMENT;
-            // Wider than the 15-minute cadence on purpose: GitHub cron fires are best-effort and
+            // Wider than the hourly cadence on purpose: GitHub cron fires are best-effort and
             // can be skipped for an hour or more. Reported ids are remembered, so overlap is free.
             const LOOKBACK = "6h";
 
@@ -139,7 +140,7 @@ jobs:
                   title,
                   labels: [label],
                   body: [
-                    `New **${environment}** errors recorded by Sentry are posted here as comments, checked every 15 minutes`,
+                    `New **${environment}** errors recorded by Sentry are posted here as comments, checked every hour`,
                     "by `.github/workflows/sentry-alerts.yml`. Each comment lists the Sentry issue and a link; the error",
                     "detail stays in Sentry because this repository is public.",
                     "",
@@ -175,7 +176,7 @@ jobs:
               truncated = issues.length >= 100;
               fresh = issues.filter((issue) => /^\d+$/.test(String(issue.id)) && !reported.has(String(issue.id)));
             } catch (error) {
-              // An expired or revoked token must not go quiet: tell the owner once, not every 15 minutes.
+              // An expired or revoked token must not go quiet: tell the owner once, not every hour.
               core.warning(`Could not read Sentry: ${error.message}`);
               if (!lastCommentIsFailure) {
                 const number = await post(
