@@ -27,7 +27,7 @@
 # run-tsx.mjs previously did at runtime) and keeps npm packages external,
 # so the bundle resolves them from the runner's production node_modules.
 FROM node:24-bookworm-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54 AS node-base
-FROM python:3.11-slim-trixie@sha256:61e01f72680f86a5279ad510818ab7b2ee9f049822589d4e33e044360356c AS python-runtime-base
+FROM python:3.11-slim-trixie@sha256:61e01f72680f86a5279ad510818ab7b2ee9f049822589d4e34e33e044360356c AS python-runtime-base
 
 FROM node-base AS build
 WORKDIR /app
