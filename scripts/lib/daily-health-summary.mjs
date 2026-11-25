@@ -55,7 +55,7 @@ export const SUMMARY_SOURCES = [
     workflow: "ops-digest.yml",
     label: "ops-digest",
     issue: "digest",
-    maxAgeHours: 13,
+    maxAgeHours: 25,
   },
   {
     key: "errors",

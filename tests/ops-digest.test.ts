@@ -108,12 +108,12 @@ describe("hybrid RPC digest-sample evidence", () => {
     expect(result.repeatedRpcNames).toEqual(["hybrid_search"]);
   });
 
-  it("pages from three consecutive six-hourly scheduled samples of the same failing RPC", () => {
+  it("pages from three consecutive twelve-hourly scheduled samples of the same failing RPC", () => {
     const failing = { slo: { hybridRpcIdentityEvidenceComplete: true, hybridRpcErrorCounts: { hybrid_search: 2 } } };
     let history: unknown;
     let repeated: string[] = [];
-    // The schedule is `15 */6 * * *`; the middle fire arrives late, as GitHub cron fires often do.
-    for (const observedAt of ["2026-08-23T00:15:00Z", "2026-08-23T07:05:00Z", "2026-08-23T12:15:00Z"]) {
+    // The schedule is `15 */12 * * *`; the middle fire arrives late, as GitHub cron fires often do.
+    for (const observedAt of ["2026-08-23T00:15:00Z", "2026-08-23T13:05:00Z", "2026-08-24T00:15:00Z"]) {
       const result = updateHybridRpcHourlyEvidence(history, failing, new Date(observedAt));
       history = result.history;
       repeated = result.repeatedRpcNames;
@@ -133,11 +133,11 @@ describe("hybrid RPC digest-sample evidence", () => {
         version: 1,
         windows: [
           { hour: "2026-08-23T00:00:00.000Z", rpcNames: ["hybrid_search"] },
-          { hour: "2026-08-23T13:00:00.000Z", rpcNames: ["hybrid_search"] },
+          { hour: "2026-08-24T01:00:00.000Z", rpcNames: ["hybrid_search"] },
         ],
       },
       { slo: { hybridRpcIdentityEvidenceComplete: true, hybridRpcErrorCounts: { hybrid_search: 1 } } },
-      new Date("2026-08-23T14:20:00Z"),
+      new Date("2026-08-24T02:20:00Z"),
     );
     expect(result.repeatedRpcNames).toEqual([]);
   });
@@ -215,12 +215,12 @@ describe("renderDigest", () => {
     expect(serializeGitHubOutputs(health.status, summary)).toContain("alerting=true\nseverity=unknown\n");
   });
 
-  it("shows the trailing six-hour answer-quality window that the alerts judge (audit EVAL-02)", () => {
+  it("shows the trailing twelve-hour answer-quality window that the alerts judge (audit EVAL-02)", () => {
     const md = renderDigest({
       status: "ok",
       slo: { windowMinutes: 60, totalQueries: 0, hybridRpcErrorRate: 0, degradedRate: 0 },
       sloTrailing: {
-        windowMinutes: 360,
+        windowMinutes: 720,
         totalQueries: 12,
         hybridRpcErrorRate: 0,
         degradedRate: 0,
@@ -230,7 +230,7 @@ describe("renderDigest", () => {
         unsupportedRate: 1 / 12,
       },
     });
-    expect(md).toContain("**Answer quality** (trailing 360m, the window alerts judge)");
+    expect(md).toContain("**Answer quality** (trailing 720m, the window alerts judge)");
     expect(md).toContain("- source gaps: 6 (50.0%)");
     expect(md).toContain("PAGE OPS_SOURCE_GAP_RATE_PAGE");
     // The empty last hour is shown as such, not as unassessed answer quality.
@@ -244,9 +244,9 @@ describe("renderDigest", () => {
     const md = renderDigest({
       status: "ok",
       slo: { windowMinutes: 60, totalQueries: 3, hybridRpcErrorRate: 0, degradedRate: 0 },
-      sloTrailing: { windowMinutes: 360, unavailable: true },
+      sloTrailing: { windowMinutes: 720, unavailable: true },
     });
-    expect(md).toContain("**Answer quality** (trailing 360m, the window alerts judge)");
+    expect(md).toContain("**Answer quality** (trailing 720m, the window alerts judge)");
     expect(md).toContain("**Snapshot query failed—answer quality not assessed.**");
     expect(md).toContain("**Answer SLO** (trailing 60m)");
     expect(md).toContain("OPS_ANSWER_SLO_UNKNOWN");
@@ -255,7 +255,7 @@ describe("renderDigest", () => {
   it("says when the trailing window has too few answers to judge rates", () => {
     const md = renderDigest({
       status: "ok",
-      sloTrailing: { windowMinutes: 360, totalQueries: 4, hybridRpcErrorRate: 0, degradedRate: 0, sourceGapRate: 0.5 },
+      sloTrailing: { windowMinutes: 720, totalQueries: 4, hybridRpcErrorRate: 0, degradedRate: 0, sourceGapRate: 0.5 },
     });
     expect(md).toContain("Fewer than 10 answers: source-gap, unsupported and latency-budget rates are not judged.");
     expect(md).toContain("**Alert state:** none (0)");

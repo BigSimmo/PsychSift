@@ -95,13 +95,13 @@ const READINESS_SUPABASE_PROBE_TIMEOUT_MS = 5_000;
 export const SITE_CONTENT_PROBE_TIMEOUT_MS = 10_000;
 
 /**
- * Length of the `sloTrailing` answer snapshot: one ops-digest interval (the digest runs every six
+ * Length of the `sloTrailing` answer snapshot: one ops-digest interval (the digest runs every twelve
  * hours). The hourly `slo` snapshot alone left five hours in every six unexamined, so rising
  * source-gap, unsupported or fallback rates went unnoticed (audit EVAL-02, 2026-10-20). Must equal
  * `ANSWER_QUALITY_WINDOW_MINUTES` in scripts/lib/operational-alerts.mjs, which judges it;
  * tests/health-response-deep-probe.test.ts pins the two together.
  */
-export const ANSWER_SLO_TRAILING_WINDOW_MINUTES = 360;
+export const ANSWER_SLO_TRAILING_WINDOW_MINUTES = 720;
 
 /**
  * Length of the optional `sloDaily` snapshot, computed only when the caller asks with

@@ -173,7 +173,7 @@ describe("authorized deep health probe diagnostics", () => {
     expect(body.slo).toMatchObject({ windowMinutes: 60, totalQueries: 3 });
     // A current build marks the failed trailing query explicitly, so the digest reports answer
     // quality as unknown instead of falling back to the hourly-only rules of an older build.
-    expect(body.sloTrailing).toEqual({ windowMinutes: 360, unavailable: true });
+    expect(body.sloTrailing).toEqual({ windowMinutes: 720, unavailable: true });
     expect(JSON.stringify(body)).not.toContain("query failed");
   });
 
