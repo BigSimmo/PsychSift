@@ -27,7 +27,7 @@
 # run-tsx.mjs previously did at runtime) and keeps npm packages external,
 # so the bundle resolves them from the runner's production node_modules.
 FROM node:24-bookworm-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54 AS node-base
-FROM python:3.11-slim-trixie@sha256:07d4824036af339fa1b6ef769cc99d9c10a141769538b52b3b597c84f7a7b535 AS python-runtime-base
+FROM python:3.11-slim-trixie@sha256:61e01f72680f86a5279ad510818ab7b2ee9f049822589d4e34e33e044360356c AS python-runtime-base
 
 FROM node-base AS build
 WORKDIR /app
@@ -146,13 +146,14 @@ RUN printf '%s\n' \
     'Pin-Priority: -1' \
     > /etc/apt/preferences.d/worker-native-backports \
   && apt-get update \
-  && apt-get install -y --no-install-recommends --no-remove perl-base zlib1g tesseract-ocr ca-certificates libgl1 libglib2.0-0t64 \
+  && apt-get install -y --no-install-recommends --no-remove perl-base zlib1g libzstd1 tesseract-ocr ca-certificates libgl1 libglib2.0-0t64 \
     libcurl4t64=8.21.0-2~bpo13+1 libnghttp3-9=1.15.0-1~bpo13+1 \
     libngtcp2-16=1.22.1-1~bpo13+1 libngtcp2-crypto-ossl0=1.22.1-1~bpo13+1 \
     /tmp/worker-native-debs/*.deb \
   && mkdir -p /usr/share/psychsift/native-security \
   && cp /tmp/worker-native-debs/*.json /usr/share/psychsift/native-security/ \
   && dpkg --compare-versions "$(dpkg-query --show --showformat='${Version}' perl-base)" ge 5.40.1-6+deb13u1 \
+  && dpkg --compare-versions "$(dpkg-query --show --showformat='${Version}' libzstd1)" ge 1.5.7+dfsg-1+deb13u1 \
   && dpkg --compare-versions "$(dpkg-query --show --showformat='${Version}' libcurl4t64)" ge 8.21.0-2~bpo13+1 \
   && dpkg --compare-versions "$(dpkg-query --show --showformat='${Version}' libngtcp2-16)" ge 1.22.1-1~bpo13+1 \
   && groupadd --gid 1000 node \
