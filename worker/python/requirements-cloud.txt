@@ -740,8 +740,9 @@ murmurhash==1.0.15 \
     #   preshed
     #   spacy
     #   thinc
-nltk @ https://codeload.github.com/nltk/nltk/tar.gz/8658f3e7c172abf87f99db045b59a6b1a9e80c7a#sha256=80a0217a14b75e6bd63fe1c1f0190a1a7ceadbe7de3aa4d9b842df5d0a11f7d8 \
-    --hash=sha256:80a0217a14b75e6bd63fe1c1f0190a1a7ceadbe7de3aa4d9b842df5d0a11f7d8
+nltk==3.10.4 \
+    --hash=sha256:44679f4e9220abfd496d2c8cdb22f8425ccbe557604f9aa5cacb1c44003dabc1 \
+    --hash=sha256:769ba5413f265b7d3e87cd163cc28efa01e29eeef8bb6080bc907949d9fcfb51
     # via
     #   -r worker/python/requirements.in
     #   medspacy-quickumls
