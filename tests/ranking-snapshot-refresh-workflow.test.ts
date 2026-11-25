@@ -58,10 +58,8 @@ describe("ranking snapshot refresh workflow", () => {
 });
 
 describe("GH_TOKEN handling (audit CC-12)", () => {
-  const prBatchRunner = read(".github/workflows/pr-batch-runner.yml");
-
   it("reads the owner's GH_TOKEN only through the main-only production-secrets environment", () => {
-    for (const source of [workflow, prBatchRunner]) {
+    for (const source of [workflow]) {
       expect(source.match(/^\s+environment:.*$/gm)?.map((line) => line.trim())).toEqual([
         "environment: production-secrets",
       ]);

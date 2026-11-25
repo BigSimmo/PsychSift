@@ -4435,11 +4435,6 @@
         "catalogued": true
       },
       {
-        "path": "docs/pr-batch-runner.md",
-        "section": "root",
-        "catalogued": true
-      },
-      {
         "path": "docs/branch-cleanup-guide.md",
         "section": "root",
         "catalogued": true
