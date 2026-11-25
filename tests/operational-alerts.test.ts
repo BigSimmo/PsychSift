@@ -218,21 +218,21 @@ describe("evaluateOperationalAlerts", () => {
       });
       expect(alerts.map((item) => item.code)).toEqual(["OPS_ANSWER_SLO_UNKNOWN"]);
       expect(alerts[0]).toMatchObject({
-        windowMinutes: 360,
+        windowMinutes: 720,
         reason: "The trailing answer-quality snapshot query failed; answer quality was not assessed.",
       });
     });
 
-    it("covers the whole six hours between scheduled digests", () => {
-      expect(ANSWER_QUALITY_WINDOW_MINUTES).toBe(360);
+    it("covers the whole twelve hours between scheduled digests", () => {
+      expect(ANSWER_QUALITY_WINDOW_MINUTES).toBe(720);
       const workflow = readFileSync(".github/workflows/ops-digest.yml", "utf8");
-      expect(workflow).toContain('- cron: "15 */6 * * *"');
+      expect(workflow).toContain('- cron: "15 */12 * * *"');
     });
 
-    it("judges source gaps over the trailing six hours when the last hour had no answers", () => {
+    it("judges source gaps over the trailing twelve hours when the last hour had no answers", () => {
       const alerts = evaluateOperationalAlerts(trailingHealth({ sourceGapRate: 6 / 12 }));
       expect(alerts.map((item) => item.code)).toEqual(["OPS_SOURCE_GAP_RATE_PAGE"]);
-      expect(alerts[0]).toMatchObject({ windowMinutes: 360, observedValue: 0.5 });
+      expect(alerts[0]).toMatchObject({ windowMinutes: 720, observedValue: 0.5 });
     });
 
     it("judges unsupported answers and provider fallbacks over the same trailing window", () => {
@@ -253,8 +253,8 @@ describe("evaluateOperationalAlerts", () => {
 
     it("reports a trailing window with no answers as unknown, never healthy", () => {
       const alerts = evaluateOperationalAlerts(trailingHealth({ totalQueries: 0 }));
-      expect(alerts).toMatchObject([{ code: "OPS_ANSWER_SLO_UNKNOWN", severity: "unknown", windowMinutes: 360 }]);
-      expect(alerts[0]?.reason).toContain("360 minutes");
+      expect(alerts).toMatchObject([{ code: "OPS_ANSWER_SLO_UNKNOWN", severity: "unknown", windowMinutes: 720 }]);
+      expect(alerts[0]?.reason).toContain("720 minutes");
     });
 
     it("treats a trailing snapshot of the wrong length as unknown rather than falling back", () => {

@@ -1,7 +1,7 @@
 # Ops deep-health digest + canary liveness.
 #
-# Schedule runs every 6 hours (`15 */6 * * *`). Answer-rate alerts judge the probe's
-# trailing six-hour `sloTrailing` window, so back-to-back digests cover every answer
+# Schedule runs every 12 hours (`15 */12 * * *`). Answer-rate alerts judge the probe's
+# trailing twelve-hour `sloTrailing` window, so back-to-back digests cover every answer
 # (audit EVAL-02); the hourly `slo` sample feeds the hybrid-RPC identity history.
 # Page-level alerts notify on the rolling issue; everything else waits for the daily health summary.
 name: Ops Digest
@@ -15,8 +15,8 @@ on:
         default: false
         type: boolean
   schedule:
-    # Every 6 hours at minute 15 UTC; the six-hour answer window matches this interval.
-    - cron: "15 */6 * * *"
+    # Every 12 hours at minute 15 UTC; the twelve-hour answer window matches this interval.
+    - cron: "15 */12 * * *"
 
 concurrency:
   group: ops-digest
