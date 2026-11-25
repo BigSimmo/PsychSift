@@ -192,6 +192,8 @@ describe("container delivery contract", () => {
     expect(dockerfile).toContain("COPY --from=app-node-runtime-base /usr/bin/dash /bin/sh");
     expect(dockerfile).toContain("dpkg-query --status dash > /tmp/app-runtime-dash.status");
     expect(dockerfile).toContain("/var/lib/dpkg/status.d/dash");
+    expect(dockerfile).toContain("libzstd1=1.5.7+dfsg-1+deb13u1");
+    expect(dockerfile).toContain("/var/lib/dpkg/status.d/libzstd1");
     expect(dockerfile).toContain("--chown=1000:1000 /tmp/app-runtime-home/ /home/node/");
     expect(dockerfile).toContain("ENV HOME=/home/node");
     const health = JSON.parse(/HEALTHCHECK[^\n]*\\\n\s+CMD (\[.+\])/.exec(dockerfile)?.[1] ?? "null");
