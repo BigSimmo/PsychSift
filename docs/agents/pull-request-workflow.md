@@ -531,7 +531,6 @@ diagnosis and a per-PR report; do not attempt pushes or thread resolution throug
 Record one review record per PR touched per [Records](#records), and end with the per-PR
 before/after summary defined in the skill.
 
-
 ## Bundling
 
 <a id="pr-bundling-reduce-one-task-one-pr-churn"></a>

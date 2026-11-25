@@ -29,7 +29,6 @@ For the rest of the anti-churn branch-sync mitigations, see [Branch sync](../../
 For the `Run PR` open-PR maintenance sweep — what it authorizes, its hard guardrails, and its procedure, see [Run PR](../../../docs/agents/pull-request-workflow.md#run-pr).
 <!-- END:run-pr-shortcut -->
 
-
 ## Babysit the pull request, then stop
 
 Follow a PR's CI while it is useful, fix only this change's breakage, stop when CI settles, and never park a cron job on a PR — see [Follow CI](../../../docs/agents/pull-request-workflow.md#follow-ci) for detail and how the no-cron rule is enforced. Review-thread handling for every tool is in [Review threads](../../../docs/agents/pull-request-workflow.md#review-threads).
