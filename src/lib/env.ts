@@ -152,11 +152,11 @@ const envSchema = z
     // Must match the vector(N) dimension in supabase/schema.sql. Changing the embedding
     // model without updating this (and the schema) silently corrupts ingestion (IDX-C2).
     EMBEDDING_DIMENSIONS: z.coerce.number().int().positive().default(1536),
-    // Preserve control defaults until the bounded comparison is accepted. Sol 6.1
-    // activation uses explicit answer-model overrides, not a merge-time switch.
-    OPENAI_ANSWER_MODEL: z.string().default("gpt-5.6-terra"),
-    OPENAI_FAST_ANSWER_MODEL: z.string().default("gpt-5.6-terra"),
-    OPENAI_STRONG_ANSWER_MODEL: z.string().default("gpt-5.6-sol"),
+    // Generated-answer routes default to GPT-6.2 Sol. Non-answer workloads stay
+    // on their own models unless a deployment override is set.
+    OPENAI_ANSWER_MODEL: z.string().default("gpt-6.2-sol"),
+    OPENAI_FAST_ANSWER_MODEL: z.string().default("gpt-6.2-sol"),
+    OPENAI_STRONG_ANSWER_MODEL: z.string().default("gpt-6.2-sol"),
     // Non-answer workloads stay pinned when answer models change. Explicit
     // deployment overrides below continue to win over these legacy fallbacks.
     OPENAI_QUERY_CLASSIFIER_MODEL: z.preprocess(coerceBlankEnv, z.string().optional()),
@@ -182,8 +182,8 @@ const envSchema = z
     // counts (src/lib/observability/spend-metrics.ts); they have no billing effect.
     // Cached input is a subset of input billed at the cached rate; reasoning tokens
     // are billed within output, so output covers them.
-    OPENAI_PRICE_INPUT_PER_MTOK: z.coerce.number().nonnegative().default(1.25),
-    OPENAI_PRICE_CACHED_INPUT_PER_MTOK: z.coerce.number().nonnegative().default(0.125),
+    OPENAI_PRICE_INPUT_PER_MTOK: z.coerce.number().nonnegative().default(2),
+    OPENAI_PRICE_CACHED_INPUT_PER_MTOK: z.coerce.number().nonnegative().default(0.1),
     OPENAI_PRICE_OUTPUT_PER_MTOK: z.coerce.number().nonnegative().default(10),
     // Projected-daily-spend alert threshold (USD) for the `spend` block. 0 disables
     // the alert flag (the spend figures are still reported).

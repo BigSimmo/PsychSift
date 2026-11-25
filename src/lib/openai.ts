@@ -310,17 +310,21 @@ const reasoningEfforts = new Set<OpenAIReasoningEffort>(["low", "medium", "high"
 function openAIModelCapabilities(model: string) {
   const normalized = model.toLowerCase();
   const isGpt5 = /^gpt-5(?:[.-]|$)/.test(normalized);
-  const isSol61 = /^gpt-6\.1-sol(?:-|$)/.test(normalized);
   const gptVersionMatch = normalized.match(/^gpt-(\d+)(?:\.(\d+))?(?:[.-]|$)/);
   const gptMajorVersion = Number(gptVersionMatch?.[1] ?? 0);
   const gptMinorVersion = Number(gptVersionMatch?.[2] ?? 0);
+  const isGpt6 = gptMajorVersion === 6;
+  // GPT-6.2 Sol/Astra and GPT-6.1 Sol reject reasoning.effort=none (HTTP 400).
+  // GPT-6.1 Terra and GPT-6 Luna still accept none.
+  const requiresReasoning =
+    /^gpt-6\.2(?:-|$)/.test(normalized) || /^gpt-6\.1-sol(?:-|$)/.test(normalized);
   const usesPromptCacheOptions = gptMajorVersion > 5 || (gptMajorVersion === 5 && gptMinorVersion >= 6);
-  const isReasoningModel = isGpt5 || isSol61 || /^o\d(?:[.-]|$)/.test(normalized);
+  const isReasoningModel = isGpt5 || isGpt6 || /^o\d(?:[.-]|$)/.test(normalized);
 
   return {
     supportsReasoning: isReasoningModel,
-    requiresReasoning: isSol61,
-    supportsTextVerbosity: isGpt5,
+    requiresReasoning,
+    supportsTextVerbosity: isGpt5 || isGpt6,
     usesPromptCacheOptions,
     requiredPromptCacheRetention: /^gpt-5\.5(?:[.-]|$)/.test(normalized) ? "24h" : undefined,
     allowedReasoningEfforts: isReasoningModel ? reasoningEfforts : new Set<OpenAIReasoningEffort>(),
