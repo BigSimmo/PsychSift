@@ -42,24 +42,24 @@ Before any repository write or publication, read and follow [the remaining proje
 <!-- prettier-ignore -->
 | Area | Full text |
 | --- | --- |
-| Agents, when authorised: follow before dispatch; keep the user's main-chat model; report missing hosted routing instead of paying for API workarounds | [`docs/agents/smart-agent-allocation.md`](docs/agents/smart-agent-allocation.md) |
-| Gate selection, the verification tiers, gate receipts | [`docs/agents/verification-gates.md`](docs/agents/verification-gates.md) |
-| The whole PR lifecycle: open, CI, review threads, records, merge authority, sync, sweeps | [`docs/agents/pull-request-workflow.md`](docs/agents/pull-request-workflow.md) |
-| Publication workflows, anti-conflict and CI-speed procedure, the `Run PR` and `Clear PRs` shortcuts | [`docs/agents/native-startup/publication-workflows.md`](docs/agents/native-startup/publication-workflows.md) |
-| Process hardening; bare PR publication is not readiness work | [`docs/agents/native-startup/process-hardening.md`](docs/agents/native-startup/process-hardening.md) |
-| Commit as you go: interruption, not carelessness, is what loses work here | [`docs/agents/native-startup/commit-as-you-go.md`](docs/agents/native-startup/commit-as-you-go.md) |
-| Search chrome behaviour (one composer) | [`docs/agents/native-startup/search-chrome-behaviour.md`](docs/agents/native-startup/search-chrome-behaviour.md) |
-| External skill precedence, evidence and calibration | [`docs/agents/native-startup/external-skill-precedence.md`](docs/agents/native-startup/external-skill-precedence.md) |
-| Page and button wiring, the bundle budget | [`docs/agents/wiring-and-bundle-budget.md`](docs/agents/wiring-and-bundle-budget.md) |
-| Deleting code you believe is dead | [`docs/agents/dead-code-deletion.md`](docs/agents/dead-code-deletion.md) |
-| Deleting tests, or letting a tool delete them for you | [`docs/agents/test-deletion-guard.md`](docs/agents/test-deletion-guard.md) |
-| Claude Code hook scripts | [`docs/agents/claude-hook-scripts.md`](docs/agents/claude-hook-scripts.md) |
-| Repository skills, the `/issues` outstanding-work memory | [`docs/agents/repository-skills-and-issues.md`](docs/agents/repository-skills-and-issues.md) |
-| The `upload`, dependency and `bug-hunter` shortcuts | [`docs/agents/upload-shortcut.md`](docs/agents/upload-shortcut.md), [`docs/agents/codex-dependency-shortcut.md`](docs/agents/codex-dependency-shortcut.md), [`docs/agents/bug-hunter-shortcut.md`](docs/agents/bug-hunter-shortcut.md) |
-| Codex review throttling, routing and review records | [`docs/agents/codex-review-throttling.md`](docs/agents/codex-review-throttling.md), [`docs/codex-review-protocol.md`](docs/codex-review-protocol.md) |
-| Codex reasoning effort; Codex Desktop worktree setup | [`docs/agents/codex-reasoning-effort.md`](docs/agents/codex-reasoning-effort.md), [`docs/agents/codex-desktop-worktree-setup.md`](docs/agents/codex-desktop-worktree-setup.md) |
-| Which area owns a file (the first edit in an area also names it) | [`docs/organisation/README.md`](docs/organisation/README.md) |
-| Task receipts and Notion task status, only for receipt work | [`docs/task-receipts.md`](docs/task-receipts.md) |
+| Agents, when authorised: follow before dispatch; keep the user's main-chat model; report missing hosted routing instead of paying for API workarounds | `docs/agents/smart-agent-allocation.md` |
+| Gate selection, the verification tiers, gate receipts | `docs/agents/verification-gates.md` |
+| The whole PR lifecycle: open, CI, review threads, records, merge authority, sync, sweeps | `docs/agents/pull-request-workflow.md` |
+| Publication workflows, anti-conflict and CI-speed procedure, the `Run PR` and `Clear PRs` shortcuts | `docs/agents/native-startup/publication-workflows.md` |
+| Process hardening; bare PR publication is not readiness work | `docs/agents/native-startup/process-hardening.md` |
+| Commit as you go: interruption, not carelessness, is what loses work here | `docs/agents/native-startup/commit-as-you-go.md` |
+| Search chrome behaviour (one composer) | `docs/agents/native-startup/search-chrome-behaviour.md` |
+| External skill precedence, evidence and calibration | `docs/agents/native-startup/external-skill-precedence.md` |
+| Page and button wiring, the bundle budget | `docs/agents/wiring-and-bundle-budget.md` |
+| Deleting code you believe is dead | `docs/agents/dead-code-deletion.md` |
+| Deleting tests, or letting a tool delete them for you | `docs/agents/test-deletion-guard.md` |
+| Claude Code hook scripts | `docs/agents/claude-hook-scripts.md` |
+| Repository skills, the `/issues` outstanding-work memory | `docs/agents/repository-skills-and-issues.md` |
+| The `upload`, dependency and `bug-hunter` shortcuts | `docs/agents/upload-shortcut.md`, `docs/agents/codex-dependency-shortcut.md`, `docs/agents/bug-hunter-shortcut.md` |
+| Codex review throttling, routing and review records | `docs/agents/codex-review-throttling.md`, `docs/codex-review-protocol.md` |
+| Codex reasoning effort; Codex Desktop worktree setup | `docs/agents/codex-reasoning-effort.md`, `docs/agents/codex-desktop-worktree-setup.md` |
+| Which area owns a file (the first edit in an area also names it) | `docs/organisation/README.md` |
+| Task receipts and Notion task status, only for receipt work | `docs/task-receipts.md` |
 
 <!-- END:rules-index -->
 
