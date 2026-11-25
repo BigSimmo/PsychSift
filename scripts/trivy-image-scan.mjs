@@ -139,6 +139,9 @@ export function parseTrivySuppressions(text) {
       }
     }
     if (!/^(CVE|GHSA)-[0-9A-Za-z-]+$/.test(row.cve)) throw new Error(`Invalid Trivy suppression #${i}: bad cve`);
+    if ("expires" in row && (typeof row.expires !== "string" || !Number.isFinite(Date.parse(row.expires)))) {
+      throw new Error(`Invalid Trivy suppression #${i}: bad expires`);
+    }
   }
   return doc.suppressions;
 }
@@ -148,12 +151,22 @@ export function parseTrivySuppressions(text) {
  * including the same CVE at a different installed version, stays counted.
  * @param {any} report
  * @param {string} imageRef
- * @param {Array<{ image: string; package: string; installed: string; cve: string }>} suppressions
+ * @param {Array<{ image: string; package: string; installed: string; cve: string; expires?: string }>} suppressions
+ * @param {Date} [now]
  * @returns {{ report: any; suppressed: any[] }}
  */
-export function applyTrivySuppressions(report, imageRef, suppressions) {
+export function applyTrivySuppressions(report, imageRef, suppressions, now = new Date()) {
+  const nowMs = now instanceof Date ? now.getTime() : Date.parse(String(now));
   const keys = new Set(
-    suppressions.filter((s) => s.image === imageRef).map((s) => `${s.package}\u0000${s.installed}\u0000${s.cve}`),
+    suppressions
+      .filter((s) => {
+        if (s.image !== imageRef) return false;
+        if (typeof s.expires === "string" && Number.isFinite(Date.parse(s.expires)) && nowMs >= Date.parse(s.expires)) {
+          return false;
+        }
+        return true;
+      })
+      .map((s) => `${s.package}\u0000${s.installed}\u0000${s.cve}`),
   );
   const suppressed = [];
   const results = Array.isArray(report?.Results)
@@ -162,7 +175,9 @@ export function applyTrivySuppressions(report, imageRef, suppressions) {
         const kept = [];
         for (const v of result.Vulnerabilities) {
           const key = `${v?.PkgName}\u0000${v?.InstalledVersion}\u0000${v?.VulnerabilityID}`;
-          if (keys.has(key)) suppressed.push(v);
+          const fixed = typeof v?.FixedVersion === "string" ? v.FixedVersion.trim() : "";
+          // A published fix must resurface even if a temporary acceptance row still matches.
+          if (keys.has(key) && !fixed) suppressed.push(v);
           else kept.push(v);
         }
         return { ...result, Vulnerabilities: kept };
