@@ -87,7 +87,7 @@ export function reloadOnceForChunkLoadError(environment?: Partial<ReloadEnvironm
  */
 export function installChunkLoadRecovery(target: Window = window, reloadDelayMs = CHUNK_RELOAD_DEFER_MS): () => void {
   let unloading = false;
-  let pendingTimer: ReturnType<typeof setTimeout> | null = null;
+  let pendingTimer: number | null = null;
 
   const cancelPendingReload = () => {
     if (pendingTimer !== null) {
