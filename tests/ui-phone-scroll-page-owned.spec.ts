@@ -13,7 +13,7 @@ import {
   readPageOwnedFooterGeometry,
 } from "./helpers/phone-scroll";
 import { readPrimaryScrollAndDomGeometry } from "./playwright-scroll";
-import { expectSingleSettledOwner, visibleByTestId } from "./playwright-settlement";
+import { expectHydrated, expectSingleSettledOwner, visibleByTestId } from "./playwright-settlement";
 
 /**
  * Page-owned phone chrome: the document viewer's own composer, the standalone
@@ -979,7 +979,7 @@ test("calculator results stay usable across the responsive and accessibility mat
 
 test("calculator answers remain reachable by ordinary scrolling in short landscape with enlarged text", async ({
   page,
-}) => {
+}, testInfo) => {
   await page.setViewportSize({ width: 844, height: 390 });
   await page.emulateMedia({ reducedMotion: "reduce" });
   await gotoPhoneSurface(page, "/calculators/search?calculator=phq9", 112);
@@ -1007,7 +1007,22 @@ test("calculator answers remain reachable by ordinary scrolling in short landsca
       "the answer scrollport must have usable visible height",
     ).toBeGreaterThanOrEqual(48);
 
+    const hasTouch = Boolean(testInfo.project.use.hasTouch);
+    const scrollScrollerBy = async (deltaY: number) => {
+      if (hasTouch) {
+        // Mobile WebKit rejects `page.mouse.wheel`, so advance the scroll container directly.
+        await scroller.evaluate((element, y) => {
+          element.scrollTop += y;
+          element.dispatchEvent(new Event("scroll", { bubbles: true }));
+        }, deltaY);
+      } else {
+        await page.mouse.move(geometry.x, (geometry.visibleTop + geometry.visibleBottom) / 2);
+        await page.mouse.wheel(0, deltaY);
+      }
+    };
+
     const answer = dialog.getByRole("button", { name: "Not at all (0 points)", exact: true }).first();
+    await expectHydrated(answer);
     let target: { x: number; y: number } | null = null;
     for (let step = 0; step < 40; step += 1) {
       target = await answer.evaluate((element) => {
@@ -1018,12 +1033,23 @@ test("calculator answers remain reachable by ordinary scrolling in short landsca
         return hit && element.contains(hit) ? { x, y } : null;
       });
       if (target) break;
-      await page.mouse.move(geometry.x, (geometry.visibleTop + geometry.visibleBottom) / 2);
-      await page.mouse.wheel(0, 64);
+      await scrollScrollerBy(64);
       await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
     }
     expect(target, "ordinary scrolling must reveal a response without locator auto-scroll").not.toBeNull();
-    await page.mouse.click(target!.x, target!.y);
+    // Let Firefox APZ wheel momentum finish settling before clicking the hit-tested coordinates.
+    await page.evaluate(
+      () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))),
+    );
+    const settledTarget = await answer.evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      const x = rect.left + rect.width / 2;
+      const y = rect.top + rect.height / 2;
+      const hit = document.elementFromPoint(x, y);
+      return hit && element.contains(hit) ? { x, y } : null;
+    });
+    expect(settledTarget, "response must stay hit-testable once scroll settles").not.toBeNull();
+    await page.mouse.click(settledTarget!.x, settledTarget!.y);
     await expect(answer).toHaveAttribute("aria-pressed", "true");
 
     // In the short layout the summary and its caveat scroll together; the fixed
@@ -1031,14 +1057,12 @@ test("calculator answers remain reachable by ordinary scrolling in short landsca
     const headerScore = dialog.locator("header").getByText("0", { exact: true });
     await expect(headerScore).toBeHidden();
     const caveat = dialog.getByText(/Clinical reference — not validated decision support/);
-    await page.mouse.move(geometry.x, (geometry.visibleTop + geometry.visibleBottom) / 2);
-    await page.mouse.wheel(0, 400);
+    await scrollScrollerBy(400);
     await expect(caveat).not.toBeInViewport();
     await expect(headerScore).toBeHidden();
 
     // The clinical caveat remains part of the same readable scroll content.
-    await page.mouse.move(geometry.x, (geometry.visibleTop + geometry.visibleBottom) / 2);
-    await page.mouse.wheel(0, -5000);
+    await scrollScrollerBy(-5000);
     await expect(caveat).toBeInViewport();
     await expect(dialog.getByRole("button", { name: "Close", exact: true })).toBeInViewport();
   } finally {

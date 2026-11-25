@@ -20,6 +20,18 @@ const CHUNK_LOAD_MESSAGE =
 export const CHUNK_RELOAD_STORAGE_KEY = "psychsift.chunkReloadAt";
 /** A second failure inside this window shows the card instead of reloading again. */
 export const CHUNK_RELOAD_WINDOW_MS = 60_000;
+/**
+ * Short grace window before reloading on a global chunk failure. Navigating away while a lazy
+ * `import()` is still in flight makes WebKit and Firefox reject that aborted module fetch right
+ * before `beforeunload` / `pagehide` fires; reloading synchronously would overwrite the new
+ * navigation with a reload of the old page.
+ */
+export const CHUNK_RELOAD_DEFER_MS = 250;
+/**
+ * If `beforeunload` is cancelled by an unsaved-changes prompt and `pagehide` never follows,
+ * restore chunk-load recovery once this grace period elapses.
+ */
+export const BEFOREUNLOAD_SUPPRESS_MS = 1_500;
 
 /**
  * True for a failure to download part of the app's own code: a dropped connection, or a
@@ -75,21 +87,83 @@ export function reloadOnceForChunkLoadError(environment?: Partial<ReloadEnvironm
  * Catches chunk failures that never reach an error boundary: a lazy `import()` awaited inside a
  * click handler (the Supabase library behind every sign-in button) rejects into
  * `unhandledrejection`, and a failed `<script>` or stylesheet chunk fires a window `error`.
- * Returns the cleanup.
+ * Cancels any pending reload if the document begins unloading so an aborted dynamic import during
+ * navigation never reloads the previous URL over the destination, while allowing recovery to
+ * resume if a `beforeunload` prompt is cancelled and `pagehide` never fires. Returns the cleanup.
  */
-export function installChunkLoadRecovery(target: Window = window): () => void {
+export function installChunkLoadRecovery(target: Window = window, reloadDelayMs = CHUNK_RELOAD_DEFER_MS): () => void {
+  let unloading = false;
+  let beforeunloadPending = false;
+  let pendingTimer: number | null = null;
+  let beforeunloadResetTimer: number | null = null;
+
+  const cancelPendingReload = () => {
+    if (pendingTimer !== null) {
+      target.clearTimeout(pendingTimer);
+      pendingTimer = null;
+    }
+  };
+
+  const clearBeforeunloadReset = () => {
+    if (beforeunloadResetTimer !== null) {
+      target.clearTimeout(beforeunloadResetTimer);
+      beforeunloadResetTimer = null;
+    }
+  };
+
+  const scheduleReload = () => {
+    if (unloading || beforeunloadPending || pendingTimer !== null) return;
+    if (reloadDelayMs <= 0) {
+      reloadOnceForChunkLoadError();
+      return;
+    }
+    pendingTimer = target.setTimeout(() => {
+      pendingTimer = null;
+      if (!unloading && !beforeunloadPending) reloadOnceForChunkLoadError();
+    }, reloadDelayMs);
+  };
+
   const onRejection = (event: PromiseRejectionEvent) => {
-    if (isChunkLoadError(event.reason)) reloadOnceForChunkLoadError();
+    if (isChunkLoadError(event.reason)) scheduleReload();
   };
   const onError = (event: ErrorEvent) => {
     if (isChunkLoadError(event.error) || (typeof event.message === "string" && isChunkLoadError(event))) {
-      reloadOnceForChunkLoadError();
+      scheduleReload();
     }
   };
+  const onBeforeUnload = () => {
+    beforeunloadPending = true;
+    cancelPendingReload();
+    clearBeforeunloadReset();
+    beforeunloadResetTimer = target.setTimeout(() => {
+      beforeunloadResetTimer = null;
+      beforeunloadPending = false;
+    }, BEFOREUNLOAD_SUPPRESS_MS);
+  };
+  const onPageHide = () => {
+    unloading = true;
+    beforeunloadPending = false;
+    cancelPendingReload();
+    clearBeforeunloadReset();
+  };
+  const onPageShow = () => {
+    unloading = false;
+    beforeunloadPending = false;
+    clearBeforeunloadReset();
+  };
+
   target.addEventListener("unhandledrejection", onRejection);
   target.addEventListener("error", onError);
+  target.addEventListener("beforeunload", onBeforeUnload);
+  target.addEventListener("pagehide", onPageHide);
+  target.addEventListener("pageshow", onPageShow);
   return () => {
+    cancelPendingReload();
+    clearBeforeunloadReset();
     target.removeEventListener("unhandledrejection", onRejection);
     target.removeEventListener("error", onError);
+    target.removeEventListener("beforeunload", onBeforeUnload);
+    target.removeEventListener("pagehide", onPageHide);
+    target.removeEventListener("pageshow", onPageShow);
   };
 }
