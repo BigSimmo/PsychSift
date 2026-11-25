@@ -24,10 +24,18 @@ FROM node:24-bookworm-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00
 FROM node:24-trixie-slim@sha256:af02d57b57719b9657a45199a79264a9437940cd55b3c7b3fc99615654f124a0 AS app-node-runtime-base
 # Keep the command-string shell used by Railway pre-deploy hooks, without
 # inheriting the donor's package manager or unrelated operating-system tools.
+# Also fetch the Debian 13 libzstd1 security update (CVE-2026-124851) so it can
+# replace the unfixed copy in the distroless runtime below. Remove this once
+# the pinned distroless digest ships 1.5.7+dfsg-1+deb13u1.
 RUN test "$(id -u node)" = 1000 && test "$(id -g node)" = 1000 \
   && mkdir -p /tmp/app-runtime-home \
   && chown 1000:1000 /tmp/app-runtime-home \
-  && dpkg-query --status dash > /tmp/app-runtime-dash.status
+  && dpkg-query --status dash > /tmp/app-runtime-dash.status \
+  && apt-get update \
+  && apt-get install -y --no-install-recommends libzstd1=1.5.7+dfsg-1+deb13u1 \
+  && test "$(dpkg-query --show --showformat='${Version}' libzstd1)" = "1.5.7+dfsg-1+deb13u1" \
+  && dpkg-query --status libzstd1 > /tmp/app-runtime-libzstd1.status \
+  && rm -rf /var/lib/apt/lists/*
 FROM gcr.io/distroless/cc-debian13:nonroot@sha256:532c7a94f9e96ba9db75eb9388f4227751131c7cb0a411d1a8521af4096135de AS app-runtime-base
 
 FROM node-base AS deps
@@ -159,6 +167,12 @@ COPY --from=app-node-runtime-base /usr/local/bin/node /usr/local/bin/node
 COPY --from=app-node-runtime-base /usr/bin/dash /bin/sh
 COPY --from=app-node-runtime-base /tmp/app-runtime-dash.status /var/lib/dpkg/status.d/dash
 COPY --from=app-node-runtime-base /usr/share/doc/dash/copyright /usr/share/doc/dash/copyright
+# Overlay the Debian-fixed libzstd1 onto distroless and replace its package
+# inventory so Trivy sees the patched version (CVE-2026-124851).
+COPY --from=app-node-runtime-base /usr/lib/x86_64-linux-gnu/libzstd.so.1.5.7 /usr/lib/x86_64-linux-gnu/libzstd.so.1.5.7
+COPY --from=app-node-runtime-base /usr/lib/x86_64-linux-gnu/libzstd.so.1 /usr/lib/x86_64-linux-gnu/libzstd.so.1
+COPY --from=app-node-runtime-base /tmp/app-runtime-libzstd1.status /var/lib/dpkg/status.d/libzstd1
+COPY --from=app-node-runtime-base /usr/share/doc/libzstd1/copyright /usr/share/doc/libzstd1/copyright
 COPY --from=app-node-runtime-base /etc/passwd /etc/passwd
 COPY --from=app-node-runtime-base /etc/group /etc/group
 COPY --from=app-node-runtime-base --chown=1000:1000 /tmp/app-runtime-home/ /home/node/
