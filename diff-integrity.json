@@ -5,6 +5,13 @@
   "perFileMinRemovedCases": 3,
   "approvedReductions": [
     {
+      "path": "tests/instruction-continuation-guards.test.ts",
+      "before": 5,
+      "after": 4,
+      "reason": "Removed the pr-batch-core protectedPath parity assertion after deleting scripts/pr-batch-core.mjs; remaining continuation parity guards preserved.",
+      "approvedOn": "2026-11-25"
+    },
+    {
       "path": "tests/pr-batch-github.test.ts",
       "before": 14,
       "after": 0,
