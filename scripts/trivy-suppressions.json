@@ -540,6 +540,28 @@
       "component": "util-linux",
       "justification": "remediated by worker/native/patches/util-linux (upstream stable fixes, see components/util-linux.json); regression: util-linux-regressions.sh",
       "remove_when": "components/util-linux.json backport_version changes or Debian ships a fixed version (see worker/native/README.md, Pinned Debian sources)"
+    },
+    {
+      "image": "clinical-kb-app:ci",
+      "package": "libssl3t64",
+      "installed": "3.5.9-1~deb13u1",
+      "cve": "CVE-2026-107494",
+      "severity": "HIGH",
+      "category": "unfixed-debian",
+      "component": "openssl",
+      "justification": "Owner decision 25 Nov 2026 (Josh): accept the unfixed OpenSSL HIGH in the app image until a fixed package ships. Trivy reports no fixed version for libssl3t64 3.5.9-1~deb13u1. Temporary exact-match suppression expires 25 Dec 2026; remove this row when Debian ships a fixed libssl3t64/openssl or the installed version changes.",
+      "remove_when": "2026-12-25, or earlier if Debian ships a fixed libssl3t64/openssl (Trivy fixed version becomes non-empty) or the installed version is no longer 3.5.9-1~deb13u1"
+    },
+    {
+      "image": "clinical-kb-app:ci",
+      "package": "libssl3t64",
+      "installed": "3.5.9-1~deb13u1",
+      "cve": "CVE-2026-124709",
+      "severity": "HIGH",
+      "category": "unfixed-debian",
+      "component": "openssl",
+      "justification": "Owner decision 25 Nov 2026 (Josh): accept the unfixed OpenSSL HIGH in the app image until a fixed package ships. Trivy reports no fixed version for libssl3t64 3.5.9-1~deb13u1. Temporary exact-match suppression expires 25 Dec 2026; remove this row when Debian ships a fixed libssl3t64/openssl or the installed version changes.",
+      "remove_when": "2026-12-25, or earlier if Debian ships a fixed libssl3t64/openssl (Trivy fixed version becomes non-empty) or the installed version is no longer 3.5.9-1~deb13u1"
     }
   ]
 }
