@@ -6,7 +6,7 @@ describe("Sol answer defaults and workload isolation", () => {
     vi.resetModules();
   });
 
-  it("keeps control answer defaults until explicit candidate activation", async () => {
+  it("defaults generated answers to GPT-6.2 Sol without changing other workload fallbacks", async () => {
     for (const key of [
       "OPENAI_ANSWER_MODEL",
       "OPENAI_FAST_ANSWER_MODEL",
@@ -18,9 +18,9 @@ describe("Sol answer defaults and workload isolation", () => {
       vi.stubEnv(key, undefined);
     const { env } = await import("@/lib/env");
     expect(env).toMatchObject({
-      OPENAI_ANSWER_MODEL: "gpt-5.6-terra",
-      OPENAI_FAST_ANSWER_MODEL: "gpt-5.6-terra",
-      OPENAI_STRONG_ANSWER_MODEL: "gpt-5.6-sol",
+      OPENAI_ANSWER_MODEL: "gpt-6.2-sol",
+      OPENAI_FAST_ANSWER_MODEL: "gpt-6.2-sol",
+      OPENAI_STRONG_ANSWER_MODEL: "gpt-6.2-sol",
       OPENAI_QUERY_CLASSIFIER_MODEL: "gpt-5.6-terra",
       OPENAI_SUMMARY_MODEL: "gpt-5.6-terra",
       OPENAI_INDEXING_MODEL: "gpt-5.6-sol",
@@ -29,7 +29,7 @@ describe("Sol answer defaults and workload isolation", () => {
     });
   });
 
-  it("activates all-Sol answers explicitly without changing other workload fallbacks", async () => {
+  it("accepts an explicit answer-model override without changing other workload fallbacks", async () => {
     for (const key of ["OPENAI_ANSWER_MODEL", "OPENAI_FAST_ANSWER_MODEL", "OPENAI_STRONG_ANSWER_MODEL"])
       vi.stubEnv(key, "gpt-6.1-sol");
     for (const key of ["OPENAI_QUERY_CLASSIFIER_MODEL", "OPENAI_SUMMARY_MODEL", "OPENAI_INDEXING_MODEL"])
