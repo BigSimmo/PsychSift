@@ -20,6 +20,13 @@ const CHUNK_LOAD_MESSAGE =
 export const CHUNK_RELOAD_STORAGE_KEY = "psychsift.chunkReloadAt";
 /** A second failure inside this window shows the card instead of reloading again. */
 export const CHUNK_RELOAD_WINDOW_MS = 60_000;
+/**
+ * Short grace window before reloading on a global chunk failure. Navigating away while a lazy
+ * `import()` is still in flight makes WebKit and Firefox reject that aborted module fetch right
+ * before `beforeunload` / `pagehide` fires; reloading synchronously would overwrite the new
+ * navigation with a reload of the old page.
+ */
+export const CHUNK_RELOAD_DEFER_MS = 250;
 
 /**
  * True for a failure to download part of the app's own code: a dropped connection, or a
@@ -75,21 +82,59 @@ export function reloadOnceForChunkLoadError(environment?: Partial<ReloadEnvironm
  * Catches chunk failures that never reach an error boundary: a lazy `import()` awaited inside a
  * click handler (the Supabase library behind every sign-in button) rejects into
  * `unhandledrejection`, and a failed `<script>` or stylesheet chunk fires a window `error`.
- * Returns the cleanup.
+ * Cancels any pending reload if the document begins unloading so an aborted dynamic import during
+ * navigation never reloads the previous URL over the destination. Returns the cleanup.
  */
-export function installChunkLoadRecovery(target: Window = window): () => void {
+export function installChunkLoadRecovery(target: Window = window, reloadDelayMs = CHUNK_RELOAD_DEFER_MS): () => void {
+  let unloading = false;
+  let pendingTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const cancelPendingReload = () => {
+    if (pendingTimer !== null) {
+      target.clearTimeout(pendingTimer);
+      pendingTimer = null;
+    }
+  };
+
+  const scheduleReload = () => {
+    if (unloading || pendingTimer !== null) return;
+    if (reloadDelayMs <= 0) {
+      reloadOnceForChunkLoadError();
+      return;
+    }
+    pendingTimer = target.setTimeout(() => {
+      pendingTimer = null;
+      if (!unloading) reloadOnceForChunkLoadError();
+    }, reloadDelayMs);
+  };
+
   const onRejection = (event: PromiseRejectionEvent) => {
-    if (isChunkLoadError(event.reason)) reloadOnceForChunkLoadError();
+    if (isChunkLoadError(event.reason)) scheduleReload();
   };
   const onError = (event: ErrorEvent) => {
     if (isChunkLoadError(event.error) || (typeof event.message === "string" && isChunkLoadError(event))) {
-      reloadOnceForChunkLoadError();
+      scheduleReload();
     }
   };
+  const onUnloadStart = () => {
+    unloading = true;
+    cancelPendingReload();
+  };
+  const onPageShow = () => {
+    unloading = false;
+  };
+
   target.addEventListener("unhandledrejection", onRejection);
   target.addEventListener("error", onError);
+  target.addEventListener("beforeunload", onUnloadStart);
+  target.addEventListener("pagehide", onUnloadStart);
+  target.addEventListener("pageshow", onPageShow);
   return () => {
+    cancelPendingReload();
     target.removeEventListener("unhandledrejection", onRejection);
     target.removeEventListener("error", onError);
+    target.removeEventListener("beforeunload", onUnloadStart);
+    target.removeEventListener("pagehide", onUnloadStart);
+    target.removeEventListener("pageshow", onPageShow);
   };
 }
