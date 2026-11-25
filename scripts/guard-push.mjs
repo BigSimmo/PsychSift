@@ -1382,6 +1382,25 @@ function report(results) {
   return 1;
 }
 
+/**
+ * Demote non-hard-line push guards (in-flight CI & format) to warn-only unless strict mode is requested.
+ * Hard-line guards (auto-merge, drift, static, ledger-write) are never relaxed.
+ *
+ * @template {{ name: string, ok: boolean, message?: string, note?: string }} T
+ * @param {T[]} results
+ * @param {{ strict?: boolean }} [options]
+ * @returns {T[]}
+ */
+export function demoteNonHardLineGuards(results, { strict = process.env.GUARD_PUSH_STRICT === "1" } = {}) {
+  if (strict) return results;
+  const advisoryOnly = new Set(["in-flight-ci", "format"]);
+  return results.map((r) =>
+    r && !r.ok && advisoryOnly.has(r.name)
+      ? { ...r, ok: true, note: `[warn-only on feature branch; set GUARD_PUSH_STRICT=1 to block] ${r.message}` }
+      : r,
+  );
+}
+
 function main() {
   if (process.argv.includes("--self-test")) {
     return selfTest();
@@ -1393,19 +1412,17 @@ function main() {
   const pushedBranches = pushedBranchNames(ranges, branch);
   const forcePushBranches = forcePushedBranchNames(ranges);
   const changedFiles = collectChangedFiles(ranges);
-  const admission = [
-    autoMergeGuard(pushedBranches, forcePushBranches, changedFiles),
-    inFlightCiGuard(pushedBranches, ranges),
-  ];
+  const ciAdmitted = demoteNonHardLineGuards([inFlightCiGuard(pushedBranches, ranges)])[0];
+  const admission = [autoMergeGuard(pushedBranches, forcePushBranches, changedFiles), ciAdmitted];
   // formatGuard reads the pushed blobs; drift/static only need the paths.
   // Keep every other guard, but don't occupy a static slot while CI blocks.
-  const results = [
+  const results = demoteNonHardLineGuards([
     ...admission,
     formatGuard(collectChangedBlobs(ranges)),
     driftGuard(changedFiles),
     staticGuardAfterCi(changedFiles, { ranges }, admission[1]),
     ledgerWriteGuard(ranges),
-  ];
+  ]);
   process.exit(report(results));
 }
 

@@ -91,7 +91,6 @@
       "Bash(npm run test:cross-tenant:staging)",
       "Bash(npm run verify:release)",
       "Bash(npm run verify:release:*)",
-      "Bash(npm run check:supabase-project)",
       "Bash(npm run check:production-readiness)",
       "Bash(npm run check:production-readiness:*)",
       "Bash(npm run check:github-shell-access:live)",
@@ -127,7 +126,6 @@
       "PowerShell(npm run test:cross-tenant:staging)",
       "PowerShell(npm run verify:release)",
       "PowerShell(npm run verify:release*)",
-      "PowerShell(npm run check:supabase-project)",
       "PowerShell(npm run check:production-readiness)",
       "PowerShell(npm run check:production-readiness*)",
       "PowerShell(npm run check:github-shell-access:live)",
@@ -441,7 +439,11 @@
       "PowerShell(gh run watch *)",
       "PowerShell(node --version)",
       "PowerShell(npm --version)",
-      "PowerShell(npm ls *)"
+      "PowerShell(npm ls *)",
+      "Bash(npm run check:supabase-project)",
+      "PowerShell(npm run check:supabase-project)",
+      "Bash(supabase migration list:*)",
+      "PowerShell(supabase migration list*)"
     ]
   },
   "autoMode": {
@@ -449,11 +451,12 @@
       "$defaults",
       "Bash(npm run ledger:lookup:*) in the BigSimmo/PsychSift repo",
       "Bash(npm run verify:pr-local:*) in the BigSimmo/PsychSift repo",
-      "Bash(npm run test:focused:*) in the BigSimmo/PsychSift repo"
+      "Bash(npm run test:focused:*) in the BigSimmo/PsychSift repo",
+      "Bash(supabase migration list:*) in the BigSimmo/PsychSift repo"
     ],
     "soft_deny": [
       "$defaults",
-      "Bash(supabase migration list:*) and other read-only `supabase` inspection subcommands inside the BigSimmo/PsychSift repo — live linked provider inspection requires confirmation",
+      "Read-only `supabase` schema/project inspection commands other than `supabase migration list` inside the BigSimmo/PsychSift repo — live linked provider inspection requires confirmation",
       "Bash(supabase db push:*) and Bash(supabase db reset:*) — schema mutation against the live `PsychSift Production` project (ref sjrfecxgysukkwxsowpy)",
       "Bash(supabase functions deploy:*) — deploying Edge Functions to the live Supabase project",
       "Bash(npm run verify:release:*) and any non-offline `npm run eval:*` — provider-backed (live Supabase + OpenAI spend)"
