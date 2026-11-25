@@ -9,6 +9,6 @@
 docling==2.152.0
 # 4.0.4 lifts the Pillow <13.0.0 cap so Pillow 13.0.0 can resolve cleanly.
 docling-ibm-models>=4.0.4
-PyMuPDF==1.28.2
+PyMuPDF==2.1
 pillow>=13.0.0
 soupsieve>=4.0.0
