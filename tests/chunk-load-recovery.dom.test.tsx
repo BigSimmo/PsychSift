@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  BEFOREUNLOAD_SUPPRESS_MS,
   CHUNK_RELOAD_DEFER_MS,
   CHUNK_RELOAD_STORAGE_KEY,
   CHUNK_RELOAD_WINDOW_MS,
@@ -127,6 +128,27 @@ describe("chunk-load recovery", () => {
 
     // Returning via bfcache re-enables recovery.
     window.dispatchEvent(new Event("pageshow"));
+    dispatchRejection(new TypeError("Importing a module script failed."));
+    vi.advanceTimersByTime(CHUNK_RELOAD_DEFER_MS);
+    expect(reload).toHaveBeenCalledOnce();
+
+    cleanup();
+  });
+
+  it("restores recovery if a beforeunload navigation is cancelled without pagehide", () => {
+    vi.useFakeTimers();
+    const reload = vi.fn();
+    vi.stubGlobal("location", { ...window.location, reload });
+    const cleanup = installChunkLoadRecovery(window);
+
+    // An aborted chunk rejection followed by beforeunload cancels the reload.
+    dispatchRejection(new TypeError("Importing a module script failed."));
+    window.dispatchEvent(new Event("beforeunload"));
+    vi.advanceTimersByTime(CHUNK_RELOAD_DEFER_MS * 2);
+    expect(reload).not.toHaveBeenCalled();
+
+    // If the user cancels the unsaved-changes prompt, pagehide never fires; recovery resumes after the grace window.
+    vi.advanceTimersByTime(BEFOREUNLOAD_SUPPRESS_MS);
     dispatchRejection(new TypeError("Importing a module script failed."));
     vi.advanceTimersByTime(CHUNK_RELOAD_DEFER_MS);
     expect(reload).toHaveBeenCalledOnce();

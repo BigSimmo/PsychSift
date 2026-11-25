@@ -27,6 +27,11 @@ export const CHUNK_RELOAD_WINDOW_MS = 60_000;
  * navigation with a reload of the old page.
  */
 export const CHUNK_RELOAD_DEFER_MS = 250;
+/**
+ * If `beforeunload` is cancelled by an unsaved-changes prompt and `pagehide` never follows,
+ * restore chunk-load recovery once this grace period elapses.
+ */
+export const BEFOREUNLOAD_SUPPRESS_MS = 1_500;
 
 /**
  * True for a failure to download part of the app's own code: a dropped connection, or a
@@ -83,11 +88,14 @@ export function reloadOnceForChunkLoadError(environment?: Partial<ReloadEnvironm
  * click handler (the Supabase library behind every sign-in button) rejects into
  * `unhandledrejection`, and a failed `<script>` or stylesheet chunk fires a window `error`.
  * Cancels any pending reload if the document begins unloading so an aborted dynamic import during
- * navigation never reloads the previous URL over the destination. Returns the cleanup.
+ * navigation never reloads the previous URL over the destination, while allowing recovery to
+ * resume if a `beforeunload` prompt is cancelled and `pagehide` never fires. Returns the cleanup.
  */
 export function installChunkLoadRecovery(target: Window = window, reloadDelayMs = CHUNK_RELOAD_DEFER_MS): () => void {
   let unloading = false;
+  let beforeunloadPending = false;
   let pendingTimer: number | null = null;
+  let beforeunloadResetTimer: number | null = null;
 
   const cancelPendingReload = () => {
     if (pendingTimer !== null) {
@@ -96,15 +104,22 @@ export function installChunkLoadRecovery(target: Window = window, reloadDelayMs 
     }
   };
 
+  const clearBeforeunloadReset = () => {
+    if (beforeunloadResetTimer !== null) {
+      target.clearTimeout(beforeunloadResetTimer);
+      beforeunloadResetTimer = null;
+    }
+  };
+
   const scheduleReload = () => {
-    if (unloading || pendingTimer !== null) return;
+    if (unloading || beforeunloadPending || pendingTimer !== null) return;
     if (reloadDelayMs <= 0) {
       reloadOnceForChunkLoadError();
       return;
     }
     pendingTimer = target.setTimeout(() => {
       pendingTimer = null;
-      if (!unloading) reloadOnceForChunkLoadError();
+      if (!unloading && !beforeunloadPending) reloadOnceForChunkLoadError();
     }, reloadDelayMs);
   };
 
@@ -116,25 +131,39 @@ export function installChunkLoadRecovery(target: Window = window, reloadDelayMs 
       scheduleReload();
     }
   };
-  const onUnloadStart = () => {
-    unloading = true;
+  const onBeforeUnload = () => {
+    beforeunloadPending = true;
     cancelPendingReload();
+    clearBeforeunloadReset();
+    beforeunloadResetTimer = target.setTimeout(() => {
+      beforeunloadResetTimer = null;
+      beforeunloadPending = false;
+    }, BEFOREUNLOAD_SUPPRESS_MS);
+  };
+  const onPageHide = () => {
+    unloading = true;
+    beforeunloadPending = false;
+    cancelPendingReload();
+    clearBeforeunloadReset();
   };
   const onPageShow = () => {
     unloading = false;
+    beforeunloadPending = false;
+    clearBeforeunloadReset();
   };
 
   target.addEventListener("unhandledrejection", onRejection);
   target.addEventListener("error", onError);
-  target.addEventListener("beforeunload", onUnloadStart);
-  target.addEventListener("pagehide", onUnloadStart);
+  target.addEventListener("beforeunload", onBeforeUnload);
+  target.addEventListener("pagehide", onPageHide);
   target.addEventListener("pageshow", onPageShow);
   return () => {
     cancelPendingReload();
+    clearBeforeunloadReset();
     target.removeEventListener("unhandledrejection", onRejection);
     target.removeEventListener("error", onError);
-    target.removeEventListener("beforeunload", onUnloadStart);
-    target.removeEventListener("pagehide", onUnloadStart);
+    target.removeEventListener("beforeunload", onBeforeUnload);
+    target.removeEventListener("pagehide", onPageHide);
     target.removeEventListener("pageshow", onPageShow);
   };
 }
