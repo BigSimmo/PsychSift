@@ -316,8 +316,7 @@ function openAIModelCapabilities(model: string) {
   const isGpt6 = gptMajorVersion === 6;
   // GPT-6.2 Sol/Astra and GPT-6.1 Sol reject reasoning.effort=none (HTTP 400).
   // GPT-6.1 Terra and GPT-6 Luna still accept none.
-  const requiresReasoning =
-    /^gpt-6\.2(?:-|$)/.test(normalized) || /^gpt-6\.1-sol(?:-|$)/.test(normalized);
+  const requiresReasoning = /^gpt-6\.2(?:-|$)/.test(normalized) || /^gpt-6\.1-sol(?:-|$)/.test(normalized);
   const usesPromptCacheOptions = gptMajorVersion > 5 || (gptMajorVersion === 5 && gptMinorVersion >= 6);
   const isReasoningModel = isGpt5 || isGpt6 || /^o\d(?:[.-]|$)/.test(normalized);
 
