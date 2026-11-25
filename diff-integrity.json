@@ -5,6 +5,20 @@
   "perFileMinRemovedCases": 3,
   "approvedReductions": [
     {
+      "path": "tests/pr-batch-github.test.ts",
+      "before": 14,
+      "after": 0,
+      "reason": "Whole-file deletion: pr-batch-runner workflow and scripts/pr-batch-*.mjs were removed cleanly (unused/disabled unattended PR batch runner).",
+      "approvedOn": "2026-11-25"
+    },
+    {
+      "path": "tests/pr-batch-runner.test.ts",
+      "before": 33,
+      "after": 0,
+      "reason": "Whole-file deletion: pr-batch-runner workflow and scripts/pr-batch-*.mjs were removed cleanly (unused/disabled unattended PR batch runner).",
+      "approvedOn": "2026-11-25"
+    },
+    {
       "path": "tests/on-call-emergency-thumb-arc.dom.test.tsx",
       "before": 5,
       "after": 0,

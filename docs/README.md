@@ -184,7 +184,6 @@ Every remaining tracked document in this category (operations, plus the `rag-beh
 
 ### Also catalogued (2026-09-26)
 
-- [pr-batch-runner.md](pr-batch-runner.md) — Sequential PR batch runner — prepares and merges a fixed snapshot of pull requests one at a time
 - [production-readiness.md](production-readiness.md) — Production readiness and operational release requirements (points to the canonical checklist)
 - [site-content-sync-runbook.md](site-content-sync-runbook.md) — Site-content publication and synchronization runbook
 - [site-content-publication-handover.md](site-content-publication-handover.md) — Handover of the remaining site-content database work, written 2026-09-18
@@ -260,7 +259,7 @@ Every remaining tracked document in this category (process, plus the `agents/` r
 - [agents/cursor-cloud.md](agents/cursor-cloud.md) — Cursor Cloud Agents Are Prohibited — stub recording that Cursor cloud agents are prohibited.
 - [agents/dead-code-deletion.md](agents/dead-code-deletion.md) — Deleting Code You Believe Is Dead — "Nothing imports it" is necessary and nowhere near sufficient.
 - [agents/external-skill-precedence.md](agents/external-skill-precedence.md) — External Skill Precedence and Evidence — User-global skills and output-style plugins are installed outside this repo and know nothing about its contracts.
-- [agents/pull-request-workflow.md](agents/pull-request-workflow.md) — Pull Request Workflow — The one canonical pull-request rulebook for every AI tool: open, follow CI, review threads, records, merge authority, landed, branch sync, Run PR, Clear PRs, bundling.
+- [agents/pull-request-workflow.md](agents/pull-request-workflow.md) — Pull Request Workflow — The one canonical pull-request rulebook for every AI tool: open, follow CI, review threads, records, merge authority, landed, branch sync, Run PR, bundling.
 - [agents/repository-skills-and-issues.md](agents/repository-skills-and-issues.md) — Repository Skills and Outstanding-Work Memory — Select repo-local skills under `.agents/skills/` when their descriptions match the actual task and their use materially helps; read an explicitly named skill before acting.
 - [agents/shared-context-and-memory.md](agents/shared-context-and-memory.md) — Context, adaptive agents and memory across local and cloud sessions — Read this reference when a task needs continuity, delegation, memory or a change of execution host.
 - [agents/test-deletion-guard.md](agents/test-deletion-guard.md) — Deleting tests, or letting a tool delete them for you — On 2026-08-31 a commit on PR #2481 titled "test(ui):

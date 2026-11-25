@@ -45,7 +45,7 @@ Before any repository write or publication, read and follow [the remaining proje
 | Agents, when authorised: follow before dispatch; keep the user's main-chat model; report missing hosted routing instead of paying for API workarounds | `docs/agents/smart-agent-allocation.md` |
 | Gate selection, the verification tiers, gate receipts | `docs/agents/verification-gates.md` |
 | The whole PR lifecycle: open, CI, review threads, records, merge authority, sync, sweeps | `docs/agents/pull-request-workflow.md` |
-| Publication workflows, anti-conflict and CI-speed procedure, the `Run PR` and `Clear PRs` shortcuts | `docs/agents/native-startup/publication-workflows.md` |
+| Publication workflows, anti-conflict and CI-speed procedure, and the `Run PR` shortcut | `docs/agents/native-startup/publication-workflows.md` |
 | Process hardening; bare PR publication is not readiness work | `docs/agents/native-startup/process-hardening.md` |
 | Commit as you go: interruption, not carelessness, is what loses work here | `docs/agents/native-startup/commit-as-you-go.md` |
 | Search chrome behaviour (one composer) | `docs/agents/native-startup/search-chrome-behaviour.md` |
@@ -109,7 +109,7 @@ Record it in the repository in the same change, because chat history and each to
 
 ## Supabase merge caution
 
-Merging a `supabase/` PR deploys to production within seconds. `PR policy` blocks edits to applied, out-of-order, or future-dated migrations: **never edit a migration already on `main`** — ship a new timestamped migration. Clinical-content and RAG-ranking PRs keep clinical governance preflight, the `RAG impact:` line, canary-pair proof, and exclusion from `Clear PRs` (`clinical-review-required` / `rag-evidence-required` in `scripts/pr-batch-core.mjs`). Full rule: [Merge authority](docs/agents/pull-request-workflow.md#merge-authority).
+Merging a `supabase/` PR deploys to production within seconds. `PR policy` blocks edits to applied, out-of-order, or future-dated migrations: **never edit a migration already on `main`** — ship a new timestamped migration. Clinical-content and RAG-ranking PRs keep clinical governance preflight, the `RAG impact:` line, and canary-pair proof. Full rule: [Merge authority](docs/agents/pull-request-workflow.md#merge-authority).
 
 <!-- END:supabase-project-safety -->
 
@@ -170,7 +170,6 @@ surface, read `docs/rag-behaviour/` (README → behaviour-map → refuted-approa
 - Prefer local, static, mocked, or offline checks. If a recommended verification would touch a provider, report the command and ask before running it.
 - `npm run check:supabase-project`, live PR/CI tooling, answer-generation checks, ingestion checks against live services, and release gates that call providers are not automatic.
 - Exception: the `Run PR` shortcut (see "Run PR shortcut" in `docs/agents/native-startup/publication-workflows.md`) is standing user confirmation for the specific GitHub actions it enumerates, for the duration of that sweep only.
-- Exception: the `Clear PRs` shortcut (see "Clear PRs shortcut" in the same file) authorizes one finite sequential merge batch, including bounded repair API usage and the resulting Railway deployments, within its documented exclusions.
 
 <!-- END:api-confirmation-boundary -->
 

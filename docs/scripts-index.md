@@ -214,7 +214,6 @@ file (`capture.mjs` against a local server, then `build-calls.mjs`); see `script
 - `merge-branch-review-ledger.mjs` — historical: the `merge=ledger` union driver it implemented was
   removed from `.gitattributes` (ledger #133); the script is retained for reference only.
 - `sync-open-pr-branches.mjs` (`sync:pr-branches`), `sync-pr-branches.mjs` (compatibility entry point) — anti-churn sync for stale open PR heads;
-- `pr-batch-core.mjs`, `pr-batch-github.mjs`, `pr-batch-runner.mjs`, `pr-batch-worker.mjs`, `pr-batch-policy.mjs` — disabled-by-default sequential PR controller, durable GitHub state, credential-isolated repair integration, and workflow policy checks. Activation and recovery: [PR batch runner](pr-batch-runner.md).
   refuses a missing or bot `gh` identity. `sweep-merged-branches.mjs` — merged-branch sweep.
 - `reconciliation-preflight.mjs`, `reconciliation-evidence-pack.mjs` — broad chat/worktree
   reconciliation entry point and its evidence bundle; see `docs/reconciliation-playbook.md`.

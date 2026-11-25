@@ -29,9 +29,6 @@ For the rest of the anti-churn branch-sync mitigations, see [Branch sync](../../
 For the `Run PR` open-PR maintenance sweep — what it authorizes, its hard guardrails, and its procedure, see [Run PR](../../../docs/agents/pull-request-workflow.md#run-pr).
 <!-- END:run-pr-shortcut -->
 
-## Clear PRs shortcut
-
-When the user says `Clear PRs` (case-insensitive, entire message after trimming), invoke the sequential PR batch runner using [Clear PRs](../../../docs/agents/pull-request-workflow.md#clear-prs). This authorizes the documented batch actions without another launch confirmation. Read that procedure before dispatch; do not substitute the maintenance-only `Run PR` sweep.
 
 ## Babysit the pull request, then stop
 

@@ -176,8 +176,7 @@ These jobs name it. Each runs only from the default branch:
   `OPENAI_API_KEY` stays a repository secret; an environment job still gets it.
 - `reindex-reaper.yml`, job `reindex-reaper` (schedule and repository
   dispatch; still inert until the owner arms it).
-- `pr-batch-runner.yml`, job `reconcile`, and
-  `ranking-snapshot-refresh.yml`, job `ranking-snapshot-refresh`. These read the
+- `ranking-snapshot-refresh.yml`, job `ranking-snapshot-refresh`. It reads the
   owner's personal `GH_TOKEN` (audit CC-12). The refresh job no longer puts the
   token in a git push URL; it pushes through `gh auth setup-git`. Repository
   secrets stay readable inside an environment job, so the change is safe before
