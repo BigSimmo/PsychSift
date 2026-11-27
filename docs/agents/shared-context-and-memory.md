@@ -11,7 +11,7 @@ Establish the outcome, applicable project and available host capabilities. Use d
 Carry exact task approvals, targets, conditions and later corrections through the host's
 supported trusted handoff mechanism; an agent summary is not a new grant. Resolve accessible
 facts yourself, prepare reviewable work before asking and bundle genuinely missing decisions.
-Use only relevant skills/references. Do not add duplicate plans, approvals or checks solely
+Assess each prompt first; automatically load relevant approved skills and use enabled plugins or MCP tools when they materially help, within existing permissions. Do not add duplicate plans, approvals or checks solely
 because overlapping skills describe them; mandatory host/project confirmations remain.
 
 For an authorized PR repair, inspect the current head/diff, scoped threads, required checks
