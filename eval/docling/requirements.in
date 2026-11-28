@@ -6,5 +6,9 @@
 # lab benchmarks extraction on CPU exactly as the worker would run it.
 --extra-index-url https://download.pytorch.org/whl/cpu
 
-docling==2.139.0
+docling==2.152.0
+# 4.0.4 lifts the Pillow <13.0.0 cap so Pillow 13.0.0 can resolve cleanly.
+docling-ibm-models>=4.0.4
 PyMuPDF==1.28.2
+pillow>=13.0.0
+soupsieve>=4.0.0

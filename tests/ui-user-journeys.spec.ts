@@ -427,9 +427,22 @@ test.describe("Browser User Journeys (offline API fixtures)", () => {
     await expect(page.getByTestId("form-product-boundary")).toContainText("complete and lodge it on the official form");
     const officialForm = getFormRecord("transport-crisis-form");
     if (!officialForm?.source?.url) throw new Error("Form 4A fixture must include its official source URL.");
-    await expect(
-      page.getByTestId("form-attachment-row").getByRole("link", { name: "Official", exact: true }),
-    ).toHaveAttribute("href", officialForm.source.url);
+    const desktopOfficial = page
+      .getByTestId("form-attachment-row")
+      .getByRole("link", { name: "Official", exact: true });
+    if (await desktopOfficial.isVisible()) {
+      await expect(desktopOfficial).toHaveAttribute("href", officialForm.source.url);
+    } else {
+      await clickWhenSettled(page.getByTestId("form-actions-trigger"));
+      const actionsSheet = page.getByTestId("form-actions-sheet");
+      await expect(actionsSheet).toBeVisible();
+      await expect(actionsSheet.getByRole("link", { name: "Open official source", exact: true })).toHaveAttribute(
+        "href",
+        officialForm.source.url,
+      );
+      await clickWhenSettled(actionsSheet.getByRole("button", { name: "Close form actions", exact: true }));
+      await expect(actionsSheet).toBeHidden();
+    }
 
     const disclosureTrigger = formSection.getByRole("button", { name: "Does not authorise", exact: true });
     await expect(disclosureTrigger).toHaveAttribute("aria-expanded", "false");

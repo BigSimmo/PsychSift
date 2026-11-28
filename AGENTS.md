@@ -14,7 +14,7 @@
 9. Adapt the method to the task and actual host capacity. Use a few useful native subagents when the host permits, with bounded ownership and sufficient context/evidence. Prefer direct work for small tasks; keep required specialist/independent review and client allocation policy. No per-dispatch ceremony, recursive agent chain or extra spending authority follows.
 10. Reuse one task identity/checkpoint. A short uninterrupted task needs a compact completion update; substantial work records meaningful decisions, evidence, blockers and handoff. Do not mint records for each retry/turn or require no-op review commits. Preserve source identity and private information; report unsynced state.
 11. Apply memory according to the actual host in every coding-agent chat. Installed automatic clients reuse their commissioned plugin recall/capture without duplicate manual completion saves or one-fact limits. Cloud/dot and unverified automatic routes use authenticated scoped MCP: recall verified preferences plus verified project once at session start (at most two calls, three retained results); confirmed projectless work uses `codex_continuity`, unknown projects use preferences only. Save at most one eligible dated durable fact per finished task, or five after a long conversation, using the existing single route. Verify hints against source and filter before transmission; never send secrets, logs or bulk transcripts. Preserve existing Supermemory Pro/billing bounds, namespaces and no uncertain retries. Missing memory capability does not block ordinary work. See docs/agents/shared-context-and-memory.md for host-specific detail.
-12. Report the usable result, decisive evidence, remaining uncertainty and necessary next action in ordinary language. Stop at the stage requested. Load only relevant skills/references, reuse task authority and valid evidence, and do not add duplicate plans, approvals or checks solely for process. Mandatory host/project confirmations and gates still apply.
+12. Report the usable result, decisive evidence, remaining uncertainty and necessary next action in ordinary language. Stop at the stage requested. Assess each prompt first; automatically load approved skills and use enabled plugins or MCP tools when they materially help, within existing permissions, without adding duplicate plans, approvals or checks solely for process. Mandatory host/project confirmations and gates still apply.
 
 ## Standing decisions
 
@@ -42,24 +42,24 @@ Before any repository write or publication, read and follow [the remaining proje
 <!-- prettier-ignore -->
 | Area | Full text |
 | --- | --- |
-| Agents, when authorised: follow before dispatch; keep the user's main-chat model; report missing hosted routing instead of paying for API workarounds | [`docs/agents/smart-agent-allocation.md`](docs/agents/smart-agent-allocation.md) |
-| Gate selection, the verification tiers, gate receipts | [`docs/agents/verification-gates.md`](docs/agents/verification-gates.md) |
-| The whole PR lifecycle: open, CI, review threads, records, merge authority, sync, sweeps | [`docs/agents/pull-request-workflow.md`](docs/agents/pull-request-workflow.md) |
-| Publication workflows, anti-conflict and CI-speed procedure, the `Run PR` and `Clear PRs` shortcuts | [`docs/agents/native-startup/publication-workflows.md`](docs/agents/native-startup/publication-workflows.md) |
-| Process hardening; bare PR publication is not readiness work | [`docs/agents/native-startup/process-hardening.md`](docs/agents/native-startup/process-hardening.md) |
-| Commit as you go: interruption, not carelessness, is what loses work here | [`docs/agents/native-startup/commit-as-you-go.md`](docs/agents/native-startup/commit-as-you-go.md) |
-| Search chrome behaviour (one composer) | [`docs/agents/native-startup/search-chrome-behaviour.md`](docs/agents/native-startup/search-chrome-behaviour.md) |
-| External skill precedence, evidence and calibration | [`docs/agents/native-startup/external-skill-precedence.md`](docs/agents/native-startup/external-skill-precedence.md) |
-| Page and button wiring, the bundle budget | [`docs/agents/wiring-and-bundle-budget.md`](docs/agents/wiring-and-bundle-budget.md) |
-| Deleting code you believe is dead | [`docs/agents/dead-code-deletion.md`](docs/agents/dead-code-deletion.md) |
-| Deleting tests, or letting a tool delete them for you | [`docs/agents/test-deletion-guard.md`](docs/agents/test-deletion-guard.md) |
-| Claude Code hook scripts | [`docs/agents/claude-hook-scripts.md`](docs/agents/claude-hook-scripts.md) |
-| Repository skills, the `/issues` outstanding-work memory | [`docs/agents/repository-skills-and-issues.md`](docs/agents/repository-skills-and-issues.md) |
-| The `upload`, dependency and `bug-hunter` shortcuts | [`docs/agents/upload-shortcut.md`](docs/agents/upload-shortcut.md), [`docs/agents/codex-dependency-shortcut.md`](docs/agents/codex-dependency-shortcut.md), [`docs/agents/bug-hunter-shortcut.md`](docs/agents/bug-hunter-shortcut.md) |
-| Codex review throttling, routing and review records | [`docs/agents/codex-review-throttling.md`](docs/agents/codex-review-throttling.md), [`docs/codex-review-protocol.md`](docs/codex-review-protocol.md) |
-| Codex reasoning effort; Codex Desktop worktree setup | [`docs/agents/codex-reasoning-effort.md`](docs/agents/codex-reasoning-effort.md), [`docs/agents/codex-desktop-worktree-setup.md`](docs/agents/codex-desktop-worktree-setup.md) |
-| Which area owns a file (the first edit in an area also names it) | [`docs/organisation/README.md`](docs/organisation/README.md) |
-| Task receipts and Notion task status, only for receipt work | [`docs/task-receipts.md`](docs/task-receipts.md) |
+| Agents, when authorised: follow before dispatch; keep the user's main-chat model; report missing hosted routing instead of paying for API workarounds | `docs/agents/smart-agent-allocation.md` |
+| Gate selection, the verification tiers, gate receipts | `docs/agents/verification-gates.md` |
+| The whole PR lifecycle: open, CI, review threads, records, merge authority, sync, sweeps | `docs/agents/pull-request-workflow.md` |
+| Publication workflows, anti-conflict and CI-speed procedure, and the `Run PR` shortcut | `docs/agents/native-startup/publication-workflows.md` |
+| Process hardening; bare PR publication is not readiness work | `docs/agents/native-startup/process-hardening.md` |
+| Commit as you go: interruption, not carelessness, is what loses work here | `docs/agents/native-startup/commit-as-you-go.md` |
+| Search chrome behaviour (one composer) | `docs/agents/native-startup/search-chrome-behaviour.md` |
+| External skill precedence, evidence and calibration | `docs/agents/native-startup/external-skill-precedence.md` |
+| Page and button wiring, the bundle budget | `docs/agents/wiring-and-bundle-budget.md` |
+| Deleting code you believe is dead | `docs/agents/dead-code-deletion.md` |
+| Deleting tests, or letting a tool delete them for you | `docs/agents/test-deletion-guard.md` |
+| Claude Code hook scripts | `docs/agents/claude-hook-scripts.md` |
+| Repository skills, the `/issues` outstanding-work memory | `docs/agents/repository-skills-and-issues.md` |
+| The `upload`, dependency and `bug-hunter` shortcuts | `docs/agents/upload-shortcut.md`, `docs/agents/codex-dependency-shortcut.md`, `docs/agents/bug-hunter-shortcut.md` |
+| Codex review throttling, routing and review records | `docs/agents/codex-review-throttling.md`, `docs/codex-review-protocol.md` |
+| Codex reasoning effort; Codex Desktop worktree setup | `docs/agents/codex-reasoning-effort.md`, `docs/agents/codex-desktop-worktree-setup.md` |
+| Which area owns a file (the first edit in an area also names it) | `docs/organisation/README.md` |
+| Task receipts and Notion task status, only for receipt work | `docs/task-receipts.md` |
 
 <!-- END:rules-index -->
 
@@ -109,7 +109,7 @@ Record it in the repository in the same change, because chat history and each to
 
 ## Supabase merge caution
 
-Merging a `supabase/` PR deploys to production within seconds. `PR policy` blocks edits to applied, out-of-order, or future-dated migrations: **never edit a migration already on `main`** — ship a new timestamped migration. Clinical-content and RAG-ranking PRs keep clinical governance preflight, the `RAG impact:` line, canary-pair proof, and exclusion from `Clear PRs` (`clinical-review-required` / `rag-evidence-required` in `scripts/pr-batch-core.mjs`). Full rule: [Merge authority](docs/agents/pull-request-workflow.md#merge-authority).
+Merging a `supabase/` PR deploys to production within seconds. `PR policy` blocks edits to applied, out-of-order, or future-dated migrations: **never edit a migration already on `main`** — ship a new timestamped migration. Clinical-content and RAG-ranking PRs keep clinical governance preflight, the `RAG impact:` line, and canary-pair proof. Full rule: [Merge authority](docs/agents/pull-request-workflow.md#merge-authority).
 
 <!-- END:supabase-project-safety -->
 
@@ -170,7 +170,6 @@ surface, read `docs/rag-behaviour/` (README → behaviour-map → refuted-approa
 - Prefer local, static, mocked, or offline checks. If a recommended verification would touch a provider, report the command and ask before running it.
 - `npm run check:supabase-project`, live PR/CI tooling, answer-generation checks, ingestion checks against live services, and release gates that call providers are not automatic.
 - Exception: the `Run PR` shortcut (see "Run PR shortcut" in `docs/agents/native-startup/publication-workflows.md`) is standing user confirmation for the specific GitHub actions it enumerates, for the duration of that sweep only.
-- Exception: the `Clear PRs` shortcut (see "Clear PRs shortcut" in the same file) authorizes one finite sequential merge batch, including bounded repair API usage and the resulting Railway deployments, within its documented exclusions.
 
 <!-- END:api-confirmation-boundary -->
 

@@ -586,6 +586,75 @@ describe("trivy suppressions", () => {
     }
   });
 
+  it("stops applying an expired row and a row whose finding now has a fixed version", () => {
+    const vuln = (FixedVersion?: string) => ({
+      PkgName: "libssl3t64",
+      InstalledVersion: "3.5.9-1~deb13u1",
+      VulnerabilityID: "CVE-2026-124709",
+      Severity: "HIGH",
+      ...(FixedVersion === undefined ? {} : { FixedVersion }),
+    });
+    const reportOf = (vulnerability: ReturnType<typeof vuln>) => ({
+      SchemaVersion: 2,
+      Results: [{ Type: "debian", Vulnerabilities: [vulnerability] }],
+    });
+    const rows = [
+      {
+        image: "clinical-kb-app:ci",
+        package: "libssl3t64",
+        installed: "3.5.9-1~deb13u1",
+        cve: "CVE-2026-124709",
+        expires: "2026-12-25T00:00:00Z",
+      },
+    ];
+    const stillAccepted = applyTrivySuppressions(
+      reportOf(vuln("")),
+      "clinical-kb-app:ci",
+      rows,
+      new Date("2026-12-24T23:59:59Z"),
+    );
+    expect(stillAccepted.suppressed).toHaveLength(1);
+
+    const afterExpiry = applyTrivySuppressions(
+      reportOf(vuln("")),
+      "clinical-kb-app:ci",
+      rows,
+      new Date("2026-12-25T00:00:00Z"),
+    );
+    expect(afterExpiry.suppressed).toHaveLength(0);
+    expect(afterExpiry.report.Results[0].Vulnerabilities).toHaveLength(1);
+
+    const fixShipped = applyTrivySuppressions(
+      reportOf(vuln("3.5.9-1~deb13u2")),
+      "clinical-kb-app:ci",
+      rows,
+      new Date("2026-12-24T23:59:59Z"),
+    );
+    expect(fixShipped.suppressed).toHaveLength(0);
+    expect(fixShipped.report.Results[0].Vulnerabilities).toHaveLength(1);
+  });
+
+  it("rejects a suppression whose expires value is not a date", () => {
+    expect(() =>
+      parseTrivySuppressions(
+        JSON.stringify({
+          schema_version: 1,
+          suppressions: [
+            {
+              image: "a",
+              package: "b",
+              installed: "c",
+              cve: "CVE-1-1",
+              justification: "x",
+              remove_when: "y",
+              expires: "not-a-date",
+            },
+          ],
+        }),
+      ),
+    ).toThrow(/expires/);
+  });
+
   it("limits Pillow suppressions to the Docling-locked version", () => {
     const lock = readFileSync(fileURLToPath(new URL("../eval/docling/requirements.txt", import.meta.url)), "utf8");
     const locked = /^pillow==(\S+)/m.exec(lock)?.[1];

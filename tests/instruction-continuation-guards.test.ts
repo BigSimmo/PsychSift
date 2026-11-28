@@ -12,18 +12,12 @@ import {
   validateMigrationRoleEntries,
 } from "../scripts/check-hosted-migration-role.mjs";
 import { phoneChromePlan } from "../scripts/phone-chrome-plan.mjs";
-import { protectedPath } from "../scripts/pr-batch-core.mjs";
 
 // PROJECT-INSTRUCTIONS-CONTINUATION.md holds binding policy split out of AGENTS.md.
 // Every guard that covers AGENTS.md must cover the continuation the same way.
 const CONTINUATION = "PROJECT-INSTRUCTIONS-CONTINUATION.md";
 
 describe("instruction continuation guard parity", () => {
-  it("keeps a continuation-only PR out of unattended batch processing", () => {
-    expect(protectedPath("AGENTS.md")).toBe(true);
-    expect(protectedPath(CONTINUATION)).toBe(true);
-  });
-
   it("fails the hosted-role check when the continuation names the reserved role", () => {
     expect(isGuardedMigrationRolePath(CONTINUATION)).toBe(true);
     const failures = validateMigrationRoleEntries(

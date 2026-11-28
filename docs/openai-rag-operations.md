@@ -1,6 +1,6 @@
 # OpenAI and RAG operations
 
-_Updated 2026-10-27 — Sol 6.1 answer candidate and bounded comparison; Answer engine owns._
+_Updated 2026-11-25 — GPT-6.2 Sol is the generated-answer default; Answer engine owns._
 
 ## Supported architecture
 
@@ -21,8 +21,8 @@ answer prose is sent only in the validated `final` event. The browser deliberate
 
 | Workload                                                                 | Environment variable            | Documented rollout value                    |
 | ------------------------------------------------------------------------ | ------------------------------- | ------------------------------------------- |
-| Fast clinical synthesis                                                  | `OPENAI_FAST_ANSWER_MODEL`      | `gpt-6.1-sol` (low effort)                  |
-| Strong clinical synthesis                                                | `OPENAI_STRONG_ANSWER_MODEL`    | `gpt-6.1-sol` (medium effort)               |
+| Fast clinical synthesis                                                  | `OPENAI_FAST_ANSWER_MODEL`      | `gpt-6.2-sol` (low effort)                  |
+| Strong clinical synthesis                                                | `OPENAI_STRONG_ANSWER_MODEL`    | `gpt-6.2-sol` (medium effort)               |
 | Query classifier                                                         | `OPENAI_QUERY_CLASSIFIER_MODEL` | `gpt-5.6-luna`                              |
 | Document summaries                                                       | `OPENAI_SUMMARY_MODEL`          | `gpt-5.6-terra`                             |
 | Enrichment/index profiles                                                | `OPENAI_INDEXING_MODEL`         | `gpt-5.6-terra`                             |
@@ -31,14 +31,12 @@ answer prose is sent only in the validated `final` event. The browser deliberate
 | Optional semantic rerank (off unless `RAG_SEMANTIC_RERANK_ENABLED=true`) | `OPENAI_RERANK_MODEL`           | `gpt-5.6-luna` (code default)               |
 | Clinical Ask voice transcription                                         | `OPENAI_TRANSCRIPTION_MODEL`    | `gpt-4o-mini-transcribe` (code default)     |
 
-These are candidate configuration values, not evidence of hosted activation. Explicit deployment
-variables remain pinned until changed. Runtime answer defaults remain GPT-5.6 Terra (answer/fast)
-and GPT-5.6 Sol (strong); the three explicit Sol overrides are a separate activation step after
-the approved comparison. Merging this preparation must not activate Sol by itself.
-When workload-specific variables are omitted, classifier
-and summary code fallbacks stay on `gpt-5.6-terra`, and indexing stays on `gpt-5.6-sol`. The example
-configuration's explicit Luna classifier and Terra indexing overrides remain unchanged. Changing
-answer models must not migrate ingestion, embeddings or retrieval.
+Runtime answer defaults are GPT-6.2 Sol for `OPENAI_ANSWER_MODEL`, `OPENAI_FAST_ANSWER_MODEL`
+and `OPENAI_STRONG_ANSWER_MODEL`. If a deployment sets those names, the explicit value still
+wins; if they are unset, these code defaults are used. When workload-specific variables are
+omitted, classifier and summary code fallbacks stay on `gpt-5.6-terra`, and indexing stays on
+`gpt-5.6-sol`. The example configuration's explicit Luna classifier and Terra indexing overrides
+remain unchanged. Changing answer models must not migrate ingestion, embeddings or retrieval.
 The Edge indexing agent uses the same independent indexing fallback as the Node worker. This
 preserves existing structured summaries and generated labels when answer models change. Preserve
 the intended explicit `OPENAI_INDEXING_MODEL` in both runtime environments; deploy the matching
@@ -68,8 +66,9 @@ workflows. See the [Responses migration guide](https://developers.openai.com/api
 - When `OPENAI_SAFETY_IDENTIFIER_SECRET` is configured, authenticated Responses requests use an
   HMAC-SHA256 pseudonym. Raw owner IDs are never sent; anonymous/background requests omit it.
 - Usage telemetry includes input, output, total, cached-input, cache-write, and reasoning tokens.
-- Sol 6.1 requires reasoning: an explicit `none` becomes `low`. The existing answer routes pass
-  their own effort explicitly even though both now use the same model. No new router is added.
+- GPT-6.2 Sol/Astra and GPT-6.1 Sol require reasoning: an explicit `none` becomes `low`. The
+  existing answer routes already pass low (fast) and medium (strong) effort. `text.verbosity`
+  is sent for GPT-5 and GPT-6 models. No new router is added.
 
 ## Sol 6.1 comparison and activation
 
@@ -115,17 +114,21 @@ failures). Keep upstream embeddings/retrieval/reranking frozen and provider-free
 their experimental charge is zero, not a claim about production costs. Provider cache writes,
 regional premiums and any later hosted/evaluation charges need inclusion in the approved price basis.
 
-For activation, separately approve setting `OPENAI_ANSWER_MODEL`, `OPENAI_FAST_ANSWER_MODEL` and
-`OPENAI_STRONG_ANSWER_MODEL` to `gpt-6.1-sol`, while retaining non-answer workload overrides and
-`OPENAI_STORE_RESPONSES=false`. Retain low/medium effort and current context/output ceilings.
-Record previous environment settings and artifact first. Rollback restores those settings/artifact;
-model-aware cache identities prevent cross-model reuse. No re-embedding, re-indexing or migration
-is needed. Source defaults and a dry run do not establish account availability or answer quality.
+Generated answers were approved to move to GPT-6.2 Sol on 25 November 2026. Activation is the
+code default for `OPENAI_ANSWER_MODEL`, `OPENAI_FAST_ANSWER_MODEL` and `OPENAI_STRONG_ANSWER_MODEL`,
+while retaining non-answer workload overrides and `OPENAI_STORE_RESPONSES=false`. Retain low/medium
+effort and current context/output ceilings. If a deployment later pins those three names, record
+the previous values before changing them; rollback is restoring the previous default or override.
+Model-aware cache identities prevent cross-model reuse. No re-embedding, re-indexing or migration
+is needed.
 
-Model identity and compatibility: [Sol 6.1](https://developers.openai.com/api/docs/models/gpt-6.1-sol).
-Pricing basis: [OpenAI pricing](https://developers.openai.com/api/docs/pricing), checked 27 October 2026;
-refresh before a paid run. Standard short-context Sol 6.1 is US$2 input/US$10 output per million,
-versus Terra 5.6 US$2/US$12 and Sol 5.6 US$4/US$20; token rates alone do not prove answer savings.
+Model identity and compatibility: [Sol 6.2](https://developers.openai.com/api/docs/models/gpt-6.2-sol)
+and the [GPT-6.2 guide](https://developers.openai.com/api/docs/guides/latest-model).
+Pricing basis: [OpenAI pricing](https://developers.openai.com/api/docs/pricing), checked 25 November 2026.
+Standard short-context Sol 6.2 is US$2 input / US$0.10 cached / US$10 output per million,
+the same list rates as Sol 6.1, versus Terra 5.6 US$2 / US$0.20 / US$12 and Sol 5.6 US$4 / US$0.40
+/ US$20. OpenAI lists Sol 5.6 promotional pricing as available until 30 November 2026. Token rates
+alone do not prove answer savings, because reasoning-token use can differ at the same effort.
 
 ### Feasible exact-count smoke comparison
 

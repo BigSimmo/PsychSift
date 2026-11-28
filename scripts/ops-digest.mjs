@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * ops-digest — render a one-screen operational summary from the live deep health
- * probe, for the six-hourly ops-digest workflow.
+ * probe, for the twelve-hourly ops-digest workflow.
  *
  * The app already exposes rich signal at GET /api/health?deep=1 (SLO counters,
  * cache hit-rate, answer spend, degraded/truncation rates), but nothing surfaces
@@ -67,10 +67,10 @@ function argValue(name) {
 const hourlyWindowMs = 60 * 60 * 1000;
 const hourlyHistoryVersion = 1;
 // The paging rule counts consecutive digest samples, not consecutive UTC hours. Scheduled runs are
-// six hours apart, GitHub cron fires can arrive late or be dropped, and a manual run between them
+// twelve hours apart, GitHub cron fires can arrive late or be dropped, and a manual run between them
 // shares the same history file. Any positive gap up to two schedule intervals therefore joins the
 // sequence; samples further apart than that are not treated as the same persistent failure.
-const scheduleIntervalMs = 6 * hourlyWindowMs;
+const scheduleIntervalMs = 12 * hourlyWindowMs;
 const maxConsecutiveSampleGapMs = 2 * scheduleIntervalMs;
 
 function hourStart(instant) {
@@ -204,7 +204,7 @@ export function renderIngestionWorkerState(value) {
 
 /**
  * Digest lines for one answer-SLO snapshot. `alertWindow` marks the snapshot the alert rules
- * judge: the trailing six-hour `sloTrailing` block, or the hourly `slo` from an older build.
+ * judge: the trailing twelve-hour `sloTrailing` block, or the hourly `slo` from an older build.
  */
 function renderAnswerWindow(s, { alertWindow }) {
   // A current build marks a failed trailing query explicitly; it is unknown, not an empty window.
@@ -312,7 +312,7 @@ export function renderDigest(health, meta = {}) {
       lines.push(`**Checks:** ${checks}`);
     }
 
-    // Audit EVAL-02: alerts judge the trailing six-hour `sloTrailing` window when the probe
+    // Audit EVAL-02: alerts judge the trailing twelve-hour `sloTrailing` window when the probe
     // supplies it, so it is shown first and named as the alert window. The hourly block stays
     // because it feeds the hybrid-RPC identity history.
     const trailing = health.sloTrailing && typeof health.sloTrailing === "object" ? health.sloTrailing : null;

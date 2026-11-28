@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  BEFOREUNLOAD_SUPPRESS_MS,
+  CHUNK_RELOAD_DEFER_MS,
   CHUNK_RELOAD_STORAGE_KEY,
   CHUNK_RELOAD_WINDOW_MS,
   installChunkLoadRecovery,
@@ -20,8 +22,15 @@ function memoryStorage(initial: Record<string, string> = {}) {
   };
 }
 
+function dispatchRejection(reason: unknown) {
+  const event = new Event("unhandledrejection") as PromiseRejectionEvent;
+  Object.defineProperty(event, "reason", { value: reason });
+  window.dispatchEvent(event);
+}
+
 describe("chunk-load recovery", () => {
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
     window.sessionStorage.clear();
   });
@@ -78,23 +87,72 @@ describe("chunk-load recovery", () => {
   });
 
   it("reloads for a lazy import that fails inside a click handler, which no boundary sees", () => {
+    vi.useFakeTimers();
     const reload = vi.fn();
     vi.stubGlobal("location", { ...window.location, reload });
     const cleanup = installChunkLoadRecovery(window);
-    const reject = (reason: unknown) => {
-      const event = new Event("unhandledrejection") as PromiseRejectionEvent;
-      Object.defineProperty(event, "reason", { value: reason });
-      window.dispatchEvent(event);
-    };
-    reject(new Error("Network request failed"));
+    dispatchRejection(new Error("Network request failed"));
+    vi.advanceTimersByTime(CHUNK_RELOAD_DEFER_MS);
     expect(reload).not.toHaveBeenCalled();
-    reject(
+
+    dispatchRejection(
       new TypeError("Failed to fetch dynamically imported module: https://psychiatry.tools/_next/static/chunks/a.js"),
     );
+    expect(reload).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(CHUNK_RELOAD_DEFER_MS);
     expect(reload).toHaveBeenCalledOnce();
+
     cleanup();
     window.sessionStorage.clear();
-    reject(new TypeError("Importing a module script failed."));
+    dispatchRejection(new TypeError("Importing a module script failed."));
+    vi.advanceTimersByTime(CHUNK_RELOAD_DEFER_MS);
     expect(reload).toHaveBeenCalledOnce();
+  });
+
+  it("cancels a pending reload when navigation starts, and restores recovery on pageshow", () => {
+    vi.useFakeTimers();
+    const reload = vi.fn();
+    vi.stubGlobal("location", { ...window.location, reload });
+    const cleanup = installChunkLoadRecovery(window);
+
+    // An aborted dynamic import during page navigation rejects just before pagehide/beforeunload.
+    dispatchRejection(new TypeError("Importing a module script failed."));
+    window.dispatchEvent(new Event("pagehide"));
+    vi.advanceTimersByTime(CHUNK_RELOAD_DEFER_MS * 2);
+    expect(reload).not.toHaveBeenCalled();
+
+    // Additional rejections during teardown are ignored too.
+    dispatchRejection(new TypeError("error loading dynamically imported module"));
+    vi.advanceTimersByTime(CHUNK_RELOAD_DEFER_MS);
+    expect(reload).not.toHaveBeenCalled();
+
+    // Returning via bfcache re-enables recovery.
+    window.dispatchEvent(new Event("pageshow"));
+    dispatchRejection(new TypeError("Importing a module script failed."));
+    vi.advanceTimersByTime(CHUNK_RELOAD_DEFER_MS);
+    expect(reload).toHaveBeenCalledOnce();
+
+    cleanup();
+  });
+
+  it("restores recovery if a beforeunload navigation is cancelled without pagehide", () => {
+    vi.useFakeTimers();
+    const reload = vi.fn();
+    vi.stubGlobal("location", { ...window.location, reload });
+    const cleanup = installChunkLoadRecovery(window);
+
+    // An aborted chunk rejection followed by beforeunload cancels the reload.
+    dispatchRejection(new TypeError("Importing a module script failed."));
+    window.dispatchEvent(new Event("beforeunload"));
+    vi.advanceTimersByTime(CHUNK_RELOAD_DEFER_MS * 2);
+    expect(reload).not.toHaveBeenCalled();
+
+    // If the user cancels the unsaved-changes prompt, pagehide never fires; recovery resumes after the grace window.
+    vi.advanceTimersByTime(BEFOREUNLOAD_SUPPRESS_MS);
+    dispatchRejection(new TypeError("Importing a module script failed."));
+    vi.advanceTimersByTime(CHUNK_RELOAD_DEFER_MS);
+    expect(reload).toHaveBeenCalledOnce();
+
+    cleanup();
   });
 });

@@ -419,8 +419,8 @@ describe("classifier disagreements", () => {
     expect(calls).toBeLessThan(40);
   });
 
-  it("names seven classifiers and pairs only job-shaped classes", () => {
-    expect(CLASSIFIERS).toHaveLength(7);
+  it("names six classifiers and pairs only job-shaped classes", () => {
+    expect(CLASSIFIERS).toHaveLength(6);
     const pairings = CLASSIFIERS.flatMap((c) => c.pairings.map((p) => `${c.id}:${p.cls}=>${p.expect.join("|")}`));
     expect(pairings).toEqual(
       expect.arrayContaining([

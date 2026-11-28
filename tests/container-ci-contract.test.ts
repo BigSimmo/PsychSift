@@ -183,15 +183,17 @@ describe("container delivery contract", () => {
   it("keeps the minimal app runtime and pre-deploy shell pinned and inventoried", () => {
     const dockerfile = read("Dockerfile");
     expect(dockerfile).toContain(
-      "gcr.io/distroless/cc-debian13:nonroot@sha256:3ee00291cf386ec52a552e6a858d555debd74776eb4bfa53fa3df2cd6677515e",
+      "gcr.io/distroless/cc-debian13:nonroot@sha256:532c7a94f9e96ba9db75eb9388f4227751131c7cb0a411d1a8521af4096135de",
     );
     expect(dockerfile).toContain(
-      "node:24-trixie-slim@sha256:43b9ba1142b8dcf33fa8f922ca1be85714adc444e0586c7cf7726daaeabc1bea",
+      "node:24-trixie-slim@sha256:af02d57b57719b9657a45199a79264a9437940cd55b3c7b3fc99615654f124a0",
     );
     expect(dockerfile).toContain("COPY --from=app-node-runtime-base /usr/local/bin/node /usr/local/bin/node");
     expect(dockerfile).toContain("COPY --from=app-node-runtime-base /usr/bin/dash /bin/sh");
     expect(dockerfile).toContain("dpkg-query --status dash > /tmp/app-runtime-dash.status");
     expect(dockerfile).toContain("/var/lib/dpkg/status.d/dash");
+    expect(dockerfile).toContain("libzstd1=1.5.7+dfsg-1+deb13u1");
+    expect(dockerfile).toContain("/var/lib/dpkg/status.d/libzstd1");
     expect(dockerfile).toContain("--chown=1000:1000 /tmp/app-runtime-home/ /home/node/");
     expect(dockerfile).toContain("ENV HOME=/home/node");
     const health = JSON.parse(/HEALTHCHECK[^\n]*\\\n\s+CMD (\[.+\])/.exec(dockerfile)?.[1] ?? "null");

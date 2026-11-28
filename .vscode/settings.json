@@ -1,3 +1,8 @@
 {
-  "js/ts.experimental.useTsgo": false
+  "js/ts.experimental.useTsgo": false,
+  "workbench.colorCustomizations": {
+    "titleBar.activeBackground": "#7f1d1d",
+    "titleBar.activeForeground": "#ffffff",
+    "statusBar.background": "#991b1b"
+  }
 }

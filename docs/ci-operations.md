@@ -137,7 +137,7 @@ To safely adopt GitHub Merge Queue for `main`:
 
    `SAST` (`sast.yml`) and `Claude review` (`claude-review.yml`) have no `merge_group` trigger, so neither may be a required check while the queue is on.
 
-2. **Required Status Check Alignment:** Branch protection rules must require the consolidated gate (`PR required`) emitted during `merge_group` executions. The change scoping script (`scripts/ci-change-scope.mjs`) correctly handles `merge_group.base_sha` and `merge_group.head_sha`. The Clear PRs batch runner also insists on `Gitleaks` and `PR policy` being required, and both report on `merge_group`.
+2. **Required Status Check Alignment:** Branch protection rules must require the consolidated gate (`PR required`) emitted during `merge_group` executions. The change scoping script (`scripts/ci-change-scope.mjs`) correctly handles `merge_group.base_sha` and `merge_group.head_sha`.
    - **Lighthouse labels are invisible in the queue.** A `merge_group` run has no `github.event.pull_request`, so the `lighthouse-budget` and `skip-lighthouse-budget` labels read as absent there, in both the `lighthouse-budget` job's `if:` and the `PR required` aggregate. In practice: `skip-lighthouse-budget` is not an escape hatch in the queue. If the diff is in performance scope, Lighthouse runs on the queue entry and must pass. And the `lighthouse-budget` opt-in label does not force a queue run, so a PR measured only because of that label is not measured again in the queue.
    - **Which workflow file runs is not documented.** GitHub's docs do not say which version of a workflow file runs for a `merge_group` event. `pr-policy.yml` checks out `github.workflow_sha`, so its queue re-check loads `scripts/pr-policy.mjs` from whichever commit supplied that workflow file. If that is the queue entry's own commit, a PR that edits the policy script is re-checked in the queue by its own version. Its `pull_request_target` run was still judged by the trusted base version.
 3. **Train Concurrency and Batch Size Bounds:**
@@ -145,7 +145,7 @@ To safely adopt GitHub Merge Queue for `main`:
    - **Minimum Batch Size:** Set to 1 for latency-sensitive merges during regular development.
    - **Merge Method:** Pinned to Squash and Merge to align with the repository's single-parent commit history discipline.
 4. **Non-Reentrant Workflow Operations:** Workflows that perform branch-specific operations (e.g. branch cleanup or bot synchronization) must remain excluded from `merge_group` runs.
-5. **No branch syncing under the queue:** With the queue on, do not sync PR branches with `main` at all (AGENTS.md "Open PR branch sync"). The queue tests each PR against the latest `main`. The Clear PRs batch runner skips its one late `update-branch` sync when `main`'s ruleset has a merge queue, and refuses a sync outright in that case (`scripts/pr-batch-core.mjs`, `scripts/pr-batch-github.mjs`).
+5. **No branch syncing under the queue:** With the queue on, do not sync PR branches with `main` at all (AGENTS.md "Open PR branch sync"). The queue tests each PR against the latest `main`.
 
 ## CodeRabbit Review (#3F76JZ)
 

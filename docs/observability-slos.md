@@ -27,7 +27,7 @@ text.
 ## 2. SLOs and alert thresholds
 
 Manual target windows are stated below. Configured ops-digest answer alerts
-judge the trailing six-hour (360-minute) `sloTrailing` snapshot from
+judge the trailing twelve-hour (720-minute) `sloTrailing` snapshot from
 `answerSloSnapshot` (`src/lib/observability/answer-slo.ts`) through the
 secret-gated `/api/health?deep=1` probe. The checked-in digest runs every six
 hours (`15 */6 * * *`), so consecutive scheduled digests read back-to-back
@@ -44,7 +44,7 @@ not establish that any provider notification was delivered or acknowledged.
 
 | Signal                            | Configured code(s)                                 | Trigger in a valid trailing snapshot                                                                                                     |
 | --------------------------------- | -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| Missing/unassessed SLO telemetry  | `OPS_ANSWER_SLO_UNKNOWN`                           | Missing SLO block, a failed trailing query, nonpositive/invalid query count, or a window other than 360 minutes (60 for an older build)  |
+| Missing/unassessed SLO telemetry  | `OPS_ANSWER_SLO_UNKNOWN`                           | Missing SLO block, a failed trailing query, nonpositive/invalid query count, or a window other than 720 minutes (60 for an older build)  |
 | Hybrid-RPC error rate             | `OPS_HYBRID_RPC_ERROR_RATE_{UNKNOWN,WARNING,PAGE}` | Unknown for an invalid rate; warn above 0.5%; page only for the same RPC in three persisted consecutive digest samples                   |
 | Provider-generation degradation   | `OPS_DEGRADED_ANSWER_RATE_{UNKNOWN,WARNING,PAGE}`  | Unknown for an invalid rate; warn above 20%; page above 50%                                                                              |
 | Source-gap rate                   | `OPS_SOURCE_GAP_RATE_{WARNING,PAGE}`               | Warn `sourceGapRate > 0.15`; page `> 0.30`; at least 10 answered queries                                                                 |
@@ -70,7 +70,7 @@ the acknowledgement/recovery drill below is still externally unaccepted.
 
 ### Latency — answer p95 by route mode
 
-_Configured: `OPS_ANSWER_LATENCY_P95_{WARNING,PAGE}` for `fast`, `strong` and `extractive` on the trailing six-hour snapshot. The 1 h rows below are applied to that window. The `/api/search` row is manual SQL - not alerted._
+_Configured: `OPS_ANSWER_LATENCY_P95_{WARNING,PAGE}` for `fast`, `strong` and `extractive` on the trailing twelve-hour snapshot. The 1 h rows below are applied to that window. The `/api/search` row is manual SQL - not alerted._
 
 `latencyP95MsByRouteMode` is a nearest-rank p95 per route over the same bounded
 metadata sample (the newest 1,000 answers at most) and the same latency field as the
@@ -238,7 +238,7 @@ tolerance is near zero.
 select
   metadata->'hybrid_rpc_errors' as errors, count(*)
 from rag_queries
-where created_at > now() - interval '6 hours'
+where created_at > now() - interval '12 hours'
   and metadata ? 'hybrid_rpc_errors'
 group by 1 order by 2 desc;
 ```
@@ -522,9 +522,9 @@ thresholds map directly onto these fields.
 
 ## 5. Operational alert delivery and drill
 
-`scripts/lib/operational-alerts.mjs` is the provider-neutral policy owner for the §2 answer SLOs. The six-hourly (`15 */6 * * *`) digest emits stable alert codes with owner, escalation owner and this runbook, and publishes `alerting`, highest `severity`, and a compact JSON summary to the workflow. Missing SLO telemetry and a zero-query denominator are `unknown`, never healthy. Each authorised deep probe returns only safe internal hybrid-RPC identifiers and counts. The workflow stores the last three identity-only observations from the hourly `slo` snapshot in the GitHub Actions cache, then pages `OPS_HYBRID_RPC_ERROR_RATE_PAGE` only when the same RPC has a nonzero count in three consecutive digest samples. The digest runs every six hours at `15 */6 * * *` (`.github/workflows/ops-digest.yml`), so each scheduled run records one hourly identity sample and consecutive scheduled samples are six hours apart; the answer-rate rules, including the hybrid-RPC warning, read the trailing six-hour window instead. The condition counts consecutive samples, not consecutive UTC hours: scheduled and manual runs both count, and a sample joins the sequence when it lands no more than 12 hours (two schedule intervals) after the previous one, so a late or dropped GitHub cron fire does not break it. Three consecutive scheduled runs can therefore page on their own. A second run in the same UTC hour replaces that hour's observation rather than adding one. A missing, evicted, malformed, incomplete, or non-contiguous history is never promoted to a page. Degraded answers page independently and immediately only above the documented 50% threshold on the trailing six-hour window.
+`scripts/lib/operational-alerts.mjs` is the provider-neutral policy owner for the §2 answer SLOs. The twelve-hourly (`15 */12 * * *`) digest emits stable alert codes with owner, escalation owner and this runbook, and publishes `alerting`, highest `severity`, and a compact JSON summary to the workflow. Missing SLO telemetry and a zero-query denominator are `unknown`, never healthy. Each authorised deep probe returns only safe internal hybrid-RPC identifiers and counts. The workflow stores the last three identity-only observations from the hourly `slo` snapshot in the GitHub Actions cache, then pages `OPS_HYBRID_RPC_ERROR_RATE_PAGE` only when the same RPC has a nonzero count in three consecutive digest samples. The digest runs every twelve hours at `15 */12 * * *` (`.github/workflows/ops-digest.yml`), so each scheduled run records one hourly identity sample and consecutive scheduled samples are twelve hours apart; the answer-rate rules, including the hybrid-RPC warning, read the trailing twelve-hour window instead. The condition counts consecutive samples, not consecutive UTC hours: scheduled and manual runs both count, and a sample joins the sequence when it lands no more than 24 hours (two schedule intervals) after the previous one, so a late or dropped GitHub cron fire does not break it. Three consecutive scheduled runs can therefore page on their own. A second run in the same UTC hour replaces that hour's observation rather than adding one. A missing, evicted, malformed, incomplete, or non-contiguous history is never promoted to a page. Degraded answers page independently and immediately only above the documented 50% threshold on the trailing twelve-hour window.
 
-The digest's **Service readiness** headline describes the service checks, not answer quality. The digest shows the trailing six-hour **Answer quality** block first, as the window alerts judge, then the hourly **Answer SLO** block. A judged window (the trailing snapshot, or an older build's exactly 60-minute one) with zero answered queries displays **No answered queries observed—answer quality not assessed**, with rates shown as **N/A**; an empty hourly block beside a trailing one says only that the last 60 minutes had no answers. A trailing window with 1 to 9 answers says its rates are not judged. The underlying counters and machine-readable `OPS_ANSWER_SLO_UNKNOWN` alert remain unchanged: this is an unassessed window, not a measured degraded-answer incident or proof of healthy answers. A missing SLO block or invalid window must not be labelled as no answer activity. When the trailing query itself fails, the probe returns `sloTrailing: { windowMinutes: 360, unavailable: true }`, the digest shows **Snapshot query failed—answer quality not assessed** and raises `OPS_ANSWER_SLO_UNKNOWN`; it never falls back to judging the hourly snapshot alone.
+The digest's **Service readiness** headline describes the service checks, not answer quality. The digest shows the trailing twelve-hour **Answer quality** block first, as the window alerts judge, then the hourly **Answer SLO** block. A judged window (the trailing snapshot, or an older build's exactly 60-minute one) with zero answered queries displays **No answered queries observed—answer quality not assessed**, with rates shown as **N/A**; an empty hourly block beside a trailing one says only that the last 60 minutes had no answers. A trailing window with 1 to 9 answers says its rates are not judged. The underlying counters and machine-readable `OPS_ANSWER_SLO_UNKNOWN` alert remain unchanged: this is an unassessed window, not a measured degraded-answer incident or proof of healthy answers. A missing SLO block or invalid window must not be labelled as no answer activity. When the trailing query itself fails, the probe returns `sloTrailing: { windowMinutes: 720, unavailable: true }`, the digest shows **Snapshot query failed—answer quality not assessed** and raises `OPS_ANSWER_SLO_UNKNOWN`; it never falls back to judging the hourly snapshot alone.
 
 Delivery remains configurable without changing policy. The workflow (`.github/workflows/ops-digest.yml`) keeps the rolling GitHub issue body as the latest snapshot. **The owner replaced the separate phone alerts with one daily health summary on 2026-10-21** ([decision](decisions/2026-10-21-one-daily-health-summary.md)). `.github/workflows/daily-health-summary.yml` runs at 23:00 UTC (7 am Perth) every day, reads the latest run and labelled issue of each monitor (ops digest, live domain monitor, Sentry alerts, staging tenancy, live drift, ingestion autopilot, CI on main and the eval canary), and posts one summary comment that @mentions the repository owner, which the GitHub mobile app pushes to the owner's phone. The owner chose phone notification as the production alert channel on 2026-10-19, because email is easy to miss during clinic. A monitor that has not run inside its expected window shows as red, so a silent monitor never reads as healthy. Only two alerts still push straight away. The ops digest posts its attention comment, assigns the issue to the owner and @mentions the owner only on a scheduled run at `page` severity, or on a manual `workflow_dispatch` run with the `publish_alert_comment` boolean; warnings and a degraded, unreachable or unknown service wait for the daily summary. The live domain monitor @mentions the owner when it opens a new failure issue, because the site is down; its repeat comments while the site stays down do not. Every other alert workflow keeps its labelled issue for detail but no longer mentions or assigns anyone. `tests/alert-owner-mention.test.ts` pins this. Assignment is best-effort and a refused assignment never stops the comment. An operator may also route the same summary to a host-native or incident channel. Repository wiring is not proof that provider delivery works: phone delivery is unproven until the owner has received one push from the summary issue.
 
@@ -532,30 +532,30 @@ The rolling issue is the provider-neutral queue. For every alert, the on-duty op
 
 ### `OPS_ANSWER_SLO_UNKNOWN`
 
-- **Diagnose:** open the workflow run and deep-probe digest; distinguish a missing `sloTrailing`/`slo` block, zero answered-query denominator, and a window of the wrong length (360 minutes for `sloTrailing`, 60 for an older build's `slo`). Check probe authentication and the answer-metrics query before interpreting any rate.
+- **Diagnose:** open the workflow run and deep-probe digest; distinguish a missing `sloTrailing`/`slo` block, zero answered-query denominator, and a window of the wrong length (720 minutes for `sloTrailing`, 60 for an older build's `slo`). Check probe authentication and the answer-metrics query before interpreting any rate.
 - **Acknowledge:** Platform operations records the failing field or zero-query window and whether answers are still being served. Confirm expected inactivity separately; zero recorded queries alone cannot rule out missing telemetry.
-- **Recover:** require a subsequent trailing six-hour snapshot with a positive denominator and valid rates in `0..1`.
+- **Recover:** require a subsequent trailing twelve-hour snapshot with a positive denominator and valid rates in `0..1`.
 - **Escalate:** Clinical safety owner immediately if answers are being served without measurable SLO telemetry; otherwise after 30 minutes without a valid snapshot unless expected inactivity has been confirmed and acknowledged. During confirmed inactivity, keep quality unknown and continue monitoring; do not mark quality healthy or the alert recovered until answered-query evidence meets the recovery condition.
 
 ### `OPS_HYBRID_RPC_ERROR_RATE_UNKNOWN`
 
 - **Diagnose:** confirm `hybridRpcErrorRate` is present, finite, in `0..1`, and derived from the same positive trailing-window denominator shown in the digest.
 - **Acknowledge:** Platform operations records the malformed/missing field and the health run reference.
-- **Recover:** require one subsequent valid trailing six-hour snapshot; do not substitute an ad-hoc lifetime aggregate.
+- **Recover:** require one subsequent valid trailing twelve-hour snapshot; do not substitute an ad-hoc lifetime aggregate.
 - **Escalate:** Clinical safety owner after 30 minutes or immediately if hybrid retrieval failures are visible to users.
 
 ### `OPS_DEGRADED_ANSWER_RATE_UNKNOWN`
 
 - **Diagnose:** confirm `degradedRate` is present, finite, in `0..1`, and derived from the displayed positive trailing-window denominator; inspect source-only/provider-timeout counters without reading query text.
 - **Acknowledge:** AI platform owner records the missing/malformed field and route-level impact.
-- **Recover:** require one subsequent valid trailing six-hour snapshot.
+- **Recover:** require one subsequent valid trailing twelve-hour snapshot.
 - **Escalate:** Clinical safety owner after 30 minutes or immediately if answer degradation cannot be bounded.
 
 ### `OPS_HYBRID_RPC_ERROR_RATE_WARNING`
 
 - **Diagnose:** inspect the trailing-window hybrid-RPC error count, database function availability, latency, and recent deployment/migration events. Do not infer a sustained condition from a single six-hourly (`15 */6 * * *`) snapshot.
 - **Acknowledge:** Platform operations records the measured rate and start of the affected trailing snapshot window.
-- **Recover:** require the next valid trailing six-hour snapshot (from a manual dispatch or the next six-hourly digest) at or below `0.5%`.
+- **Recover:** require the next valid trailing twelve-hour snapshot (from a manual dispatch or the next six-hourly digest) at or below `0.5%`.
 - **Escalate:** Clinical safety owner if user-visible retrieval is affected or the warning persists into a second trailing snapshot window.
 
 ### `OPS_HYBRID_RPC_ERROR_RATE_PAGE`
@@ -569,63 +569,63 @@ The rolling issue is the provider-neutral queue. For every alert, the on-duty op
 
 - **Diagnose:** inspect source-only, timeout, and provider fallback counts for the same trailing six-hour window and identify the dominant route without accessing clinical query text.
 - **Acknowledge:** AI platform owner records the measured rate and dominant safe fallback.
-- **Recover:** require the next valid trailing six-hour snapshot at or below `20%`.
+- **Recover:** require the next valid trailing twelve-hour snapshot at or below `20%`.
 - **Escalate:** Clinical safety owner if the warning persists into a second window or affects a high-risk clinical route.
 
 ### `OPS_DEGRADED_ANSWER_RATE_PAGE`
 
 - **Diagnose:** confirm the rate is above `50%` for the positive trailing-window denominator, then identify provider timeout, retrieval, or source-only fallback as the dominant path.
 - **Acknowledge:** AI platform owner opens the configured incident route and records the affected route and safe fallback state.
-- **Recover:** require a subsequent valid trailing six-hour snapshot at or below `20%` plus confirmation that fallback messaging remains intact.
+- **Recover:** require a subsequent valid trailing twelve-hour snapshot at or below `20%` plus confirmation that fallback messaging remains intact.
 - **Escalate:** Clinical safety owner immediately; involve the product owner if service restriction or rollback is considered.
 
 ### `OPS_SOURCE_GAP_RATE_WARNING`
 
-- **Diagnose:** verify a valid trailing six-hour snapshot with at least 10 answers and `sourceGapRate > 0.15`. Inspect content-free fallback-code counts, corpus coverage and recent retrieval/enrichment changes; this whole-window rate is distinct from the manual 24-hour target.
+- **Diagnose:** verify a valid trailing twelve-hour snapshot with at least 10 answers and `sourceGapRate > 0.15`. Inspect content-free fallback-code counts, corpus coverage and recent retrieval/enrichment changes; this whole-window rate is distinct from the manual 24-hour target.
 - **Acknowledge:** Clinical evaluation owner records the rate, answer count and window, and whether the query mix changed.
-- **Recover:** require a subsequent valid trailing six-hour snapshot with at least 10 answers and `sourceGapRate <= 0.15`; a missing rate or low-volume window is unassessed, not recovery.
+- **Recover:** require a subsequent valid trailing twelve-hour snapshot with at least 10 answers and `sourceGapRate <= 0.15`; a missing rate or low-volume window is unassessed, not recovery.
 - **Escalate:** Clinical safety owner if high-risk clinical coverage is affected or the warning persists into a second measured window. Ranking/corpus changes retain their normal approval and canary safeguards.
 
 ### `OPS_SOURCE_GAP_RATE_PAGE`
 
-- **Diagnose:** verify a valid trailing six-hour snapshot with at least 10 answers and `sourceGapRate > 0.30`; this step change suggests a retrieval, enrichment or corpus regression rather than user behaviour. Inspect the same content-free fallback-code counts and recent changes; do not read query text.
+- **Diagnose:** verify a valid trailing twelve-hour snapshot with at least 10 answers and `sourceGapRate > 0.30`; this step change suggests a retrieval, enrichment or corpus regression rather than user behaviour. Inspect the same content-free fallback-code counts and recent changes; do not read query text.
 - **Acknowledge:** Clinical evaluation owner opens the configured incident route and records the rate, answer count, window and suspected change.
-- **Recover:** require a subsequent valid trailing six-hour snapshot with at least 10 answers and `sourceGapRate <= 0.15`; a low-volume window is unassessed, not recovery.
+- **Recover:** require a subsequent valid trailing twelve-hour snapshot with at least 10 answers and `sourceGapRate <= 0.15`; a low-volume window is unassessed, not recovery.
 - **Escalate:** Clinical safety owner immediately. Ranking/corpus changes retain their normal approval and canary safeguards.
 
 ### `OPS_UNSUPPORTED_ANSWER_RATE_WARNING`
 
-- **Diagnose:** verify at least 10 answered queries in a valid trailing six-hour snapshot and `unsupportedRate > 0.15`. Compare the documented unsupported metadata filters and corpus/query mix; unsupported questions can be legitimate, and this is not the manual routing-mode SQL counter.
+- **Diagnose:** verify at least 10 answered queries in a valid trailing twelve-hour snapshot and `unsupportedRate > 0.15`. Compare the documented unsupported metadata filters and corpus/query mix; unsupported questions can be legitimate, and this is not the manual routing-mode SQL counter.
 - **Acknowledge:** AI platform owner records the rate, answer count, window and whether unsupported outcomes are expected for the current corpus.
-- **Recover:** require a subsequent valid trailing six-hour snapshot with at least 10 answers and `unsupportedRate <= 0.15`; missing/invalid rates or fewer answers do not establish recovery.
+- **Recover:** require a subsequent valid trailing twelve-hour snapshot with at least 10 answers and `unsupportedRate <= 0.15`; missing/invalid rates or fewer answers do not establish recovery.
 - **Escalate:** Clinical safety owner if previously supported clinical questions lose support or the warning persists into a second measured window.
 
 ### `OPS_UNSUPPORTED_ANSWER_RATE_PAGE`
 
-- **Diagnose:** verify at least 10 answered queries in a valid trailing six-hour snapshot and `unsupportedRate > 0.25`. Rule out a burst of out-of-corpus questions and the nondeterministic unsupported short-circuit (finding #11), then check grounding and retrieval health.
+- **Diagnose:** verify at least 10 answered queries in a valid trailing twelve-hour snapshot and `unsupportedRate > 0.25`. Rule out a burst of out-of-corpus questions and the nondeterministic unsupported short-circuit (finding #11), then check grounding and retrieval health.
 - **Acknowledge:** AI platform owner opens the configured incident route and records the rate, answer count, window and whether the short-circuit was checked.
-- **Recover:** require a subsequent valid trailing six-hour snapshot with at least 10 answers and `unsupportedRate <= 0.15`.
+- **Recover:** require a subsequent valid trailing twelve-hour snapshot with at least 10 answers and `unsupportedRate <= 0.15`.
 - **Escalate:** Clinical safety owner immediately.
 
 ### `OPS_ANSWER_LATENCY_BUDGET_WARNING`
 
-- **Diagnose:** verify at least 10 answers in a valid trailing six-hour snapshot and `latencyBudgetBreachRate > 0.15`. Inspect the 1,000-row sampling limit, timing-field coverage and route budgets (fast/default 10 s, strong 25 s, extractive/source-only 6 s). Separate sampled breach counts from production p95 and use an authorised timing probe to identify the slow stage when needed.
+- **Diagnose:** verify at least 10 answers in a valid trailing twelve-hour snapshot and `latencyBudgetBreachRate > 0.15`. Inspect the 1,000-row sampling limit, timing-field coverage and route budgets (fast/default 10 s, strong 25 s, extractive/source-only 6 s). Separate sampled breach counts from production p95 and use an authorised timing probe to identify the slow stage when needed.
 - **Acknowledge:** Platform operations records the breach rate, whole-window answer count, sampled-row coverage and affected route mix; never label the warning a p95 incident without percentile evidence.
-- **Recover:** require a subsequent valid trailing six-hour snapshot with at least 10 answers and `latencyBudgetBreachRate <= 0.15`, plus confirmation that timing coverage remains measurable. A sparse/invalid snapshot is not recovery.
+- **Recover:** require a subsequent valid trailing twelve-hour snapshot with at least 10 answers and `latencyBudgetBreachRate <= 0.15`, plus confirmation that timing coverage remains measurable. A sparse/invalid snapshot is not recovery.
 - **Escalate:** AI platform owner if the warning persists into a second measured window or provider timeouts affect users; provider or model configuration changes remain approval-gated.
 
 ### `OPS_ANSWER_LATENCY_P95_WARNING`
 
 - **Diagnose:** read which routes the alert names and their sample counts; compare each route's p95 with its warning line (fast 10 s, strong 25 s, extractive 6 s). Check provider latency, recent deploys and whether the sample was capped. Use an authorised timing probe to split one request by stage when needed.
 - **Acknowledge:** Platform operations records the route, p95, sample count, window and cap flag.
-- **Recover:** require a subsequent valid trailing six-hour snapshot with that route's p95 at or under its warning line and at least 20 sampled answers; fewer samples are unassessed, not recovery.
+- **Recover:** require a subsequent valid trailing twelve-hour snapshot with that route's p95 at or under its warning line and at least 20 sampled answers; fewer samples are unassessed, not recovery.
 - **Escalate:** AI platform owner if the warning persists into a second measured window or `strong` answers approach the 30 s provider timeout; provider or model configuration changes remain approval-gated.
 
 ### `OPS_ANSWER_LATENCY_P95_PAGE`
 
 - **Diagnose:** confirm the named route's p95 is over its page line (fast 20 s, strong 35 s, extractive 12 s) with at least 20 sampled answers. A `strong` p95 near 35 s means answers are riding the timeout and silently falling back; check the degraded-answer rate in the same digest.
 - **Acknowledge:** Platform operations opens the configured incident route and records the route, p95, sample count and cap flag.
-- **Recover:** require a subsequent valid trailing six-hour snapshot with the route back at or under its warning line and at least 20 sampled answers.
+- **Recover:** require a subsequent valid trailing twelve-hour snapshot with the route back at or under its warning line and at least 20 sampled answers.
 - **Escalate:** AI platform owner immediately.
 
 ### `OPS_PROJECTED_DAILY_SPEND_WARNING`
@@ -696,7 +696,7 @@ alert code: it does not change the digest's alert severity.
 
 - Exercise and record the acknowledgement/recovery drill through the configured provider channel.
 - The storage cleanup backlog is reported but drained only by hand; there is no scheduled drain and no alert code for it.
-- The 7-day quality SLOs, the unsupported-rate doubling rule and `/api/search` latency are still hand-run SQL; the digest alerts only on its trailing six-hour window.
+- The 7-day quality SLOs, the unsupported-rate doubling rule and `/api/search` latency are still hand-run SQL; the digest alerts only on its trailing twelve-hour window.
 - Retain and periodically exercise the GitHub Actions cache path for the hybrid escalation (three consecutive persisted digest samples, see §5). Cache loss intentionally downgrades the condition to warning or unknown rather than inferring history.
 - **Host-level metrics** (CPU, memory, restart count) and log drains once the
   container host exists (`docs/deployment-architecture.md` §2).

@@ -147,20 +147,20 @@ function validRate(value) {
 }
 
 /**
- * The answer-quality window: the trailing six hours the deep probe reports as `sloTrailing`
+ * The answer-quality window: the trailing twelve hours the deep probe reports as `sloTrailing`
  * (`ANSWER_SLO_TRAILING_WINDOW_MINUTES` in src/lib/health-response.ts, pinned equal by
  * tests/health-response-deep-probe.test.ts).
  *
- * Audit EVAL-02 (2026-10-20): the digest runs every six hours (at minute 15) but judged
- * only the last 60 minutes, so answers in the other five hours of each interval were never
- * examined by any rule. Six hours is exactly one schedule interval, so consecutive scheduled
+ * Audit EVAL-02 (2026-10-20, cadence adjusted 2026-11-25): the digest runs every twelve hours
+ * (at minute 15 UTC) rather than judging only the last 60 minutes, so answers in the rest of
+ * each interval are still examined. Twelve hours is exactly one schedule interval, so consecutive scheduled
  * digests read back-to-back windows: every answer is judged once, and one bad answer is not
  * re-alerted by four digests in a row as a 24-hour window would be. The hourly `slo` snapshot is
  * still read for the hybrid-RPC identity history (scripts/ops-digest.mjs), whose three-sample
  * paging contract is unchanged. A deep probe without `sloTrailing` (an older build) is judged on
  * its hourly `slo` exactly as before.
  */
-export const ANSWER_QUALITY_WINDOW_MINUTES = 360;
+export const ANSWER_QUALITY_WINDOW_MINUTES = 720;
 const HOURLY_WINDOW_MINUTES = 60;
 
 /**
@@ -171,7 +171,7 @@ const HOURLY_WINDOW_MINUTES = 60;
  * `minimumQueries` is 10 (it was 20 in one hour; audit EVAL-02). PsychSift is a single-clinician
  * pilot: the 20 Oct 2026 digest saw zero answers in its hour, and 20 answers in any one hour
  * effectively never happens, so the source-gap, unsupported and latency-budget rules never ran.
- * Ten answers over six hours is the smallest count at which the existing lines still need more
+ * Ten answers over twelve hours is the smallest count at which the existing lines still need more
  * than one bad answer to fire: with 10 answers a warning (> 15%) needs 2 source gaps or
  * unsupported answers, a source-gap page (> 30%) needs 4 and an unsupported page (> 25%) needs 3.
  * Below 10, a single answer would cross 15% (1 of 6 is 16.7%) and mention the owner for one
@@ -252,14 +252,14 @@ function latencyP95Alerts(byMode, sampleTruncated, windowMinutes) {
 }
 
 /**
- * Evaluate one provider-neutral operations snapshot. The six-hourly digest supplies
+ * Evaluate one provider-neutral operations snapshot. The twelve-hourly digest supplies
  * identity-only history when three consecutive persisted digest samples (scheduled
  * or manual, whatever their spacing within the joining limit in ops-digest.mjs)
  * observed the same failed RPC. Missing or incomplete history never upgrades a warning.
  */
 export function evaluateOperationalAlerts(health, context = {}) {
   const alerts = [];
-  // Every answer-rate rule reads the trailing six-hour window when the probe supplies it (audit
+  // Every answer-rate rule reads the trailing twelve-hour window when the probe supplies it (audit
   // EVAL-02); an older build without `sloTrailing` is judged on its hourly snapshot as before.
   const trailing = health?.sloTrailing && typeof health.sloTrailing === "object" ? health.sloTrailing : null;
   const slo = trailing ?? health?.slo;

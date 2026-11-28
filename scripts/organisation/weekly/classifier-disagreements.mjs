@@ -3,15 +3,14 @@
 // the organisation map. Report only. The classifiers keep deciding what they always decided; the
 // map never overrides them and this never edits them (owner decision: "Report").
 //
-// The seven path classifiers that existed before the map, each of which sorts files by path:
+// The six path classifiers that existed before the map, each of which sorts files by path:
 //   1. PR policy (scripts/pr-policy.mjs): ranking-protected, clinical-risk, migration,
 //      operational-risk and UI files.
 //   2. CI change scope (scripts/ci-change-scope.mjs): which CI lanes a change runs.
 //   3. Flight-plan risk classes (scripts/productivity-core.mjs `classifyRisks`).
-//   4. Clear PRs protected paths (scripts/pr-batch-core.mjs `protectedPath`).
-//   5. Browser test planner (scripts/browser-test-plan.mjs).
-//   6. CODEOWNERS (.github/CODEOWNERS).
-//   7. Site-content owners (src/lib/site-content/site-content-change-owners.json).
+//   4. Browser test planner (scripts/browser-test-plan.mjs).
+//   5. CODEOWNERS (.github/CODEOWNERS).
+//   6. Site-content owners (src/lib/site-content/site-content-change-owners.json).
 // A pairing "class => areas" is compared only where it means something about a file's job. The
 // others sort by risk, protection or which checks to run, which differs from the map by design.
 //
@@ -192,12 +191,6 @@ export const CLASSIFIERS = [
       const flags = new Map(this.pairings.map((p) => [p.cls, p.flag]));
       return filterPerClass(candidates, (file, cls) => Boolean(classifyRisks([file])[flags.get(cls)]));
     },
-  },
-  {
-    id: "clear-prs",
-    name: "Clear PRs protected paths",
-    pairings: [],
-    notCompared: "it sorts by what an unattended merge batch may touch, not by job",
   },
   {
     id: "browser-test-plan",
