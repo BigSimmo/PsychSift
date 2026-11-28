@@ -3,10 +3,10 @@
 # - Python 3.11 production: `npm run generate:worker-python-lock`
 # - Python 3.12 Cloud: `npm run generate:worker-python-cloud-lock`
 
-PyMuPDF>=1.28.2
+PyMuPDF>=2.1
 pillow>=13.0.0
 pytesseract>=0.3.10
 medspacy>=1.1.0
 nltk>=3.10.4
 # Do not inherit Debian venv's vulnerable setuptools bootstrap version.
-setuptools>=84.1.0
+setuptools>=84.2.1
