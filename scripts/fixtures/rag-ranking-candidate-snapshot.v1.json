@@ -2,8 +2,8 @@
   "schema": "rag-ranking-candidate-snapshot",
   "version": 1,
   "sourceCaseCount": 36,
-  "generatedAt": "2026-11-08T18:14:12.733Z",
-  "sourceRunId": "42508375776",
+  "generatedAt": "2026-11-22T18:13:59.216Z",
+  "sourceRunId": "45053274817",
   "sanitization": {
     "candidateIdentity": "sha256",
     "excludes": [
@@ -118,7 +118,7 @@
             "titleSectionRelevance": 0.155,
             "metadataRelevance": 0.22,
             "clinicalEvidence": 0.38,
-            "fixedAdjustment": -0.0085
+            "fixedAdjustment": -0.0087
           }
         },
         {
@@ -148,7 +148,7 @@
             "titleSectionRelevance": 0.185,
             "metadataRelevance": 0,
             "clinicalEvidence": 0.28,
-            "fixedAdjustment": -0.0185
+            "fixedAdjustment": -0.0187
           }
         },
         {
@@ -178,7 +178,7 @@
             "titleSectionRelevance": 0.125,
             "metadataRelevance": 0.22,
             "clinicalEvidence": 0.38,
-            "fixedAdjustment": -0.0085
+            "fixedAdjustment": -0.0087
           }
         },
         {
@@ -229,7 +229,7 @@
             "titleSectionRelevance": 0.125,
             "metadataRelevance": 0.053,
             "clinicalEvidence": 0.79,
-            "fixedAdjustment": -0.001
+            "fixedAdjustment": -0.0011
           }
         },
         {
@@ -304,7 +304,7 @@
             "titleSectionRelevance": 0.125,
             "metadataRelevance": 0.053,
             "clinicalEvidence": 0.79,
-            "fixedAdjustment": -0.001
+            "fixedAdjustment": -0.0011
           }
         },
         {
@@ -734,7 +734,7 @@
             "titleSectionRelevance": 0.125,
             "metadataRelevance": 0,
             "clinicalEvidence": 0,
-            "fixedAdjustment": -0.2347
+            "fixedAdjustment": -0.2349
           }
         },
         {
@@ -785,7 +785,7 @@
             "titleSectionRelevance": 0.17,
             "metadataRelevance": 0.18,
             "clinicalEvidence": 0.22,
-            "fixedAdjustment": -0.0031
+            "fixedAdjustment": -0.0032
           }
         },
         {
@@ -875,7 +875,7 @@
             "titleSectionRelevance": 0.155,
             "metadataRelevance": 0.141,
             "clinicalEvidence": 0,
-            "fixedAdjustment": -0.0239
+            "fixedAdjustment": -0.0241
           }
         },
         {
@@ -1001,7 +1001,7 @@
             "titleSectionRelevance": 0.125,
             "metadataRelevance": 0.22,
             "clinicalEvidence": 0.52,
-            "fixedAdjustment": -0.0085
+            "fixedAdjustment": -0.0087
           }
         },
         {
@@ -1031,7 +1031,7 @@
             "titleSectionRelevance": 0.125,
             "metadataRelevance": 0.22,
             "clinicalEvidence": 0.52,
-            "fixedAdjustment": -0.0085
+            "fixedAdjustment": -0.0087
           }
         },
         {
@@ -1061,7 +1061,7 @@
             "titleSectionRelevance": 0.185,
             "metadataRelevance": 0.22,
             "clinicalEvidence": 0.52,
-            "fixedAdjustment": -0.0085
+            "fixedAdjustment": -0.0087
           }
         },
         {
@@ -1139,7 +1139,7 @@
             "titleSectionRelevance": 0,
             "metadataRelevance": 0,
             "clinicalEvidence": 0.16,
-            "fixedAdjustment": -0.0543
+            "fixedAdjustment": -0.0545
           }
         },
         {
@@ -1154,7 +1154,7 @@
             "titleSectionRelevance": 0,
             "metadataRelevance": 0,
             "clinicalEvidence": 0.16,
-            "fixedAdjustment": -0.0543
+            "fixedAdjustment": -0.0545
           }
         },
         {
@@ -1420,7 +1420,7 @@
             "titleSectionRelevance": 0.06,
             "metadataRelevance": 0,
             "clinicalEvidence": 0,
-            "fixedAdjustment": -0.0422
+            "fixedAdjustment": -0.0424
           }
         }
       ]
@@ -1453,7 +1453,7 @@
             "titleSectionRelevance": 0.17,
             "metadataRelevance": 0.141,
             "clinicalEvidence": 1.01,
-            "fixedAdjustment": -0.001
+            "fixedAdjustment": -0.0011
           }
         },
         {
@@ -1558,7 +1558,7 @@
             "titleSectionRelevance": 0.17,
             "metadataRelevance": 0.141,
             "clinicalEvidence": 1.01,
-            "fixedAdjustment": -0.001
+            "fixedAdjustment": -0.0011
           }
         },
         {
@@ -1620,7 +1620,7 @@
             "titleSectionRelevance": 0.125,
             "metadataRelevance": 0.22,
             "clinicalEvidence": 0.52,
-            "fixedAdjustment": -0.0085
+            "fixedAdjustment": -0.0087
           }
         },
         {
@@ -1650,7 +1650,7 @@
             "titleSectionRelevance": 0.125,
             "metadataRelevance": 0.22,
             "clinicalEvidence": 0.52,
-            "fixedAdjustment": -0.0185
+            "fixedAdjustment": -0.0187
           }
         },
         {
@@ -1680,7 +1680,7 @@
             "titleSectionRelevance": 0.185,
             "metadataRelevance": 0.22,
             "clinicalEvidence": 0.52,
-            "fixedAdjustment": -0.0085
+            "fixedAdjustment": -0.0087
           }
         },
         {
@@ -1755,7 +1755,7 @@
             "titleSectionRelevance": 0.155,
             "metadataRelevance": 0.22,
             "clinicalEvidence": 0.52,
-            "fixedAdjustment": -0.0085
+            "fixedAdjustment": -0.0087
           }
         }
       ]
@@ -1921,7 +1921,7 @@
             "titleSectionRelevance": 0.26,
             "metadataRelevance": 0,
             "clinicalEvidence": 0.1,
-            "fixedAdjustment": -0.0201
+            "fixedAdjustment": -0.0203
           }
         }
       ]
@@ -2157,7 +2157,7 @@
           "documentMatch": false,
           "contentMatch": false,
           "features": {
-            "hybridRelevance": 0.5422,
+            "hybridRelevance": 0.5421,
             "lexicalCoverage": 0.063,
             "reciprocalRankFusion": 0,
             "titleSectionRelevance": 0,
@@ -2534,7 +2534,7 @@
           "documentMatch": true,
           "contentMatch": false,
           "features": {
-            "hybridRelevance": 0.6141,
+            "hybridRelevance": 0.614,
             "lexicalCoverage": 0.136,
             "reciprocalRankFusion": 0,
             "titleSectionRelevance": 0.305,
@@ -2549,7 +2549,7 @@
           "documentMatch": true,
           "contentMatch": true,
           "features": {
-            "hybridRelevance": 0.6112,
+            "hybridRelevance": 0.6108,
             "lexicalCoverage": 0.136,
             "reciprocalRankFusion": 0,
             "titleSectionRelevance": 0.335,
@@ -2564,7 +2564,7 @@
           "documentMatch": true,
           "contentMatch": false,
           "features": {
-            "hybridRelevance": 0.6086,
+            "hybridRelevance": 0.6083,
             "lexicalCoverage": 0.136,
             "reciprocalRankFusion": 0,
             "titleSectionRelevance": 0.335,
@@ -2579,7 +2579,7 @@
           "documentMatch": false,
           "contentMatch": false,
           "features": {
-            "hybridRelevance": 0.5929,
+            "hybridRelevance": 0.5928,
             "lexicalCoverage": 0.164,
             "reciprocalRankFusion": 0,
             "titleSectionRelevance": 0.32,
@@ -2609,7 +2609,7 @@
           "documentMatch": false,
           "contentMatch": true,
           "features": {
-            "hybridRelevance": 0.5757,
+            "hybridRelevance": 0.5754,
             "lexicalCoverage": 0.091,
             "reciprocalRankFusion": 0,
             "titleSectionRelevance": 0.275,
@@ -2624,13 +2624,13 @@
           "documentMatch": false,
           "contentMatch": false,
           "features": {
-            "hybridRelevance": 0.5653,
+            "hybridRelevance": 0.5651,
             "lexicalCoverage": 0.164,
             "reciprocalRankFusion": 0,
             "titleSectionRelevance": 0.17,
             "metadataRelevance": 0,
             "clinicalEvidence": 0.0314,
-            "fixedAdjustment": -0.0089
+            "fixedAdjustment": -0.0091
           }
         },
         {
@@ -2639,7 +2639,7 @@
           "documentMatch": false,
           "contentMatch": false,
           "features": {
-            "hybridRelevance": 0.5462,
+            "hybridRelevance": 0.5463,
             "lexicalCoverage": 0.091,
             "reciprocalRankFusion": 0,
             "titleSectionRelevance": 0.245,
@@ -2876,7 +2876,7 @@
             "titleSectionRelevance": 0.23,
             "metadataRelevance": 0.071,
             "clinicalEvidence": 0.1,
-            "fixedAdjustment": -0.0201
+            "fixedAdjustment": -0.0203
           }
         },
         {
@@ -3148,7 +3148,7 @@
             "titleSectionRelevance": 0.125,
             "metadataRelevance": 0.215,
             "clinicalEvidence": 0.35,
-            "fixedAdjustment": -0.0535
+            "fixedAdjustment": -0.0537
           }
         },
         {
@@ -3455,7 +3455,7 @@
             "titleSectionRelevance": 0,
             "metadataRelevance": 0.036,
             "clinicalEvidence": 0.1,
-            "fixedAdjustment": -0.0218
+            "fixedAdjustment": -0.022
           }
         },
         {
@@ -3470,7 +3470,7 @@
             "titleSectionRelevance": 0,
             "metadataRelevance": 0.036,
             "clinicalEvidence": 0.1,
-            "fixedAdjustment": -0.0218
+            "fixedAdjustment": -0.022
           }
         },
         {
@@ -3500,7 +3500,7 @@
             "titleSectionRelevance": 0,
             "metadataRelevance": 0.072,
             "clinicalEvidence": 0,
-            "fixedAdjustment": -0.0073
+            "fixedAdjustment": -0.0074
           }
         },
         {
@@ -3515,7 +3515,7 @@
             "titleSectionRelevance": 0.08,
             "metadataRelevance": 0,
             "clinicalEvidence": 0,
-            "fixedAdjustment": -0.0089
+            "fixedAdjustment": -0.0091
           }
         },
         {
@@ -3530,7 +3530,7 @@
             "titleSectionRelevance": 0,
             "metadataRelevance": 0.072,
             "clinicalEvidence": 0,
-            "fixedAdjustment": -0.0073
+            "fixedAdjustment": -0.0074
           }
         }
       ]
@@ -3681,7 +3681,7 @@
             "titleSectionRelevance": 0.06,
             "metadataRelevance": 0.106,
             "clinicalEvidence": 0.295,
-            "fixedAdjustment": -0.0489
+            "fixedAdjustment": -0.0491
           }
         },
         {
@@ -3747,7 +3747,7 @@
             "titleSectionRelevance": 0.275,
             "metadataRelevance": 0.164,
             "clinicalEvidence": 0.16,
-            "fixedAdjustment": -0.0201
+            "fixedAdjustment": -0.0203
           }
         },
         {
@@ -3822,7 +3822,7 @@
             "titleSectionRelevance": 0.275,
             "metadataRelevance": 0.164,
             "clinicalEvidence": 0.16,
-            "fixedAdjustment": -0.0201
+            "fixedAdjustment": -0.0203
           }
         },
         {
@@ -3852,7 +3852,7 @@
             "titleSectionRelevance": 0.275,
             "metadataRelevance": 0.164,
             "clinicalEvidence": 0.06,
-            "fixedAdjustment": -0.0201
+            "fixedAdjustment": -0.0203
           }
         },
         {
@@ -3882,7 +3882,7 @@
             "titleSectionRelevance": 0.275,
             "metadataRelevance": 0.164,
             "clinicalEvidence": 0.16,
-            "fixedAdjustment": -0.0201
+            "fixedAdjustment": -0.0203
           }
         },
         {
@@ -3949,7 +3949,7 @@
             "titleSectionRelevance": 0.275,
             "metadataRelevance": 0,
             "clinicalEvidence": 0.28,
-            "fixedAdjustment": -0.0185
+            "fixedAdjustment": -0.0187
           }
         },
         {
@@ -3964,7 +3964,7 @@
             "titleSectionRelevance": 0.125,
             "metadataRelevance": 0.128,
             "clinicalEvidence": 0.38,
-            "fixedAdjustment": -0.0085
+            "fixedAdjustment": -0.0087
           }
         },
         {
@@ -4854,7 +4854,7 @@
             "titleSectionRelevance": 0.23,
             "metadataRelevance": 0,
             "clinicalEvidence": 0.02,
-            "fixedAdjustment": -0.0127
+            "fixedAdjustment": -0.0128
           }
         },
         {
@@ -4869,7 +4869,7 @@
             "titleSectionRelevance": 0.23,
             "metadataRelevance": 0,
             "clinicalEvidence": 0.02,
-            "fixedAdjustment": -0.0127
+            "fixedAdjustment": -0.0128
           }
         }
       ]
